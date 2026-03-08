@@ -1,9 +1,8 @@
 const mongoose = require('mongoose');
-
 const officerSchema = new mongoose.Schema({
   companyId:  { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
   userId:     { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
-  siteId:     { type: mongoose.Schema.Types.ObjectId, ref: 'Site', default: null },
+  siteIds:    [{ type: mongoose.Schema.Types.ObjectId, ref: 'Site' }],
   firstName:  { type: String, required: true },
   lastName:   { type: String, required: true },
   siaNumber:  { type: String, required: true },
@@ -17,5 +16,4 @@ const officerSchema = new mongoose.Schema({
   active:     { type: Boolean, default: true },
   createdAt:  { type: Date, default: Date.now }
 });
-
 module.exports = mongoose.model('Officer', officerSchema);
