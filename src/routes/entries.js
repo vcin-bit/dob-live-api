@@ -1,12 +1,26 @@
 const express = require('express');
-const router = express.Router();
-const { authenticate } = require('../middleware/auth');
-const { createEntry, getEntries, getEntry } = require('../controllers/entryController');
+const router  = express.Router();
+const auth    = require('../middleware/auth');
+const {
+  createEntry,
+  getEntries,
+  getEntry,
+  getAlerts,
+  markAlertRead,
+} = require('../controllers/entryController');
 
-router.use(authenticate);
+// All entry routes require authentication
+router.use(auth);
 
-router.post('/', createEntry);
-router.get('/', getEntries);
-router.get('/:id', getEntry);
+// ── Entries ──────────────────────────────────────────────────
+router.get('/',     getEntries);   // GET  /api/entries[?date=&siteId=]
+router.post('/',    createEntry);  // POST /api/entries
+router.get('/:id',  getEntry);     // GET  /api/entries/:id
+
+// ── Client Alerts feed ───────────────────────────────────────
+// GET  /api/entries/alerts[?siteId=&unread=true&since=]
+// PATCH /api/entries/alerts/:id/read
+router.get('/alerts',          getAlerts);
+router.patch('/alerts/:id/read', markAlertRead);
 
 module.exports = router;
