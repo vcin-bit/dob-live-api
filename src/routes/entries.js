@@ -1,6 +1,6 @@
 const express = require('express');
 const router  = express.Router();
-const { protect } = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth');
 
 const {
   createEntry,
@@ -11,7 +11,7 @@ const {
 } = require('../controllers/entryController');
 
 // All entry routes require authentication
-router.use(protect);
+router.use(authenticate);
 
 // ── IMPORTANT: named routes MUST come before /:id ──────────────────────────
 router.get('/',                   getEntries);       // 1. list all entries
