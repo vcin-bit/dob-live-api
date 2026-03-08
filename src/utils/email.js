@@ -2,7 +2,6 @@ const sgMail = require('@sendgrid/mail');
 
 if (process.env.SENDGRID_API_KEY) {
   sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-  sgMail.client.setDefaultRequest('baseUrl', 'https://api.eu.sendgrid.com');
 }
 
 const FROM = process.env.SENDGRID_FROM || 'onboarding@doblive.co.uk';
