@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-
 const siteSchema = new mongoose.Schema({
   companyId:                { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
   name:                     { type: String, required: true },
@@ -21,7 +20,8 @@ const siteSchema = new mongoose.Schema({
   escalationContact2Mobile: { type: String },
   status:                   { type: String, enum: ['active', 'inactive'], default: 'active' },
   officerIds:               [{ type: mongoose.Schema.Types.ObjectId, ref: 'Officer' }],
+  clientPortalEnabled:      { type: Boolean, default: false },
+  clientPin:                { type: String, default: null },
   createdAt:                { type: Date, default: Date.now }
 });
-
 module.exports = mongoose.model('Site', siteSchema);
