@@ -6,9 +6,6 @@ const connectDB = require('./src/config/database');
 
 const app = express();
 
-// Connect to MongoDB
-connectDB();
-
 // CORS
 const allowedOrigins = [
   'https://app.doblive.co.uk',
@@ -57,6 +54,25 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`DOB·LIVE API running on port ${PORT}`);
+
+const autoSeed = async () => {
+  try {
+    const User = require('./src/models/User');
+    const count = await User.countDocuments();
+    if (count === 0) {
+      console.log('No users found — running seed...');
+      await require('./src/seed').run();
+    } else {
+      console.log(`Database already seeded (${count} users found)`);
+    }
+  } catch (err) {
+    console.error('Auto-seed error:', err.message);
+  }
+};
+
+connectDB().then(async () => {
+  await autoSeed();
+  app.listen(PORT, () => {
+    console.log(`DOB·LIVE API running on port ${PORT}`);
+  });
 });
