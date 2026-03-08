@@ -2,12 +2,13 @@ const express = require('express');
 const router = express.Router();
 const { authenticate, requireRole } = require('../middleware/auth');
 const {
-  getOfficers, createOfficer, updateOfficer,
+  getOfficers, getMyProfile, createOfficer, updateOfficer,
   suspendOfficer, resetOfficerPassword,
   deactivateOfficer, getOfficerStatus
 } = require('../controllers/officerController');
 
 router.use(authenticate);
+router.get('/me', getMyProfile);
 router.get('/', getOfficers);
 router.post('/', requireRole('COMPANY', 'SUPER_ADMIN'), createOfficer);
 router.put('/:id', requireRole('COMPANY', 'SUPER_ADMIN'), updateOfficer);
