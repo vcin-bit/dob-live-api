@@ -55,15 +55,16 @@ exports.createOfficer = async (req, res) => {
 
     let userId = null;
     if (email && password) {
-      const existing = await User.findOne({ email: email.toLowerCase() });
-      if (existing) return res.status(400).json({ error: 'Email already in use' });
+      // Only block if this email is already in use within this company
+      const existing = await User.findOne({ email: email.toLowerCase(), companyId: req.user.companyId });
+      if (existing) return res.status(400).json({ error: 'Email already in use at this company' });
       const passwordHash = await bcrypt.hash(password, 12);
       const user = new User({
         companyId: req.user.companyId,
         email:     email.toLowerCase(),
         passwordHash,
-        role: 'OFFICER',
-        name: `${firstName} ${lastName}`
+        role:      'OFFICER',
+        name:      `${firstName} ${lastName}`
       });
       await user.save();
       userId = user._id;
