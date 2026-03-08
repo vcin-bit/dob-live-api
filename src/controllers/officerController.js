@@ -2,6 +2,8 @@ const Officer = require('../models/Officer');
 const User    = require('../models/User');
 const bcrypt  = require('bcryptjs');
 const Entry   = require('../models/Entry');
+const Site    = require('../models/Site');
+const { sendOfficerWelcome } = require('../utils/email');
 
 exports.getOfficers = async (req, res) => {
   try {
@@ -49,6 +51,8 @@ exports.createOfficer = async (req, res) => {
       return res.status(400).json({ error: 'firstName, lastName and siaNumber are required' });
     }
 
+    const normalisedSiteIds = Array.isArray(siteIds) ? siteIds : (siteIds ? [siteIds] : []);
+
     let userId = null;
     if (email && password) {
       const existing = await User.findOne({ email: email.toLowerCase() });
@@ -68,13 +72,38 @@ exports.createOfficer = async (req, res) => {
     const officer = new Officer({
       companyId: req.user.companyId,
       userId,
-      siteIds:  Array.isArray(siteIds) ? siteIds : (siteIds ? [siteIds] : []),
+      siteIds:  normalisedSiteIds,
       firstName, lastName, siaNumber,
       siaType:  siaType || 'Door Supervisor',
       siaExpiry, mobile, email,
       position: position || 'Security Officer'
     });
     await officer.save();
+
+    // Send welcome email if officer has a login account
+    if (email && password) {
+      try {
+        // Fetch site names for the email
+        const assignedSites = normalisedSiteIds.length
+          ? await Site.find({ _id: { $in: normalisedSiteIds } }).select('name')
+          : [];
+
+        // Get company name
+        const Company = require('../models/Company');
+        const company = await Company.findById(req.user.companyId).select('name');
+
+        sendOfficerWelcome({
+          officerName: `${firstName} ${lastName}`,
+          companyName: company?.name || 'Your company',
+          email:       email.toLowerCase(),
+          password:    password,
+          sites:       assignedSites,
+        }).catch(err => console.error('Officer welcome email error:', err));
+      } catch (emailErr) {
+        console.error('Officer email prep error:', emailErr);
+      }
+    }
+
     res.status(201).json(officer);
   } catch (error) {
     console.error('Create officer error:', error);
@@ -84,7 +113,6 @@ exports.createOfficer = async (req, res) => {
 
 exports.updateOfficer = async (req, res) => {
   try {
-    // Normalise siteIds if sent as single value
     if (req.body.siteIds && !Array.isArray(req.body.siteIds)) {
       req.body.siteIds = [req.body.siteIds];
     }
