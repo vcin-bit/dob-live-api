@@ -1,8 +1,4 @@
-const sgMail = require('@sendgrid/mail');
-
-if (process.env.SENDGRID_API_KEY) {
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-}
+const https = require('https');
 
 const FROM = process.env.SENDGRID_FROM || 'onboarding@doblive.co.uk';
 const APP_URL = process.env.FRONTEND_URL || 'https://app.doblive.co.uk';
@@ -12,12 +8,37 @@ async function send(to, subject, html) {
     console.log(`[EMAIL - no SendGrid key] To: ${to} | Subject: ${subject}`);
     return;
   }
-  try {
-    await sgMail.send({ to, from: FROM, subject, html });
-    console.log(`[EMAIL SENT] To: ${to} | Subject: ${subject}`);
-  } catch (err) {
-    console.error(`[EMAIL FAILED] To: ${to} | ${err.message}`);
-  }
+  const payload = JSON.stringify({
+    personalizations: [{ to: [{ email: to }] }],
+    from: { email: FROM },
+    subject,
+    content: [{ type: 'text/html', value: html }]
+  });
+  return new Promise((resolve) => {
+    const req = https.request({
+      hostname: 'api.eu.sendgrid.com',
+      path: '/v3/mail/send',
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`,
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(payload)
+      }
+    }, (res) => {
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        console.log(`[EMAIL SENT] To: ${to} | Subject: ${subject}`);
+      } else {
+        console.error(`[EMAIL FAILED] To: ${to} | HTTP ${res.statusCode}`);
+      }
+      resolve();
+    });
+    req.on('error', (err) => {
+      console.error(`[EMAIL FAILED] To: ${to} | ${err.message}`);
+      resolve();
+    });
+    req.write(payload);
+    req.end();
+  });
 }
 
 // ── Company onboarding ──────────────────────────────────────────────────────
