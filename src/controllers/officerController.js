@@ -3,7 +3,7 @@ const User    = require('../models/User');
 const bcrypt  = require('bcryptjs');
 const Entry   = require('../models/Entry');
 const Site    = require('../models/Site');
-const { sendOfficerWelcome } = require('../utils/email');
+const { sendOfficerWelcome, sendPasswordChanged } = require('../utils/email');
 
 exports.getOfficers = async (req, res) => {
   try {
@@ -159,6 +159,18 @@ exports.resetOfficerPassword = async (req, res) => {
     if (!user) return res.status(404).json({ error: 'Officer login account not found' });
     user.passwordHash = await bcrypt.hash(newPassword, 12);
     await user.save();
+
+    if (user.email) {
+      const Company = require('../models/Company');
+      const company = await Company.findById(req.user.companyId).select('name');
+      sendPasswordChanged({
+        name:        `${officer.firstName} ${officer.lastName}`,
+        email:       user.email,
+        newPassword: newPassword,
+        companyName: company?.name || 'Your company',
+      }).catch(err => console.error('Password changed email error:', err));
+    }
+
     res.json({ message: 'Password reset successfully' });
   } catch (error) {
     console.error('Reset officer password error:', error);
