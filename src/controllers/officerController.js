@@ -1,14 +1,16 @@
 const Officer = require('../models/Officer');
-const User = require('../models/User');
-const bcrypt = require('bcryptjs');
-const Entry = require('../models/Entry');
+const User    = require('../models/User');
+const bcrypt  = require('bcryptjs');
+const Entry   = require('../models/Entry');
 
 exports.getOfficers = async (req, res) => {
   try {
     const officers = await Officer.find({
       companyId: req.user.companyId,
       active: true
-    }).sort({ lastName: 1 });
+    })
+    .populate('siteIds', 'name siteNumber')
+    .sort({ lastName: 1 });
     res.json(officers);
   } catch (error) {
     console.error('Get officers error:', error);
@@ -18,15 +20,13 @@ exports.getOfficers = async (req, res) => {
 
 exports.getMyProfile = async (req, res) => {
   try {
-    const officer = await Officer.findOne({
-      userId: req.user.id,
-      active: true
-    });
+    const officer = await Officer.findOne({ userId: req.user.id, active: true })
+      .populate('siteIds', 'name siteNumber');
     if (!officer) {
-      // fallback: match by email
       const user = await User.findById(req.user.id);
       if (user) {
-        const byEmail = await Officer.findOne({ email: user.email, active: true });
+        const byEmail = await Officer.findOne({ email: user.email, active: true })
+          .populate('siteIds', 'name siteNumber');
         if (byEmail) return res.json(byEmail);
       }
       return res.status(404).json({ error: 'Officer record not found' });
@@ -42,7 +42,7 @@ exports.createOfficer = async (req, res) => {
   try {
     const {
       firstName, lastName, siaNumber, siaType, siaExpiry,
-      mobile, email, position, password
+      mobile, email, position, password, siteIds
     } = req.body;
 
     if (!firstName || !lastName || !siaNumber) {
@@ -56,7 +56,7 @@ exports.createOfficer = async (req, res) => {
       const passwordHash = await bcrypt.hash(password, 12);
       const user = new User({
         companyId: req.user.companyId,
-        email: email.toLowerCase(),
+        email:     email.toLowerCase(),
         passwordHash,
         role: 'OFFICER',
         name: `${firstName} ${lastName}`
@@ -68,8 +68,9 @@ exports.createOfficer = async (req, res) => {
     const officer = new Officer({
       companyId: req.user.companyId,
       userId,
+      siteIds:  Array.isArray(siteIds) ? siteIds : (siteIds ? [siteIds] : []),
       firstName, lastName, siaNumber,
-      siaType: siaType || 'Door Supervisor',
+      siaType:  siaType || 'Door Supervisor',
       siaExpiry, mobile, email,
       position: position || 'Security Officer'
     });
@@ -83,11 +84,15 @@ exports.createOfficer = async (req, res) => {
 
 exports.updateOfficer = async (req, res) => {
   try {
+    // Normalise siteIds if sent as single value
+    if (req.body.siteIds && !Array.isArray(req.body.siteIds)) {
+      req.body.siteIds = [req.body.siteIds];
+    }
     const officer = await Officer.findOneAndUpdate(
       { _id: req.params.id, companyId: req.user.companyId },
       { $set: req.body },
       { new: true }
-    );
+    ).populate('siteIds', 'name siteNumber');
     if (!officer) return res.status(404).json({ error: 'Officer not found' });
     res.json(officer);
   } catch (error) {
@@ -151,16 +156,20 @@ exports.getOfficerStatus = async (req, res) => {
   try {
     const officer = await Officer.findOne({ _id: req.params.id, companyId: req.user.companyId });
     if (!officer) return res.status(404).json({ error: 'Officer not found' });
-    const today = new Date().toISOString().split('T')[0];
+
+    const start = new Date(); start.setHours(0, 0, 0, 0);
+    const end   = new Date(); end.setHours(23, 59, 59, 999);
+
     const lastEntry = await Entry.findOne({
-      officerId: officer._id,
-      type: { $in: ['on_duty', 'off_duty'] },
-      shiftDate: today
+      officer:   officer.userId,
+      type:      { $in: ['on_duty', 'off_duty'] },
+      timestamp: { $gte: start, $lte: end }
     }).sort({ timestamp: -1 });
+
     res.json({
       officerId: officer._id,
-      name: `${officer.firstName} ${officer.lastName}`,
-      status: lastEntry ? lastEntry.type : officer.status,
+      name:      `${officer.firstName} ${officer.lastName}`,
+      status:    lastEntry ? lastEntry.type : officer.status,
       lastEntry: lastEntry || null
     });
   } catch (error) {
