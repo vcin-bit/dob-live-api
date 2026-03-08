@@ -1,6 +1,7 @@
 const express = require('express');
 const router  = express.Router();
-const auth    = require('../middleware/auth');
+const { protect } = require('../middleware/auth');
+
 const {
   createEntry,
   getEntries,
@@ -10,17 +11,13 @@ const {
 } = require('../controllers/entryController');
 
 // All entry routes require authentication
-router.use(auth);
+router.use(protect);
 
-// ── Entries ──────────────────────────────────────────────────
-router.get('/',     getEntries);   // GET  /api/entries[?date=&siteId=]
-router.post('/',    createEntry);  // POST /api/entries
-router.get('/:id',  getEntry);     // GET  /api/entries/:id
-
-// ── Client Alerts feed ───────────────────────────────────────
-// GET  /api/entries/alerts[?siteId=&unread=true&since=]
-// PATCH /api/entries/alerts/:id/read
-router.get('/alerts',          getAlerts);
-router.patch('/alerts/:id/read', markAlertRead);
+// ── IMPORTANT: named routes MUST come before /:id ──────────────────────────
+router.get('/',                   getEntries);       // 1. list all entries
+router.get('/alerts',             getAlerts);        // 2. named — BEFORE /:id
+router.patch('/alerts/:id/read',  markAlertRead);    // 3. named — BEFORE /:id
+router.post('/',                  createEntry);      // 4. create entry
+router.get('/:id',                getEntry);         // 5. param — always last
 
 module.exports = router;
