@@ -10,32 +10,39 @@ function todayRange() {
 
 exports.getDashboard = async (req, res) => {
   try {
-    const company = req.user.company;
+    const company = req.user.companyId;   // ← fixed
     const { start, end } = todayRange();
 
-    // Today's entries
     const todaysEntries = await Entry.find({
       company,
       timestamp: { $gte: start, $lte: end }
-    });
+    }).populate('officer', 'firstName lastName')
+      .populate('site', 'name siteNumber');
 
     const totalCount    = todaysEntries.length;
     const incidentCount = todaysEntries.filter(e => e.type === 'incident').length;
-    const patrolCount   = todaysEntries.filter(e => e.type === 'patrol_start').length;
+    const patrolCount   = todaysEntries.filter(e => e.type === 'patrol_end').length;
 
     // Active officers — last duty entry today is on_duty
     const officers = await Officer.find({ companyId: company, active: true });
-    let activeOfficerCount = 0;
+    const rosterEntries = [];
     for (const officer of officers) {
       const lastDutyEntry = await Entry.findOne({
         officer:   officer.userId,
         type:      { $in: ['on_duty', 'off_duty'] },
         timestamp: { $gte: start, $lte: end }
-      }).sort({ timestamp: -1 });
-      if (lastDutyEntry && lastDutyEntry.type === 'on_duty') {
-        activeOfficerCount++;
-      }
+      }).sort({ timestamp: -1 }).populate('site', 'name');
+
+      rosterEntries.push({
+        officerId:   officer._id,
+        name:        `${officer.firstName} ${officer.lastName}`,
+        siaNumber:   officer.siaNumber,
+        status:      lastDutyEntry ? lastDutyEntry.type : 'off_duty',
+        site:        lastDutyEntry?.site?.name || null,
+        lastEntryAt: lastDutyEntry?.timestamp  || null,
+      });
     }
+    const activeOfficerCount = rosterEntries.filter(o => o.status === 'on_duty').length;
 
     // Site statuses
     const sites = await Site.find({ companyId: company, status: 'active' });
@@ -44,12 +51,14 @@ exports.getDashboard = async (req, res) => {
         site:      site._id,
         timestamp: { $gte: start, $lte: end }
       }).sort({ timestamp: -1 });
+      const incCount = todaysEntries.filter(e => String(e.site?._id || e.site) === String(site._id) && e.type === 'incident').length;
       return {
         siteId:        site._id,
         name:          site.name,
         siteNumber:    site.siteNumber,
         lastActivity:  lastEntry ? lastEntry.timestamp : null,
-        lastEntryType: lastEntry ? lastEntry.type      : null
+        lastEntryType: lastEntry ? lastEntry.type      : null,
+        incidentCount: incCount,
       };
     }));
 
@@ -60,7 +69,9 @@ exports.getDashboard = async (req, res) => {
       todayEntryCount:  totalCount,
       incidentCount,
       patrolCount,
-      siteStatuses
+      siteStatuses,
+      roster:           rosterEntries,
+      recentEntries:    todaysEntries.slice(0, 20),
     });
   } catch (error) {
     console.error('Dashboard error:', error);
@@ -70,7 +81,7 @@ exports.getDashboard = async (req, res) => {
 
 exports.getFeed = async (req, res) => {
   try {
-    const entries = await Entry.find({ company: req.user.company })
+    const entries = await Entry.find({ company: req.user.companyId })
       .sort({ timestamp: -1 })
       .limit(50)
       .populate('site',    'name siteNumber')
