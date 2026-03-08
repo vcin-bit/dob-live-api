@@ -13,7 +13,11 @@ const connectDB = async () => {
 };
 
 const seed = async () => {
-  await connectDB();
+  // Only connect if not already connected
+  if (mongoose.connection.readyState === 0) {
+    await mongoose.connect(process.env.MONGODB_URI, { dbName: 'dob_live' });
+    console.log('MongoDB connected');
+  }
 
   // Clear existing seed data
   await Company.deleteMany({ slug: 'risksecured' });
@@ -159,7 +163,15 @@ const seed = async () => {
   await mongoose.disconnect();
 };
 
-seed().catch(err => {
-  console.error('Seed error:', err);
-  process.exit(1);
-});
+const isDirectRun = require.main === module;
+
+if (isDirectRun) {
+  connectDB().then(() => {
+    seed().catch(err => {
+      console.error('Seed error:', err);
+      process.exit(1);
+    });
+  });
+}
+
+module.exports = { run: seed };
