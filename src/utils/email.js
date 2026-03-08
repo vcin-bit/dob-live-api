@@ -16,7 +16,7 @@ async function send(to, subject, html) {
   });
   return new Promise((resolve) => {
     const req = https.request({
-      hostname: 'api.eu.sendgrid.com',
+      hostname: 'api.sendgrid.com',
       path: '/v3/mail/send',
       method: 'POST',
       headers: {
@@ -138,6 +138,37 @@ exports.sendPasswordReset = async ({ name, email, resetUrl }) => {
         <p>A password reset was requested for your DOB·LIVE account.</p>
         <p><a href="${resetUrl}" style="display:inline-block;background:#0f2744;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:700;">Reset My Password</a></p>
         <p style="font-size:13px;color:#64748b;">This link expires in 1 hour. If you did not request this, ignore this email.</p>
+      </div>
+    </div>`;
+  await send(email, subject, html);
+};
+
+// ── Officer password changed by manager ────────────────────────────────────
+exports.sendPasswordChanged = async ({ name, email, newPassword, companyName }) => {
+  const subject = 'DOB·LIVE — Your password has been updated';
+  const html = `
+    <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#0f172a;">
+      <div style="background:#0f2744;padding:24px 32px;border-radius:8px 8px 0 0;">
+        <h1 style="color:#fff;margin:0;font-size:22px;">DOB·LIVE</h1>
+        <p style="color:#93c5fd;margin:4px 0 0;font-size:13px;">Digital Occurrence Book</p>
+      </div>
+      <div style="background:#fff;padding:32px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 8px 8px;">
+        <p>Hello ${name},</p>
+        <p>Your password for <strong>${companyName}</strong> on DOB·LIVE has been reset by your manager.</p>
+        <div style="background:#f0f4f8;border-radius:8px;padding:20px;margin:20px 0;">
+          <p style="margin:0 0 12px;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:#64748b;">Your New Login Details</p>
+          <table style="width:100%;font-size:14px;">
+            <tr><td style="padding:4px 0;color:#64748b;width:120px;">App URL</td><td><a href="${APP_URL}/officer-dob-page.html" style="color:#1d4ed8;">${APP_URL}/officer-dob-page.html</a></td></tr>
+            <tr><td style="padding:4px 0;color:#64748b;">Email</td><td><strong>${email}</strong></td></tr>
+            <tr><td style="padding:4px 0;color:#64748b;">New Password</td><td><strong>${newPassword}</strong></td></tr>
+          </table>
+        </div>
+        <p style="background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:12px;font-size:13px;color:#991b1b;">
+          If you did not expect this change, contact your manager immediately.
+        </p>
+        <p style="font-size:13px;color:#64748b;margin-top:24px;border-top:1px solid #e2e8f0;padding-top:16px;">
+          DOB·LIVE · ${companyName}
+        </p>
       </div>
     </div>`;
   await send(email, subject, html);
