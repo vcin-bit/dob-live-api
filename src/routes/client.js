@@ -24,7 +24,6 @@ function clientAuth(req, res, next) {
 
 /* ══════════════════════════════════════════
    GET /api/client/site-info?site=:siteId
-   Returns site name for PIN screen display
 ══════════════════════════════════════════ */
 router.get('/site-info', async (req, res) => {
   try {
@@ -51,7 +50,7 @@ router.post('/auth', async (req, res) => {
     if (!site)                      return res.status(404).json({ error: 'Site not found' });
     if (!site.clientPortalEnabled)  return res.status(403).json({ error: 'Client access is not enabled for this site' });
     if (!site.clientPin)            return res.status(403).json({ error: 'No PIN has been set for this site' });
-    if (site.clientPin !== pin)     return res.status(401).json({ message: 'Incorrect PIN — please try again' });
+    if (String(site.clientPin) !== String(pin)) return res.status(401).json({ message: 'Incorrect PIN — please try again' });
 
     const token = jwt.sign(
       { siteId: site._id, siteName: site.name, role: 'CLIENT' },
