@@ -34,6 +34,7 @@ app.use('/api/dashboard', require('./src/routes/dashboard'));
 app.use('/api/admin',     require('./src/routes/admin'));
 app.use('/api/company',   require('./src/routes/company'));
 app.use('/api/client',    require('./src/routes/client'));
+app.use('/api/messages',  require('./src/routes/messages'));
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
