@@ -69,7 +69,7 @@ exports.sendCompanyWelcome = async ({ companyName, tier, managerName, managerEma
           <li>Log in at the URL above and change your password</li>
           <li>Add your sites under <strong>Site Management</strong></li>
           <li>Add your officers and assign them to sites</li>
-          <li>Share the officer app link with your team: <a href="${APP_URL}/officer-dob-page.html">${APP_URL}/officer-dob-page.html</a></li>
+          <li>Share the officer app link with your team: <a href="${APP_URL}/login.html">${APP_URL}/login.html</a></li>
         </ol>
 
         <p style="font-size:13px;color:#64748b;margin-top:24px;border-top:1px solid #e2e8f0;padding-top:16px;">
@@ -93,12 +93,12 @@ exports.sendOfficerWelcome = async ({ officerName, companyName, email, password,
       </div>
       <div style="background:#fff;padding:32px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 8px 8px;">
         <p style="font-size:16px;">Hello ${officerName},</p>
-        <p>You've been added to <strong>${companyName}</strong> on DOB·LIVE. Use the details below to log in to your officer app.</p>
+        <p>You've been added to <strong>${companyName}</strong> on DOB·LIVE, the online daily occurrence book. Use the details below to log in to your officer app.</p>
 
         <div style="background:#f0f4f8;border-radius:8px;padding:20px;margin:20px 0;">
           <p style="margin:0 0 12px;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:#64748b;">Your Login Details</p>
           <table style="width:100%;font-size:14px;">
-            <tr><td style="padding:4px 0;color:#64748b;width:120px;">App URL</td><td><a href="${APP_URL}/officer-dob-page.html" style="color:#1d4ed8;">${APP_URL}/officer-dob-page.html</a></td></tr>
+            <tr><td style="padding:4px 0;color:#64748b;width:120px;">App URL</td><td><a href="${APP_URL}/login.html" style="color:#1d4ed8;">${APP_URL}/login.html</a></td></tr>
             <tr><td style="padding:4px 0;color:#64748b;">Email</td><td><strong>${email}</strong></td></tr>
             <tr><td style="padding:4px 0;color:#64748b;">Password</td><td><strong>${password}</strong></td></tr>
             ${siteList ? `<tr><td style="padding:4px 0;color:#64748b;">Assigned to</td><td>${siteList}</td></tr>` : ''}
@@ -158,7 +158,7 @@ exports.sendPasswordChanged = async ({ name, email, newPassword, companyName }) 
         <div style="background:#f0f4f8;border-radius:8px;padding:20px;margin:20px 0;">
           <p style="margin:0 0 12px;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:#64748b;">Your New Login Details</p>
           <table style="width:100%;font-size:14px;">
-            <tr><td style="padding:4px 0;color:#64748b;width:120px;">App URL</td><td><a href="${APP_URL}/officer-dob-page.html" style="color:#1d4ed8;">${APP_URL}/officer-dob-page.html</a></td></tr>
+            <tr><td style="padding:4px 0;color:#64748b;width:120px;">App URL</td><td><a href="${APP_URL}/login.html" style="color:#1d4ed8;">${APP_URL}/login.html</a></td></tr>
             <tr><td style="padding:4px 0;color:#64748b;">Email</td><td><strong>${email}</strong></td></tr>
             <tr><td style="padding:4px 0;color:#64748b;">New Password</td><td><strong>${newPassword}</strong></td></tr>
           </table>
