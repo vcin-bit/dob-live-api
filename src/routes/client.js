@@ -20,7 +20,7 @@ function clientAuth(req, res, next) {
   } catch {
     res.status(401).json({ error: 'Invalid or expired token' });
   }
-}
+} 
 
 /* ══════════════════════════════════════════
    GET /api/client/site-info?site=:siteId
