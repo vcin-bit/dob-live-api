@@ -23,8 +23,24 @@ function clientAuth(req, res, next) {
 }
 
 /* ══════════════════════════════════════════
+   GET /api/client/site-info?site=:siteId
+   Returns site name for PIN screen display
+══════════════════════════════════════════ */
+router.get('/site-info', async (req, res) => {
+  try {
+    const { site: siteId } = req.query;
+    if (!siteId) return res.status(400).json({ error: 'siteId required' });
+    const site = await Site.findById(siteId).select('name clientPortalEnabled').lean();
+    if (!site || !site.clientPortalEnabled) return res.status(404).json({ error: 'Not found' });
+    res.json({ name: site.name });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+/* ══════════════════════════════════════════
    POST /api/client/auth
-   Body: { pin, siteId }  — siteId from ?site= param on portal URL
+   Body: { pin, siteId }
 ══════════════════════════════════════════ */
 router.post('/auth', async (req, res) => {
   try {
@@ -52,7 +68,6 @@ router.post('/auth', async (req, res) => {
 
 /* ══════════════════════════════════════════
    GET /api/client/alerts
-   Returns today's clientNotify entries for this site
 ══════════════════════════════════════════ */
 router.get('/alerts', clientAuth, async (req, res) => {
   try {
@@ -74,7 +89,6 @@ router.get('/alerts', clientAuth, async (req, res) => {
 
 /* ══════════════════════════════════════════
    GET /api/client/summary
-   Returns today's headline stats for this site
 ══════════════════════════════════════════ */
 router.get('/summary', clientAuth, async (req, res) => {
   try {
@@ -88,7 +102,6 @@ router.get('/summary', clientAuth, async (req, res) => {
     const totalIncidents    = entries.filter(e => e.type === 'incident').length;
     const patrolsCompleted  = entries.filter(e => e.type === 'patrol_end').length;
 
-    // Officers who logged on_duty today
     const onDutyEntries = entries.filter(e => e.type === 'on_duty');
     const activeOfficers = [...new Map(
       onDutyEntries.map(e => [String(e.officerId), {
@@ -98,7 +111,6 @@ router.get('/summary', clientAuth, async (req, res) => {
       }])
     ).values()];
 
-    // Highlights — client-relevant entries for the timeline
     const HIGHLIGHT_TYPES = ['incident', 'observation', 'health_safety', 'medical', 'patrol_end'];
     const highlights = entries
       .filter(e => HIGHLIGHT_TYPES.includes(e.type))
