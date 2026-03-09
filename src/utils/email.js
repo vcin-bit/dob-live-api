@@ -173,3 +173,23 @@ exports.sendPasswordChanged = async ({ name, email, newPassword, companyName }) 
     </div>`;
   await send(email, subject, html);
 };
+
+// ── Officer message from manager ───────────────────────────────────────────
+exports.sendOfficerMessage = async ({ officerName, email, subject, body, senderName, companyName }) => {
+  const html = `
+    <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#0f172a;">
+      <div style="background:#0f2744;padding:24px 32px;border-radius:8px 8px 0 0;">
+        <h1 style="color:#fff;margin:0;font-size:22px;">DOB·LIVE</h1>
+        <p style="color:#93c5fd;margin:4px 0 0;font-size:13px;">Message from your Operations Manager</p>
+      </div>
+      <div style="background:#fff;padding:32px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 8px 8px;">
+        <p style="font-size:15px;">Hello ${officerName},</p>
+        <p style="font-size:13px;color:#64748b;">You have a message from <strong>${senderName}</strong> at ${companyName}:</p>
+        <div style="background:#f0f4f8;border-left:4px solid #1d4ed8;border-radius:0 8px 8px 0;padding:16px 20px;margin:20px 0;font-size:14px;line-height:1.7;white-space:pre-wrap;">${body}</div>
+        <p style="font-size:13px;color:#64748b;margin-top:24px;border-top:1px solid #e2e8f0;padding-top:16px;">
+          DOB·LIVE · ${companyName}
+        </p>
+      </div>
+    </div>`;
+  await send(email, subject, html);
+};
