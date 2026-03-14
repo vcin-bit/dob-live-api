@@ -1,6 +1,7 @@
 const Entry       = require('../models/Entry');
 const ClientAlert = require('../models/ClientAlert');
 const mongoose    = require('mongoose');
+const { uploadImage } = require('../utils/r2');
 
 function buildSummary(type, body) {
   switch (type) {
@@ -12,18 +13,25 @@ function buildSummary(type, body) {
   }
 }
 
-// Max image size: 5MB per image, max 5 images per entry
-const MAX_IMAGES     = 5;
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB in bytes (base64 string length)
+const MAX_IMAGES = 5;
 
-function validateImages(images) {
-  if (!images || !Array.isArray(images)) return null;
-  if (images.length > MAX_IMAGES) return `Maximum ${MAX_IMAGES} images per entry`;
-  for (const img of images) {
-    if (!img.data) return 'Each image must have a data field';
-    if (img.data.length > MAX_IMAGE_SIZE * 1.4) return 'One or more images exceed the 5MB limit'; // base64 is ~1.37x larger
+async function processImages(images, entryType) {
+  if (!images || !Array.isArray(images) || images.length === 0) return [];
+  const limited = images.slice(0, MAX_IMAGES);
+  const results = [];
+  for (let i = 0; i < limited.length; i++) {
+    const img = limited[i];
+    if (!img.data) continue;
+    try {
+      const ext      = (img.mimeType || 'image/jpeg').split('/')[1] || 'jpg';
+      const filename = `${entryType}-${Date.now()}-${i}.${ext}`;
+      const url      = await uploadImage(img.data, img.mimeType || 'image/jpeg', filename);
+      results.push({ url, caption: img.caption || '', mimeType: img.mimeType || 'image/jpeg' });
+    } catch (err) {
+      console.error(`Image upload error (${i}):`, err.message);
+    }
   }
-  return null;
+  return results;
 }
 
 exports.createEntry = async (req, res) => {
@@ -31,13 +39,11 @@ exports.createEntry = async (req, res) => {
     const officer  = req.user._id;
     const company  = req.user.companyId;
 
-    // Validate images if present
-    if (req.body.images) {
-      const imgError = validateImages(req.body.images);
-      if (imgError) return res.status(400).json({ success: false, message: imgError });
-    }
+    // Upload images to R2, replace base64 with URLs
+    const rawImages = req.body.images || [];
+    const images    = await processImages(rawImages, req.body.type || 'entry');
 
-    const entry = await Entry.create({ ...req.body, officer, company });
+    const entry = await Entry.create({ ...req.body, officer, company, images });
 
     if (entry.clientNotify) {
       await ClientAlert.create({
@@ -60,7 +66,7 @@ exports.createEntry = async (req, res) => {
 exports.getEntries = async (req, res) => {
   try {
     const company = req.user.companyId;
-    const { date, site, type, limit = 100, skip = 0, includeImages = 'false' } = req.query;
+    const { date, site, type, limit = 100, skip = 0 } = req.query;
     const filter = { company };
     if (site)  filter.site = site;
     if (type)  filter.type = type;
@@ -70,11 +76,7 @@ exports.getEntries = async (req, res) => {
       const end   = new Date(d.setHours(23, 59, 59, 999));
       filter.timestamp = { $gte: start, $lte: end };
     }
-
-    // Exclude image data by default (for performance) — only include when explicitly requested
-    const projection = includeImages === 'true' ? {} : { images: 0 };
-
-    const entries = await Entry.find(filter, projection)
+    const entries = await Entry.find(filter)
       .populate('officer', 'firstName lastName email')
       .populate('site',    'name')
       .sort({ timestamp: -1 })
@@ -95,7 +97,6 @@ exports.getEntry = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ success: false, message: 'Invalid entry ID' });
     }
-    // Always include images when fetching a single entry
     const entry = await Entry.findOne({ _id: id, company: req.user.companyId })
       .populate('officer', 'firstName lastName email')
       .populate('site',    'name');
