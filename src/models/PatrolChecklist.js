@@ -1,10 +1,19 @@
-const express = require('express');
-const router  = express.Router();
-const { authenticate, requireRole } = require('../middleware/auth');
-const { getChecklist, saveChecklist, flagCheckpoint } = require('../controllers/patrolChecklistController');
+const mongoose = require('mongoose');
 
-router.get('/',      authenticate, getChecklist);
-router.put('/',      authenticate, requireRole('COMPANY', 'SUPER_ADMIN'), saveChecklist);
-router.post('/flag', authenticate, flagCheckpoint);
+const checkpointSchema = new mongoose.Schema({
+  name:        { type: String, required: true },
+  description: { type: String, default: '' },
+  order:       { type: Number, default: 0 },
+  riskCount:   { type: Number, default: 0 },
+  lastFlagged: { type: Date, default: null },
+});
 
-module.exports = router;
+const patrolChecklistSchema = new mongoose.Schema({
+  companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
+  siteId:    { type: mongoose.Schema.Types.ObjectId, ref: 'Site',    required: true },
+  checkpoints: [checkpointSchema],
+}, { timestamps: true });
+
+patrolChecklistSchema.index({ companyId: 1, siteId: 1 }, { unique: true });
+
+module.exports = mongoose.model('PatrolChecklist', patrolChecklistSchema);
