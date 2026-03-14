@@ -1,7 +1,7 @@
 const express = require('express');
 const router  = express.Router();
 const { authenticate, requireRole } = require('../middleware/auth');
-const { getChecklist, saveChecklist, flagCheckpoint } = require('../controllers/patrolCecklistController');
+const { getChecklist, saveChecklist, flagCheckpoint } = require('../controllers/patrolChecklistController');
 
 router.get('/',      authenticate, getChecklist);
 router.put('/',      authenticate, requireRole('COMPANY', 'SUPER_ADMIN'), saveChecklist);
