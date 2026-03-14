@@ -21,7 +21,7 @@ const entrySchema = new mongoose.Schema(
         'medical',
       ],
     },
-    refNumber: { type: String },          // e.g. RS-0042-08/03/26
+    refNumber: { type: String },
     company:   { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
     site:      { type: mongoose.Schema.Types.ObjectId, ref: 'Site' },
     officer:   { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -30,12 +30,23 @@ const entrySchema = new mongoose.Schema(
     // Client notification
     clientNotify: { type: Boolean, default: false },
 
+    // ── IMAGES ───────────────────────────────────────────────────────────────
+    // Array of base64-encoded images attached to this entry
+    images: [
+      {
+        data:     { type: String, required: true }, // base64 string
+        mimeType: { type: String, default: 'image/jpeg' },
+        caption:  { type: String, default: '' },
+        takenAt:  { type: Date, default: Date.now },
+      }
+    ],
+
     // ── ON DUTY ──────────────────────────────────────────────────────────────
     onDuty: {
-      shiftStart:      { type: String },
-      shiftEnd:        { type: String },
+      shiftStart:        { type: String },
+      shiftEnd:          { type: String },
       relievingOfficers: [{ type: String }],
-      handoverNotes:   { type: String },
+      handoverNotes:     { type: String },
     },
 
     // ── OFF DUTY ─────────────────────────────────────────────────────────────
@@ -46,7 +57,7 @@ const entrySchema = new mongoose.Schema(
 
     // ── PATROL START ─────────────────────────────────────────────────────────
     patrolStart: {
-      patrolType: { type: String },       // foot / vehicle / cycle
+      patrolType: { type: String },
       areas:      [{ type: String }],
       gpsNote:    { type: String },
     },
@@ -61,7 +72,7 @@ const entrySchema = new mongoose.Schema(
     // ── INCIDENT ─────────────────────────────────────────────────────────────
     incident: {
       category:    { type: String },
-      priority:    { type: String },      // low / medium / high / critical
+      priority:    { type: String },
       description: { type: String },
       policeCalled: { type: Boolean, default: false },
       policeRef:   { type: String },
@@ -84,16 +95,16 @@ const entrySchema = new mongoose.Schema(
 
     // ── POST HANDOVER ────────────────────────────────────────────────────────
     postHandover: {
-      officers:         [{ type: String }],
-      keysConfirmed:    { type: Boolean, default: false },
+      officers:           [{ type: String }],
+      keysConfirmed:      { type: Boolean, default: false },
       equipmentConfirmed: { type: Boolean, default: false },
-      notes:            { type: String },
+      notes:              { type: String },
     },
 
     // ── CCTV PATROL ──────────────────────────────────────────────────────────
     cctvPatrol: {
       camerasChecked: { type: Number },
-      status:         [{ type: String }],  // chips: all-clear / faults / offline
+      status:         [{ type: String }],
       notes:          { type: String },
     },
 
@@ -108,7 +119,7 @@ const entrySchema = new mongoose.Schema(
     maintenance: {
       issueType:   { type: String },
       description: { type: String },
-      urgency:     { type: String },      // low / medium / high / urgent
+      urgency:     { type: String },
     },
 
     // ── MEDICAL / FIRST AID ──────────────────────────────────────────────────
@@ -122,9 +133,9 @@ const entrySchema = new mongoose.Schema(
       knownConditions:    { type: String },
       firstAiders:        [{ type: String }],
       qualifications:     [{ type: String }],
-      treatments:         [{ type: String }],  // CPR / AED / recovery position / etc.
+      treatments:         [{ type: String }],
       freeText:           { type: String },
-      ambulanceCalled:    { type: String },    // 999 / 111 / No
+      ambulanceCalled:    { type: String },
       callTime999:        { type: String },
       ambulanceArrived:   { type: String },
       patientDeparted:    { type: String },
@@ -133,13 +144,12 @@ const entrySchema = new mongoose.Schema(
       receivingHospital:  { type: String },
       policeAttended:     { type: Boolean, default: false },
       policeRef:          { type: String },
-      narrative:          { type: String },    // AI Assist or manual
+      narrative:          { type: String },
     },
   },
   { timestamps: true }
 );
 
-// Index for fast alert queries
 entrySchema.index({ company: 1, clientNotify: 1, createdAt: -1 });
 entrySchema.index({ company: 1, site: 1, createdAt: -1 });
 
