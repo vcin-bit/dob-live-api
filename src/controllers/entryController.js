@@ -1,7 +1,6 @@
 const Entry       = require('../models/Entry');
 const ClientAlert = require('../models/ClientAlert');
 const mongoose    = require('mongoose');
-const { uploadImage } = require('../utils/r2');
 
 function buildSummary(type, body) {
   switch (type) {
@@ -13,38 +12,11 @@ function buildSummary(type, body) {
   }
 }
 
-const MAX_IMAGES = 5;
-
-async function processImages(images, entryType) {
-  if (!images || !Array.isArray(images) || images.length === 0) return [];
-  const limited = images.slice(0, MAX_IMAGES);
-  const results = [];
-  for (let i = 0; i < limited.length; i++) {
-    const img = limited[i];
-    if (!img.data) continue;
-    try {
-      const ext      = (img.mimeType || 'image/jpeg').split('/')[1] || 'jpg';
-      const filename = `${entryType}-${Date.now()}-${i}.${ext}`;
-      const url      = await uploadImage(img.data, img.mimeType || 'image/jpeg', filename);
-      results.push({ url, caption: img.caption || '', mimeType: img.mimeType || 'image/jpeg' });
-    } catch (err) {
-      console.error(`Image upload error (${i}):`, err.message);
-    }
-  }
-  return results;
-}
-
 exports.createEntry = async (req, res) => {
   try {
     const officer  = req.user._id;
     const company  = req.user.companyId;
-
-    // Upload images to R2, replace base64 with URLs
-    const rawImages = req.body.images || [];
-    const images    = await processImages(rawImages, req.body.type || 'entry');
-
-    const entry = await Entry.create({ ...req.body, officer, company, images });
-
+    const entry = await Entry.create({ ...req.body, officer, company });
     if (entry.clientNotify) {
       await ClientAlert.create({
         company:   entry.company,
@@ -55,7 +27,6 @@ exports.createEntry = async (req, res) => {
         summary:   buildSummary(entry.type, req.body),
       });
     }
-
     res.status(201).json({ success: true, entry });
   } catch (err) {
     console.error('createEntry error:', err);
@@ -76,13 +47,13 @@ exports.getEntries = async (req, res) => {
       const end   = new Date(d.setHours(23, 59, 59, 999));
       filter.timestamp = { $gte: start, $lte: end };
     }
-    const entries = await Entry.find(filter)
+    // Exclude image data from list queries for performance
+    const entries = await Entry.find(filter, { images: 0 })
       .populate('officer', 'firstName lastName email')
       .populate('site',    'name')
       .sort({ timestamp: -1 })
       .limit(Number(limit))
       .skip(Number(skip));
-
     const total = await Entry.countDocuments(filter);
     res.json({ success: true, entries, total });
   } catch (err) {
@@ -97,6 +68,7 @@ exports.getEntry = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ success: false, message: 'Invalid entry ID' });
     }
+    // Include images when fetching single entry
     const entry = await Entry.findOne({ _id: id, company: req.user.companyId })
       .populate('officer', 'firstName lastName email')
       .populate('site',    'name');
