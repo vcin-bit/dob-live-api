@@ -31,10 +31,10 @@ const entrySchema = new mongoose.Schema(
     clientNotify: { type: Boolean, default: false },
 
     // ── IMAGES ───────────────────────────────────────────────────────────────
-    // Array of base64-encoded images attached to this entry
+    // Array of R2-hosted image URLs
     images: [
       {
-        data:     { type: String, required: true }, // base64 string
+        url:      { type: String, required: true }, // R2 public URL
         mimeType: { type: String, default: 'image/jpeg' },
         caption:  { type: String, default: '' },
         takenAt:  { type: Date, default: Date.now },
