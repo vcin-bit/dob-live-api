@@ -31,10 +31,9 @@ const entrySchema = new mongoose.Schema(
     clientNotify: { type: Boolean, default: false },
 
     // ── IMAGES ───────────────────────────────────────────────────────────────
-    // Array of R2-hosted image URLs
     images: [
       {
-        url:      { type: String, required: true }, // R2 public URL
+        data:     { type: String, required: true }, // base64 compressed image
         mimeType: { type: String, default: 'image/jpeg' },
         caption:  { type: String, default: '' },
         takenAt:  { type: Date, default: Date.now },
