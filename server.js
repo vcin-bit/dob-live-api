@@ -42,6 +42,10 @@ app.use('/api/company',   require('./src/routes/company'));
 app.use('/api/client',    require('./src/routes/client'));
 app.use('/api/messages',  require('./src/routes/messages'));
 app.use('/api/patrol-checklist', require('./src/routes/patrolChecklist'));
+app.use('/api/push',            require('./src/routes/push'));
+app.use('/api/handover',        require('./src/routes/handover'));
+app.use('/api/site-instructions', require('./src/routes/siteInstructions'));
+app.use('/api/company-policy',  require('./src/routes/companyPolicy'));
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
