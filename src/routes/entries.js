@@ -8,16 +8,18 @@ const {
   getEntry,
   getAlerts,
   markAlertRead,
+  resolveEntry,
+  getArchive,
 } = require('../controllers/entryController');
 
-// All entry routes require authentication
 router.use(authenticate);
 
-// ── IMPORTANT: named routes MUST come before /:id ──────────────────────────
-router.get('/',                   getEntries);       // 1. list all entries
-router.get('/alerts',             getAlerts);        // 2. named — BEFORE /:id
-router.patch('/alerts/:id/read',  markAlertRead);    // 3. named — BEFORE /:id
-router.post('/',                  createEntry);      // 4. create entry
-router.get('/:id',                getEntry);         // 5. param — always last
+router.get('/',                  getEntries);
+router.get('/archive',           getArchive);
+router.get('/alerts',            getAlerts);
+router.patch('/alerts/:id/read', markAlertRead);
+router.post('/',                 createEntry);
+router.get('/:id',               getEntry);
+router.post('/:id/resolve',      resolveEntry);
 
 module.exports = router;
