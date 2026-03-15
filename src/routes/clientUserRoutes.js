@@ -1,33 +1,22 @@
 const express = require('express');
 const router = express.Router();
-const {
-  login,
-  forgotPassword,
-  resetPassword,
-  createClientUser,
-  getClientUsers,
-  updateClientUser,
-  deleteClientUser,
-  getMe,
-  changePassword
-} = require('../controllers/clientUserController');
-
-const { authenticate } = require('../middleware/auth');           // existing ops manager auth
-const { protectClientUser } = require('../middleware/clientUserAuth'); // new middleware
+const clientUserController = require('../controllers/clientUserController');
+const { authenticate } = require('../middleware/auth');
+const { protectClientUser } = require('../middleware/clientUserAuth');
 
 // Public routes (no auth)
-router.post('/login', login);
-router.post('/forgot-password', forgotPassword);
-router.post('/reset-password', resetPassword);
+router.post('/login',           clientUserController.login);
+router.post('/forgot-password', clientUserController.forgotPassword);
+router.post('/reset-password',  clientUserController.resetPassword);
 
 // Portal routes (client user JWT)
-router.get('/me', protectClientUser, getMe);
-router.post('/change-password', protectClientUser, changePassword);
+router.get('/me',               protectClientUser, clientUserController.getMe);
+router.post('/change-password', protectClientUser, clientUserController.changePassword);
 
 // Ops manager routes (existing JWT)
-router.post('/create', authenticate, createClientUser);
-router.get('/', authenticate, getClientUsers);
-router.put('/:id', authenticate, updateClientUser);
-router.delete('/:id', authenticate, deleteClientUser);
+router.post('/create',  authenticate, clientUserController.createClientUser);
+router.get('/',         authenticate, clientUserController.getClientUsers);
+router.put('/:id',      authenticate, clientUserController.updateClientUser);
+router.delete('/:id',   authenticate, clientUserController.deleteClientUser);
 
 module.exports = router;
