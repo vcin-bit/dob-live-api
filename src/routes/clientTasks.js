@@ -3,13 +3,14 @@ const router   = express.Router();
 const { authenticate, requireRole } = require('../middleware/auth');
 const {
   createTask, getTasks, getOfficerTasks,
-  acknowledgeTask, completeTask
+  acknowledgeTask, completeTask, addComment
 } = require('../controllers/clientTaskController');
 
 router.post('/',                authenticate, createTask);
 router.get('/',                 authenticate, requireRole('COMPANY'), getTasks);
-router.get('/officer',          authenticate, requireRole('OFFICER'), getOfficerTasks);
-router.post('/:id/acknowledge', authenticate, requireRole('OFFICER'), acknowledgeTask);
-router.post('/:id/complete',    authenticate, requireRole('OFFICER'), completeTask);
+router.get('/officer',          authenticate, getOfficerTasks);
+router.post('/:id/acknowledge', authenticate, acknowledgeTask);
+router.post('/:id/complete',    authenticate, completeTask);
+router.post('/:id/comment',     authenticate, addComment);
 
 module.exports = router;
