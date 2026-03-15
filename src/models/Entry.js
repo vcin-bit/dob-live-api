@@ -61,11 +61,16 @@ const entrySchema = new mongoose.Schema(
       gpsNote:    { type: String },
     },
 
+    // ── SHARED NOTES ─────────────────────────────────────────────────────────
+    notes: { type: String, default: '' },
+
     // ── PATROL END ───────────────────────────────────────────────────────────
     patrolEnd: {
       durationMinutes: { type: Number },
       distanceKm:      { type: Number },
+      steps:           { type: Number },
       notes:           { type: String },
+      route:           [{ lat: Number, lng: Number }],
     },
 
     // ── INCIDENT ─────────────────────────────────────────────────────────────
