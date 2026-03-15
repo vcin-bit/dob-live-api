@@ -254,3 +254,79 @@ exports.changePassword = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+// GET /api/client-users/alerts — alerts for client user's assigned sites
+exports.getAlerts = async (req, res) => {
+  try {
+    const ClientAlert = require('../models/ClientAlert');
+    const user = await ClientUser.findById(req.clientUser._id).populate('siteIds', 'name');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const siteIds = user.siteIds.map(s => s._id || s);
+    if (!siteIds.length) return res.json({ alerts: [] });
+
+    const alerts = await ClientAlert.find({ site: { $in: siteIds } })
+      .populate({ path: 'entry', populate: { path: 'officer', select: 'firstName lastName name' } })
+      .populate('site', 'name')
+      .sort({ createdAt: -1 })
+      .limit(100);
+
+    res.json({ alerts });
+  } catch (err) {
+    console.error('getAlerts error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// POST /api/client-users/alerts/:id/acknowledge
+exports.acknowledgeAlert = async (req, res) => {
+  try {
+    const ClientAlert = require('../models/ClientAlert');
+    const { comment } = req.body;
+    const name = req.clientUser.name || req.clientUser.email;
+
+    const update = {
+      status: 'acknowledged',
+      acknowledgedAt: new Date(),
+      acknowledgedBy: name,
+      read: true,
+      readAt: new Date()
+    };
+    if (comment?.trim()) {
+      update.$push = { comments: { from: 'client', name, text: comment.trim() } };
+    }
+
+    const alert = await ClientAlert.findByIdAndUpdate(req.params.id, update, { new: true })
+      .populate({ path: 'entry', populate: { path: 'officer', select: 'firstName lastName name' } })
+      .populate('site', 'name');
+
+    if (!alert) return res.status(404).json({ message: 'Alert not found' });
+    res.json({ success: true, alert });
+  } catch (err) {
+    console.error('acknowledgeAlert error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// POST /api/client-users/alerts/:id/comment
+exports.commentAlert = async (req, res) => {
+  try {
+    const ClientAlert = require('../models/ClientAlert');
+    const { text } = req.body;
+    if (!text?.trim()) return res.status(400).json({ message: 'Comment text required' });
+
+    const name = req.clientUser.name || req.clientUser.email;
+    const alert = await ClientAlert.findByIdAndUpdate(
+      req.params.id,
+      { $push: { comments: { from: 'client', name, text: text.trim() } } },
+      { new: true }
+    ).populate({ path: 'entry', populate: { path: 'officer', select: 'firstName lastName name' } })
+     .populate('site', 'name');
+
+    if (!alert) return res.status(404).json({ message: 'Alert not found' });
+    res.json({ success: true, alert });
+  } catch (err) {
+    console.error('commentAlert error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
