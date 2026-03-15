@@ -10,8 +10,11 @@ router.post('/forgot-password', clientUserController.forgotPassword);
 router.post('/reset-password',  clientUserController.resetPassword);
 
 // Portal routes (client user JWT)
-router.get('/me',               protectClientUser, clientUserController.getMe);
-router.post('/change-password', protectClientUser, clientUserController.changePassword);
+router.get('/me',                            protectClientUser, clientUserController.getMe);
+router.post('/change-password',              protectClientUser, clientUserController.changePassword);
+router.get('/alerts',                        protectClientUser, clientUserController.getAlerts);
+router.post('/alerts/:id/acknowledge',       protectClientUser, clientUserController.acknowledgeAlert);
+router.post('/alerts/:id/comment',           protectClientUser, clientUserController.commentAlert);
 
 // Ops manager routes (existing JWT)
 router.post('/create',  authenticate, clientUserController.createClientUser);
