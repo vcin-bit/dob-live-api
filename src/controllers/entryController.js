@@ -1,6 +1,9 @@
 const Entry       = require('../models/Entry');
 const ClientAlert = require('../models/ClientAlert');
 const mongoose    = require('mongoose');
+const { sendIncidentAlert } = require('./pushController');
+
+const ALERT_TYPES = ['incident', 'health_safety', 'medical'];
 
 function buildSummary(type, body) {
   switch (type) {
@@ -17,6 +20,7 @@ exports.createEntry = async (req, res) => {
     const officer  = req.user._id;
     const company  = req.user.companyId;
     const entry = await Entry.create({ ...req.body, officer, company });
+
     if (entry.clientNotify) {
       await ClientAlert.create({
         company:   entry.company,
@@ -27,6 +31,20 @@ exports.createEntry = async (req, res) => {
         summary:   buildSummary(entry.type, req.body),
       });
     }
+
+    // Fire push notification for incident / H&S / medical
+    if (ALERT_TYPES.includes(entry.type)) {
+      const populated = await Entry.findById(entry._id)
+        .populate('site',    'name')
+        .populate('officer', 'firstName lastName');
+      sendIncidentAlert({
+        companyId:    company,
+        siteName:     populated?.site?.name     || 'Unknown site',
+        officerName:  populated?.officer ? `${populated.officer.firstName} ${populated.officer.lastName}` : 'Officer',
+        notes:        entry.notes || buildSummary(entry.type, req.body),
+      }).catch(e => console.error('push error:', e));
+    }
+
     res.status(201).json({ success: true, entry });
   } catch (err) {
     console.error('createEntry error:', err);
@@ -47,7 +65,6 @@ exports.getEntries = async (req, res) => {
       const end   = new Date(d.setHours(23, 59, 59, 999));
       filter.timestamp = { $gte: start, $lte: end };
     }
-    // Exclude image data from list queries for performance
     const entries = await Entry.find(filter, { images: 0 })
       .populate('officer', 'firstName lastName email')
       .populate('site',    'name')
@@ -65,10 +82,8 @@ exports.getEntries = async (req, res) => {
 exports.getEntry = async (req, res) => {
   try {
     const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
+    if (!mongoose.Types.ObjectId.isValid(id))
       return res.status(400).json({ success: false, message: 'Invalid entry ID' });
-    }
-    // Include images when fetching single entry
     const entry = await Entry.findOne({ _id: id, company: req.user.companyId })
       .populate('officer', 'firstName lastName email')
       .populate('site',    'name');
@@ -104,9 +119,8 @@ exports.getAlerts = async (req, res) => {
 exports.markAlertRead = async (req, res) => {
   try {
     const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
+    if (!mongoose.Types.ObjectId.isValid(id))
       return res.status(400).json({ success: false, message: 'Invalid alert ID' });
-    }
     const alert = await ClientAlert.findOneAndUpdate(
       { _id: id, company: req.user.companyId },
       { read: true, readAt: new Date(), readBy: req.user._id },
