@@ -31,6 +31,10 @@ const clientUserSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  jobTitle: {
+    type: String,
+    trim: true
+  },
   resetToken: {
     type: String,
     default: null
