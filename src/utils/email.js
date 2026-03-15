@@ -41,6 +41,9 @@ async function send(to, subject, html) {
   });
 }
 
+// Export raw send function for use by other controllers
+exports.send = send;
+
 // ── Company onboarding ──────────────────────────────────────────────────────
 exports.sendCompanyWelcome = async ({ companyName, tier, managerName, managerEmail, managerPassword }) => {
   const subject = `Welcome to DOB·LIVE — Your account is ready`;
@@ -125,7 +128,7 @@ exports.sendOfficerWelcome = async ({ officerName, companyName, email, password,
   await send(email, subject, html);
 };
 
-// ── Manager password reset (existing reset flow) ────────────────────────────
+// ── Manager password reset ──────────────────────────────────────────────────
 exports.sendPasswordReset = async ({ name, email, resetUrl }) => {
   const subject = 'DOB·LIVE — Password Reset Request';
   const html = `
