@@ -62,7 +62,7 @@ router.get('/alerts', clientAuth, async (req, res) => {
     const alerts = await ClientAlert.find(filter)
       .populate({
         path: 'entry',
-        populate: { path: 'officer', select: 'firstName lastName' }
+        populate: { path: 'officer', select: 'name firstName lastName' }
       })
       .populate('site', 'name')
       .sort({ createdAt: -1 })
