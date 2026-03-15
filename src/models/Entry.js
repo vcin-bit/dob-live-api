@@ -64,6 +64,12 @@ const entrySchema = new mongoose.Schema(
     // ── SHARED NOTES ─────────────────────────────────────────────────────────
     notes: { type: String, default: '' },
 
+    // ── RESOLUTION ───────────────────────────────────────────────────────────
+    resolved:         { type: Boolean, default: false },
+    resolvedAt:       { type: Date,    default: null },
+    resolvedBy:       { type: String,  default: null },
+    resolutionNotes:  { type: String,  default: '' },
+
     // ── PATROL END ───────────────────────────────────────────────────────────
     patrolEnd: {
       durationMinutes: { type: Number },
