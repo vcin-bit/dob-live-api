@@ -32,9 +32,15 @@ exports.createTask = async (req, res) => {
 exports.getTasks = async (req, res) => {
   try {
     const { status, siteId } = req.query;
-    const filter = { companyId: req.user.companyId };
+    // Filter by companyId OR by siteId (handles tasks created via client token)
+    const companyId = req.user.companyId;
+    let filter = {};
+    if (siteId) {
+      filter.siteId = siteId;
+    } else {
+      filter.companyId = companyId;
+    }
     if (status) filter.status = status;
-    if (siteId) filter.siteId = siteId;
     const tasks = await ClientTask.find(filter).sort({ createdAt: -1 }).limit(100);
     res.json({ success: true, tasks });
   } catch (err) {
@@ -86,6 +92,26 @@ exports.completeTask = async (req, res) => {
         completedAt:     new Date(),
         completionNotes: notes || '',
       },
+      { new: true }
+    );
+    if (!task) return res.status(404).json({ error: 'Task not found' });
+    res.json({ success: true, task });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+// POST /api/tasks/:id/comment — add a comment to a task
+exports.addComment = async (req, res) => {
+  try {
+    const { text, from } = req.body;
+    if (!text) return res.status(400).json({ error: 'text required' });
+    const name = req.user.name || req.user.email || 'Unknown';
+    const role = req.user.role;
+    const fromLabel = role === 'OFFICER' ? 'officer' : role === 'COMPANY' ? 'manager' : 'manager';
+    const task = await ClientTask.findByIdAndUpdate(
+      req.params.id,
+      { $push: { comments: { from: from || fromLabel, name, text } } },
       { new: true }
     );
     if (!task) return res.status(404).json({ error: 'Task not found' });
