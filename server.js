@@ -7,9 +7,7 @@ const app = express();
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
-    // Allow any doblive.co.uk subdomain or localhost
     if (
       origin.endsWith('.doblive.co.uk') ||
       origin === 'https://doblive.co.uk' ||
@@ -32,22 +30,23 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'dob-live-api', timestamp: new Date().toISOString() });
 });
 
-app.use('/api/auth',      require('./src/routes/auth'));
-app.use('/api/entries',   require('./src/routes/entries'));
-app.use('/api/officers',  require('./src/routes/officers'));
-app.use('/api/sites',     require('./src/routes/sites'));
-app.use('/api/dashboard', require('./src/routes/dashboard'));
-app.use('/api/admin',     require('./src/routes/admin'));
-app.use('/api/company',   require('./src/routes/company'));
-app.use('/api/client',    require('./src/routes/client'));
-app.use('/api/messages',  require('./src/routes/messages'));
+app.use('/api/auth',             require('./src/routes/auth'));
+app.use('/api/entries',          require('./src/routes/entries'));
+app.use('/api/officers',         require('./src/routes/officers'));
+app.use('/api/sites',            require('./src/routes/sites'));
+app.use('/api/dashboard',        require('./src/routes/dashboard'));
+app.use('/api/admin',            require('./src/routes/admin'));
+app.use('/api/company',          require('./src/routes/company'));
+app.use('/api/client',           require('./src/routes/client'));
+app.use('/api/messages',         require('./src/routes/messages'));
 app.use('/api/patrol-checklist', require('./src/routes/patrolChecklist'));
-app.use('/api/push',            require('./src/routes/push'));
-app.use('/api/handover',        require('./src/routes/handover'));
-app.use('/api/site-instructions', require('./src/routes/siteInstructions'));
-app.use('/api/company-policy',  require('./src/routes/companyPolicy'));
+app.use('/api/push',             require('./src/routes/push'));
+app.use('/api/handover',         require('./src/routes/handover'));
+app.use('/api/site-instructions',require('./src/routes/siteInstructions'));
+app.use('/api/company-policy',   require('./src/routes/companyPolicy'));
 app.use('/api/instructions-ack', require('./src/routes/instructionsAck'));
 app.use('/api/tasks',            require('./src/routes/clientTasks'));
+app.use('/api/client-users',     require('./src/routes/clientUserRoutes'));
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
