@@ -46,26 +46,4 @@ exports.getRecords = async (req, res) => {
     const acks = await InstructionsAck.find(filter).sort({ ackedAt: -1 }).limit(100);
     const grouped = {};
     acks.forEach(a => {
-      const key = `${a.siteId}_${a.officerId}`;
-      if (!grouped[key]) grouped[key] = a;
-    });
-    const siteIds      = [...new Set(acks.map(a => String(a.siteId)))];
-    const instructions = await SiteInstructions.find({ siteId: { $in: siteIds } }).select('siteId updatedAt');
-    const versionMap   = {};
-    instructions.forEach(i => { versionMap[String(i.siteId)] = i.updatedAt; });
-    const records = Object.values(grouped).map(a => ({
-      officerName:         a.officerName,
-      officerId:           a.officerId,
-      siteId:              a.siteId,
-      ackedAt:             a.ackedAt,
-      instructionsVersion: a.instructionsVersion,
-      isCurrent:           versionMap[String(a.siteId)]
-                             ? Math.abs(new Date(versionMap[String(a.siteId)]) - new Date(a.instructionsVersion)) < 1000
-                             : false,
-    }));
-    res.json({ success: true, records });
-  } catch (err) {
-    console.error('getRecords error:', err);
-    res.status(500).json({ error: 'Server error' });
-  }
-};
+      const key = `${a.
