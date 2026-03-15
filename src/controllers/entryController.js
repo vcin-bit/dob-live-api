@@ -64,13 +64,16 @@ exports.createEntry = async (req, res) => {
     const entry = await Entry.create({ ...req.body, officer, company, refNumber });
 
     if (entry.clientNotify) {
+      // Check if client portal is enabled for this site
+      const site = entry.site ? await require('../models/Site').findById(entry.site).select('clientPortalEnabled').lean() : null;
       await ClientAlert.create({
-        company:   entry.company,
-        site:      entry.site || null,
-        entry:     entry._id,
-        entryType: entry.type,
-        priority:  entry.incident?.priority || entry.maintenance?.urgency || null,
-        summary:   buildSummary(entry.type, req.body),
+        company:             entry.company,
+        site:                entry.site || null,
+        entry:               entry._id,
+        entryType:           entry.type,
+        priority:            entry.incident?.priority || entry.maintenance?.urgency || null,
+        summary:             buildSummary(entry.type, req.body),
+        portalEnabled:       site?.clientPortalEnabled || false,
       });
     }
 
