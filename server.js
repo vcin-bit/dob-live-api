@@ -58,7 +58,14 @@ app.use('/api/tasks',      require('./routes/tasks'));
 app.use('/api/messages',   require('./routes/messages'));
 app.use('/api/documents',  require('./routes/documents'));
 app.use('/api/handovers',  require('./routes/handovers'));
-app.use('/api/clients',    require('./routes/clients'));
+app.use('/api/clients',      require('./routes/clients'));
+app.use('/api/instructions', require('./routes/instructions'));
+app.use('/api/policies',     require('./routes/policies'));
+app.use('/api/folders',      require('./routes/folders'));
+app.use('/api/patrols',      require('./routes/patrols'));
+app.use('/api/patterns',     require('./routes/patterns'));
+app.use('/api/rates',        require('./routes/rates'));
+app.use('/api/alerts',       require('./routes/alerts'));
 
 // ── 404 handler ──────────────────────────────────────────────
 app.use((req, res) => {

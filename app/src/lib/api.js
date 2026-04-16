@@ -166,6 +166,47 @@ export const api = {
       body: JSON.stringify(data),
     }),
   },
+
+  instructions: {
+    get: (siteId) => request(`/api/instructions?site_id=${siteId}`),
+    update: (siteId, sections) => request(`/api/instructions?site_id=${siteId}`, { method: 'PUT', body: JSON.stringify({ sections }) }),
+  },
+  policies: {
+    get: () => request('/api/policies'),
+    update: (sections) => request('/api/policies', { method: 'PUT', body: JSON.stringify({ sections }) }),
+  },
+  folders: {
+    list: (params = {}) => request(`/api/folders?${new URLSearchParams(params)}`),
+    create: (data) => request('/api/folders', { method: 'POST', body: JSON.stringify(data) }),
+    delete: (id) => request(`/api/folders/${id}`, { method: 'DELETE' }),
+    documents: {
+      list: (params = {}) => request(`/api/folders/documents?${new URLSearchParams(params)}`),
+      create: (data) => request('/api/folders/documents', { method: 'POST', body: JSON.stringify(data) }),
+      delete: (id) => request(`/api/folders/documents/${id}`, { method: 'DELETE' }),
+    },
+  },
+  patrols: {
+    list: (params = {}) => request(`/api/patrols?${new URLSearchParams(params)}`),
+    create: (data) => request('/api/patrols', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id, data) => request(`/api/patrols/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    delete: (id) => request(`/api/patrols/${id}`, { method: 'DELETE' }),
+  },
+  patterns: {
+    list: (params = {}) => request(`/api/patterns?${new URLSearchParams(params)}`),
+    create: (data) => request('/api/patterns', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id, data) => request(`/api/patterns/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    delete: (id) => request(`/api/patterns/${id}`, { method: 'DELETE' }),
+  },
+  rates: {
+    list: () => request('/api/rates'),
+    create: (data) => request('/api/rates', { method: 'POST', body: JSON.stringify(data) }),
+    delete: (id) => request(`/api/rates/${id}`, { method: 'DELETE' }),
+  },
+  alerts: {
+    list: (params = {}) => request(`/api/alerts?${new URLSearchParams(params)}`),
+    create: (data) => request('/api/alerts', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id, data) => request(`/api/alerts/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  },
 };
 
 export { ApiError };
