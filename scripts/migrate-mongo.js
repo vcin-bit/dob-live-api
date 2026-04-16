@@ -54,12 +54,18 @@ async function migrate() {
     }
     console.log('  ✓ Cleared\n');
 
-    // 1. Get existing company
-    const { data: co } = await supabase.from('companies').select('id').single();
-    if (!co) { console.error('❌  No company in Supabase'); return; }
+    // 1. Get or create operator company
+    let { data: co } = await supabase.from('companies').select('id').single();
+    if (!co) {
+      const { data: newCo, error: coErr } = await supabase.from('companies').insert({ name: 'Risk Secured Ltd', active: true }).select('id').single();
+      if (coErr) { console.error('Could not create company:', coErr.message); return; }
+      co = newCo;
+      console.log('🏢  Created Risk Secured Ltd -> ' + co.id + '\n');
+    } else {
+      console.log('🏢  Using company ' + co.id + '\n');
+    }
     companyMap.set('default', co.id);
     const cid = co.id;
-    console.log(`🏢  Using company ${cid}\n`);
 
     // 2. Clients (from Mongo companies collection)
     const mongoCos = await db.collection('companies').find({}).toArray();
