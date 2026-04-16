@@ -32,36 +32,7 @@ if (!clerkPubKey) {
 // Main App with Clerk Provider
 function App() {
   return (
-    <ClerkProvider 
-      publishableKey={clerkPubKey}
-      appearance={{
-        baseTheme: undefined,
-        variables: {
-          colorPrimary: '#06B6D4',
-          colorText: '#0F172A',
-          colorTextSecondary: '#475569',
-          colorBackground: '#FFFFFF',
-          colorInputBackground: '#FFFFFF',
-          colorInputText: '#0F172A',
-          borderRadius: '0.5rem',
-          fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
-        }
-      }}
-      localization={{
-        signIn: {
-          start: {
-            title: 'Sign in to DOB Live',
-            subtitle: 'Access your security management dashboard'
-          }
-        },
-        signUp: {
-          start: {
-            title: 'Create your account',
-            subtitle: 'Join the DOB Live security platform'
-          }
-        }
-      }}
-    >
+    <ClerkProvider publishableKey={clerkPubKey}>
       <Router>
         <div className="min-h-screen bg-slate-50">
           <SignedOut>
@@ -83,127 +54,95 @@ function AuthFlow() {
   const [mode, setMode] = useState('signin');
   
   return (
-    <div className="w-full max-w-md">
+    <div className="w-full max-w-sm mx-auto">
+      {/* Simple, clean header */}
       <div className="text-center mb-8">
-        <div className="w-16 h-16 bg-slate-900 rounded-xl flex items-center justify-center mx-auto mb-4">
-          <div className="w-8 h-8 bg-cyan-500 rounded-lg flex items-center justify-center">
-            <div className="w-4 h-4 bg-slate-900 rounded-sm"></div>
-          </div>
+        <div className="w-12 h-12 bg-slate-900 rounded-lg flex items-center justify-center mx-auto mb-4">
+          <span className="text-cyan-400 font-bold text-xl">D</span>
         </div>
-        <h1 className="text-3xl font-bold text-slate-900 mb-2">DOB Live</h1>
-        <p className="text-slate-600">Security Management Platform</p>
+        <h1 className="text-2xl font-bold text-slate-900 mb-1">DOB Live</h1>
+        <p className="text-slate-500 text-sm">Security Management</p>
       </div>
       
+      {/* Clean, minimal auth forms */}
       {mode === 'signin' ? (
         <div className="space-y-6">
-          <div className="card p-8">
-            <SignIn 
-              appearance={{
-                elements: {
-                  rootBox: 'w-full',
-                  card: 'shadow-none border-0 p-0 bg-transparent',
-                  headerTitle: 'text-xl font-semibold text-slate-900 text-center mb-6',
-                  headerSubtitle: 'text-slate-600 text-center mb-6',
-                  socialButtonsBlockButton: 'w-full mb-4 p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors text-slate-700 font-medium',
-                  socialButtonsBlockButtonText: 'font-medium',
-                  dividerLine: 'bg-slate-200',
-                  dividerText: 'text-slate-500 text-sm',
-                  formFieldLabel: 'text-sm font-medium text-slate-700 mb-2',
-                  formFieldInput: 'w-full px-4 py-3 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors',
-                  formButtonPrimary: 'w-full bg-cyan-600 hover:bg-cyan-700 text-white font-medium py-3 px-4 rounded-lg transition-colors',
-                  formFieldInputShowPasswordButton: 'text-slate-500 hover:text-slate-700',
-                  identityPreviewEditButton: 'text-cyan-600 hover:text-cyan-700',
-                  formHeaderTitle: 'text-xl font-semibold text-slate-900 mb-2',
-                  formHeaderSubtitle: 'text-slate-600 mb-6',
-                  footerActionLink: 'text-cyan-600 hover:text-cyan-700 font-medium',
-                  otpCodeFieldInput: 'w-12 h-12 text-center border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500',
-                  formResendCodeLink: 'text-cyan-600 hover:text-cyan-700 font-medium text-sm'
-                },
-                layout: {
-                  socialButtonsVariant: 'blockButton',
-                  socialButtonsPlacement: 'top'
-                },
-                variables: {
-                  colorPrimary: '#06B6D4',
-                  colorText: '#0F172A',
-                  colorTextSecondary: '#475569',
-                  colorBackground: '#FFFFFF',
-                  colorInputBackground: '#FFFFFF',
-                  colorInputText: '#0F172A',
-                  borderRadius: '0.5rem',
-                  fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
-                }
-              }}
-              redirectUrl={window.location.origin}
-              afterSignInUrl={window.location.origin}
-              signUpUrl="#"
-            />
-          </div>
+          <SignIn 
+            appearance={{
+              elements: {
+                // Hide everything except the form itself
+                card: 'shadow-none border-0 bg-transparent p-0',
+                header: 'hidden',
+                headerTitle: 'hidden',
+                headerSubtitle: 'hidden',
+                socialButtons: 'hidden',
+                socialButtonsBlockButton: 'hidden',
+                divider: 'hidden',
+                footer: 'hidden',
+                footerAction: 'hidden',
+                
+                // Style just the form elements
+                formFieldLabel: 'block text-sm font-medium text-slate-700 mb-1.5',
+                formFieldInput: 'w-full px-3 py-2.5 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent',
+                formButtonPrimary: 'w-full bg-slate-900 text-white py-2.5 px-4 rounded-md font-medium hover:bg-slate-800 transition-colors',
+                formFieldRow: 'mb-4',
+                
+                // Clean up other elements
+                formHeaderTitle: 'text-lg font-semibold text-slate-900 mb-4 text-center',
+                identityPreview: 'hidden',
+                alternativeMethods: 'hidden'
+              }
+            }}
+          />
           
-          <div className="text-center">
+          <div className="text-center pt-4 border-t border-slate-200">
             <p className="text-sm text-slate-600">
-              Need an account?{' '}
+              Don't have an account?{' '}
               <button
                 onClick={() => setMode('signup')}
-                className="text-cyan-600 hover:text-cyan-500 font-medium transition-colors"
+                className="text-slate-900 font-medium hover:underline"
               >
-                Create account
+                Sign up
               </button>
             </p>
           </div>
         </div>
       ) : (
         <div className="space-y-6">
-          <div className="card p-8">
-            <SignUp 
-              appearance={{
-                elements: {
-                  rootBox: 'w-full',
-                  card: 'shadow-none border-0 p-0 bg-transparent',
-                  headerTitle: 'text-xl font-semibold text-slate-900 text-center mb-6',
-                  headerSubtitle: 'text-slate-600 text-center mb-6',
-                  socialButtonsBlockButton: 'w-full mb-4 p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors text-slate-700 font-medium',
-                  socialButtonsBlockButtonText: 'font-medium',
-                  dividerLine: 'bg-slate-200',
-                  dividerText: 'text-slate-500 text-sm',
-                  formFieldLabel: 'text-sm font-medium text-slate-700 mb-2',
-                  formFieldInput: 'w-full px-4 py-3 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors',
-                  formButtonPrimary: 'w-full bg-cyan-600 hover:bg-cyan-700 text-white font-medium py-3 px-4 rounded-lg transition-colors',
-                  formFieldInputShowPasswordButton: 'text-slate-500 hover:text-slate-700',
-                  identityPreviewEditButton: 'text-cyan-600 hover:text-cyan-700',
-                  formHeaderTitle: 'text-xl font-semibold text-slate-900 mb-2',
-                  formHeaderSubtitle: 'text-slate-600 mb-6',
-                  footerActionLink: 'text-cyan-600 hover:text-cyan-700 font-medium',
-                  otpCodeFieldInput: 'w-12 h-12 text-center border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500',
-                  formResendCodeLink: 'text-cyan-600 hover:text-cyan-700 font-medium text-sm'
-                },
-                layout: {
-                  socialButtonsVariant: 'blockButton',
-                  socialButtonsPlacement: 'top'
-                },
-                variables: {
-                  colorPrimary: '#06B6D4',
-                  colorText: '#0F172A',
-                  colorTextSecondary: '#475569',
-                  colorBackground: '#FFFFFF',
-                  colorInputBackground: '#FFFFFF',
-                  colorInputText: '#0F172A',
-                  borderRadius: '0.5rem',
-                  fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
-                }
-              }}
-              redirectUrl={window.location.origin}
-              afterSignUpUrl={window.location.origin}
-              signInUrl="#"
-            />
-          </div>
+          <SignUp 
+            appearance={{
+              elements: {
+                // Hide everything except the form itself
+                card: 'shadow-none border-0 bg-transparent p-0',
+                header: 'hidden',
+                headerTitle: 'hidden',
+                headerSubtitle: 'hidden',
+                socialButtons: 'hidden',
+                socialButtonsBlockButton: 'hidden',
+                divider: 'hidden',
+                footer: 'hidden',
+                footerAction: 'hidden',
+                
+                // Style just the form elements
+                formFieldLabel: 'block text-sm font-medium text-slate-700 mb-1.5',
+                formFieldInput: 'w-full px-3 py-2.5 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent',
+                formButtonPrimary: 'w-full bg-slate-900 text-white py-2.5 px-4 rounded-md font-medium hover:bg-slate-800 transition-colors',
+                formFieldRow: 'mb-4',
+                
+                // Clean up other elements
+                formHeaderTitle: 'text-lg font-semibold text-slate-900 mb-4 text-center',
+                identityPreview: 'hidden',
+                alternativeMethods: 'hidden'
+              }
+            }}
+          />
           
-          <div className="text-center">
+          <div className="text-center pt-4 border-t border-slate-200">
             <p className="text-sm text-slate-600">
               Already have an account?{' '}
               <button
                 onClick={() => setMode('signin')}
-                className="text-cyan-600 hover:text-cyan-500 font-medium transition-colors"
+                className="text-slate-900 font-medium hover:underline"
               >
                 Sign in
               </button>
