@@ -34,16 +34,8 @@ function App() {
   return (
     <ClerkProvider publishableKey={clerkPubKey}>
       <Router>
-        <div className="min-h-screen bg-slate-50">
-          <SignedOut>
-            <div className="min-h-screen flex items-center justify-center p-4">
-              <AuthFlow />
-            </div>
-          </SignedOut>
-          <SignedIn>
-            <AuthenticatedApp />
-          </SignedIn>
-        </div>
+        <SignedOut><AuthFlow /></SignedOut>
+        <SignedIn><AuthenticatedApp /></SignedIn>
       </Router>
     </ClerkProvider>
   );
@@ -52,146 +44,71 @@ function App() {
 // Auth flow for signed-out users
 function AuthFlow() {
   const [mode, setMode] = useState('signin');
-  
   return (
-    <div className="w-full max-w-md mx-auto">
-      {/* Professional header with security theme */}
-      <div className="text-center mb-10">
-        <div className="w-16 h-16 bg-slate-900 rounded-xl flex items-center justify-center mx-auto mb-6 shadow-lg">
-          <div className="w-8 h-8 bg-cyan-500 rounded-lg flex items-center justify-center">
-            <div className="w-4 h-4 bg-slate-900 rounded-sm"></div>
-          </div>
+    <div className="auth-page">
+      <div className="auth-box">
+        <div className="auth-logo">
+          <div className="wordmark"><span className="dob">DOB</span><span className="live"> Live</span></div>
+          <div className="sub">Security Management Platform</div>
         </div>
-        <h1 className="text-3xl font-bold text-slate-900 mb-2">DOB Live</h1>
-        <p className="text-slate-600">Security Management Platform</p>
-      </div>
-      
-      {/* Professional auth card */}
-      <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
-        {mode === 'signin' ? (
-          <div className="space-y-6">
-            <div className="text-center mb-6">
-              <h2 className="text-xl font-semibold text-slate-900 mb-2">Welcome back</h2>
-              <p className="text-slate-600 text-sm">Sign in to your security dashboard</p>
-            </div>
-            
-            <SignIn 
-              appearance={{
-                elements: {
-                  // Hide all Clerk branding and chrome
-                  card: 'shadow-none border-0 bg-transparent p-0 w-full',
-                  headerTitle: 'hidden',
-                  headerSubtitle: 'hidden', 
-                  socialButtons: 'hidden',
-                  socialButtonsBlockButton: 'hidden',
-                  divider: 'hidden',
-                  footer: 'hidden',
-                  footerAction: 'hidden',
-                  footerActionText: 'hidden',
-                  footerActionLink: 'hidden',
-                  identityPreview: 'hidden',
-                  alternativeMethods: 'hidden',
-                  
-                  // Style the form elements professionally
-                  formFieldLabel: 'block text-sm font-semibold text-slate-700 mb-2',
-                  formFieldInput: 'w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 focus:bg-white transition-all duration-200 text-slate-900 placeholder-slate-500',
-                  formButtonPrimary: 'w-full bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-3.5 px-6 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02]',
-                  formFieldRow: 'mb-5',
-                  formFieldAction: 'text-right mt-2',
-                  formFieldInputShowPasswordButton: 'text-slate-500 hover:text-slate-700 transition-colors',
-                  
-                  // Error states
-                  formFieldErrorText: 'text-red-600 text-sm mt-1 font-medium',
-                  globalError: 'bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg text-sm mb-4',
-                  
-                  // OTP fields for 2FA
-                  otpCodeFieldInput: 'w-12 h-12 text-center border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 font-mono text-lg font-semibold',
-                }
-              }}
-            />
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <div className="text-center mb-6">
-              <h2 className="text-xl font-semibold text-slate-900 mb-2">Create account</h2>
-              <p className="text-slate-600 text-sm">Join the DOB Live security platform</p>
-            </div>
-            
-            <SignUp 
-              appearance={{
-                elements: {
-                  // Hide all Clerk branding and chrome  
-                  card: 'shadow-none border-0 bg-transparent p-0 w-full',
-                  headerTitle: 'hidden',
-                  headerSubtitle: 'hidden',
-                  socialButtons: 'hidden', 
-                  socialButtonsBlockButton: 'hidden',
-                  divider: 'hidden',
-                  footer: 'hidden',
-                  footerAction: 'hidden',
-                  footerActionText: 'hidden',
-                  footerActionLink: 'hidden',
-                  identityPreview: 'hidden',
-                  alternativeMethods: 'hidden',
-                  
-                  // Style the form elements professionally
-                  formFieldLabel: 'block text-sm font-semibold text-slate-700 mb-2',
-                  formFieldInput: 'w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 focus:bg-white transition-all duration-200 text-slate-900 placeholder-slate-500',
-                  formButtonPrimary: 'w-full bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-3.5 px-6 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02]',
-                  formFieldRow: 'mb-5',
-                  formFieldAction: 'text-right mt-2',
-                  formFieldInputShowPasswordButton: 'text-slate-500 hover:text-slate-700 transition-colors',
-                  
-                  // Error states
-                  formFieldErrorText: 'text-red-600 text-sm mt-1 font-medium',
-                  globalError: 'bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg text-sm mb-4',
-                  
-                  // OTP fields for 2FA
-                  otpCodeFieldInput: 'w-12 h-12 text-center border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 font-mono text-lg font-semibold',
-                }
-              }}
-            />
-          </div>
-        )}
-        
-        {/* Professional form switching */}
-        <div className="mt-8 pt-6 border-t border-slate-200 text-center">
+        <div className="auth-card">
+          <h2 style={{fontSize:'1rem',fontWeight:600,marginBottom:'1.25rem',color:'var(--text)'}}>
+            {mode === 'signin' ? 'Sign in to your account' : 'Create your account'}
+          </h2>
           {mode === 'signin' ? (
-            <p className="text-slate-600">
-              Don't have an account?{' '}
-              <button
-                onClick={() => setMode('signup')}
-                className="text-cyan-600 hover:text-cyan-700 font-semibold hover:underline transition-all duration-200"
-              >
-                Create account
-              </button>
-            </p>
+            <SignIn       appearance={{
+                elements: {
+                  card: 'shadow-none border-0 bg-transparent p-0 w-full',
+                  headerTitle: 'hidden', headerSubtitle: 'hidden',
+                  socialButtons: 'hidden', socialButtonsBlockButton: 'hidden',
+                  divider: 'hidden', footer: 'hidden', footerAction: 'hidden',
+                  footerActionText: 'hidden', footerActionLink: 'hidden',
+                  identityPreview: 'hidden', alternativeMethods: 'hidden',
+                  formFieldLabel: 'label',
+                  formFieldInput: 'input',
+                  formButtonPrimary: 'btn btn-primary w-full',
+                  formFieldRow: 'field',
+                  formFieldAction: 'text-right mt-1',
+                  formFieldInputShowPasswordButton: '',
+                  formFieldErrorText: 'text-xs mt-1' ,
+                  globalError: 'alert alert-danger mb-4',
+                  otpCodeFieldInput: 'w-10 h-10 text-center border border-[#cbd5e1] rounded text-base font-semibold',
+                }
+              }} />
           ) : (
-            <p className="text-slate-600">
-              Already have an account?{' '}
-              <button
-                onClick={() => setMode('signin')}
-                className="text-cyan-600 hover:text-cyan-700 font-semibold hover:underline transition-all duration-200"
-              >
-                Sign in
-              </button>
-            </p>
+            <SignUp       appearance={{
+                elements: {
+                  card: 'shadow-none border-0 bg-transparent p-0 w-full',
+                  headerTitle: 'hidden', headerSubtitle: 'hidden',
+                  socialButtons: 'hidden', socialButtonsBlockButton: 'hidden',
+                  divider: 'hidden', footer: 'hidden', footerAction: 'hidden',
+                  footerActionText: 'hidden', footerActionLink: 'hidden',
+                  identityPreview: 'hidden', alternativeMethods: 'hidden',
+                  formFieldLabel: 'label',
+                  formFieldInput: 'input',
+                  formButtonPrimary: 'btn btn-primary w-full',
+                  formFieldRow: 'field',
+                  formFieldAction: 'text-right mt-1',
+                  formFieldInputShowPasswordButton: '',
+                  formFieldErrorText: 'text-xs mt-1' ,
+                  globalError: 'alert alert-danger mb-4',
+                  otpCodeFieldInput: 'w-10 h-10 text-center border border-[#cbd5e1] rounded text-base font-semibold',
+                }
+              }} />
           )}
+          <div style={{borderTop:'1px solid var(--border)',marginTop:'1.25rem',paddingTop:'1rem',fontSize:'0.875rem',color:'var(--text-2)',textAlign:'center'}}>
+            {mode === 'signin' ? (
+              <span>No account? <button onClick={() => setMode('signup')} style={{color:'var(--blue)',fontWeight:500,background:'none',border:'none',cursor:'pointer'}}>Create one</button></span>
+            ) : (
+              <span>Have an account? <button onClick={() => setMode('signin')} style={{color:'var(--blue)',fontWeight:500,background:'none',border:'none',cursor:'pointer'}}>Sign in</button></span>
+            )}
+          </div>
         </div>
-      </div>
-      
-      {/* Security badge */}
-      <div className="text-center mt-6">
-        <p className="text-xs text-slate-500 flex items-center justify-center gap-1">
-          <span className="w-3 h-3 bg-green-400 rounded-full flex items-center justify-center">
-            <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
-          </span>
-          Secure authentication powered by Clerk
-        </p>
       </div>
     </div>
   );
 }
+
 
 // Main authenticated application
 function AuthenticatedApp() {
@@ -342,8 +259,9 @@ function OfficerApp({ user }) {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="officer-shell">
       <OfficerHeader user={user} selectedSite={selectedSite} activeShift={activeShift} />
+      <div className="officer-content">
       
       <Routes>
         <Route path="/sites" element={
@@ -382,7 +300,7 @@ function OfficerApp({ user }) {
         } />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-
+      </div>
       <OfficerNavigation />
     </div>
   );
@@ -390,44 +308,18 @@ function OfficerApp({ user }) {
 
 // Officer Header
 function OfficerHeader({ user, selectedSite, activeShift }) {
-  const { signOut } = useAuth();
-  
   return (
-    <header className="bg-white border-b border-slate-200 px-4 py-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <h1 className="text-xl font-semibold text-slate-900">DOB Live</h1>
-          {selectedSite && (
-            <div className="flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full">
-              <MapPinIcon className="w-4 h-4 text-slate-600" />
-              <span className="text-sm font-medium text-slate-700">{selectedSite.name}</span>
-            </div>
-          )}
-        </div>
-        
-        <div className="flex items-center gap-4">
-          {activeShift && (
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium text-slate-700">On Duty</span>
-            </div>
-          )}
-          <UserButton 
-            appearance={{
-              elements: {
-                avatarBox: 'w-8 h-8'
-              }
-            }}
-            userProfileMode="navigation"
-            userProfileUrl="/profile"
-          />
-        </div>
+    <div className="officer-header">
+      <div className="logo"><span className="dob">DOB</span><span className="live"> Live</span></div>
+      <div style={{textAlign:'right'}}>
+        {selectedSite && <div style={{fontSize:'0.8125rem',fontWeight:500}}>{selectedSite.name}</div>}
+        <div style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.5)'}}>{user.first_name} {user.last_name}</div>
       </div>
-    </header>
+    </div>
   );
 }
 
-// Site Picker Screen
+
 function SitePickerScreen({ sites, onSiteSelect, user }) {
   const navigate = useNavigate();
   
@@ -455,7 +347,7 @@ function SitePickerScreen({ sites, onSiteSelect, user }) {
               <button
                 key={site.id}
                 onClick={() => handleSiteSelect(site)}
-                className="card text-left hover:shadow-lg transition-all p-6 border-2 border-transparent hover:border-cyan-200"
+                className="card text-left hover: transition-all p-6 border-2 border-transparent hover:border-cyan-200"
               >
                 <div className="flex items-center justify-between">
                   <div>
@@ -595,7 +487,7 @@ function QuickActionButton({ to, icon, title, subtitle, color = 'primary' }) {
   
   const colorClasses = {
     primary: 'bg-slate-50 hover:bg-slate-100 text-slate-700',
-    accent: 'bg-cyan-50 hover:bg-cyan-100 text-cyan-700',
+    accent: 'bg-[#e8f0fb] hover:bg-[#dce8f8] text-[#163f87]',
     info: 'bg-blue-50 hover:bg-blue-100 text-blue-700'
   };
   
@@ -930,7 +822,7 @@ function LogTypeOption({ type, config, selected, onSelect }) {
       onClick={onSelect}
       className={`p-4 text-left rounded-lg border-2 transition-all ${
         selected 
-          ? 'border-cyan-300 bg-cyan-50' 
+          ? 'border-cyan-300 bg-[#e8f0fb]' 
           : 'border-slate-200 bg-white hover:border-slate-300'
       }`}
     >
@@ -946,7 +838,7 @@ function LogTypeOption({ type, config, selected, onSelect }) {
           <p className="text-sm text-slate-600">{config.description}</p>
         </div>
         {selected && (
-          <div className="w-5 h-5 bg-cyan-500 rounded-full flex items-center justify-center">
+          <div className="w-5 h-5 bg-[#1a52a8] rounded-full flex items-center justify-center">
             <span className="text-white text-xs">✓</span>
           </div>
         )}
@@ -1436,7 +1328,7 @@ function LogHistoryCard({ log }) {
             {log.description.length > 150 && (
               <button
                 onClick={() => setExpanded(!expanded)}
-                className="text-sm text-cyan-600 hover:text-cyan-500 font-medium"
+                className="text-sm text-[#1a52a8] hover:text-[#1a52a8] font-medium"
               >
                 {expanded ? 'Show Less' : 'Show More'}
               </button>
@@ -1532,7 +1424,7 @@ function TasksScreen({ user, site, shift }) {
             onClick={() => setFilter(key)}
             className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
               filter === key
-                ? 'bg-white text-slate-900 shadow-sm'
+                ? 'bg-white text-slate-900 '
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -1700,7 +1592,7 @@ function TaskCard({ task, onUpdateStatus }) {
             {task.description && task.description.length > 120 && (
               <button
                 onClick={() => setExpanded(!expanded)}
-                className="text-sm text-cyan-600 hover:text-cyan-500 font-medium"
+                className="text-sm text-[#1a52a8] hover:text-[#1a52a8] font-medium"
               >
                 {expanded ? 'Show Less' : 'Show More'}
               </button>
@@ -1719,283 +1611,175 @@ function TaskCard({ task, onUpdateStatus }) {
 // Manager Application
 function ManagerApp({ user }) {
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="manager-shell">
       <ManagerSidebar user={user} />
-      <div className="flex-1 ml-64">
-        <ManagerHeader user={user} />
-        <main className="p-6">
-          <Routes>
-            <Route path="/" element={<ManagerDashboard user={user} />} />
-            <Route path="/sites" element={<SiteManagement user={user} />} />
-            <Route path="/sites/:id" element={<SiteDetail user={user} />} />
-            <Route path="/team" element={<TeamManagement user={user} />} />
-            <Route path="/logs" element={<LogReview user={user} />} />
-            <Route path="/tasks" element={<TaskAssignment user={user} />} />
-            <Route path="/reports" element={<Reporting user={user} />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </main>
+      <div className="main-content">
+        <Routes>
+          <Route path="/dashboard" element={<ManagerDashboard user={user} />} />
+          <Route path="/sites"     element={<SiteManagement user={user} />} />
+          <Route path="/sites/:id" element={<SiteDetail user={user} />} />
+          <Route path="/team"      element={<TeamManagement user={user} />} />
+          <Route path="/logs"      element={<LogReview user={user} />} />
+          <Route path="/tasks"     element={<TaskAssignment user={user} />} />
+          <Route path="/reports"   element={<Reporting user={user} />} />
+          <Route path="*"          element={<Navigate to="/dashboard" replace />} />
+        </Routes>
       </div>
     </div>
   );
 }
 
-// Manager Sidebar Navigation
+
 function ManagerSidebar({ user }) {
   const location = useLocation();
-  
-  const navItems = [
-    { to: '/', icon: ChartBarIcon, label: 'Dashboard' },
-    { to: '/sites', icon: BuildingOfficeIcon, label: 'Sites' },
-    { to: '/team', icon: UsersIcon, label: 'Team' },
-    { to: '/logs', icon: EyeIcon, label: 'Log Review' },
-    { to: '/tasks', icon: ClipboardDocumentListIcon, label: 'Tasks' },
-    { to: '/reports', icon: DocumentTextIcon, label: 'Reports' },
-  ];
-  
-  return (
-    <nav className="fixed left-0 top-0 h-full w-64 bg-white border-r border-slate-200 p-6">
-      <div className="mb-8">
-        <h1 className="text-xl font-bold text-slate-900">DOB Live</h1>
-        <p className="text-sm text-slate-600">Operations Manager</p>
-      </div>
-      
-      <div className="space-y-1">
-        {navItems.map(({ to, icon: Icon, label }) => {
-          const isActive = location.pathname === to;
-          return (
-            <ManagerNavItem
-              key={to}
-              to={to}
-              icon={Icon}
-              label={label}
-              isActive={isActive}
-            />
-          );
-        })}
-      </div>
-      
-      <div className="absolute bottom-6 left-6 right-6">
-        <div className="p-3 bg-slate-50 rounded-lg">
-          <p className="text-sm font-medium text-slate-900">{user.first_name} {user.last_name}</p>
-          <p className="text-xs text-slate-600">{user.email}</p>
-        </div>
-      </div>
-    </nav>
-  );
-}
-
-// Manager Navigation Item
-function ManagerNavItem({ to, icon: Icon, label, isActive }) {
-  const navigate = useNavigate();
-  
-  return (
-    <button
-      onClick={() => navigate(to)}
-      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
-        isActive 
-          ? 'bg-cyan-50 text-cyan-700 border border-cyan-200' 
-          : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
-      }`}
-    >
-      <Icon className="w-5 h-5" />
-      <span className="font-medium">{label}</span>
-    </button>
-  );
-}
-
-// Manager Header
-function ManagerHeader({ user }) {
   const { signOut } = useAuth();
-  const location = useLocation();
-  
-  const getPageTitle = () => {
-    switch (location.pathname) {
-      case '/': return 'Dashboard';
-      case '/sites': return 'Site Management';
-      case '/team': return 'Team Management';
-      case '/logs': return 'Log Review';
-      case '/tasks': return 'Task Assignment';
-      case '/reports': return 'Reports';
-      default: return 'Operations';
-    }
-  };
-  
+
+  const nav = [
+    { to: '/dashboard', icon: HomeIcon, label: 'Dashboard' },
+    { to: '/sites',     icon: BuildingOfficeIcon, label: 'Sites' },
+    { to: '/team',      icon: UsersIcon, label: 'Team' },
+    { to: '/logs',      icon: ClipboardDocumentListIcon, label: 'Log Review' },
+    { to: '/tasks',     icon: ClipboardDocumentListIcon, label: 'Tasks' },
+    { to: '/reports',   icon: ChartBarIcon, label: 'Reports' },
+  ];
+
   return (
-    <header className="bg-white border-b border-slate-200 px-6 py-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900">{getPageTitle()}</h2>
-          <p className="text-slate-600">
-            {user.company?.name || 'DOB Live Security'}
-          </p>
-        </div>
-        
-        <div className="flex items-center gap-4">
-          <UserButton 
-            appearance={{
-              elements: {
-                avatarBox: 'w-8 h-8'
-              }
-            }}
-            userProfileMode="navigation"
-            userProfileUrl="/profile"
-          />
-        </div>
+    <div className="sidebar">
+      <div className="sidebar-logo">
+        <div className="wordmark"><span className="dob">DOB</span><span className="live"> Live</span></div>
+        <div className="sub">Operations</div>
       </div>
-    </header>
+      <nav className="sidebar-nav">
+        {nav.map(({ to, icon: Icon, label }) => (
+          <Link
+            key={to}
+            to={to}
+            className={`sidebar-nav-item${location.pathname === to || location.pathname.startsWith(to + '/') ? ' active' : ''}`}
+          >
+            <Icon style={{width:'1rem',height:'1rem'}} />
+            {label}
+          </Link>
+        ))}
+      </nav>
+      <div className="sidebar-footer">
+        <div className="sidebar-user-name">{user.first_name} {user.last_name}</div>
+        <div className="sidebar-user-email">{user.email}</div>
+        <button
+          onClick={() => signOut()}
+          style={{marginTop:'0.75rem',fontSize:'0.8125rem',color:'rgba(255,255,255,0.4)',background:'none',border:'none',cursor:'pointer',padding:0}}
+        >
+          Sign out
+        </button>
+      </div>
+    </div>
   );
 }
 
-// Manager Dashboard
+
+function ManagerHeader({ user, title, subtitle }) {
+  return (
+    <div className="topbar">
+      <div>
+        <div className="topbar-title">{title || 'Dashboard'}</div>
+        {subtitle && <div className="topbar-sub">{subtitle}</div>}
+      </div>
+    </div>
+  );
+}
+
+
 function ManagerDashboard({ user }) {
-  const [stats, setStats] = useState({
-    activeOfficers: 0,
-    activeSites: 0,
-    todayLogs: 0,
-    pendingTasks: 0
-  });
+  const [stats, setStats] = useState({ activeSites: 0, todayLogs: 0, pendingTasks: 0, totalUsers: 0 });
   const [recentLogs, setRecentLogs] = useState([]);
-  const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   useEffect(() => {
-    async function fetchDashboardData() {
+    async function load() {
       try {
-        setLoading(true);
-        
-        // Get basic stats
-        const [sitesRes, logsRes, tasksRes] = await Promise.all([
+        const [sitesRes, logsRes, tasksRes, usersRes] = await Promise.all([
           api.sites.list(),
-          api.logs.list({ limit: 10 }),
-          api.tasks.list({ status: 'PENDING', limit: 5 })
+          api.logs.list({ limit: 8 }),
+          api.tasks.list({ status: 'PENDING' }),
+          api.users.list(),
         ]);
-        
         setStats({
-          activeSites: sitesRes.data?.length || 0,
-          todayLogs: logsRes.data?.length || 0,
+          activeSites:  sitesRes.data?.length || 0,
+          todayLogs:    logsRes.data?.length || 0,
           pendingTasks: tasksRes.data?.length || 0,
-          activeOfficers: 0 // Will calculate from shifts
+          totalUsers:   usersRes.data?.length || 0,
         });
-        
-        setRecentLogs(logsRes.data?.slice(0, 5) || []);
-        
-        // Create sample alerts
-        setAlerts([
-          { id: 1, type: 'warning', message: 'Site inspection overdue at Main Office', time: '2 hours ago' },
-          { id: 2, type: 'info', message: '3 new log entries require review', time: '30 minutes ago' }
-        ]);
-        
+        setRecentLogs(logsRes.data?.slice(0, 6) || []);
       } catch (err) {
-        console.error('Failed to fetch dashboard data:', err);
+        console.error(err);
       } finally {
         setLoading(false);
       }
     }
-    
-    fetchDashboardData();
+    load();
   }, []);
-  
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <div className="spinner mb-4"></div>
-          <p className="text-slate-600">Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-  
+
+  if (loading) return (
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',padding:'3rem'}}>
+      <div className="spinner" />
+    </div>
+  );
+
   return (
-    <div className="space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Active Sites"
-          value={stats.activeSites}
-          icon={<BuildingOfficeIcon className="w-6 h-6" />}
-          color="blue"
-        />
-        <StatCard
-          title="Officers On Duty"
-          value={stats.activeOfficers}
-          icon={<UsersIcon className="w-6 h-6" />}
-          color="green"
-        />
-        <StatCard
-          title="Today's Logs"
-          value={stats.todayLogs}
-          icon={<ClipboardDocumentListIcon className="w-6 h-6" />}
-          color="cyan"
-        />
-        <StatCard
-          title="Pending Tasks"
-          value={stats.pendingTasks}
-          icon={<ClockIcon className="w-6 h-6" />}
-          color="amber"
-        />
+    <div>
+      <div className="topbar">
+        <div className="topbar-title">Dashboard</div>
       </div>
-      
-      {/* Alerts */}
-      {alerts.length > 0 && (
-        <div className="card">
-          <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-            <BellAlertIcon className="w-5 h-5" />
-            Alerts
-          </h3>
-          <div className="space-y-3">
-            {alerts.map((alert) => (
-              <div key={alert.id} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
-                <div className={`w-2 h-2 rounded-full mt-2 ${
-                  alert.type === 'warning' ? 'bg-amber-400' : 'bg-blue-400'
-                }`} />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-slate-900">{alert.message}</p>
-                  <p className="text-xs text-slate-500">{alert.time}</p>
-                </div>
-              </div>
-            ))}
+      <div className="page-content">
+        <div className="stats-grid" style={{marginBottom:'1.5rem'}}>
+          <div className="stat-card">
+            <div className="stat-value">{stats.activeSites}</div>
+            <div className="stat-label">Sites</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-value">{stats.totalUsers}</div>
+            <div className="stat-label">Team Members</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-value" style={{color:'var(--blue)'}}>{stats.todayLogs}</div>
+            <div className="stat-label">Recent Logs</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-value" style={{color: stats.pendingTasks > 0 ? 'var(--warning)' : 'var(--text)'}}>{stats.pendingTasks}</div>
+            <div className="stat-label">Pending Tasks</div>
           </div>
         </div>
-      )}
-      
-      {/* Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="card">
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">Recent Logs</h3>
-          {recentLogs.length === 0 ? (
-            <p className="text-slate-500 text-center py-8">No recent logs</p>
-          ) : (
-            <div className="space-y-3">
-              {recentLogs.map((log) => (
-                <ManagerLogPreview key={log.id} log={log} />
-              ))}
+
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1.25rem'}}>
+          <div className="card">
+            <div className="section-header">
+              <div className="section-title">Recent Log Entries</div>
+              <Link to="/logs" style={{fontSize:'0.8125rem',color:'var(--blue)',textDecoration:'none'}}>View all</Link>
             </div>
-          )}
-        </div>
-        
-        <div className="card">
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-1 gap-3">
-            <ManagerActionButton
-              to="/tasks"
-              icon={<PlusIcon className="w-5 h-5" />}
-              title="Assign Task"
-              subtitle="Create new officer task"
-            />
-            <ManagerActionButton
-              to="/logs"
-              icon={<EyeIcon className="w-5 h-5" />}
-              title="Review Logs"
-              subtitle="Check recent incidents"
-            />
-            <ManagerActionButton
-              to="/reports"
-              icon={<ArrowDownTrayIcon className="w-5 h-5" />}
-              title="Export Report"
-              subtitle="Generate compliance report"
-            />
+            {recentLogs.length === 0 ? (
+              <div className="empty-state"><p>No logs yet</p></div>
+            ) : (
+              <div>
+                {recentLogs.map(log => <ManagerLogPreview key={log.id} log={log} />)}
+              </div>
+            )}
+          </div>
+
+          <div className="card">
+            <div className="section-title" style={{marginBottom:'1rem'}}>Quick Actions</div>
+            <div style={{display:'flex',flexDirection:'column',gap:'0.625rem'}}>
+              <Link to="/tasks" className="btn btn-secondary" style={{justifyContent:'flex-start',gap:'0.5rem'}}>
+                <PlusIcon style={{width:'1rem',height:'1rem'}} /> Assign Task
+              </Link>
+              <Link to="/logs" className="btn btn-secondary" style={{justifyContent:'flex-start',gap:'0.5rem'}}>
+                <EyeIcon style={{width:'1rem',height:'1rem'}} /> Review Logs
+              </Link>
+              <Link to="/sites" className="btn btn-secondary" style={{justifyContent:'flex-start',gap:'0.5rem'}}>
+                <BuildingOfficeIcon style={{width:'1rem',height:'1rem'}} /> Manage Sites
+              </Link>
+              <Link to="/reports" className="btn btn-secondary" style={{justifyContent:'flex-start',gap:'0.5rem'}}>
+                <ChartBarIcon style={{width:'1rem',height:'1rem'}} /> Reports
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -2003,309 +1787,286 @@ function ManagerDashboard({ user }) {
   );
 }
 
-// Stat Card Component
-function StatCard({ title, value, icon, color }) {
-  const colorClasses = {
-    blue: 'text-blue-600 bg-blue-50',
-    green: 'text-green-600 bg-green-50',
-    cyan: 'text-cyan-600 bg-cyan-50',
-    amber: 'text-amber-600 bg-amber-50'
-  };
-  
+
+function StatCard({ title, value, color }) {
   return (
-    <div className="card">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-slate-600">{title}</p>
-          <p className="text-3xl font-bold text-slate-900 mt-1">{value}</p>
-        </div>
-        <div className={`p-3 rounded-lg ${colorClasses[color]}`}>
-          {icon}
-        </div>
-      </div>
+    <div className="stat-card">
+      <div className="stat-value">{value}</div>
+      <div className="stat-label">{title}</div>
     </div>
   );
 }
 
-// Manager Log Preview Component
+
 function ManagerLogPreview({ log }) {
-  const config = LOG_TYPE_CONFIG[log.log_type] || LOG_TYPE_CONFIG.OTHER;
-  
+  const typeColors = {
+    INCIDENT:'badge-danger', ALARM:'badge-warning', PATROL:'badge-blue', GENERAL:'badge-neutral',
+  };
   return (
-    <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-      <div className="text-lg">{config.icon}</div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="font-medium text-slate-900 text-sm">{log.title}</span>
-          <span className={`status-badge ${config.color === 'alert' ? 'status-alert' : 'status-info'}`}>
-            {config.label}
-          </span>
+    <div style={{display:'flex',gap:'0.75rem',alignItems:'flex-start',padding:'0.5rem 0',borderBottom:'1px solid var(--border)'}}>
+      <span className={`badge ${typeColors[log.log_type]||'badge-neutral'}`} style={{flexShrink:0,marginTop:'2px'}}>{log.log_type}</span>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{fontSize:'0.875rem',fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{log.title || 'Log Entry'}</div>
+        <div style={{fontSize:'0.75rem',color:'var(--text-2)'}}>
+          {log.officer ? `${log.officer.first_name} ${log.officer.last_name}` : ''}{log.site ? ` · ${log.site.name}` : ''}
+          {' · '}{new Date(log.occurred_at).toLocaleDateString('en-GB')}
         </div>
-        <p className="text-xs text-slate-600">{log.site?.name} • {getRelativeTime(log.occurred_at)}</p>
       </div>
     </div>
   );
 }
 
-// Manager Action Button
+
 function ManagerActionButton({ to, icon, title, subtitle }) {
-  const navigate = useNavigate();
-  
   return (
-    <button
-      onClick={() => navigate(to)}
-      className="flex items-center gap-3 p-4 bg-slate-50 hover:bg-slate-100 rounded-lg text-left transition-colors"
+    <Link to={to} style={{display:'flex',alignItems:'center',gap:'0.75rem',padding:'0.75rem',border:'1px solid var(--border)',borderRadius:'var(--radius)',textDecoration:'none',color:'var(--text)',background:'var(--surface)',transition:'background 0.15s'}}
+      onMouseEnter={e=>e.currentTarget.style.background='var(--surface-2)'}
+      onMouseLeave={e=>e.currentTarget.style.background='var(--surface)'}
     >
-      <div className="text-slate-600">{icon}</div>
+      <span style={{color:'var(--blue)'}}>{icon}</span>
       <div>
-        <p className="font-medium text-slate-900">{title}</p>
-        <p className="text-sm text-slate-600">{subtitle}</p>
+        <div style={{fontSize:'0.875rem',fontWeight:500}}>{title}</div>
+        {subtitle && <div style={{fontSize:'0.75rem',color:'var(--text-2)'}}>{subtitle}</div>}
       </div>
-    </button>
+    </Link>
   );
 }
 
-// Site Management Screen
+
 function SiteManagement({ user }) {
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
-  useEffect(() => {
-    async function fetchSites() {
-      try {
-        const response = await api.sites.list();
-        setSites(response.data || []);
-        setError(null);
-      } catch (err) {
-        console.error('Failed to fetch sites:', err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    }
-    
-    fetchSites();
-  }, []);
-  
-  if (loading) return <div className="flex justify-center py-12"><div className="spinner"></div></div>;
-  
-  if (error) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-red-600 mb-4">Error loading sites: {error}</p>
-        <button onClick={() => window.location.reload()} className="btn btn-primary">
-          Retry
-        </button>
-      </div>
-    );
+  const [showForm, setShowForm] = useState(false);
+  const [editSite, setEditSite] = useState(null);
+
+  async function load() {
+    try {
+      const res = await api.sites.list();
+      setSites(res.data || []);
+    } catch (err) { setError(err.message); }
+    finally { setLoading(false); }
   }
-  
+  useEffect(() => { load(); }, []);
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-slate-900">All Sites</h3>
-          <p className="text-slate-600">Manage and monitor your security sites</p>
-        </div>
-        <button className="btn btn-primary">
-          <PlusIcon className="w-4 h-4" />
-          Add Site
+    <div>
+      <div className="topbar">
+        <div className="topbar-title">Sites</div>
+        <button className="btn btn-primary btn-sm" onClick={() => { setEditSite(null); setShowForm(true); }}>
+          <PlusIcon style={{width:'0.875rem',height:'0.875rem'}} /> Add Site
         </button>
       </div>
-      
-      {sites.length === 0 ? (
-        <div className="text-center py-12">
-          <BuildingOfficeIcon className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-          <p className="text-slate-600">No sites found</p>
-        </div>
-      ) : (
-        <div className="grid gap-6">
-          {sites.map((site) => (
-            <SiteCard key={site.id} site={site} />
-          ))}
-        </div>
+      <div className="page-content">
+        {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
+        {loading ? (
+          <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>
+        ) : sites.length === 0 ? (
+          <div className="empty-state"><p>No sites yet. Add your first site.</p></div>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Site Name</th>
+                <th>Address</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {sites.map(site => (
+                <tr key={site.id}>
+                  <td style={{fontWeight:500}}>{site.name}</td>
+                  <td style={{color:'var(--text-2)'}}>{site.address || '—'}</td>
+                  <td>
+                    <span className={`badge ${site.active !== false ? 'badge-success' : 'badge-neutral'}`}>
+                      {site.active !== false ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td style={{textAlign:'right'}}>
+                    <button className="btn btn-ghost btn-sm" onClick={() => { setEditSite(site); setShowForm(true); }}>Edit</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+      {showForm && (
+        <SiteFormModal
+          site={editSite}
+          onClose={() => setShowForm(false)}
+          onSaved={() => { setShowForm(false); load(); }}
+        />
       )}
     </div>
   );
 }
 
-// Site Card Component
-function SiteCard({ site }) {
-  const navigate = useNavigate();
-  
+function SiteFormModal({ site, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    name: site?.name || '',
+    address: site?.address || '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function save() {
+    if (!form.name.trim()) { setError('Site name is required'); return; }
+    try {
+      setSaving(true);
+      if (site) {
+        await api.sites.update(site.id, form);
+      } else {
+        await api.sites.create(form);
+      }
+      onSaved();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
-    <div className="card cursor-pointer hover:shadow-lg transition-shadow"
-         onClick={() => navigate(`/sites/${site.id}`)}>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center">
-            <BuildingOfficeIcon className="w-6 h-6 text-slate-600" />
-          </div>
-          <div>
-            <h4 className="font-semibold text-slate-900">{site.name}</h4>
-            <p className="text-slate-600">{site.address}</p>
-            {site.description && (
-              <p className="text-sm text-slate-500 mt-1">{site.description}</p>
-            )}
-          </div>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-title">{site ? 'Edit Site' : 'Add Site'}</div>
+          <button className="modal-close" onClick={onClose}>×</button>
         </div>
-        <div className="text-right">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="status-badge status-active">Active</span>
-          </div>
-          <p className="text-sm text-slate-500">0 officers on site</p>
+        {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
+        <div className="field">
+          <label className="label">Site Name</label>
+          <input className="input" value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} placeholder="e.g. Brindleyplace" />
+        </div>
+        <div className="field">
+          <label className="label">Address</label>
+          <input className="input" value={form.address} onChange={e => setForm(f => ({...f, address: e.target.value}))} placeholder="Street, City, Postcode" />
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={save} disabled={saving}>
+            {saving ? 'Saving...' : 'Save'}
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-// Log Review Screen
+
+
 function LogReview({ user }) {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [filters, setFilters] = useState({
-    log_type: '',
-    site_id: '',
-    from: '',
-    to: '',
-    limit: 20
-  });
-  const [sites, setSites] = useState([]);
-  
+  const [filter, setFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+
   useEffect(() => {
-    async function fetchData() {
+    async function load() {
       try {
-        setLoading(true);
-        const [logsRes, sitesRes] = await Promise.all([
-          api.logs.list(Object.fromEntries(Object.entries(filters).filter(([_, v]) => v))),
-          api.sites.list()
-        ]);
-        
-        setLogs(logsRes.data || []);
-        setSites(sitesRes.data || []);
-        setError(null);
-      } catch (err) {
-        console.error('Failed to fetch logs:', err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
+        const res = await api.logs.list({ limit: 100 });
+        setLogs(res.data || []);
+      } catch (err) { setError(err.message); }
+      finally { setLoading(false); }
     }
-    
-    fetchData();
-  }, [filters]);
-  
-  const updateFilter = (key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
+    load();
+  }, []);
+
+  const logTypes = ['PATROL','INCIDENT','ALARM','ACCESS','VISITOR','HANDOVER','MAINTENANCE','VEHICLE','WELFARE','GENERAL'];
+
+  const filtered = logs.filter(l => {
+    if (typeFilter && l.log_type !== typeFilter) return false;
+    if (filter) {
+      const q = filter.toLowerCase();
+      return (l.title || '').toLowerCase().includes(q) ||
+             (l.description || '').toLowerCase().includes(q) ||
+             (l.officer?.first_name || '').toLowerCase().includes(q) ||
+             (l.officer?.last_name || '').toLowerCase().includes(q) ||
+             (l.site?.name || '').toLowerCase().includes(q);
+    }
+    return true;
+  });
+
+  const typeColors = {
+    INCIDENT: 'badge-danger', ALARM: 'badge-warning',
+    PATROL: 'badge-blue', GENERAL: 'badge-neutral',
+    ACCESS: 'badge-navy', VISITOR: 'badge-navy',
+    HANDOVER: 'badge-success', MAINTENANCE: 'badge-neutral',
+    VEHICLE: 'badge-neutral', WELFARE: 'badge-blue', KEYHOLDING: 'badge-navy',
   };
-  
+
   return (
-    <div className="space-y-6">
-      {/* Filters */}
-      <div className="card">
-        <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-          <FunnelIcon className="w-5 h-5" />
-          Filters
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Log Type</label>
-            <select 
-              className="input select"
-              value={filters.log_type}
-              onChange={(e) => updateFilter('log_type', e.target.value)}
-            >
-              <option value="">All Types</option>
-              {Object.entries(LOG_TYPE_CONFIG).map(([type, config]) => (
-                <option key={type} value={type}>{config.label}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Site</label>
-            <select 
-              className="input select"
-              value={filters.site_id}
-              onChange={(e) => updateFilter('site_id', e.target.value)}
-            >
-              <option value="">All Sites</option>
-              {sites.map((site) => (
-                <option key={site.id} value={site.id}>{site.name}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">From Date</label>
-            <input 
-              type="date" 
-              className="input"
-              value={filters.from}
-              onChange={(e) => updateFilter('from', e.target.value)}
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">To Date</label>
-            <input 
-              type="date" 
-              className="input"
-              value={filters.to}
-              onChange={(e) => updateFilter('to', e.target.value)}
-            />
-          </div>
+    <div>
+      <div className="topbar">
+        <div className="topbar-title">Log Review</div>
+        <div style={{display:'flex',gap:'0.5rem',alignItems:'center'}}>
+          <input
+            className="input"
+            style={{width:'200px'}}
+            placeholder="Search logs..."
+            value={filter}
+            onChange={e => setFilter(e.target.value)}
+          />
+          <select className="input" style={{width:'140px'}} value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
+            <option value="">All types</option>
+            {logTypes.map(t => <option key={t} value={t}>{t.charAt(0)+t.slice(1).toLowerCase()}</option>)}
+          </select>
         </div>
       </div>
-      
-      {/* Error State */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800 font-medium">Error loading logs: {error}</p>
-        </div>
-      )}
-      
-      {/* Logs */}
-      <div className="card">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-slate-900">All Logs</h3>
-          <button className="btn btn-secondary">
-            <ArrowDownTrayIcon className="w-4 h-4" />
-            Export
-          </button>
-        </div>
-        
+      <div className="page-content">
+        {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
         {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="spinner"></div>
-          </div>
-        ) : logs.length === 0 ? (
-          <div className="text-center py-12">
-            <ClipboardDocumentListIcon className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-            <p className="text-slate-600">No logs found</p>
-          </div>
+          <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>
+        ) : filtered.length === 0 ? (
+          <div className="empty-state"><p>No logs found</p></div>
         ) : (
-          <div className="space-y-3">
-            {logs.map((log) => (
-              <ManagerLogCard key={log.id} log={log} />
-            ))}
-          </div>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Date/Time</th>
+                <th>Type</th>
+                <th>Title</th>
+                <th>Officer</th>
+                <th>Site</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(log => (
+                <tr key={log.id}>
+                  <td style={{color:'var(--text-2)',whiteSpace:'nowrap',fontSize:'0.8125rem'}}>
+                    {new Date(log.occurred_at).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'2-digit'})}
+                    {' '}
+                    {new Date(log.occurred_at).toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'})}
+                  </td>
+                  <td><span className={`badge ${typeColors[log.log_type] || 'badge-neutral'}`}>{log.log_type}</span></td>
+                  <td style={{fontWeight:500,maxWidth:'240px'}}>
+                    <div style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{log.title || '—'}</div>
+                    {log.description && <div style={{fontSize:'0.75rem',color:'var(--text-2)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{log.description}</div>}
+                  </td>
+                  <td style={{color:'var(--text-2)',fontSize:'0.8125rem'}}>
+                    {log.officer ? `${log.officer.first_name} ${log.officer.last_name}` : '—'}
+                  </td>
+                  <td style={{color:'var(--text-2)',fontSize:'0.8125rem'}}>{log.site?.name || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
     </div>
   );
 }
 
-// Manager Log Card Component (more detailed than preview)
+
 function ManagerLogCard({ log }) {
   const [expanded, setExpanded] = useState(false);
   const config = LOG_TYPE_CONFIG[log.log_type] || LOG_TYPE_CONFIG.OTHER;
   
   return (
-    <div className="border border-slate-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+    <div className="border border-slate-200 rounded-lg p-4 hover: transition-shadow">
       <div className="flex items-start gap-4">
         <div className="text-2xl">{config.icon}</div>
         
@@ -2346,7 +2107,7 @@ function ManagerLogCard({ log }) {
           {log.description?.length > 200 && (
             <button
               onClick={() => setExpanded(!expanded)}
-              className="text-sm text-cyan-600 hover:text-cyan-500 font-medium mt-2"
+              className="text-sm text-[#1a52a8] hover:text-[#1a52a8] font-medium mt-2"
             >
               {expanded ? 'Show Less' : 'Show More'}
             </button>
@@ -2363,284 +2124,177 @@ function TaskAssignment({ user }) {
   const [officers, setOfficers] = useState([]);
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const [tasksRes, officersRes, sitesRes] = await Promise.all([
-          api.tasks.list(),
-          api.users.list({ role: 'OFFICER' }),
-          api.sites.list()
-        ]);
-        
-        setTasks(tasksRes.data || []);
-        setOfficers(officersRes.data || []);
-        setSites(sitesRes.data || []);
-      } catch (err) {
-        console.error('Failed to fetch data:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    
-    fetchData();
-  }, []);
-  
-  if (loading) {
-    return <div className="flex justify-center py-12"><div className="spinner"></div></div>;
+  const [showForm, setShowForm] = useState(false);
+  const [tab, setTab] = useState('PENDING');
+
+  async function load() {
+    try {
+      const [tasksRes, officersRes, sitesRes] = await Promise.all([
+        api.tasks.list(),
+        api.users.list(),
+        api.sites.list(),
+      ]);
+      setTasks(tasksRes.data || []);
+      setOfficers(officersRes.data?.filter(u => u.role === 'OFFICER') || []);
+      setSites(sitesRes.data || []);
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
   }
-  
+  useEffect(() => { load(); }, []);
+
+  const filtered = tasks.filter(t => tab === 'ALL' || t.status === tab || (!t.status && tab === 'PENDING'));
+  const counts = {
+    PENDING: tasks.filter(t => !t.status || t.status === 'PENDING').length,
+    IN_PROGRESS: tasks.filter(t => t.status === 'IN_PROGRESS').length,
+    COMPLETE: tasks.filter(t => t.status === 'COMPLETE').length,
+  };
+
+  async function updateStatus(taskId, status) {
+    await api.tasks.update(taskId, { status });
+    load();
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-slate-900">Task Management</h3>
-          <p className="text-slate-600">Create and track officer assignments</p>
-        </div>
-        <button 
-          onClick={() => setShowCreateForm(true)}
-          className="btn btn-primary"
-        >
-          <PlusIcon className="w-4 h-4" />
-          Assign Task
+    <div>
+      <div className="topbar">
+        <div className="topbar-title">Tasks</div>
+        <button className="btn btn-primary btn-sm" onClick={() => setShowForm(true)}>
+          <PlusIcon style={{width:'0.875rem',height:'0.875rem'}} /> Assign Task
         </button>
       </div>
-      
-      {showCreateForm && (
+      <div className="page-content">
+        <div className="tabs">
+          {[['PENDING','Pending'],['IN_PROGRESS','In Progress'],['COMPLETE','Complete'],['ALL','All']].map(([val,label]) => (
+            <button key={val} className={`tab${tab===val?' active':''}`} onClick={() => setTab(val)}>
+              {label} {val !== 'ALL' && <span style={{fontSize:'0.75rem',color:'inherit',opacity:0.7}}>({counts[val]||0})</span>}
+            </button>
+          ))}
+        </div>
+        {loading ? (
+          <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>
+        ) : filtered.length === 0 ? (
+          <div className="empty-state"><p>No tasks</p></div>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr><th>Task</th><th>Assigned To</th><th>Site</th><th>Due</th><th>Status</th><th></th></tr>
+            </thead>
+            <tbody>
+              {filtered.map(task => (
+                <tr key={task.id}>
+                  <td>
+                    <div style={{fontWeight:500}}>{task.title}</div>
+                    {task.description && <div style={{fontSize:'0.75rem',color:'var(--text-2)'}}>{task.description}</div>}
+                  </td>
+                  <td style={{color:'var(--text-2)',fontSize:'0.8125rem'}}>
+                    {task.assigned_to_user ? `${task.assigned_to_user.first_name} ${task.assigned_to_user.last_name}` : '—'}
+                  </td>
+                  <td style={{color:'var(--text-2)',fontSize:'0.8125rem'}}>{task.site?.name || '—'}</td>
+                  <td style={{color:'var(--text-2)',fontSize:'0.8125rem'}}>
+                    {task.due_date ? new Date(task.due_date).toLocaleDateString('en-GB') : '—'}
+                  </td>
+                  <td>
+                    <span className={`badge ${task.status==='COMPLETE'?'badge-success':task.status==='IN_PROGRESS'?'badge-blue':'badge-neutral'}`}>
+                      {task.status || 'Pending'}
+                    </span>
+                  </td>
+                  <td style={{textAlign:'right'}}>
+                    {task.status !== 'COMPLETE' && (
+                      <button className="btn btn-ghost btn-sm" onClick={() => updateStatus(task.id, task.status === 'IN_PROGRESS' ? 'COMPLETE' : 'IN_PROGRESS')}>
+                        {task.status === 'IN_PROGRESS' ? 'Complete' : 'Start'}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+      {showForm && (
         <TaskCreateForm
           officers={officers}
           sites={sites}
-          onClose={() => setShowCreateForm(false)}
-          onSuccess={(newTask) => {
-            setTasks(prev => [newTask, ...prev]);
-            setShowCreateForm(false);
-          }}
+          onClose={() => setShowForm(false)}
+          onSuccess={() => { setShowForm(false); load(); }}
         />
       )}
-      
-      <div className="card">
-        <h4 className="font-semibold text-slate-900 mb-4">All Tasks</h4>
-        {tasks.length === 0 ? (
-          <div className="text-center py-12">
-            <ClipboardDocumentListIcon className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-            <p className="text-slate-600">No tasks assigned yet</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {tasks.map((task) => (
-              <ManagerTaskCard key={task.id} task={task} />
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
 
-// Task Create Form
+
 function TaskCreateForm({ officers, sites, onClose, onSuccess }) {
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    assigned_to: '',
-    site_id: '',
-    priority: 'NORMAL',
-    due_date: ''
-  });
-  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({ title: '', description: '', assigned_to: '', site_id: '', due_date: '' });
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
-  
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    
+
+  async function save() {
+    if (!form.title.trim()) { setError('Title is required'); return; }
     try {
-      const response = await api.tasks.create(formData);
-      onSuccess(response.data);
+      setSaving(true);
+      await api.tasks.create({
+        title: form.title,
+        description: form.description || null,
+        assigned_to: form.assigned_to || null,
+        site_id: form.site_id || null,
+        due_date: form.due_date || null,
+      });
+      onSuccess();
     } catch (err) {
-      console.error('Failed to create task:', err);
       setError(err.message);
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
-  };
-  
-  return (
-    <div className="card">
-      <div className="flex items-center justify-between mb-4">
-        <h4 className="font-semibold text-slate-900">Create New Task</h4>
-        <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
-          ✕
-        </button>
-      </div>
-      
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-          <p className="text-red-700">{error}</p>
-        </div>
-      )}
-      
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Title *</label>
-            <input
-              type="text"
-              className="input"
-              value={formData.title}
-              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-              required
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Assign to Officer *</label>
-            <select
-              className="input select"
-              value={formData.assigned_to}
-              onChange={(e) => setFormData(prev => ({ ...prev, assigned_to: e.target.value }))}
-              required
-            >
-              <option value="">Select officer...</option>
-              {officers.map((officer) => (
-                <option key={officer.id} value={officer.id}>
-                  {officer.first_name} {officer.last_name}
-                </option>
-              ))}
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Site</label>
-            <select
-              className="input select"
-              value={formData.site_id}
-              onChange={(e) => setFormData(prev => ({ ...prev, site_id: e.target.value }))}
-            >
-              <option value="">Any site</option>
-              {sites.map((site) => (
-                <option key={site.id} value={site.id}>{site.name}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Priority</label>
-            <select
-              className="input select"
-              value={formData.priority}
-              onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value }))}
-            >
-              <option value="LOW">Low</option>
-              <option value="NORMAL">Normal</option>
-              <option value="HIGH">High</option>
-              <option value="URGENT">Urgent</option>
-            </select>
-          </div>
-          
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-slate-700 mb-1">Due Date</label>
-            <input
-              type="datetime-local"
-              className="input"
-              value={formData.due_date}
-              onChange={(e) => setFormData(prev => ({ ...prev, due_date: e.target.value }))}
-            />
-          </div>
-        </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Description *</label>
-          <textarea
-            className="input textarea"
-            value={formData.description}
-            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-            rows="4"
-            required
-          />
-        </div>
-        
-        <div className="flex gap-3">
-          <button type="button" onClick={onClose} className="btn btn-secondary">
-            Cancel
-          </button>
-          <button type="submit" disabled={loading} className="btn btn-primary">
-            {loading ? <div className="spinner"></div> : 'Create Task'}
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-}
+  }
 
-// Manager Task Card
-function ManagerTaskCard({ task }) {
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case 'URGENT': return 'status-alert';
-      case 'HIGH': return 'status-pending';
-      case 'NORMAL': return 'status-info';
-      case 'LOW': return 'status-info';
-      default: return 'status-info';
-    }
-  };
-  
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'COMPLETED': return 'status-active';
-      case 'IN_PROGRESS': return 'status-pending';
-      case 'PENDING': return 'status-info';
-      default: return 'status-info';
-    }
-  };
-  
   return (
-    <div className="border border-slate-200 rounded-lg p-4">
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2">
-            <h5 className="font-semibold text-slate-900">{task.title}</h5>
-            <span className={`status-badge ${getStatusColor(task.status)}`}>
-              {task.status?.replace('_', ' ').toLowerCase()}
-            </span>
-            {task.priority !== 'NORMAL' && (
-              <span className={`status-badge ${getPriorityColor(task.priority)}`}>
-                {task.priority}
-              </span>
-            )}
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-title">Assign Task</div>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+        {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
+        <div className="field">
+          <label className="label">Task Title</label>
+          <input className="input" value={form.title} onChange={e => setForm(f=>({...f,title:e.target.value}))} placeholder="What needs to be done?" />
+        </div>
+        <div className="field">
+          <label className="label">Description</label>
+          <textarea className="input textarea" rows={3} value={form.description} onChange={e => setForm(f=>({...f,description:e.target.value}))} placeholder="Additional details..." />
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
+          <div className="field">
+            <label className="label">Assign To</label>
+            <select className="input" value={form.assigned_to} onChange={e => setForm(f=>({...f,assigned_to:e.target.value}))}>
+              <option value="">Unassigned</option>
+              {officers.map(o => <option key={o.id} value={o.id}>{o.first_name} {o.last_name}</option>)}
+            </select>
           </div>
-          
-          <p className="text-slate-700 mb-3">{task.description}</p>
-          
-          <div className="flex items-center gap-4 text-sm text-slate-600">
-            {task.assigned_to && (
-              <span className="flex items-center gap-1">
-                <UsersIcon className="w-4 h-4" />
-                {task.assigned_to.first_name} {task.assigned_to.last_name}
-              </span>
-            )}
-            {task.site && (
-              <span className="flex items-center gap-1">
-                <BuildingOfficeIcon className="w-4 h-4" />
-                {task.site.name}
-              </span>
-            )}
-            {task.due_date && (
-              <span className="flex items-center gap-1">
-                <ClockIcon className="w-4 h-4" />
-                Due {formatDateTime(task.due_date)}
-              </span>
-            )}
+          <div className="field">
+            <label className="label">Site</label>
+            <select className="input" value={form.site_id} onChange={e => setForm(f=>({...f,site_id:e.target.value}))}>
+              <option value="">No site</option>
+              {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
           </div>
+        </div>
+        <div className="field">
+          <label className="label">Due Date</label>
+          <input type="date" className="input" value={form.due_date} onChange={e => setForm(f=>({...f,due_date:e.target.value}))} />
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? 'Saving...' : 'Assign Task'}</button>
         </div>
       </div>
     </div>
   );
 }
 
-// ── SITE DETAIL ────────────────────────────────────────────────────────────────
+
+
 function SiteDetail({ user }) {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -2740,7 +2394,7 @@ function SiteDetail({ user }) {
               <p className="text-xs text-slate-500 font-medium mb-1">Site Contact</p>
               <p className="text-slate-900 text-sm">{site.contact_name}</p>
               {site.contact_phone && (
-                <a href={`tel:${site.contact_phone}`} className="text-cyan-600 text-sm hover:underline">
+                <a href={`tel:${site.contact_phone}`} className="text-[#1a52a8] text-sm hover:underline">
                   {site.contact_phone}
                 </a>
               )}
@@ -2795,433 +2449,199 @@ function TeamManagement({ user }) {
   const [officers, setOfficers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [filterActive, setFilterActive] = useState('all');
 
   useEffect(() => {
-    async function fetchTeam() {
+    async function load() {
       try {
         const res = await api.users.list();
         setOfficers(res.data || []);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
+      } catch (err) { setError(err.message); }
+      finally { setLoading(false); }
     }
-    fetchTeam();
+    load();
   }, []);
 
-  const filtered = officers.filter((o) => {
-    if (filterActive === 'active') return o.active !== false;
-    if (filterActive === 'inactive') return o.active === false;
-    return true;
-  });
+  const roleLabels = { OFFICER:'Officer', OPS_MANAGER:'Ops Manager', FD:'Field Director', COMPANY:'Admin', SUPER_ADMIN:'Super Admin' };
+  const roleBadge  = { OFFICER:'badge-neutral', OPS_MANAGER:'badge-blue', FD:'badge-navy', COMPANY:'badge-navy', SUPER_ADMIN:'badge-danger' };
 
-  const isSiaExpiringSoon = (expiryDate) => {
-    if (!expiryDate) return false;
-    const days = (new Date(expiryDate) - new Date()) / (1000 * 60 * 60 * 24);
-    return days > 0 && days < 90;
-  };
-
-  const isSiaExpired = (expiryDate) => {
-    if (!expiryDate) return false;
-    return new Date(expiryDate) < new Date();
-  };
-
-  const roleLabels = {
-    OFFICER: 'Officer',
-    OPS_MANAGER: 'Ops Manager',
-    FD: 'Field Director',
-    COMPANY: 'Company Admin',
-    SUPER_ADMIN: 'Super Admin',
-  };
-
-  const roleColors = {
-    OFFICER: 'bg-blue-100 text-blue-800',
-    OPS_MANAGER: 'bg-purple-100 text-purple-800',
-    FD: 'bg-amber-100 text-amber-800',
-    COMPANY: 'bg-slate-100 text-slate-800',
-    SUPER_ADMIN: 'bg-red-100 text-red-800',
-  };
-
-  if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="spinner"></div>
-    </div>
-  );
+  const isSiaExpired      = d => d && new Date(d) < new Date();
+  const isSiaExpiringSoon = d => { if (!d) return false; const days = (new Date(d)-new Date())/(86400000); return days > 0 && days < 90; };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Team</h1>
-          <p className="text-slate-500 text-sm">{filtered.length} {filtered.length === 1 ? 'member' : 'members'}</p>
-        </div>
-        <button
-          onClick={() => setShowAddForm(true)}
-          className="btn btn-primary flex items-center gap-2 text-sm"
-        >
-          <PlusIcon className="w-4 h-4" />
-          Invite Officer
-        </button>
+    <div>
+      <div className="topbar">
+        <div className="topbar-title">Team</div>
+        <span style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>{officers.length} members</span>
       </div>
-
-      {/* Filter Tabs */}
-      <div className="flex gap-2">
-        {['all', 'active', 'inactive'].map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilterActive(f)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
-              filterActive === f
-                ? 'bg-slate-900 text-white'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            {f.charAt(0).toUpperCase() + f.slice(1)}
-          </button>
-        ))}
+      <div className="page-content">
+        {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
+        {loading ? (
+          <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr><th>Name</th><th>Email</th><th>Role</th><th>SIA Licence</th><th>SIA Expiry</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              {officers.map(o => (
+                <tr key={o.id}>
+                  <td style={{fontWeight:500}}>{o.first_name} {o.last_name}</td>
+                  <td style={{color:'var(--text-2)',fontSize:'0.8125rem'}}>{o.email}</td>
+                  <td><span className={`badge ${roleBadge[o.role]||'badge-neutral'}`}>{roleLabels[o.role]||o.role}</span></td>
+                  <td style={{fontFamily:'monospace',fontSize:'0.8125rem',color:'var(--text-2)'}}>{o.sia_licence_number || '—'}</td>
+                  <td style={{fontSize:'0.8125rem'}}>
+                    {o.sia_expiry_date ? (
+                      <span style={{color: isSiaExpired(o.sia_expiry_date) ? 'var(--danger)' : isSiaExpiringSoon(o.sia_expiry_date) ? 'var(--warning)' : 'var(--text-2)'}}>
+                        {new Date(o.sia_expiry_date).toLocaleDateString('en-GB')}
+                        {isSiaExpired(o.sia_expiry_date) && ' (Expired)'}
+                        {isSiaExpiringSoon(o.sia_expiry_date) && ' (Soon)'}
+                      </span>
+                    ) : '—'}
+                  </td>
+                  <td>
+                    <span className={`badge ${o.active !== false ? 'badge-success' : 'badge-neutral'}`}>
+                      {o.active !== false ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <div className="card" style={{marginTop:'1.25rem',background:'var(--surface-2)'}}>
+          <div style={{fontSize:'0.875rem',fontWeight:500,marginBottom:'0.375rem'}}>Adding Team Members</div>
+          <div style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>
+            New officers sign up at <strong>{window.location.origin}</strong> using their work email.
+            Once registered, update their <code>role</code> and <code>company_id</code> in the Supabase users table.
+          </div>
+        </div>
       </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg text-sm">
-          {error}
-        </div>
-      )}
-
-      {/* SIA Warning Banner */}
-      {officers.some((o) => isSiaExpiringSoon(o.sia_expiry_date) || isSiaExpired(o.sia_expiry_date)) && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-          <div className="flex items-center gap-2 text-amber-800 font-semibold text-sm mb-1">
-            <BellAlertIcon className="w-4 h-4" />
-            SIA Licence Alert
-          </div>
-          <p className="text-amber-700 text-sm">
-            {officers.filter((o) => isSiaExpired(o.sia_expiry_date)).length > 0 &&
-              `${officers.filter((o) => isSiaExpired(o.sia_expiry_date)).length} expired. `}
-            {officers.filter((o) => isSiaExpiringSoon(o.sia_expiry_date)).length > 0 &&
-              `${officers.filter((o) => isSiaExpiringSoon(o.sia_expiry_date)).length} expiring within 90 days.`}
-          </p>
-        </div>
-      )}
-
-      {/* Team List */}
-      {filtered.length === 0 ? (
-        <div className="card text-center py-12 text-slate-400">
-          <UsersIcon className="w-10 h-10 mx-auto mb-3 opacity-40" />
-          <p className="text-sm">No team members found</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filtered.map((officer) => {
-            const siaExpired = isSiaExpired(officer.sia_expiry_date);
-            const siaExpiringSoon = isSiaExpiringSoon(officer.sia_expiry_date);
-            const initials = `${(officer.first_name || '?')[0]}${(officer.last_name || '?')[0]}`.toUpperCase();
-            return (
-              <div
-                key={officer.id}
-                className={`card ${officer.active === false ? 'opacity-60' : ''}`}
-              >
-                <div className="flex items-start gap-4">
-                  {/* Avatar */}
-                  <div className="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
-                    {initials}
-                  </div>
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-slate-900">
-                        {officer.first_name} {officer.last_name}
-                      </span>
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${roleColors[officer.role] || roleColors.OFFICER}`}>
-                        {roleLabels[officer.role] || officer.role}
-                      </span>
-                      {officer.active === false && (
-                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
-                          Inactive
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-slate-500 text-sm mt-0.5">{officer.email}</p>
-                    {officer.phone && (
-                      <p className="text-slate-500 text-sm">{officer.phone}</p>
-                    )}
-                    {/* SIA Licence */}
-                    {officer.sia_licence_number && (
-                      <div className={`mt-2 flex items-center gap-2 text-xs font-mono rounded px-2 py-1 inline-flex ${
-                        siaExpired ? 'bg-red-50 text-red-700' :
-                        siaExpiringSoon ? 'bg-amber-50 text-amber-700' :
-                        'bg-slate-50 text-slate-600'
-                      }`}>
-                        <span>SIA {officer.sia_licence_number}</span>
-                        {officer.sia_expiry_date && (
-                          <span className="text-slate-400">•</span>
-                        )}
-                        {officer.sia_expiry_date && (
-                          <span>
-                            {siaExpired ? 'EXPIRED' : siaExpiringSoon ? 'Expiring ' : 'Exp '}
-                            {new Date(officer.sia_expiry_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Invite Note */}
-      {showAddForm && (
-        <div className="card border-2 border-cyan-200 bg-cyan-50">
-          <div className="flex items-start justify-between mb-3">
-            <h3 className="font-semibold text-slate-900">Invite Team Member</h3>
-            <button onClick={() => setShowAddForm(false)} className="text-slate-400 hover:text-slate-700">✕</button>
-          </div>
-          <p className="text-slate-600 text-sm mb-4">
-            New officers are added via Clerk and assigned to your company in the database.
-            Send them this link to sign up, then set their role in the Supabase dashboard.
-          </p>
-          <div className="bg-white border border-slate-200 rounded-lg px-4 py-3 font-mono text-sm text-slate-700 break-all">
-            {window.location.origin}
-          </div>
-          <p className="text-xs text-slate-500 mt-2">After they sign up, assign their company_id and role in the users table.</p>
-        </div>
-      )}
     </div>
   );
 }
 
-// ── REPORTING ──────────────────────────────────────────────────────────────────
+
 function Reporting({ user }) {
   const [logs, setLogs] = useState([]);
-  const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [dateRange, setDateRange] = useState('7'); // days
+  const [dateRange, setDateRange] = useState('30');
 
   useEffect(() => {
-    async function fetchData() {
+    async function load() {
       try {
-        setLoading(true);
         const from = new Date();
         from.setDate(from.getDate() - parseInt(dateRange));
-
-        const [logsRes, sitesRes] = await Promise.all([
-          api.logs.list({ from: from.toISOString(), limit: 500 }),
-          api.sites.list(),
-        ]);
-        setLogs(logsRes.data || []);
-        setSites(sitesRes.data || []);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
+        const res = await api.logs.list({ from: from.toISOString(), limit: 500 });
+        setLogs(res.data || []);
+      } catch (err) { console.error(err); }
+      finally { setLoading(false); }
     }
-    fetchData();
+    load();
   }, [dateRange]);
 
-  // Aggregate by log type
-  const byType = logs.reduce((acc, log) => {
-    acc[log.log_type] = (acc[log.log_type] || 0) + 1;
-    return acc;
-  }, {});
-
-  // Aggregate by site
-  const bySite = logs.reduce((acc, log) => {
-    const name = log.site?.name || 'Unknown';
-    acc[name] = (acc[name] || 0) + 1;
-    return acc;
-  }, {});
-
-  // Aggregate by day
-  const byDay = logs.reduce((acc, log) => {
-    const day = new Date(log.occurred_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
-    acc[day] = (acc[day] || 0) + 1;
-    return acc;
-  }, {});
-
-  const topTypes = Object.entries(byType).sort((a, b) => b[1] - a[1]);
-  const topSites = Object.entries(bySite).sort((a, b) => b[1] - a[1]);
+  const byType = logs.reduce((acc, l) => { acc[l.log_type] = (acc[l.log_type]||0)+1; return acc; }, {});
+  const bySite = logs.reduce((acc, l) => { const n = l.site?.name||'Unknown'; acc[n]=(acc[n]||0)+1; return acc; }, {});
+  const topTypes = Object.entries(byType).sort((a,b)=>b[1]-a[1]);
+  const topSites = Object.entries(bySite).sort((a,b)=>b[1]-a[1]);
   const maxCount = Math.max(...Object.values(byType), 1);
 
   const typeColors = {
-    PATROL: 'bg-blue-500',
-    INCIDENT: 'bg-red-500',
-    ALARM: 'bg-amber-500',
-    ACCESS: 'bg-violet-500',
-    VISITOR: 'bg-cyan-500',
-    HANDOVER: 'bg-emerald-500',
-    MAINTENANCE: 'bg-orange-500',
-    VEHICLE: 'bg-slate-500',
-    WELFARE: 'bg-pink-500',
-    KEYHOLDING: 'bg-indigo-500',
-    GENERAL: 'bg-slate-400',
+    PATROL:'#1a52a8', INCIDENT:'#dc2626', ALARM:'#d97706',
+    ACCESS:'#7c3aed', VISITOR:'#0891b2', HANDOVER:'#15803d',
+    MAINTENANCE:'#ea580c', VEHICLE:'#64748b', WELFARE:'#db2777',
+    GENERAL:'#94a3b8',
   };
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="spinner"></div>
-    </div>
-  );
-
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Reports</h1>
-          <p className="text-slate-500 text-sm">{logs.length} logs in selected period</p>
-        </div>
-        <select
-          value={dateRange}
-          onChange={(e) => setDateRange(e.target.value)}
-          className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-        >
+    <div>
+      <div className="topbar">
+        <div className="topbar-title">Reports</div>
+        <select className="input" style={{width:'140px'}} value={dateRange} onChange={e => setDateRange(e.target.value)}>
           <option value="7">Last 7 days</option>
           <option value="14">Last 14 days</option>
           <option value="30">Last 30 days</option>
           <option value="90">Last 90 days</option>
         </select>
       </div>
+      <div className="page-content">
+        {loading ? (
+          <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>
+        ) : (
+          <>
+            <div className="stats-grid" style={{marginBottom:'1.5rem'}}>
+              <div className="stat-card"><div className="stat-value">{logs.length}</div><div className="stat-label">Total Logs</div></div>
+              <div className="stat-card"><div className="stat-value" style={{color:'var(--danger)'}}>{byType.INCIDENT||0}</div><div className="stat-label">Incidents</div></div>
+              <div className="stat-card"><div className="stat-value" style={{color:'#d97706'}}>{byType.ALARM||0}</div><div className="stat-label">Alarms</div></div>
+              <div className="stat-card"><div className="stat-value" style={{color:'var(--blue)'}}>{byType.PATROL||0}</div><div className="stat-label">Patrols</div></div>
+            </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg text-sm">
-          {error}
-        </div>
-      )}
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1.25rem'}}>
+              <div className="card">
+                <div className="section-title" style={{marginBottom:'1rem'}}>Logs by Type</div>
+                {topTypes.length === 0 ? <div className="empty-state"><p>No data</p></div> : (
+                  <div style={{display:'flex',flexDirection:'column',gap:'0.625rem'}}>
+                    {topTypes.map(([type, count]) => (
+                      <div key={type} style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
+                        <span style={{fontSize:'0.75rem',fontWeight:500,color:'var(--text-2)',width:'5rem',textAlign:'right',flexShrink:0}}>
+                          {type.charAt(0)+type.slice(1).toLowerCase()}
+                        </span>
+                        <div style={{flex:1,background:'var(--surface-2)',borderRadius:'2px',height:'8px',overflow:'hidden'}}>
+                          <div style={{width:`${(count/maxCount)*100}%`,height:'100%',background:typeColors[type]||'#94a3b8',borderRadius:'2px'}} />
+                        </div>
+                        <span style={{fontSize:'0.75rem',fontWeight:600,width:'1.5rem',textAlign:'right'}}>{count}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="card text-center">
-          <p className="text-3xl font-bold text-slate-900">{logs.length}</p>
-          <p className="text-xs text-slate-500 mt-1 font-medium uppercase tracking-wide">Total Logs</p>
-        </div>
-        <div className="card text-center">
-          <p className="text-3xl font-bold text-red-600">
-            {logs.filter((l) => l.log_type === 'INCIDENT').length}
-          </p>
-          <p className="text-xs text-slate-500 mt-1 font-medium uppercase tracking-wide">Incidents</p>
-        </div>
-        <div className="card text-center">
-          <p className="text-3xl font-bold text-amber-500">
-            {logs.filter((l) => l.log_type === 'ALARM').length}
-          </p>
-          <p className="text-xs text-slate-500 mt-1 font-medium uppercase tracking-wide">Alarms</p>
-        </div>
-        <div className="card text-center">
-          <p className="text-3xl font-bold text-blue-500">
-            {logs.filter((l) => l.log_type === 'PATROL').length}
-          </p>
-          <p className="text-xs text-slate-500 mt-1 font-medium uppercase tracking-wide">Patrols</p>
-        </div>
+              <div className="card">
+                <div className="section-title" style={{marginBottom:'1rem'}}>Logs by Site</div>
+                {topSites.length === 0 ? <div className="empty-state"><p>No data</p></div> : (
+                  <table className="table">
+                    <tbody>
+                      {topSites.map(([site, count]) => (
+                        <tr key={site}>
+                          <td style={{padding:'0.5rem 0'}}>{site}</td>
+                          <td style={{padding:'0.5rem 0',textAlign:'right',fontWeight:600}}>{count}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          </>
+        )}
       </div>
-
-      {/* Log Types Bar Chart */}
-      {topTypes.length > 0 && (
-        <div className="card">
-          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Logs by Type</h3>
-          <div className="space-y-3">
-            {topTypes.map(([type, count]) => (
-              <div key={type} className="flex items-center gap-3">
-                <span className="text-xs font-medium text-slate-600 w-24 text-right flex-shrink-0">
-                  {type.charAt(0) + type.slice(1).toLowerCase()}
-                </span>
-                <div className="flex-1 bg-slate-100 rounded-full h-2.5 overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${typeColors[type] || 'bg-slate-400'}`}
-                    style={{ width: `${(count / maxCount) * 100}%` }}
-                  />
-                </div>
-                <span className="text-xs font-bold text-slate-700 w-6 text-right">{count}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* By Site */}
-      {topSites.length > 0 && (
-        <div className="card">
-          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Logs by Site</h3>
-          <div className="space-y-3">
-            {topSites.map(([siteName, count]) => (
-              <div key={siteName} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full bg-cyan-500 flex-shrink-0"></div>
-                  <span className="text-sm text-slate-700 font-medium">{siteName}</span>
-                </div>
-                <span className="text-sm font-bold text-slate-900">{count}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Empty state */}
-      {logs.length === 0 && !error && (
-        <div className="card text-center py-12 text-slate-400">
-          <ChartBarIcon className="w-10 h-10 mx-auto mb-3 opacity-40" />
-          <p className="text-sm font-medium">No logs in this period</p>
-          <p className="text-xs mt-1">Try a wider date range</p>
-        </div>
-      )}
     </div>
   );
 }
 
-// Bottom Navigation for Officer
+
 function OfficerNavigation() {
   const location = useLocation();
-  
-  const navItems = [
-    { to: '/', icon: HomeIcon, label: 'Home' },
-    { to: '/log', icon: PlusIcon, label: 'Log' },
-    { to: '/logs', icon: ClipboardDocumentListIcon, label: 'History' },
-    { to: '/tasks', icon: ClockIcon, label: 'Tasks' },
+  const nav = [
+    { to: '/',      icon: HomeIcon,                   label: 'Home' },
+    { to: '/log',   icon: PlusIcon,                   label: 'Log Entry' },
+    { to: '/logs',  icon: ClipboardDocumentListIcon,  label: 'History' },
+    { to: '/tasks', icon: ClipboardDocumentListIcon,  label: 'Tasks' },
   ];
-  
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-2 safe-area-inset-bottom">
-      <div className="flex items-center justify-around max-w-md mx-auto">
-        {navItems.map(({ to, icon: Icon, label }) => {
-          const isActive = location.pathname === to;
-          return (
-            <NavItem
-              key={to}
-              to={to}
-              icon={Icon}
-              label={label}
-              isActive={isActive}
-            />
-          );
-        })}
-      </div>
+    <nav className="officer-nav">
+      {nav.map(({ to, icon: Icon, label }) => (
+        <Link
+          key={to}
+          to={to}
+          className={`officer-nav-item${location.pathname === to ? ' active' : ''}`}
+        >
+          <Icon style={{width:'1.25rem',height:'1.25rem'}} />
+          {label}
+        </Link>
+      ))}
     </nav>
   );
 }
 
-// Navigation Item
-function NavItem({ to, icon: Icon, label, isActive }) {
-  const navigate = useNavigate();
-  
-  return (
-    <button
-      onClick={() => navigate(to)}
-      className={`flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-colors ${
-        isActive 
-          ? 'text-cyan-600 bg-cyan-50' 
-          : 'text-slate-600 hover:text-slate-900'
-      }`}
-    >
-      <Icon className="w-5 h-5" />
-      <span className="text-xs font-medium">{label}</span>
-    </button>
-  );
-}
 
 export default App;
