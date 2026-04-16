@@ -11,7 +11,15 @@ import {
   UserGroupIcon, 
   Cog6ToothIcon,
   PlusIcon,
-  ArrowRightOnRectangleIcon
+  ArrowRightOnRectangleIcon,
+  BuildingOfficeIcon,
+  ChartBarIcon,
+  DocumentTextIcon,
+  BellAlertIcon,
+  UsersIcon,
+  EyeIcon,
+  FunnelIcon,
+  ArrowDownTrayIcon
 } from '@heroicons/react/24/outline';
 
 // Clerk configuration
@@ -1624,13 +1632,954 @@ function TaskCard({ task, onUpdateStatus }) {
   );
 }
 
+// Manager Application
 function ManagerApp({ user }) {
   return (
-    <div className="min-h-screen">
-      <div className="container py-8">
-        <h2 className="text-2xl font-bold mb-4">Operations Manager Dashboard</h2>
-        <p className="text-slate-600">Manager interface will be implemented after officer app...</p>
+    <div className="min-h-screen bg-slate-50 flex">
+      <ManagerSidebar user={user} />
+      <div className="flex-1 ml-64">
+        <ManagerHeader user={user} />
+        <main className="p-6">
+          <Routes>
+            <Route path="/" element={<ManagerDashboard user={user} />} />
+            <Route path="/sites" element={<SiteManagement user={user} />} />
+            <Route path="/sites/:id" element={<SiteDetail user={user} />} />
+            <Route path="/team" element={<TeamManagement user={user} />} />
+            <Route path="/logs" element={<LogReview user={user} />} />
+            <Route path="/tasks" element={<TaskAssignment user={user} />} />
+            <Route path="/reports" element={<Reporting user={user} />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </main>
       </div>
+    </div>
+  );
+}
+
+// Manager Sidebar Navigation
+function ManagerSidebar({ user }) {
+  const location = useLocation();
+  
+  const navItems = [
+    { to: '/', icon: ChartBarIcon, label: 'Dashboard' },
+    { to: '/sites', icon: BuildingOfficeIcon, label: 'Sites' },
+    { to: '/team', icon: UsersIcon, label: 'Team' },
+    { to: '/logs', icon: EyeIcon, label: 'Log Review' },
+    { to: '/tasks', icon: ClipboardDocumentListIcon, label: 'Tasks' },
+    { to: '/reports', icon: DocumentTextIcon, label: 'Reports' },
+  ];
+  
+  return (
+    <nav className="fixed left-0 top-0 h-full w-64 bg-white border-r border-slate-200 p-6">
+      <div className="mb-8">
+        <h1 className="text-xl font-bold text-slate-900">DOB Live</h1>
+        <p className="text-sm text-slate-600">Operations Manager</p>
+      </div>
+      
+      <div className="space-y-1">
+        {navItems.map(({ to, icon: Icon, label }) => {
+          const isActive = location.pathname === to;
+          return (
+            <ManagerNavItem
+              key={to}
+              to={to}
+              icon={Icon}
+              label={label}
+              isActive={isActive}
+            />
+          );
+        })}
+      </div>
+      
+      <div className="absolute bottom-6 left-6 right-6">
+        <div className="p-3 bg-slate-50 rounded-lg">
+          <p className="text-sm font-medium text-slate-900">{user.first_name} {user.last_name}</p>
+          <p className="text-xs text-slate-600">{user.email}</p>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+// Manager Navigation Item
+function ManagerNavItem({ to, icon: Icon, label, isActive }) {
+  const navigate = useNavigate();
+  
+  return (
+    <button
+      onClick={() => navigate(to)}
+      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+        isActive 
+          ? 'bg-cyan-50 text-cyan-700 border border-cyan-200' 
+          : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+      }`}
+    >
+      <Icon className="w-5 h-5" />
+      <span className="font-medium">{label}</span>
+    </button>
+  );
+}
+
+// Manager Header
+function ManagerHeader({ user }) {
+  const { signOut } = useAuth();
+  const location = useLocation();
+  
+  const getPageTitle = () => {
+    switch (location.pathname) {
+      case '/': return 'Dashboard';
+      case '/sites': return 'Site Management';
+      case '/team': return 'Team Management';
+      case '/logs': return 'Log Review';
+      case '/tasks': return 'Task Assignment';
+      case '/reports': return 'Reports';
+      default: return 'Operations';
+    }
+  };
+  
+  return (
+    <header className="bg-white border-b border-slate-200 px-6 py-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900">{getPageTitle()}</h2>
+          <p className="text-slate-600">
+            {user.company?.name || 'DOB Live Security'}
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-4">
+          <UserButton 
+            appearance={{
+              elements: {
+                avatarBox: 'w-8 h-8'
+              }
+            }}
+            userProfileMode="navigation"
+            userProfileUrl="/profile"
+          />
+        </div>
+      </div>
+    </header>
+  );
+}
+
+// Manager Dashboard
+function ManagerDashboard({ user }) {
+  const [stats, setStats] = useState({
+    activeOfficers: 0,
+    activeSites: 0,
+    todayLogs: 0,
+    pendingTasks: 0
+  });
+  const [recentLogs, setRecentLogs] = useState([]);
+  const [alerts, setAlerts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    async function fetchDashboardData() {
+      try {
+        setLoading(true);
+        
+        // Get basic stats
+        const [sitesRes, logsRes, tasksRes] = await Promise.all([
+          api.sites.list(),
+          api.logs.list({ limit: 10 }),
+          api.tasks.list({ status: 'PENDING', limit: 5 })
+        ]);
+        
+        setStats({
+          activeSites: sitesRes.data?.length || 0,
+          todayLogs: logsRes.data?.length || 0,
+          pendingTasks: tasksRes.data?.length || 0,
+          activeOfficers: 0 // Will calculate from shifts
+        });
+        
+        setRecentLogs(logsRes.data?.slice(0, 5) || []);
+        
+        // Create sample alerts
+        setAlerts([
+          { id: 1, type: 'warning', message: 'Site inspection overdue at Main Office', time: '2 hours ago' },
+          { id: 2, type: 'info', message: '3 new log entries require review', time: '30 minutes ago' }
+        ]);
+        
+      } catch (err) {
+        console.error('Failed to fetch dashboard data:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchDashboardData();
+  }, []);
+  
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="spinner mb-4"></div>
+          <p className="text-slate-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="space-y-6">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard
+          title="Active Sites"
+          value={stats.activeSites}
+          icon={<BuildingOfficeIcon className="w-6 h-6" />}
+          color="blue"
+        />
+        <StatCard
+          title="Officers On Duty"
+          value={stats.activeOfficers}
+          icon={<UsersIcon className="w-6 h-6" />}
+          color="green"
+        />
+        <StatCard
+          title="Today's Logs"
+          value={stats.todayLogs}
+          icon={<ClipboardDocumentListIcon className="w-6 h-6" />}
+          color="cyan"
+        />
+        <StatCard
+          title="Pending Tasks"
+          value={stats.pendingTasks}
+          icon={<ClockIcon className="w-6 h-6" />}
+          color="amber"
+        />
+      </div>
+      
+      {/* Alerts */}
+      {alerts.length > 0 && (
+        <div className="card">
+          <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+            <BellAlertIcon className="w-5 h-5" />
+            Alerts
+          </h3>
+          <div className="space-y-3">
+            {alerts.map((alert) => (
+              <div key={alert.id} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
+                <div className={`w-2 h-2 rounded-full mt-2 ${
+                  alert.type === 'warning' ? 'bg-amber-400' : 'bg-blue-400'
+                }`} />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-slate-900">{alert.message}</p>
+                  <p className="text-xs text-slate-500">{alert.time}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {/* Recent Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="card">
+          <h3 className="text-lg font-semibold text-slate-900 mb-4">Recent Logs</h3>
+          {recentLogs.length === 0 ? (
+            <p className="text-slate-500 text-center py-8">No recent logs</p>
+          ) : (
+            <div className="space-y-3">
+              {recentLogs.map((log) => (
+                <ManagerLogPreview key={log.id} log={log} />
+              ))}
+            </div>
+          )}
+        </div>
+        
+        <div className="card">
+          <h3 className="text-lg font-semibold text-slate-900 mb-4">Quick Actions</h3>
+          <div className="grid grid-cols-1 gap-3">
+            <ManagerActionButton
+              to="/tasks"
+              icon={<PlusIcon className="w-5 h-5" />}
+              title="Assign Task"
+              subtitle="Create new officer task"
+            />
+            <ManagerActionButton
+              to="/logs"
+              icon={<EyeIcon className="w-5 h-5" />}
+              title="Review Logs"
+              subtitle="Check recent incidents"
+            />
+            <ManagerActionButton
+              to="/reports"
+              icon={<ArrowDownTrayIcon className="w-5 h-5" />}
+              title="Export Report"
+              subtitle="Generate compliance report"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Stat Card Component
+function StatCard({ title, value, icon, color }) {
+  const colorClasses = {
+    blue: 'text-blue-600 bg-blue-50',
+    green: 'text-green-600 bg-green-50',
+    cyan: 'text-cyan-600 bg-cyan-50',
+    amber: 'text-amber-600 bg-amber-50'
+  };
+  
+  return (
+    <div className="card">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-slate-600">{title}</p>
+          <p className="text-3xl font-bold text-slate-900 mt-1">{value}</p>
+        </div>
+        <div className={`p-3 rounded-lg ${colorClasses[color]}`}>
+          {icon}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Manager Log Preview Component
+function ManagerLogPreview({ log }) {
+  const config = LOG_TYPE_CONFIG[log.log_type] || LOG_TYPE_CONFIG.OTHER;
+  
+  return (
+    <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+      <div className="text-lg">{config.icon}</div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="font-medium text-slate-900 text-sm">{log.title}</span>
+          <span className={`status-badge ${config.color === 'alert' ? 'status-alert' : 'status-info'}`}>
+            {config.label}
+          </span>
+        </div>
+        <p className="text-xs text-slate-600">{log.site?.name} • {getRelativeTime(log.occurred_at)}</p>
+      </div>
+    </div>
+  );
+}
+
+// Manager Action Button
+function ManagerActionButton({ to, icon, title, subtitle }) {
+  const navigate = useNavigate();
+  
+  return (
+    <button
+      onClick={() => navigate(to)}
+      className="flex items-center gap-3 p-4 bg-slate-50 hover:bg-slate-100 rounded-lg text-left transition-colors"
+    >
+      <div className="text-slate-600">{icon}</div>
+      <div>
+        <p className="font-medium text-slate-900">{title}</p>
+        <p className="text-sm text-slate-600">{subtitle}</p>
+      </div>
+    </button>
+  );
+}
+
+// Site Management Screen
+function SiteManagement({ user }) {
+  const [sites, setSites] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  useEffect(() => {
+    async function fetchSites() {
+      try {
+        const response = await api.sites.list();
+        setSites(response.data || []);
+        setError(null);
+      } catch (err) {
+        console.error('Failed to fetch sites:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchSites();
+  }, []);
+  
+  if (loading) return <div className="flex justify-center py-12"><div className="spinner"></div></div>;
+  
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-red-600 mb-4">Error loading sites: {error}</p>
+        <button onClick={() => window.location.reload()} className="btn btn-primary">
+          Retry
+        </button>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-slate-900">All Sites</h3>
+          <p className="text-slate-600">Manage and monitor your security sites</p>
+        </div>
+        <button className="btn btn-primary">
+          <PlusIcon className="w-4 h-4" />
+          Add Site
+        </button>
+      </div>
+      
+      {sites.length === 0 ? (
+        <div className="text-center py-12">
+          <BuildingOfficeIcon className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+          <p className="text-slate-600">No sites found</p>
+        </div>
+      ) : (
+        <div className="grid gap-6">
+          {sites.map((site) => (
+            <SiteCard key={site.id} site={site} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Site Card Component
+function SiteCard({ site }) {
+  const navigate = useNavigate();
+  
+  return (
+    <div className="card cursor-pointer hover:shadow-lg transition-shadow"
+         onClick={() => navigate(`/sites/${site.id}`)}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center">
+            <BuildingOfficeIcon className="w-6 h-6 text-slate-600" />
+          </div>
+          <div>
+            <h4 className="font-semibold text-slate-900">{site.name}</h4>
+            <p className="text-slate-600">{site.address}</p>
+            {site.description && (
+              <p className="text-sm text-slate-500 mt-1">{site.description}</p>
+            )}
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="status-badge status-active">Active</span>
+          </div>
+          <p className="text-sm text-slate-500">0 officers on site</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Log Review Screen
+function LogReview({ user }) {
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [filters, setFilters] = useState({
+    log_type: '',
+    site_id: '',
+    from: '',
+    to: '',
+    limit: 20
+  });
+  const [sites, setSites] = useState([]);
+  
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setLoading(true);
+        const [logsRes, sitesRes] = await Promise.all([
+          api.logs.list(Object.fromEntries(Object.entries(filters).filter(([_, v]) => v))),
+          api.sites.list()
+        ]);
+        
+        setLogs(logsRes.data || []);
+        setSites(sitesRes.data || []);
+        setError(null);
+      } catch (err) {
+        console.error('Failed to fetch logs:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchData();
+  }, [filters]);
+  
+  const updateFilter = (key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
+  
+  return (
+    <div className="space-y-6">
+      {/* Filters */}
+      <div className="card">
+        <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+          <FunnelIcon className="w-5 h-5" />
+          Filters
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Log Type</label>
+            <select 
+              className="input select"
+              value={filters.log_type}
+              onChange={(e) => updateFilter('log_type', e.target.value)}
+            >
+              <option value="">All Types</option>
+              {Object.entries(LOG_TYPE_CONFIG).map(([type, config]) => (
+                <option key={type} value={type}>{config.label}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Site</label>
+            <select 
+              className="input select"
+              value={filters.site_id}
+              onChange={(e) => updateFilter('site_id', e.target.value)}
+            >
+              <option value="">All Sites</option>
+              {sites.map((site) => (
+                <option key={site.id} value={site.id}>{site.name}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">From Date</label>
+            <input 
+              type="date" 
+              className="input"
+              value={filters.from}
+              onChange={(e) => updateFilter('from', e.target.value)}
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">To Date</label>
+            <input 
+              type="date" 
+              className="input"
+              value={filters.to}
+              onChange={(e) => updateFilter('to', e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+      
+      {/* Error State */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-800 font-medium">Error loading logs: {error}</p>
+        </div>
+      )}
+      
+      {/* Logs */}
+      <div className="card">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-slate-900">All Logs</h3>
+          <button className="btn btn-secondary">
+            <ArrowDownTrayIcon className="w-4 h-4" />
+            Export
+          </button>
+        </div>
+        
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <div className="spinner"></div>
+          </div>
+        ) : logs.length === 0 ? (
+          <div className="text-center py-12">
+            <ClipboardDocumentListIcon className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+            <p className="text-slate-600">No logs found</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {logs.map((log) => (
+              <ManagerLogCard key={log.id} log={log} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Manager Log Card Component (more detailed than preview)
+function ManagerLogCard({ log }) {
+  const [expanded, setExpanded] = useState(false);
+  const config = LOG_TYPE_CONFIG[log.log_type] || LOG_TYPE_CONFIG.OTHER;
+  
+  return (
+    <div className="border border-slate-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+      <div className="flex items-start gap-4">
+        <div className="text-2xl">{config.icon}</div>
+        
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <h4 className="font-semibold text-slate-900">{log.title}</h4>
+            <span className={`status-badge status-${config.color}`}>
+              {config.label}
+            </span>
+            <span className="text-xs text-slate-500">
+              {formatDateTime(log.occurred_at)}
+            </span>
+          </div>
+          
+          <div className="flex items-center gap-4 text-sm text-slate-600 mb-3">
+            {log.site && (
+              <span className="flex items-center gap-1">
+                <BuildingOfficeIcon className="w-4 h-4" />
+                {log.site.name}
+              </span>
+            )}
+            {log.officer && (
+              <span className="flex items-center gap-1">
+                <UsersIcon className="w-4 h-4" />
+                {log.officer.first_name} {log.officer.last_name}
+              </span>
+            )}
+          </div>
+          
+          <p className="text-slate-700 leading-relaxed">
+            {expanded ? log.description : (
+              log.description?.length > 200 
+                ? `${log.description.substring(0, 200)}...`
+                : log.description
+            )}
+          </p>
+          
+          {log.description?.length > 200 && (
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="text-sm text-cyan-600 hover:text-cyan-500 font-medium mt-2"
+            >
+              {expanded ? 'Show Less' : 'Show More'}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Task Assignment Screen
+function TaskAssignment({ user }) {
+  const [tasks, setTasks] = useState([]);
+  const [officers, setOfficers] = useState([]);
+  const [sites, setSites] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [tasksRes, officersRes, sitesRes] = await Promise.all([
+          api.tasks.list(),
+          api.users.list({ role: 'OFFICER' }),
+          api.sites.list()
+        ]);
+        
+        setTasks(tasksRes.data || []);
+        setOfficers(officersRes.data || []);
+        setSites(sitesRes.data || []);
+      } catch (err) {
+        console.error('Failed to fetch data:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchData();
+  }, []);
+  
+  if (loading) {
+    return <div className="flex justify-center py-12"><div className="spinner"></div></div>;
+  }
+  
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-slate-900">Task Management</h3>
+          <p className="text-slate-600">Create and track officer assignments</p>
+        </div>
+        <button 
+          onClick={() => setShowCreateForm(true)}
+          className="btn btn-primary"
+        >
+          <PlusIcon className="w-4 h-4" />
+          Assign Task
+        </button>
+      </div>
+      
+      {showCreateForm && (
+        <TaskCreateForm
+          officers={officers}
+          sites={sites}
+          onClose={() => setShowCreateForm(false)}
+          onSuccess={(newTask) => {
+            setTasks(prev => [newTask, ...prev]);
+            setShowCreateForm(false);
+          }}
+        />
+      )}
+      
+      <div className="card">
+        <h4 className="font-semibold text-slate-900 mb-4">All Tasks</h4>
+        {tasks.length === 0 ? (
+          <div className="text-center py-12">
+            <ClipboardDocumentListIcon className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+            <p className="text-slate-600">No tasks assigned yet</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {tasks.map((task) => (
+              <ManagerTaskCard key={task.id} task={task} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Task Create Form
+function TaskCreateForm({ officers, sites, onClose, onSuccess }) {
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    assigned_to: '',
+    site_id: '',
+    priority: 'NORMAL',
+    due_date: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await api.tasks.create(formData);
+      onSuccess(response.data);
+    } catch (err) {
+      console.error('Failed to create task:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  return (
+    <div className="card">
+      <div className="flex items-center justify-between mb-4">
+        <h4 className="font-semibold text-slate-900">Create New Task</h4>
+        <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+          ✕
+        </button>
+      </div>
+      
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+          <p className="text-red-700">{error}</p>
+        </div>
+      )}
+      
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Title *</label>
+            <input
+              type="text"
+              className="input"
+              value={formData.title}
+              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+              required
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Assign to Officer *</label>
+            <select
+              className="input select"
+              value={formData.assigned_to}
+              onChange={(e) => setFormData(prev => ({ ...prev, assigned_to: e.target.value }))}
+              required
+            >
+              <option value="">Select officer...</option>
+              {officers.map((officer) => (
+                <option key={officer.id} value={officer.id}>
+                  {officer.first_name} {officer.last_name}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Site</label>
+            <select
+              className="input select"
+              value={formData.site_id}
+              onChange={(e) => setFormData(prev => ({ ...prev, site_id: e.target.value }))}
+            >
+              <option value="">Any site</option>
+              {sites.map((site) => (
+                <option key={site.id} value={site.id}>{site.name}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Priority</label>
+            <select
+              className="input select"
+              value={formData.priority}
+              onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value }))}
+            >
+              <option value="LOW">Low</option>
+              <option value="NORMAL">Normal</option>
+              <option value="HIGH">High</option>
+              <option value="URGENT">Urgent</option>
+            </select>
+          </div>
+          
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-slate-700 mb-1">Due Date</label>
+            <input
+              type="datetime-local"
+              className="input"
+              value={formData.due_date}
+              onChange={(e) => setFormData(prev => ({ ...prev, due_date: e.target.value }))}
+            />
+          </div>
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">Description *</label>
+          <textarea
+            className="input textarea"
+            value={formData.description}
+            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+            rows="4"
+            required
+          />
+        </div>
+        
+        <div className="flex gap-3">
+          <button type="button" onClick={onClose} className="btn btn-secondary">
+            Cancel
+          </button>
+          <button type="submit" disabled={loading} className="btn btn-primary">
+            {loading ? <div className="spinner"></div> : 'Create Task'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+// Manager Task Card
+function ManagerTaskCard({ task }) {
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case 'URGENT': return 'status-alert';
+      case 'HIGH': return 'status-pending';
+      case 'NORMAL': return 'status-info';
+      case 'LOW': return 'status-info';
+      default: return 'status-info';
+    }
+  };
+  
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'COMPLETED': return 'status-active';
+      case 'IN_PROGRESS': return 'status-pending';
+      case 'PENDING': return 'status-info';
+      default: return 'status-info';
+    }
+  };
+  
+  return (
+    <div className="border border-slate-200 rounded-lg p-4">
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-2">
+            <h5 className="font-semibold text-slate-900">{task.title}</h5>
+            <span className={`status-badge ${getStatusColor(task.status)}`}>
+              {task.status?.replace('_', ' ').toLowerCase()}
+            </span>
+            {task.priority !== 'NORMAL' && (
+              <span className={`status-badge ${getPriorityColor(task.priority)}`}>
+                {task.priority}
+              </span>
+            )}
+          </div>
+          
+          <p className="text-slate-700 mb-3">{task.description}</p>
+          
+          <div className="flex items-center gap-4 text-sm text-slate-600">
+            {task.assigned_to && (
+              <span className="flex items-center gap-1">
+                <UsersIcon className="w-4 h-4" />
+                {task.assigned_to.first_name} {task.assigned_to.last_name}
+              </span>
+            )}
+            {task.site && (
+              <span className="flex items-center gap-1">
+                <BuildingOfficeIcon className="w-4 h-4" />
+                {task.site.name}
+              </span>
+            )}
+            {task.due_date && (
+              <span className="flex items-center gap-1">
+                <ClockIcon className="w-4 h-4" />
+                Due {formatDateTime(task.due_date)}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Placeholder screens (basic implementations)
+function SiteDetail({ user }) {
+  return (
+    <div className="card">
+      <h3 className="text-lg font-semibold mb-4">Site Detail</h3>
+      <p className="text-slate-600">Site detail view will be implemented in next iteration.</p>
+    </div>
+  );
+}
+
+function TeamManagement({ user }) {
+  return (
+    <div className="card">
+      <h3 className="text-lg font-semibold mb-4">Team Management</h3>
+      <p className="text-slate-600">Team management interface will be implemented in next iteration.</p>
+    </div>
+  );
+}
+
+function Reporting({ user }) {
+  return (
+    <div className="card">
+      <h3 className="text-lg font-semibold mb-4">Reports</h3>
+      <p className="text-slate-600">Reporting and analytics will be implemented in next iteration.</p>
     </div>
   );
 }
