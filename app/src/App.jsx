@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ClerkProvider, SignIn, SignUp, SignedIn, SignedOut, UserButton, useUser, useAuth } from '@clerk/clerk-react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { api, ApiError } from './lib/api';
 import { LOG_TYPES, LOG_TYPE_CONFIG, formatDateTime, getRelativeTime } from './lib/constants';
 import { 
@@ -2640,30 +2640,536 @@ function ManagerTaskCard({ task }) {
   );
 }
 
-// Placeholder screens (basic implementations)
+// ── SITE DETAIL ────────────────────────────────────────────────────────────────
 function SiteDetail({ user }) {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [site, setSite] = useState(null);
+  const [recentLogs, setRecentLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!id) return;
+    async function fetchSite() {
+      try {
+        setLoading(true);
+        const [siteRes, logsRes] = await Promise.all([
+          api.sites.get(id),
+          api.logs.list({ site_id: id, limit: 10 }),
+        ]);
+        setSite(siteRes.data);
+        setRecentLogs(logsRes.data || []);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchSite();
+  }, [id]);
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="spinner"></div>
+    </div>
+  );
+
+  if (error || !site) return (
+    <div className="p-6">
+      <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg text-sm mb-4">
+        {error || 'Site not found'}
+      </div>
+      <button onClick={() => navigate('/sites')} className="btn btn-secondary">
+        ← Back to Sites
+      </button>
+    </div>
+  );
+
+  const statusColors = {
+    ACTIVE: 'bg-emerald-100 text-emerald-800',
+    INACTIVE: 'bg-slate-100 text-slate-600',
+    SUSPENDED: 'bg-red-100 text-red-800',
+  };
+
   return (
-    <div className="card">
-      <h3 className="text-lg font-semibold mb-4">Site Detail</h3>
-      <p className="text-slate-600">Site detail view will be implemented in next iteration.</p>
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-2">
+        <button onClick={() => navigate('/sites')} className="text-slate-500 hover:text-slate-900 transition-colors">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">{site.name}</h1>
+          {site.client && (
+            <p className="text-slate-500 text-sm">{site.client.client_company_name}</p>
+          )}
+        </div>
+        <span className={`ml-auto text-xs font-semibold px-3 py-1 rounded-full ${statusColors[site.status] || statusColors.INACTIVE}`}>
+          {site.status || 'ACTIVE'}
+        </span>
+      </div>
+
+      {/* Site Details Card */}
+      <div className="card">
+        <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Site Information</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {site.address && (
+            <div>
+              <p className="text-xs text-slate-500 font-medium mb-1">Address</p>
+              <p className="text-slate-900 text-sm">{site.address}</p>
+            </div>
+          )}
+          {site.postcode && (
+            <div>
+              <p className="text-xs text-slate-500 font-medium mb-1">Postcode</p>
+              <p className="text-slate-900 text-sm font-mono">{site.postcode}</p>
+            </div>
+          )}
+          {site.what3words && (
+            <div>
+              <p className="text-xs text-slate-500 font-medium mb-1">what3words</p>
+              <p className="text-slate-900 text-sm font-mono">///
+{site.what3words}</p>
+            </div>
+          )}
+          {site.contact_name && (
+            <div>
+              <p className="text-xs text-slate-500 font-medium mb-1">Site Contact</p>
+              <p className="text-slate-900 text-sm">{site.contact_name}</p>
+              {site.contact_phone && (
+                <a href={`tel:${site.contact_phone}`} className="text-cyan-600 text-sm hover:underline">
+                  {site.contact_phone}
+                </a>
+              )}
+            </div>
+          )}
+          {site.contract_start && (
+            <div>
+              <p className="text-xs text-slate-500 font-medium mb-1">Contract Start</p>
+              <p className="text-slate-900 text-sm">{new Date(site.contract_start).toLocaleDateString('en-GB')}</p>
+            </div>
+          )}
+          {site.contract_end && (
+            <div>
+              <p className="text-xs text-slate-500 font-medium mb-1">Contract End</p>
+              <p className="text-slate-900 text-sm">{new Date(site.contract_end).toLocaleDateString('en-GB')}</p>
+            </div>
+          )}
+        </div>
+        {site.notes && (
+          <div className="mt-4 pt-4 border-t border-slate-100">
+            <p className="text-xs text-slate-500 font-medium mb-1">Notes</p>
+            <p className="text-slate-700 text-sm whitespace-pre-line">{site.notes}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Recent Logs */}
+      <div className="card">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Recent Logs</h3>
+          <span className="text-xs text-slate-400">Last 10</span>
+        </div>
+        {recentLogs.length === 0 ? (
+          <div className="text-center py-8 text-slate-400">
+            <DocumentTextIcon className="w-8 h-8 mx-auto mb-2 opacity-40" />
+            <p className="text-sm">No logs recorded for this site</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {recentLogs.map((log) => (
+              <ManagerLogCard key={log.id} log={log} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
+// ── TEAM MANAGEMENT ────────────────────────────────────────────────────────────
 function TeamManagement({ user }) {
+  const [officers, setOfficers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [filterActive, setFilterActive] = useState('all');
+
+  useEffect(() => {
+    async function fetchTeam() {
+      try {
+        const res = await api.users.list();
+        setOfficers(res.data || []);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchTeam();
+  }, []);
+
+  const filtered = officers.filter((o) => {
+    if (filterActive === 'active') return o.active !== false;
+    if (filterActive === 'inactive') return o.active === false;
+    return true;
+  });
+
+  const isSiaExpiringSoon = (expiryDate) => {
+    if (!expiryDate) return false;
+    const days = (new Date(expiryDate) - new Date()) / (1000 * 60 * 60 * 24);
+    return days > 0 && days < 90;
+  };
+
+  const isSiaExpired = (expiryDate) => {
+    if (!expiryDate) return false;
+    return new Date(expiryDate) < new Date();
+  };
+
+  const roleLabels = {
+    OFFICER: 'Officer',
+    OPS_MANAGER: 'Ops Manager',
+    FD: 'Field Director',
+    COMPANY: 'Company Admin',
+    SUPER_ADMIN: 'Super Admin',
+  };
+
+  const roleColors = {
+    OFFICER: 'bg-blue-100 text-blue-800',
+    OPS_MANAGER: 'bg-purple-100 text-purple-800',
+    FD: 'bg-amber-100 text-amber-800',
+    COMPANY: 'bg-slate-100 text-slate-800',
+    SUPER_ADMIN: 'bg-red-100 text-red-800',
+  };
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="spinner"></div>
+    </div>
+  );
+
   return (
-    <div className="card">
-      <h3 className="text-lg font-semibold mb-4">Team Management</h3>
-      <p className="text-slate-600">Team management interface will be implemented in next iteration.</p>
+    <div className="p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Team</h1>
+          <p className="text-slate-500 text-sm">{filtered.length} {filtered.length === 1 ? 'member' : 'members'}</p>
+        </div>
+        <button
+          onClick={() => setShowAddForm(true)}
+          className="btn btn-primary flex items-center gap-2 text-sm"
+        >
+          <PlusIcon className="w-4 h-4" />
+          Invite Officer
+        </button>
+      </div>
+
+      {/* Filter Tabs */}
+      <div className="flex gap-2">
+        {['all', 'active', 'inactive'].map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilterActive(f)}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+              filterActive === f
+                ? 'bg-slate-900 text-white'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            {f.charAt(0).toUpperCase() + f.slice(1)}
+          </button>
+        ))}
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg text-sm">
+          {error}
+        </div>
+      )}
+
+      {/* SIA Warning Banner */}
+      {officers.some((o) => isSiaExpiringSoon(o.sia_expiry_date) || isSiaExpired(o.sia_expiry_date)) && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <div className="flex items-center gap-2 text-amber-800 font-semibold text-sm mb-1">
+            <BellAlertIcon className="w-4 h-4" />
+            SIA Licence Alert
+          </div>
+          <p className="text-amber-700 text-sm">
+            {officers.filter((o) => isSiaExpired(o.sia_expiry_date)).length > 0 &&
+              `${officers.filter((o) => isSiaExpired(o.sia_expiry_date)).length} expired. `}
+            {officers.filter((o) => isSiaExpiringSoon(o.sia_expiry_date)).length > 0 &&
+              `${officers.filter((o) => isSiaExpiringSoon(o.sia_expiry_date)).length} expiring within 90 days.`}
+          </p>
+        </div>
+      )}
+
+      {/* Team List */}
+      {filtered.length === 0 ? (
+        <div className="card text-center py-12 text-slate-400">
+          <UsersIcon className="w-10 h-10 mx-auto mb-3 opacity-40" />
+          <p className="text-sm">No team members found</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map((officer) => {
+            const siaExpired = isSiaExpired(officer.sia_expiry_date);
+            const siaExpiringSoon = isSiaExpiringSoon(officer.sia_expiry_date);
+            const initials = `${(officer.first_name || '?')[0]}${(officer.last_name || '?')[0]}`.toUpperCase();
+            return (
+              <div
+                key={officer.id}
+                className={`card ${officer.active === false ? 'opacity-60' : ''}`}
+              >
+                <div className="flex items-start gap-4">
+                  {/* Avatar */}
+                  <div className="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
+                    {initials}
+                  </div>
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-slate-900">
+                        {officer.first_name} {officer.last_name}
+                      </span>
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${roleColors[officer.role] || roleColors.OFFICER}`}>
+                        {roleLabels[officer.role] || officer.role}
+                      </span>
+                      {officer.active === false && (
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
+                          Inactive
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-slate-500 text-sm mt-0.5">{officer.email}</p>
+                    {officer.phone && (
+                      <p className="text-slate-500 text-sm">{officer.phone}</p>
+                    )}
+                    {/* SIA Licence */}
+                    {officer.sia_licence_number && (
+                      <div className={`mt-2 flex items-center gap-2 text-xs font-mono rounded px-2 py-1 inline-flex ${
+                        siaExpired ? 'bg-red-50 text-red-700' :
+                        siaExpiringSoon ? 'bg-amber-50 text-amber-700' :
+                        'bg-slate-50 text-slate-600'
+                      }`}>
+                        <span>SIA {officer.sia_licence_number}</span>
+                        {officer.sia_expiry_date && (
+                          <span className="text-slate-400">•</span>
+                        )}
+                        {officer.sia_expiry_date && (
+                          <span>
+                            {siaExpired ? 'EXPIRED' : siaExpiringSoon ? 'Expiring ' : 'Exp '}
+                            {new Date(officer.sia_expiry_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Invite Note */}
+      {showAddForm && (
+        <div className="card border-2 border-cyan-200 bg-cyan-50">
+          <div className="flex items-start justify-between mb-3">
+            <h3 className="font-semibold text-slate-900">Invite Team Member</h3>
+            <button onClick={() => setShowAddForm(false)} className="text-slate-400 hover:text-slate-700">✕</button>
+          </div>
+          <p className="text-slate-600 text-sm mb-4">
+            New officers are added via Clerk and assigned to your company in the database.
+            Send them this link to sign up, then set their role in the Supabase dashboard.
+          </p>
+          <div className="bg-white border border-slate-200 rounded-lg px-4 py-3 font-mono text-sm text-slate-700 break-all">
+            {window.location.origin}
+          </div>
+          <p className="text-xs text-slate-500 mt-2">After they sign up, assign their company_id and role in the users table.</p>
+        </div>
+      )}
     </div>
   );
 }
 
+// ── REPORTING ──────────────────────────────────────────────────────────────────
 function Reporting({ user }) {
+  const [logs, setLogs] = useState([]);
+  const [sites, setSites] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [dateRange, setDateRange] = useState('7'); // days
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setLoading(true);
+        const from = new Date();
+        from.setDate(from.getDate() - parseInt(dateRange));
+
+        const [logsRes, sitesRes] = await Promise.all([
+          api.logs.list({ from: from.toISOString(), limit: 500 }),
+          api.sites.list(),
+        ]);
+        setLogs(logsRes.data || []);
+        setSites(sitesRes.data || []);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, [dateRange]);
+
+  // Aggregate by log type
+  const byType = logs.reduce((acc, log) => {
+    acc[log.log_type] = (acc[log.log_type] || 0) + 1;
+    return acc;
+  }, {});
+
+  // Aggregate by site
+  const bySite = logs.reduce((acc, log) => {
+    const name = log.site?.name || 'Unknown';
+    acc[name] = (acc[name] || 0) + 1;
+    return acc;
+  }, {});
+
+  // Aggregate by day
+  const byDay = logs.reduce((acc, log) => {
+    const day = new Date(log.occurred_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+    acc[day] = (acc[day] || 0) + 1;
+    return acc;
+  }, {});
+
+  const topTypes = Object.entries(byType).sort((a, b) => b[1] - a[1]);
+  const topSites = Object.entries(bySite).sort((a, b) => b[1] - a[1]);
+  const maxCount = Math.max(...Object.values(byType), 1);
+
+  const typeColors = {
+    PATROL: 'bg-blue-500',
+    INCIDENT: 'bg-red-500',
+    ALARM: 'bg-amber-500',
+    ACCESS: 'bg-violet-500',
+    VISITOR: 'bg-cyan-500',
+    HANDOVER: 'bg-emerald-500',
+    MAINTENANCE: 'bg-orange-500',
+    VEHICLE: 'bg-slate-500',
+    WELFARE: 'bg-pink-500',
+    KEYHOLDING: 'bg-indigo-500',
+    GENERAL: 'bg-slate-400',
+  };
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="spinner"></div>
+    </div>
+  );
+
   return (
-    <div className="card">
-      <h3 className="text-lg font-semibold mb-4">Reports</h3>
-      <p className="text-slate-600">Reporting and analytics will be implemented in next iteration.</p>
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Reports</h1>
+          <p className="text-slate-500 text-sm">{logs.length} logs in selected period</p>
+        </div>
+        <select
+          value={dateRange}
+          onChange={(e) => setDateRange(e.target.value)}
+          className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+        >
+          <option value="7">Last 7 days</option>
+          <option value="14">Last 14 days</option>
+          <option value="30">Last 30 days</option>
+          <option value="90">Last 90 days</option>
+        </select>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg text-sm">
+          {error}
+        </div>
+      )}
+
+      {/* Summary Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="card text-center">
+          <p className="text-3xl font-bold text-slate-900">{logs.length}</p>
+          <p className="text-xs text-slate-500 mt-1 font-medium uppercase tracking-wide">Total Logs</p>
+        </div>
+        <div className="card text-center">
+          <p className="text-3xl font-bold text-red-600">
+            {logs.filter((l) => l.log_type === 'INCIDENT').length}
+          </p>
+          <p className="text-xs text-slate-500 mt-1 font-medium uppercase tracking-wide">Incidents</p>
+        </div>
+        <div className="card text-center">
+          <p className="text-3xl font-bold text-amber-500">
+            {logs.filter((l) => l.log_type === 'ALARM').length}
+          </p>
+          <p className="text-xs text-slate-500 mt-1 font-medium uppercase tracking-wide">Alarms</p>
+        </div>
+        <div className="card text-center">
+          <p className="text-3xl font-bold text-blue-500">
+            {logs.filter((l) => l.log_type === 'PATROL').length}
+          </p>
+          <p className="text-xs text-slate-500 mt-1 font-medium uppercase tracking-wide">Patrols</p>
+        </div>
+      </div>
+
+      {/* Log Types Bar Chart */}
+      {topTypes.length > 0 && (
+        <div className="card">
+          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Logs by Type</h3>
+          <div className="space-y-3">
+            {topTypes.map(([type, count]) => (
+              <div key={type} className="flex items-center gap-3">
+                <span className="text-xs font-medium text-slate-600 w-24 text-right flex-shrink-0">
+                  {type.charAt(0) + type.slice(1).toLowerCase()}
+                </span>
+                <div className="flex-1 bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${typeColors[type] || 'bg-slate-400'}`}
+                    style={{ width: `${(count / maxCount) * 100}%` }}
+                  />
+                </div>
+                <span className="text-xs font-bold text-slate-700 w-6 text-right">{count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* By Site */}
+      {topSites.length > 0 && (
+        <div className="card">
+          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Logs by Site</h3>
+          <div className="space-y-3">
+            {topSites.map(([siteName, count]) => (
+              <div key={siteName} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 rounded-full bg-cyan-500 flex-shrink-0"></div>
+                  <span className="text-sm text-slate-700 font-medium">{siteName}</span>
+                </div>
+                <span className="text-sm font-bold text-slate-900">{count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {logs.length === 0 && !error && (
+        <div className="card text-center py-12 text-slate-400">
+          <ChartBarIcon className="w-10 h-10 mx-auto mb-3 opacity-40" />
+          <p className="text-sm font-medium">No logs in this period</p>
+          <p className="text-xs mt-1">Try a wider date range</p>
+        </div>
+      )}
     </div>
   );
 }
