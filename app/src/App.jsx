@@ -22,6 +22,30 @@ import {
   ArrowDownTrayIcon
 } from '@heroicons/react/24/outline';
 
+
+// Error boundary to catch runtime errors
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error) { return { error }; }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{padding:'2rem',maxWidth:'600px',margin:'2rem auto',fontFamily:'monospace'}}>
+          <h2 style={{color:'#dc2626',marginBottom:'1rem'}}>App Error</h2>
+          <pre style={{background:'#fef2f2',border:'1px solid #fca5a5',padding:'1rem',borderRadius:'6px',fontSize:'0.8125rem',overflow:'auto',whiteSpace:'pre-wrap'}}>
+            {this.state.error.message}
+            {this.state.error.stack}
+          </pre>
+          <button onClick={() => window.location.reload()} style={{marginTop:'1rem',padding:'0.5rem 1rem',background:'#1a52a8',color:'#fff',border:'none',borderRadius:'4px',cursor:'pointer'}}>
+            Reload
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // Clerk configuration
 const clerkPubKey = 'pk_test_c3BlY2lhbC1ib2JjYXQtNDguY2xlcmsuYWNjb3VudHMuZGV2JA';
 
@@ -35,7 +59,7 @@ function App() {
     <ClerkProvider publishableKey={clerkPubKey}>
       <Router>
         <SignedOut><AuthFlow /></SignedOut>
-        <SignedIn><AuthenticatedApp /></SignedIn>
+        <SignedIn><ErrorBoundary><AuthenticatedApp /></ErrorBoundary></SignedIn>
       </Router>
     </ClerkProvider>
   );
