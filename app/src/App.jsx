@@ -1887,8 +1887,12 @@ function SiteManagement({ user }) {
                       {site.active !== false ? 'Active' : 'Inactive'}
                     </span>
                   </td>
-                  <td style={{textAlign:'right'}}>
+                  <td style={{textAlign:'right',display:'flex',gap:'0.5rem',justifyContent:'flex-end'}}>
                     <button className="btn btn-ghost btn-sm" onClick={() => { setEditSite(site); setShowForm(true); }}>Edit</button>
+                    <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={async () => {
+                      if (!window.confirm(`Delete "${site.name}"? This cannot be undone.`)) return;
+                      try { await api.sites.delete(site.id); load(); } catch(e) { alert(e.message); }
+                    }}>Delete</button>
                   </td>
                 </tr>
               ))}

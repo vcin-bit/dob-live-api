@@ -45,3 +45,15 @@ router.patch('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MA
 });
 
 module.exports = router;
+
+router.delete('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY'), async (req, res, next) => {
+  try {
+    const { error } = await supabase
+      .from('sites')
+      .delete()
+      .eq('id', req.params.id)
+      .eq('company_id', req.user.company_id);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});

@@ -90,6 +90,7 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+    delete: (id) => request(`/api/sites/${id}`, { method: 'DELETE' }),
   },
 
   // Shifts
