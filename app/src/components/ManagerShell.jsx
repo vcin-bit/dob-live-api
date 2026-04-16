@@ -49,23 +49,43 @@ function ManagerSidebar({ user }) {
   const location = useLocation();
   const { signOut } = useAuth();
 
-  const nav = [
-    { to: '/dashboard', icon: HomeIcon, label: 'Dashboard' },
-    { to: '/sites',     icon: BuildingOfficeIcon, label: 'Sites' },
-    { to: '/team',      icon: UsersIcon, label: 'Team' },
-    { to: '/logs',      icon: ClipboardDocumentListIcon, label: 'Log Review' },
-    { to: '/tasks',     icon: ClipboardDocumentListIcon, label: 'Tasks' },
-    { to: '/reports',   icon: ChartBarIcon, label: 'Reports' },
-    { to: '/roster',    icon: ClockIcon,    label: 'Roster' },
-    { to: '/pnl',       icon: ChartBarIcon,              label: 'P&L' },
-    { to: '/docs',      icon: DocumentTextIcon,          label: 'Documents' },
-    { to: '/patrols',   icon: MapPinIcon,                label: 'Patrol Routes' },
-    { to: '/patterns',  icon: ClockIcon,                 label: 'Shift Patterns' },
-    { to: '/rates',     icon: ChartBarIcon,              label: 'Rates' },
-    { to: '/alerts',    icon: BellAlertIcon,             label: 'Alerts' },
-    { to: '/policies',     icon: DocumentTextIcon, label: 'Policies' },
-    { to: '/instructions', icon: DocumentTextIcon, label: 'Site Instructions' },
-    { to: '/messages',     icon: BellAlertIcon,    label: 'Messages' },
+  const navGroups = [
+    {
+      label: null,
+      items: [
+        { to: '/dashboard', icon: HomeIcon,                  label: 'Dashboard' },
+        { to: '/alerts',    icon: BellAlertIcon,             label: 'Alerts' },
+        { to: '/messages',  icon: BellAlertIcon,             label: 'Messages' },
+      ]
+    },
+    {
+      label: 'Operations',
+      items: [
+        { to: '/logs',      icon: ClipboardDocumentListIcon, label: 'Log Review' },
+        { to: '/tasks',     icon: ClipboardDocumentListIcon, label: 'Tasks' },
+        { to: '/sites',     icon: BuildingOfficeIcon,        label: 'Sites' },
+        { to: '/team',      icon: UsersIcon,                 label: 'Team' },
+      ]
+    },
+    {
+      label: 'Scheduling',
+      items: [
+        { to: '/roster',    icon: ClockIcon,                 label: 'Roster' },
+        { to: '/patterns',  icon: ClockIcon,                 label: 'Shift Patterns' },
+        { to: '/pnl',       icon: ChartBarIcon,              label: 'P&L' },
+        { to: '/rates',     icon: ChartBarIcon,              label: 'Rates' },
+        { to: '/reports',   icon: ChartBarIcon,              label: 'Reports' },
+      ]
+    },
+    {
+      label: 'Site Config',
+      items: [
+        { to: '/docs',         icon: DocumentTextIcon, label: 'Documents' },
+        { to: '/patrols',      icon: MapPinIcon,       label: 'Patrol Routes' },
+        { to: '/instructions', icon: DocumentTextIcon, label: 'Instructions' },
+        { to: '/policies',     icon: DocumentTextIcon, label: 'Policies' },
+      ]
+    },
   ];
 
   return (
@@ -75,15 +95,24 @@ function ManagerSidebar({ user }) {
         <div className="sub">Operations</div>
       </div>
       <nav className="sidebar-nav">
-        {nav.map(({ to, icon: Icon, label }) => (
-          <Link
-            key={to}
-            to={to}
-            className={`sidebar-nav-item${location.pathname === to || location.pathname.startsWith(to + '/') ? ' active' : ''}`}
-          >
-            <Icon style={{width:'1rem',height:'1rem'}} />
-            {label}
-          </Link>
+        {navGroups.map((group, gi) => (
+          <div key={gi}>
+            {group.label && (
+              <div style={{padding:'0.625rem 1rem 0.25rem',fontSize:'0.625rem',fontWeight:600,color:'rgba(255,255,255,0.25)',textTransform:'uppercase',letterSpacing:'0.1em'}}>
+                {group.label}
+              </div>
+            )}
+            {group.items.map(({ to, icon: Icon, label }) => (
+              <Link
+                key={to}
+                to={to}
+                className={`sidebar-nav-item${location.pathname === to || location.pathname.startsWith(to + '/') ? ' active' : ''}`}
+              >
+                <Icon style={{width:'1rem',height:'1rem'}} />
+                {label}
+              </Link>
+            ))}
+          </div>
         ))}
       </nav>
       <div className="sidebar-footer">

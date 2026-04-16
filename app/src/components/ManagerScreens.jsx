@@ -398,53 +398,35 @@ function LogReview({ user }) {
 
 function ManagerLogCard({ log }) {
   const [expanded, setExpanded] = useState(false);
-  const config = LOG_TYPE_CONFIG[log.log_type] || LOG_TYPE_CONFIG.OTHER;
-  
+  const typeMap = {
+    PATROL:'PAT',INCIDENT:'INC',ALARM:'ALM',ACCESS:'ACC',VISITOR:'VIS',
+    HANDOVER:'HND',MAINTENANCE:'MNT',VEHICLE:'VEH',KEYHOLDING:'KEY',GENERAL:'GEN',
+  };
+  const code = typeMap[log.log_type] || (log.log_type?.slice(0,3) || 'LOG');
+  const typeColors = { INCIDENT:'badge-danger', ALARM:'badge-warning', PATROL:'badge-blue', GENERAL:'badge-neutral' };
+
   return (
-    <div className="border border-slate-200 rounded-lg p-4 hover: transition-shadow">
-      <div className="flex items-start gap-4">
-        <div style={{width:'2.5rem',height:'2.5rem',background:'var(--navy)',color:'#fff',borderRadius:'6px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.625rem',fontWeight:700,letterSpacing:'0.05em',flexShrink:0}}>{config.icon}</div>
-        
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <h4 className="font-semibold text-slate-900">{log.title}</h4>
-            <span className={`status-badge status-${config.color}`}>
-              {config.label}
-            </span>
-            <span className="text-xs text-slate-500">
-              {formatDateTime(log.occurred_at)}
-            </span>
+    <div style={{padding:'0.75rem',border:'1px solid var(--border)',borderRadius:'var(--radius)',marginBottom:'0.5rem'}}>
+      <div style={{display:'flex',alignItems:'flex-start',gap:'0.75rem'}}>
+        <div style={{width:'2.25rem',height:'2.25rem',background:'var(--navy)',color:'#fff',borderRadius:'5px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.5625rem',fontWeight:700,letterSpacing:'0.03em',flexShrink:0}}>{code}</div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{display:'flex',alignItems:'center',gap:'0.5rem',flexWrap:'wrap',marginBottom:'0.25rem'}}>
+            <span style={{fontWeight:600,fontSize:'0.875rem'}}>{log.title || 'Log Entry'}</span>
+            <span className={`badge ${typeColors[log.log_type]||'badge-neutral'}`}>{log.log_type}</span>
+            <span style={{fontSize:'0.75rem',color:'var(--text-2)'}}>{log.occurred_at ? new Date(log.occurred_at).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : ''}</span>
           </div>
-          
-          <div className="flex items-center gap-4 text-sm text-slate-600 mb-3">
-            {log.site && (
-              <span className="flex items-center gap-1">
-                <BuildingOfficeIcon className="w-4 h-4" />
-                {log.site.name}
-              </span>
-            )}
-            {log.officer && (
-              <span className="flex items-center gap-1">
-                <UsersIcon className="w-4 h-4" />
-                {log.officer.first_name} {log.officer.last_name}
-              </span>
-            )}
+          <div style={{display:'flex',gap:'1rem',fontSize:'0.8125rem',color:'var(--text-2)',marginBottom:log.description?'0.375rem':0}}>
+            {log.site && <span>{log.site.name}</span>}
+            {log.officer && <span>{log.officer.first_name} {log.officer.last_name}</span>}
           </div>
-          
-          <p className="text-slate-700 leading-relaxed">
-            {expanded ? log.description : (
-              log.description?.length > 200 
-                ? `${log.description.substring(0, 200)}...`
-                : log.description
-            )}
-          </p>
-          
+          {log.description && (
+            <p style={{fontSize:'0.875rem',color:'var(--text-2)',lineHeight:1.5}}>
+              {expanded ? log.description : (log.description.length > 200 ? log.description.substring(0,200)+'...' : log.description)}
+            </p>
+          )}
           {log.description?.length > 200 && (
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="text-sm text-[#1a52a8] hover:text-[#1a52a8] font-medium mt-2"
-            >
-              {expanded ? 'Show Less' : 'Show More'}
+            <button onClick={() => setExpanded(!expanded)} style={{fontSize:'0.8125rem',color:'var(--blue)',background:'none',border:'none',cursor:'pointer',padding:'0.25rem 0',fontWeight:500}}>
+              {expanded ? 'Show less' : 'Show more'}
             </button>
           )}
         </div>
@@ -659,121 +641,68 @@ function SiteDetail({ user }) {
   }, [id]);
 
   if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="spinner"></div>
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'16rem'}}>
+      <div className="spinner" />
     </div>
   );
 
   if (error || !site) return (
-    <div className="p-6">
-      <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg text-sm mb-4">
-        {error || 'Site not found'}
-      </div>
-      <button onClick={() => navigate('/sites')} className="btn btn-secondary">
-        ← Back to Sites
-      </button>
+    <div className="page-content">
+      <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error || 'Site not found'}</div>
+      <button onClick={() => navigate('/sites')} className="btn btn-secondary">← Back to Sites</button>
     </div>
   );
 
-  const statusColors = {
-    ACTIVE: 'bg-emerald-100 text-emerald-800',
-    INACTIVE: 'bg-slate-100 text-slate-600',
-    SUSPENDED: 'bg-red-100 text-red-800',
-  };
-
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-2">
-        <button onClick={() => navigate('/sites')} className="text-slate-500 hover:text-slate-900 transition-colors">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">{site.name}</h1>
-          {site.client && (
-            <p className="text-slate-500 text-sm">{site.client.client_company_name}</p>
-          )}
+    <div>
+      <div className="topbar">
+        <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
+          <button onClick={() => navigate('/sites')} style={{background:'none',border:'none',color:'var(--text-2)',cursor:'pointer',padding:0,fontSize:'1.125rem'}}>←</button>
+          <div>
+            <div className="topbar-title">{site.name}</div>
+            {site.client && <div className="topbar-sub">{site.client.client_company_name}</div>}
+          </div>
         </div>
-        <span className={`ml-auto text-xs font-semibold px-3 py-1 rounded-full ${statusColors[site.status] || statusColors.INACTIVE}`}>
-          {site.status || 'ACTIVE'}
+        <span className={`badge ${site.active !== false ? 'badge-success' : 'badge-neutral'}`}>
+          {site.active !== false ? 'Active' : 'Inactive'}
         </span>
       </div>
+      <div className="page-content">
+        <div className="card" style={{marginBottom:'1.25rem'}}>
+          <div className="section-title" style={{marginBottom:'0.875rem'}}>Site Information</div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.875rem'}}>
+            {site.address && (
+              <div>
+                <div style={{fontSize:'0.75rem',color:'var(--text-2)',fontWeight:500,marginBottom:'0.25rem'}}>Address</div>
+                <div style={{fontSize:'0.875rem'}}>{site.address}</div>
+              </div>
+            )}
+            {site.geofence_lat && (
+              <div>
+                <div style={{fontSize:'0.75rem',color:'var(--text-2)',fontWeight:500,marginBottom:'0.25rem'}}>Geofence</div>
+                <div style={{fontSize:'0.8125rem',fontFamily:'monospace'}}>{site.geofence_lat?.toFixed(4)}, {site.geofence_lng?.toFixed(4)}</div>
+              </div>
+            )}
+            {site.client_portal_enabled && (
+              <div>
+                <div style={{fontSize:'0.75rem',color:'var(--text-2)',fontWeight:500,marginBottom:'0.25rem'}}>Client Portal</div>
+                <span className="badge badge-success">Enabled</span>
+              </div>
+            )}
+          </div>
+        </div>
 
-      {/* Site Details Card */}
-      <div className="card">
-        <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Site Information</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {site.address && (
-            <div>
-              <p className="text-xs text-slate-500 font-medium mb-1">Address</p>
-              <p className="text-slate-900 text-sm">{site.address}</p>
-            </div>
-          )}
-          {site.postcode && (
-            <div>
-              <p className="text-xs text-slate-500 font-medium mb-1">Postcode</p>
-              <p className="text-slate-900 text-sm font-mono">{site.postcode}</p>
-            </div>
-          )}
-          {site.what3words && (
-            <div>
-              <p className="text-xs text-slate-500 font-medium mb-1">what3words</p>
-              <p className="text-slate-900 text-sm font-mono">///
-{site.what3words}</p>
-            </div>
-          )}
-          {site.contact_name && (
-            <div>
-              <p className="text-xs text-slate-500 font-medium mb-1">Site Contact</p>
-              <p className="text-slate-900 text-sm">{site.contact_name}</p>
-              {site.contact_phone && (
-                <a href={`tel:${site.contact_phone}`} className="text-[#1a52a8] text-sm hover:underline">
-                  {site.contact_phone}
-                </a>
-              )}
-            </div>
-          )}
-          {site.contract_start && (
-            <div>
-              <p className="text-xs text-slate-500 font-medium mb-1">Contract Start</p>
-              <p className="text-slate-900 text-sm">{new Date(site.contract_start).toLocaleDateString('en-GB')}</p>
-            </div>
-          )}
-          {site.contract_end && (
-            <div>
-              <p className="text-xs text-slate-500 font-medium mb-1">Contract End</p>
-              <p className="text-slate-900 text-sm">{new Date(site.contract_end).toLocaleDateString('en-GB')}</p>
-            </div>
+        <div className="card">
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.875rem'}}>
+            <div className="section-title">Recent Logs</div>
+            <span style={{fontSize:'0.75rem',color:'var(--text-3)'}}>Last 10</span>
+          </div>
+          {recentLogs.length === 0 ? (
+            <div className="empty-state"><p>No logs recorded for this site</p></div>
+          ) : (
+            recentLogs.map(log => <ManagerLogCard key={log.id} log={log} />)
           )}
         </div>
-        {site.notes && (
-          <div className="mt-4 pt-4 border-t border-slate-100">
-            <p className="text-xs text-slate-500 font-medium mb-1">Notes</p>
-            <p className="text-slate-700 text-sm whitespace-pre-line">{site.notes}</p>
-          </div>
-        )}
-      </div>
-
-      {/* Recent Logs */}
-      <div className="card">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Recent Logs</h3>
-          <span className="text-xs text-slate-400">Last 10</span>
-        </div>
-        {recentLogs.length === 0 ? (
-          <div className="text-center py-8 text-slate-400">
-            <DocumentTextIcon className="w-8 h-8 mx-auto mb-2 opacity-40" />
-            <p className="text-sm">No logs recorded for this site</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {recentLogs.map((log) => (
-              <ManagerLogCard key={log.id} log={log} />
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );
