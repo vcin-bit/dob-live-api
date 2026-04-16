@@ -1,4 +1,4 @@
-const { requireAuth } = require('@clerk/express');
+const { requireAuth, clerkClient } = require('@clerk/express');
 const supabase = require('../lib/supabase');
 
 // Require a valid Clerk session
@@ -17,25 +17,31 @@ async function resolveUser(req, res, next) {
       .eq('clerk_id', clerkId)
       .single();
 
-    // Fallback: match by email for users migrated from MongoDB who have not yet
-    // signed in via Clerk. On first match we stamp the clerk_id so future logins hit the fast path.
+    // Fallback: fetch email from Clerk API and match against migrated users
     if (!user) {
-      const clerkEmail = req.auth?.sessionClaims?.email;
-      if (clerkEmail) {
-        const { data: emailUser } = await supabase
-          .from('users')
-          .select('id, clerk_id, company_id, role, first_name, last_name, email, active')
-          .eq('email', clerkEmail)
-          .is('clerk_id', null)
-          .single();
+      try {
+        const clerkUser = await clerkClient.users.getUser(clerkId);
+        const clerkEmail = clerkUser?.emailAddresses?.[0]?.emailAddress;
 
-        if (emailUser) {
-          await supabase
+        if (clerkEmail) {
+          const { data: emailUser } = await supabase
             .from('users')
-            .update({ clerk_id: clerkId })
-            .eq('id', emailUser.id);
-          user = { ...emailUser, clerk_id: clerkId };
+            .select('id, clerk_id, company_id, role, first_name, last_name, email, active')
+            .eq('email', clerkEmail.toLowerCase())
+            .is('clerk_id', null)
+            .single();
+
+          if (emailUser) {
+            // Auto-link: stamp the clerk_id so future logins hit the fast path
+            await supabase
+              .from('users')
+              .update({ clerk_id: clerkId })
+              .eq('id', emailUser.id);
+            user = { ...emailUser, clerk_id: clerkId };
+          }
         }
+      } catch (clerkErr) {
+        console.error('Clerk user fetch failed:', clerkErr.message);
       }
     }
 
