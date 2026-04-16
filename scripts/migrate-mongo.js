@@ -129,7 +129,7 @@ async function migrate() {
         const payload = {
           company_id: companyId,
           client_company_name: c.name || c.companyName || c.client_company_name || 'Unknown Client',
-          contact_name: c.contactName || c.contact_name || null,
+          contact_name: c.contactName || c.contact_name || '',
           contact_email: c.email || c.contactEmail || null,
           contact_phone: c.phone || c.contactPhone || null,
           active: c.active !== false,
@@ -198,8 +198,6 @@ async function migrate() {
           address: s.address || null,
           postcode: s.postcode || s.post_code || null,
           what3words: s.what3words || s.w3w || null,
-          contact_name: s.contactName || s.contact_name || null,
-          contact_phone: s.contactPhone || s.contact_phone || null,
           notes: s.notes || null,
           active: s.active !== false,
           status: s.status?.toUpperCase() || 'ACTIVE',
@@ -265,11 +263,9 @@ async function migrate() {
           company_id:  companyId,
           site_id:     siteId,
           assigned_to: assignedTo,
-          created_by:  createdBy,
+          assigned_by: createdBy,
           title:       t.title || t.name || 'Untitled Task',
           description: t.description || t.notes || null,
-          priority:    (t.priority || 'MEDIUM').toUpperCase(),
-          status,
           due_date:    t.dueDate || t.due_date || null,
         };
 
