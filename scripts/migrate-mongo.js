@@ -198,7 +198,6 @@ async function migrate() {
           address: s.address || null,
           postcode: s.postcode || s.post_code || null,
           what3words: s.what3words || s.w3w || null,
-          notes: s.notes || null,
           active: s.active !== false,
           status: s.status?.toUpperCase() || 'ACTIVE',
         };
@@ -270,7 +269,7 @@ async function migrate() {
         };
 
         const { error } = await supabase.from('tasks').insert(payload);
-        if (error) { fail++; } else { ok++; }
+        if (error) { console.error('  ⚠️  Task failed:', error.message, '|', payload.title); fail++; } else { ok++; }
       }
       console.log(`  ✓ ${ok} inserted, ${fail} failed`);
     }
