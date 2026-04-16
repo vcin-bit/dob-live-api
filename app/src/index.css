@@ -1,6 +1,10 @@
 /* DOB Live — Security Officer App Design System */
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
   /* Core Colors — Security/Professional Theme */
   --primary: #0F172A;     /* Slate 900 - Command center dark */
