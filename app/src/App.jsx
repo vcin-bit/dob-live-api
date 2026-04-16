@@ -54,102 +54,141 @@ function AuthFlow() {
   const [mode, setMode] = useState('signin');
   
   return (
-    <div className="w-full max-w-sm mx-auto">
-      {/* Simple, clean header */}
-      <div className="text-center mb-8">
-        <div className="w-12 h-12 bg-slate-900 rounded-lg flex items-center justify-center mx-auto mb-4">
-          <span className="text-cyan-400 font-bold text-xl">D</span>
+    <div className="w-full max-w-md mx-auto">
+      {/* Professional header with security theme */}
+      <div className="text-center mb-10">
+        <div className="w-16 h-16 bg-slate-900 rounded-xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+          <div className="w-8 h-8 bg-cyan-500 rounded-lg flex items-center justify-center">
+            <div className="w-4 h-4 bg-slate-900 rounded-sm"></div>
+          </div>
         </div>
-        <h1 className="text-2xl font-bold text-slate-900 mb-1">DOB Live</h1>
-        <p className="text-slate-500 text-sm">Security Management</p>
+        <h1 className="text-3xl font-bold text-slate-900 mb-2">DOB Live</h1>
+        <p className="text-slate-600">Security Management Platform</p>
       </div>
       
-      {/* Clean, minimal auth forms */}
-      {mode === 'signin' ? (
-        <div className="space-y-6">
-          <SignIn 
-            appearance={{
-              elements: {
-                // Hide everything except the form itself
-                card: 'shadow-none border-0 bg-transparent p-0',
-                header: 'hidden',
-                headerTitle: 'hidden',
-                headerSubtitle: 'hidden',
-                socialButtons: 'hidden',
-                socialButtonsBlockButton: 'hidden',
-                divider: 'hidden',
-                footer: 'hidden',
-                footerAction: 'hidden',
-                
-                // Style just the form elements
-                formFieldLabel: 'block text-sm font-medium text-slate-700 mb-1.5',
-                formFieldInput: 'w-full px-3 py-2.5 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent',
-                formButtonPrimary: 'w-full bg-slate-900 text-white py-2.5 px-4 rounded-md font-medium hover:bg-slate-800 transition-colors',
-                formFieldRow: 'mb-4',
-                
-                // Clean up other elements
-                formHeaderTitle: 'text-lg font-semibold text-slate-900 mb-4 text-center',
-                identityPreview: 'hidden',
-                alternativeMethods: 'hidden'
-              }
-            }}
-          />
-          
-          <div className="text-center pt-4 border-t border-slate-200">
-            <p className="text-sm text-slate-600">
+      {/* Professional auth card */}
+      <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
+        {mode === 'signin' ? (
+          <div className="space-y-6">
+            <div className="text-center mb-6">
+              <h2 className="text-xl font-semibold text-slate-900 mb-2">Welcome back</h2>
+              <p className="text-slate-600 text-sm">Sign in to your security dashboard</p>
+            </div>
+            
+            <SignIn 
+              appearance={{
+                elements: {
+                  // Hide all Clerk branding and chrome
+                  card: 'shadow-none border-0 bg-transparent p-0 w-full',
+                  headerTitle: 'hidden',
+                  headerSubtitle: 'hidden', 
+                  socialButtons: 'hidden',
+                  socialButtonsBlockButton: 'hidden',
+                  divider: 'hidden',
+                  footer: 'hidden',
+                  footerAction: 'hidden',
+                  footerActionText: 'hidden',
+                  footerActionLink: 'hidden',
+                  identityPreview: 'hidden',
+                  alternativeMethods: 'hidden',
+                  
+                  // Style the form elements professionally
+                  formFieldLabel: 'block text-sm font-semibold text-slate-700 mb-2',
+                  formFieldInput: 'w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 focus:bg-white transition-all duration-200 text-slate-900 placeholder-slate-500',
+                  formButtonPrimary: 'w-full bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-3.5 px-6 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02]',
+                  formFieldRow: 'mb-5',
+                  formFieldAction: 'text-right mt-2',
+                  formFieldInputShowPasswordButton: 'text-slate-500 hover:text-slate-700 transition-colors',
+                  
+                  // Error states
+                  formFieldErrorText: 'text-red-600 text-sm mt-1 font-medium',
+                  globalError: 'bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg text-sm mb-4',
+                  
+                  // OTP fields for 2FA
+                  otpCodeFieldInput: 'w-12 h-12 text-center border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 font-mono text-lg font-semibold',
+                }
+              }}
+            />
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <div className="text-center mb-6">
+              <h2 className="text-xl font-semibold text-slate-900 mb-2">Create account</h2>
+              <p className="text-slate-600 text-sm">Join the DOB Live security platform</p>
+            </div>
+            
+            <SignUp 
+              appearance={{
+                elements: {
+                  // Hide all Clerk branding and chrome  
+                  card: 'shadow-none border-0 bg-transparent p-0 w-full',
+                  headerTitle: 'hidden',
+                  headerSubtitle: 'hidden',
+                  socialButtons: 'hidden', 
+                  socialButtonsBlockButton: 'hidden',
+                  divider: 'hidden',
+                  footer: 'hidden',
+                  footerAction: 'hidden',
+                  footerActionText: 'hidden',
+                  footerActionLink: 'hidden',
+                  identityPreview: 'hidden',
+                  alternativeMethods: 'hidden',
+                  
+                  // Style the form elements professionally
+                  formFieldLabel: 'block text-sm font-semibold text-slate-700 mb-2',
+                  formFieldInput: 'w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 focus:bg-white transition-all duration-200 text-slate-900 placeholder-slate-500',
+                  formButtonPrimary: 'w-full bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-3.5 px-6 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02]',
+                  formFieldRow: 'mb-5',
+                  formFieldAction: 'text-right mt-2',
+                  formFieldInputShowPasswordButton: 'text-slate-500 hover:text-slate-700 transition-colors',
+                  
+                  // Error states
+                  formFieldErrorText: 'text-red-600 text-sm mt-1 font-medium',
+                  globalError: 'bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg text-sm mb-4',
+                  
+                  // OTP fields for 2FA
+                  otpCodeFieldInput: 'w-12 h-12 text-center border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 font-mono text-lg font-semibold',
+                }
+              }}
+            />
+          </div>
+        )}
+        
+        {/* Professional form switching */}
+        <div className="mt-8 pt-6 border-t border-slate-200 text-center">
+          {mode === 'signin' ? (
+            <p className="text-slate-600">
               Don't have an account?{' '}
               <button
                 onClick={() => setMode('signup')}
-                className="text-slate-900 font-medium hover:underline"
+                className="text-cyan-600 hover:text-cyan-700 font-semibold hover:underline transition-all duration-200"
               >
-                Sign up
+                Create account
               </button>
             </p>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          <SignUp 
-            appearance={{
-              elements: {
-                // Hide everything except the form itself
-                card: 'shadow-none border-0 bg-transparent p-0',
-                header: 'hidden',
-                headerTitle: 'hidden',
-                headerSubtitle: 'hidden',
-                socialButtons: 'hidden',
-                socialButtonsBlockButton: 'hidden',
-                divider: 'hidden',
-                footer: 'hidden',
-                footerAction: 'hidden',
-                
-                // Style just the form elements
-                formFieldLabel: 'block text-sm font-medium text-slate-700 mb-1.5',
-                formFieldInput: 'w-full px-3 py-2.5 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent',
-                formButtonPrimary: 'w-full bg-slate-900 text-white py-2.5 px-4 rounded-md font-medium hover:bg-slate-800 transition-colors',
-                formFieldRow: 'mb-4',
-                
-                // Clean up other elements
-                formHeaderTitle: 'text-lg font-semibold text-slate-900 mb-4 text-center',
-                identityPreview: 'hidden',
-                alternativeMethods: 'hidden'
-              }
-            }}
-          />
-          
-          <div className="text-center pt-4 border-t border-slate-200">
-            <p className="text-sm text-slate-600">
+          ) : (
+            <p className="text-slate-600">
               Already have an account?{' '}
               <button
                 onClick={() => setMode('signin')}
-                className="text-slate-900 font-medium hover:underline"
+                className="text-cyan-600 hover:text-cyan-700 font-semibold hover:underline transition-all duration-200"
               >
                 Sign in
               </button>
             </p>
-          </div>
+          )}
         </div>
-      )}
+      </div>
+      
+      {/* Security badge */}
+      <div className="text-center mt-6">
+        <p className="text-xs text-slate-500 flex items-center justify-center gap-1">
+          <span className="w-3 h-3 bg-green-400 rounded-full flex items-center justify-center">
+            <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
+          </span>
+          Secure authentication powered by Clerk
+        </p>
+      </div>
     </div>
   );
 }

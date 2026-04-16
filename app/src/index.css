@@ -526,69 +526,213 @@ body {
   height: 24px;
 }
 
-/* Clean, minimal Clerk styling */
+/* Professional Clerk Authentication Styling */
 .cl-card {
   box-shadow: none !important;
   border: none !important;
   background: transparent !important;
   padding: 0 !important;
+  width: 100% !important;
 }
 
+/* Hide all Clerk branding and unnecessary elements */
 .cl-headerTitle,
 .cl-headerSubtitle,
 .cl-socialButtons,
+.cl-socialButtonsBlockButton,
 .cl-divider,
 .cl-footer,
-.cl-footerAction {
+.cl-footerAction,
+.cl-footerActionText,
+.cl-footerActionLink,
+.cl-identityPreview,
+.cl-alternativeMethods {
   display: none !important;
 }
 
+/* Professional form field styling */
 .cl-formFieldLabel {
   display: block !important;
   font-size: 0.875rem !important;
-  font-weight: 500 !important;
-  color: #374151 !important;
-  margin-bottom: 0.375rem !important;
-  font-family: system-ui, -apple-system, sans-serif !important;
+  font-weight: 600 !important;
+  color: var(--text) !important;
+  margin-bottom: 0.5rem !important;
+  font-family: var(--font-sans) !important;
+  letter-spacing: -0.025em !important;
 }
 
 .cl-formFieldInput {
   width: 100% !important;
-  padding: 0.625rem 0.75rem !important;
-  border: 1px solid #D1D5DB !important;
-  border-radius: 0.375rem !important;
+  padding: 0.75rem 1rem !important;
+  background-color: var(--surface-elevated) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-lg) !important;
   font-size: 0.875rem !important;
-  background: white !important;
-  color: #111827 !important;
-  font-family: system-ui, -apple-system, sans-serif !important;
+  color: var(--text) !important;
+  font-family: var(--font-sans) !important;
+  transition: all 0.2s ease !important;
+  outline: none !important;
+}
+
+.cl-formFieldInput::placeholder {
+  color: var(--text-muted) !important;
 }
 
 .cl-formFieldInput:focus {
-  outline: none !important;
-  border-color: #06B6D4 !important;
-  box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.2) !important;
+  background-color: var(--surface) !important;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px rgb(6 182 212 / 0.2) !important;
+  transform: translateY(-1px) !important;
 }
 
+.cl-formFieldInput:hover:not(:focus) {
+  border-color: var(--border-strong) !important;
+}
+
+/* Professional primary button */
 .cl-formButtonPrimary {
   width: 100% !important;
-  background: #1F2937 !important;
+  background: var(--accent) !important;
   color: white !important;
-  padding: 0.625rem 1rem !important;
+  font-weight: 600 !important;
+  padding: 0.875rem 1.5rem !important;
   border: none !important;
-  border-radius: 0.375rem !important;
-  font-weight: 500 !important;
+  border-radius: var(--radius-lg) !important;
   font-size: 0.875rem !important;
+  font-family: var(--font-sans) !important;
   cursor: pointer !important;
-  transition: background-color 0.2s !important;
-  font-family: system-ui, -apple-system, sans-serif !important;
+  transition: all 0.2s ease !important;
+  box-shadow: var(--shadow-lg) !important;
+  letter-spacing: -0.025em !important;
 }
 
 .cl-formButtonPrimary:hover {
-  background: #374151 !important;
+  background: var(--accent-hover) !important;
+  box-shadow: var(--shadow-lg), 0 8px 25px -8px rgb(6 182 212 / 0.4) !important;
+  transform: scale(1.02) !important;
 }
 
+.cl-formButtonPrimary:active {
+  transform: scale(1) !important;
+}
+
+.cl-formButtonPrimary:disabled {
+  opacity: 0.5 !important;
+  transform: none !important;
+  cursor: not-allowed !important;
+}
+
+/* Form structure */
 .cl-formFieldRow {
+  margin-bottom: 1.25rem !important;
+}
+
+.cl-formFieldAction {
+  text-align: right !important;
+  margin-top: 0.5rem !important;
+}
+
+/* Password visibility button */
+.cl-formFieldInputShowPasswordButton {
+  color: var(--text-muted) !important;
+  transition: var(--transition) !important;
+  font-size: 0.875rem !important;
+}
+
+.cl-formFieldInputShowPasswordButton:hover {
+  color: var(--text-secondary) !important;
+}
+
+/* Error styling */
+.cl-formFieldErrorText {
+  color: var(--danger) !important;
+  font-size: 0.875rem !important;
+  margin-top: 0.25rem !important;
+  font-weight: 500 !important;
+  font-family: var(--font-sans) !important;
+}
+
+.cl-globalError {
+  background: rgb(239 68 68 / 0.1) !important;
+  border: 1px solid rgb(239 68 68 / 0.2) !important;
+  color: var(--danger) !important;
+  padding: 1rem !important;
+  border-radius: var(--radius-lg) !important;
+  font-size: 0.875rem !important;
   margin-bottom: 1rem !important;
+  font-family: var(--font-sans) !important;
+}
+
+/* OTP Code inputs for 2FA */
+.cl-otpCodeFieldInput {
+  width: 3rem !important;
+  height: 3rem !important;
+  text-align: center !important;
+  border: 1px solid var(--border-strong) !important;
+  border-radius: var(--radius-lg) !important;
+  font-family: var(--font-mono) !important;
+  font-size: 1.125rem !important;
+  font-weight: 600 !important;
+  color: var(--text) !important;
+  background: var(--surface) !important;
+  transition: all 0.2s ease !important;
+}
+
+.cl-otpCodeFieldInput:focus {
+  outline: none !important;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px rgb(6 182 212 / 0.2) !important;
+  transform: scale(1.05) !important;
+}
+
+/* Loading states */
+.cl-loading {
+  display: inline-block !important;
+  width: 1rem !important;
+  height: 1rem !important;
+  border: 2px solid transparent !important;
+  border-top: 2px solid currentColor !important;
+  border-radius: 50% !important;
+  animation: spin 1s linear infinite !important;
+}
+
+/* Professional enhancements */
+.cl-formFieldInput[type="email"],
+.cl-formFieldInput[type="password"] {
+  background-image: none !important;
+  background-repeat: no-repeat !important;
+  background-position: right 0.75rem center !important;
+  background-size: 1rem !important;
+}
+
+.cl-formFieldInput[type="email"] {
+  padding-right: 2.5rem !important;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3e%3cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207'/%3e%3c/svg%3e") !important;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.cl-card,
+.cl-formFieldRow {
+  animation: fadeInUp 0.3s ease-out !important;
+}
+
+.cl-formFieldRow:nth-child(2) {
+  animation-delay: 0.1s !important;
+}
+
+.cl-formFieldRow:nth-child(3) {
+  animation-delay: 0.2s !important;
 }
 @media (max-width: 768px) {
   .container {
