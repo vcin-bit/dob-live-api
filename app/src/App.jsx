@@ -727,9 +727,9 @@ function OfficerApp({ user }) {
 function OfficerHeader({ user, selectedSite, activeShift }) {
   return (
     <div className="officer-header">
-      <div className="logo"><span className="dob">DOB</span><span className="live"> Live</span></div>
-      <div style={{textAlign:'right'}}>
-        {selectedSite && <div style={{fontSize:'0.8125rem',fontWeight:500}}>{selectedSite.name}</div>}
+      <div className="logo" style={{flexShrink:0}}><span className="dob">DOB</span><span className="live"> Live</span></div>
+      <div style={{textAlign:'right',minWidth:0,overflow:'hidden'}}>
+        {selectedSite && <div style={{fontSize:'0.8125rem',fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:'180px'}}>{selectedSite.name}</div>}
         <div style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.5)'}}>{user.first_name} {user.last_name}</div>
       </div>
     </div>
@@ -746,40 +746,36 @@ function SitePickerScreen({ sites, onSiteSelect, user }) {
   };
   
   return (
-    <div className="container py-8">
-      <div className="max-w-2xl mx-auto">
-        <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">Select Your Site</h2>
-          <p className="text-slate-600">Choose which site you're working at today</p>
-        </div>
-        
-        <div className="grid gap-4">
-          {sites.length === 0 ? (
-            <div className="text-center py-12">
-              <MapPinIcon className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-              <p className="text-slate-600">No sites available. Contact your manager.</p>
-            </div>
-          ) : (
-            sites.map((site) => (
-              <button
-                key={site.id}
-                onClick={() => handleSiteSelect(site)}
-                className="card text-left hover: transition-all p-6 border-2 border-transparent hover:border-cyan-200"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold text-slate-900 mb-1">{site.name}</h3>
-                    <p className="text-slate-600 mb-2">{site.address}</p>
-                    {site.description && (
-                      <p className="text-sm text-slate-500">{site.description}</p>
-                    )}
-                  </div>
-                  <ArrowRightOnRectangleIcon className="w-6 h-6 text-slate-400" />
+    <div style={{padding:'1.25rem',paddingBottom:'5rem'}}>
+      <div style={{marginBottom:'1.5rem'}}>
+        <h2 style={{fontSize:'1.125rem',fontWeight:700,color:'#fff',marginBottom:'0.25rem'}}>Select Your Site</h2>
+        <p style={{fontSize:'0.8125rem',color:'rgba(255,255,255,0.4)'}}>Choose which site you are working at today</p>
+      </div>
+      <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
+        {sites.length === 0 ? (
+          <div style={{textAlign:'center',padding:'3rem 1rem',color:'rgba(255,255,255,0.3)'}}>
+            <MapPinIcon style={{width:'2.5rem',height:'2.5rem',margin:'0 auto 0.75rem'}} />
+            <p style={{fontSize:'0.875rem'}}>No sites assigned. Contact your manager.</p>
+          </div>
+        ) : (
+          sites.map((site) => (
+            <button
+              key={site.id}
+              onClick={() => handleSiteSelect(site)}
+              style={{background:'#1a2235',border:'1.5px solid rgba(255,255,255,0.08)',borderRadius:'10px',padding:'1rem',textAlign:'left',cursor:'pointer',width:'100%',transition:'border-color 0.15s'}}
+              onMouseEnter={e=>e.currentTarget.style.borderColor='var(--blue)'}
+              onMouseLeave={e=>e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'}
+            >
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'0.75rem'}}>
+                <div style={{minWidth:0}}>
+                  <div style={{fontSize:'1rem',fontWeight:600,color:'#fff',marginBottom:'0.25rem'}}>{site.name}</div>
+                  {site.address && <div style={{fontSize:'0.8125rem',color:'rgba(255,255,255,0.4)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{site.address}</div>}
                 </div>
-              </button>
-            ))
-          )}
-        </div>
+                <ArrowRightOnRectangleIcon style={{width:'1.25rem',height:'1.25rem',color:'rgba(255,255,255,0.3)',flexShrink:0}} />
+              </div>
+            </button>
+          ))
+        )}
       </div>
     </div>
   );
@@ -3687,7 +3683,7 @@ function DocumentsScreen({ user }) {
         ) : loading ? (
           <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>
         ) : (
-          <div style={{display:'grid',gridTemplateColumns:'220px 1fr',gap:'1.25rem'}}>
+          <div style={{display:'grid',gridTemplateColumns:'clamp(150px, 25vw, 220px) 1fr',gap:'1rem'}}>
             {/* Folder sidebar */}
             <div>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.5rem'}}>

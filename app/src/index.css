@@ -31,13 +31,14 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
-html { font-size: 16px; line-height: 1.5; }
+html { font-size: 16px; line-height: 1.5; overflow-x: hidden; }
 
 body {
   font-family: var(--font);
   background: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
 /* ── Layout ── */
@@ -364,14 +365,17 @@ body {
 /* Log type grid */
 .log-type-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.625rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+@media (max-width: 360px) {
+  .log-type-grid { grid-template-columns: repeat(2, 1fr); }
 }
 .log-type-btn {
   background: #1a2235;
   border: 1.5px solid transparent;
   border-radius: 8px;
-  padding: 0.875rem 0.5rem;
+  padding: 0.75rem 0.25rem;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -479,6 +483,9 @@ body {
   .manager-shell { flex-direction: column; }
   .sidebar { width: 100%; height: auto; flex-direction: row; flex-wrap: wrap; }
   .main-content { overflow-y: auto; }
+  .officer-shell * { box-sizing: border-box; max-width: 100%; }
+  .log-type-label { font-size: 0.625rem; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 /* ── Auth page ── */
