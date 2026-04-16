@@ -66,6 +66,7 @@ app.use('/api/patrols',      require('./routes/patrols'));
 app.use('/api/patterns',     require('./routes/patterns'));
 app.use('/api/rates',        require('./routes/rates'));
 app.use('/api/alerts',       require('./routes/alerts'));
+app.use('/api/portal',       require('./routes/portal'));
 
 // ── 404 handler ──────────────────────────────────────────────
 app.use((req, res) => {
