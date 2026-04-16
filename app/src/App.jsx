@@ -826,74 +826,42 @@ function OfficerDashboard({ user, site, shift }) {
   }
   
   return (
-    <div className="container py-6 pb-24">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">
-          {shift ? 'Active Shift' : 'Dashboard'}
-        </h2>
-        <p className="text-slate-600">
-          {shift 
-            ? `Started ${formatDateTime(shift.start_time)}`
-            : `Welcome to ${site.name}`
-          }
-        </p>
-      </div>
-      
-      <div className="grid gap-6">
-        {/* Quick Actions */}
-        <div className="card">
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <QuickActionButton
-              to="/log"
-              icon={<PlusIcon className="w-5 h-5" />}
-              title="New Log Entry"
-              subtitle="Record an occurrence"
-              color="accent"
-            />
-            <QuickActionButton
-              to="/tasks"
-              icon={<ClipboardDocumentListIcon className="w-5 h-5" />}
-              title="View Tasks"
-              subtitle={`${tasks.length} pending`}
-              color="info"
-            />
-          </div>
+    <div style={{padding:'1rem',paddingBottom:'5rem'}}>
+      {/* Primary action */}
+      <Link to="/log" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.5rem',fontSize:'1.0625rem'}}>
+        <PlusIcon style={{width:'1.25rem',height:'1.25rem'}} />
+        New Log Entry
+      </Link>
+
+      {/* Task badge */}
+      {tasks.length > 0 && (
+        <Link to="/tasks" className="officer-action-btn secondary" style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'1.25rem'}}>
+          <span>Tasks</span>
+          <span style={{background:'var(--blue)',color:'#fff',borderRadius:'999px',padding:'2px 8px',fontSize:'0.8125rem',fontWeight:700}}>{tasks.length}</span>
+        </Link>
+      )}
+
+      {/* Stats row */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.625rem',marginBottom:'1.25rem'}}>
+        <div className="officer-card" style={{textAlign:'center'}}>
+          <div style={{fontSize:'1.75rem',fontWeight:700,color:'#fff'}}>{recentLogs.length}</div>
+          <div style={{fontSize:'0.6875rem',color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.06em',marginTop:'0.125rem'}}>Logs Today</div>
         </div>
-        
-        {/* Recent Activity */}
-        <div className="card">
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">Recent Logs</h3>
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="spinner"></div>
-            </div>
-          ) : recentLogs.length === 0 ? (
-            <div className="text-center py-8 text-slate-500">
-              <ClipboardDocumentListIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
-              <p>No recent logs</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {recentLogs.map((log) => (
-                <LogPreviewCard key={log.id} log={log} />
-              ))}
-            </div>
-          )}
+        <div className="officer-card" style={{textAlign:'center'}}>
+          <div style={{fontSize:'1.75rem',fontWeight:700,color: shift ? '#4ade80' : 'rgba(255,255,255,0.3)'}}>{shift ? 'ON' : 'OFF'}</div>
+          <div style={{fontSize:'0.6875rem',color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.06em',marginTop:'0.125rem'}}>Shift Status</div>
         </div>
-        
-        {/* Pending Tasks */}
-        {tasks.length > 0 && (
-          <div className="card">
-            <h3 className="text-lg font-semibold text-slate-900 mb-4">Pending Tasks</h3>
-            <div className="space-y-3">
-              {tasks.slice(0, 3).map((task) => (
-                <TaskPreviewCard key={task.id} task={task} />
-              ))}
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Recent logs */}
+      <div style={{fontSize:'0.6875rem',fontWeight:600,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.625rem'}}>Recent Activity</div>
+      {loading ? (
+        <div style={{display:'flex',justifyContent:'center',padding:'2rem'}}><div className="spinner" style={{borderTopColor:'#fff',borderColor:'rgba(255,255,255,0.15)'}} /></div>
+      ) : recentLogs.length === 0 ? (
+        <div style={{textAlign:'center',padding:'2rem',color:'rgba(255,255,255,0.3)',fontSize:'0.875rem'}}>No recent logs</div>
+      ) : (
+        recentLogs.map((log) => <LogPreviewCard key={log.id} log={log} />)
+      )}
     </div>
   );
 }
@@ -924,32 +892,31 @@ function QuickActionButton({ to, icon, title, subtitle, color = 'primary' }) {
 
 // Log Preview Card
 function LogPreviewCard({ log }) {
-  const config = LOG_TYPE_CONFIG[log.log_type] || LOG_TYPE_CONFIG.OTHER;
-  
+  const typeMap = {
+    PATROL:'PAT', INCIDENT:'INC', ALARM:'ALM', ACCESS:'ACC',
+    VISITOR:'VIS', HANDOVER:'HND', MAINTENANCE:'MNT', VEHICLE:'VEH',
+    KEYHOLDING:'KEY', GENERAL:'GEN',
+  };
+  const code = typeMap[log.log_type] || log.log_type?.slice(0,3) || 'LOG';
   return (
-    <div className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg">
-      <div className="text-2xl">{config.icon}</div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="font-medium text-slate-900">{log.title}</span>
-          <span className={`status-badge ${config.color === 'alert' ? 'status-alert' : 'status-info'}`}>
-            {config.label}
-          </span>
+    <div className="officer-log-item">
+      <div className="officer-log-type">{code}</div>
+      <div style={{flex:1,minWidth:0}}>
+        <div className="officer-log-title">{log.title || log.log_type || 'Log Entry'}</div>
+        <div className="officer-log-meta">
+          {log.site?.name && `${log.site.name} · `}
+          {log.occurred_at ? new Date(log.occurred_at).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : ''}
         </div>
-        <p className="text-sm text-slate-600 truncate">{log.description}</p>
-        <p className="text-xs text-slate-500 mt-1">
-          {getRelativeTime(log.occurred_at)}
-        </p>
       </div>
     </div>
   );
 }
 
-// Task Preview Card
+
 function TaskPreviewCard({ task }) {
   return (
     <div className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg">
-      <div className="text-2xl">📋</div>
+      <div style={{width:'2.5rem',height:'2.5rem',background:'var(--navy)',color:'#fff',borderRadius:'6px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.625rem',fontWeight:700,flexShrink:0}}>LOG</div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <span className="font-medium text-slate-900">{task.title}</span>
@@ -1059,68 +1026,58 @@ function LogEntryScreen({ user, site, shift }) {
   const selectedLogConfig = LOG_TYPE_CONFIG[formData.log_type];
 
   return (
-    <div className="container py-6 pb-24">
-      <div className="max-w-2xl mx-auto">
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">New Log Entry</h2>
-          <p className="text-slate-600">Record a security occurrence or observation</p>
+    <div style={{padding:'1rem',paddingBottom:'5rem'}}>
+      <div style={{marginBottom:'1.25rem'}}>
+        <h2 style={{fontSize:'1.125rem',fontWeight:700,color:'#fff',marginBottom:'0.125rem'}}>New Log Entry</h2>
+        <p style={{fontSize:'0.8125rem',color:'rgba(255,255,255,0.4)'}}>Record a security occurrence</p>
+      </div>
+
+      {error && (
+        <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>
+      )}
+
+      <form onSubmit={handleSubmit}>
+        {/* Log Type Selection */}
+        <div style={{marginBottom:'1.25rem'}}>
+          <div style={{fontSize:'0.6875rem',fontWeight:600,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.625rem'}}>Type</div>
+          <div className="log-type-grid">
+            {Object.entries(LOG_TYPE_CONFIG).map(([type, config]) => (
+              <LogTypeOption
+                key={type}
+                type={type}
+                config={config}
+                selected={formData.log_type === type}
+                onSelect={() => setFormData(prev => ({
+                  ...prev,
+                  log_type: type,
+                  type_data: {}
+                }))}
+              />
+            ))}
+          </div>
         </div>
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-            <div className="flex items-center gap-2">
-              <span className="text-red-600">⚠️</span>
-              <p className="text-red-800 font-medium">Error</p>
-            </div>
-            <p className="text-red-700 mt-1">{error}</p>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Log Type Selection */}
-          <div className="card">
-            <h3 className="text-lg font-semibold text-slate-900 mb-4">Log Type</h3>
-            <div className="grid gap-3">
-              {Object.entries(LOG_TYPE_CONFIG).map(([type, config]) => (
-                <LogTypeOption
-                  key={type}
-                  type={type}
-                  config={config}
-                  selected={formData.log_type === type}
-                  onSelect={() => setFormData(prev => ({ 
-                    ...prev, 
-                    log_type: type,
-                    type_data: {} // Reset type-specific data when changing type
-                  }))}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Basic Information */}
-          <div className="card">
-            <h3 className="text-lg font-semibold text-slate-900 mb-4">Basic Information</h3>
+        {/* Basic Information */}
+        <div style={{marginBottom:'1.25rem'}}>
+          <div style={{fontSize:'0.6875rem',fontWeight:600,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.625rem'}}>Details</div>
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Title *
-                </label>
+              <div style={{marginBottom:'0.875rem'}}>
+                <label className="officer-label">Title</label>
                 <input
                   type="text"
-                  className="input"
+                  className="officer-input"
                   value={formData.title}
                   onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder="Brief summary of the occurrence"
+                  placeholder="Brief summary"
                   required
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Description *
-                </label>
+              <div style={{marginBottom:'0.875rem'}}>
+                <label className="officer-label">Description</label>
                 <textarea
-                  className="input textarea"
+                  className="officer-input"
+                  style={{resize:'vertical'}}
                   value={formData.description}
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                   placeholder="Detailed description of what occurred, actions taken, and any observations"
@@ -1201,32 +1158,24 @@ function LogEntryScreen({ user, site, shift }) {
           )}
 
           {/* Submit Buttons */}
-          <div className="flex gap-4">
+          <div style={{display:'flex',gap:'0.75rem',marginTop:'1rem'}}>
             <button
               type="button"
               onClick={() => navigate('/')}
-              className="btn btn-secondary flex-1"
+              style={{flex:1,background:'#1a2235',color:'rgba(255,255,255,0.6)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'8px',padding:'0.875rem',fontSize:'0.9375rem',fontWeight:600,cursor:'pointer'}}
               disabled={loading}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="btn btn-primary flex-1"
-              disabled={loading || !formData.log_type || !formData.title.trim() || !formData.description.trim()}
+              style={{flex:2,background:'var(--blue)',color:'#fff',border:'none',borderRadius:'8px',padding:'0.875rem',fontSize:'0.9375rem',fontWeight:700,cursor:'pointer',opacity:(loading||!formData.log_type||!formData.title.trim())?0.5:1}}
+              disabled={loading || !formData.log_type || !formData.title.trim()}
             >
-              {loading ? (
-                <>
-                  <div className="spinner"></div>
-                  <span>Creating...</span>
-                </>
-              ) : (
-                'Create Log Entry'
-              )}
+              {loading ? 'Saving...' : 'Save Log Entry'}
             </button>
           </div>
         </form>
-      </div>
     </div>
   );
 }
@@ -1235,36 +1184,17 @@ function LogEntryScreen({ user, site, shift }) {
 function LogTypeOption({ type, config, selected, onSelect }) {
   return (
     <button
+      className={`log-type-btn${selected ? ' selected' : ''}`}
+      onClick={() => onSelect(type)}
       type="button"
-      onClick={onSelect}
-      className={`p-4 text-left rounded-lg border-2 transition-all ${
-        selected 
-          ? 'border-cyan-300 bg-[#e8f0fb]' 
-          : 'border-slate-200 bg-white hover:border-slate-300'
-      }`}
     >
-      <div className="flex items-center gap-3">
-        <span className="text-2xl">{config.icon}</span>
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="font-medium text-slate-900">{config.label}</span>
-            <span className={`status-badge status-${config.color}`}>
-              {type}
-            </span>
-          </div>
-          <p className="text-sm text-slate-600">{config.description}</p>
-        </div>
-        {selected && (
-          <div className="w-5 h-5 bg-[#1a52a8] rounded-full flex items-center justify-center">
-            <span className="text-white text-xs">✓</span>
-          </div>
-        )}
-      </div>
+      <div className="type-badge">{config.icon}</div>
+      <div className="log-type-label">{config.label}</div>
     </button>
   );
 }
 
-// Type-Specific Fields Component
+
 function TypeSpecificFields({ logType, config, data, onChange }) {
   const updateField = (field, value) => {
     onChange({ ...data, [field]: value });
@@ -1406,7 +1336,7 @@ function TypeSpecificField({ field, logType, value, onChange }) {
     case 'select':
       return (
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
+          <label className="officer-label">
             {fieldConfig.label}
           </label>
           <select
@@ -1425,11 +1355,11 @@ function TypeSpecificField({ field, logType, value, onChange }) {
     case 'textarea':
       return (
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
+          <label className="officer-label">
             {fieldConfig.label}
           </label>
           <textarea
-            className="input textarea"
+            className="officer-input"
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder={fieldConfig.placeholder}
@@ -1441,12 +1371,12 @@ function TypeSpecificField({ field, logType, value, onChange }) {
     case 'datetime-local':
       return (
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
+          <label className="officer-label">
             {fieldConfig.label}
           </label>
           <input
             type="datetime-local"
-            className="input"
+            className="officer-input"
             value={value}
             onChange={(e) => onChange(e.target.value)}
           />
@@ -1456,12 +1386,12 @@ function TypeSpecificField({ field, logType, value, onChange }) {
     default:
       return (
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
+          <label className="officer-label">
             {fieldConfig.label}
           </label>
           <input
             type="text"
-            className="input"
+            className="officer-input"
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder={fieldConfig.placeholder}
@@ -1549,10 +1479,10 @@ function LogHistoryScreen({ user, site }) {
 
       {/* Filters */}
       <div className="card mb-6">
-        <h3 className="text-lg font-semibold text-slate-900 mb-4">Filters</h3>
+        <div style={{fontSize:"0.6875rem",fontWeight:600,color:"rgba(255,255,255,0.4)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:"0.625rem"}}>Filters</div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="officer-label">
               Log Type
             </label>
             <select
@@ -1568,24 +1498,24 @@ function LogHistoryScreen({ user, site }) {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="officer-label">
               From Date
             </label>
             <input
               type="date"
-              className="input"
+              className="officer-input"
               value={filters.from}
               onChange={(e) => handleFilterChange('from', e.target.value)}
             />
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="officer-label">
               To Date
             </label>
             <input
               type="date"
-              className="input"
+              className="officer-input"
               value={filters.to}
               onChange={(e) => handleFilterChange('to', e.target.value)}
             />
@@ -2388,11 +2318,11 @@ function SiteFormModal({ site, onClose, onSaved }) {
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
         <div className="field">
           <label className="label">Site Name</label>
-          <input className="input" value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} placeholder="e.g. Brindleyplace" />
+          <input className="officer-input" value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} placeholder="e.g. Brindleyplace" />
         </div>
         <div className="field">
           <label className="label">Address</label>
-          <input className="input" value={form.address} onChange={e => setForm(f => ({...f, address: e.target.value}))} placeholder="Street, City, Postcode" />
+          <input className="officer-input" value={form.address} onChange={e => setForm(f => ({...f, address: e.target.value}))} placeholder="Street, City, Postcode" />
         </div>
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
@@ -2425,7 +2355,7 @@ function LogReview({ user }) {
     load();
   }, []);
 
-  const logTypes = ['PATROL','INCIDENT','ALARM','ACCESS','VISITOR','HANDOVER','MAINTENANCE','VEHICLE','WELFARE','GENERAL'];
+  const logTypes = ['PATROL','INCIDENT','ALARM','ACCESS','VISITOR','HANDOVER','MAINTENANCE','VEHICLE','GENERAL'];
 
   const filtered = logs.filter(l => {
     if (typeFilter && l.log_type !== typeFilter) return false;
@@ -2454,13 +2384,13 @@ function LogReview({ user }) {
         <div className="topbar-title">Log Review</div>
         <div style={{display:'flex',gap:'0.5rem',alignItems:'center'}}>
           <input
-            className="input"
+            className="officer-input"
             style={{width:'200px'}}
             placeholder="Search logs..."
             value={filter}
             onChange={e => setFilter(e.target.value)}
           />
-          <select className="input" style={{width:'140px'}} value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
+          <select className="officer-input" style={{width:'140px'}} value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
             <option value="">All types</option>
             {logTypes.map(t => <option key={t} value={t}>{t.charAt(0)+t.slice(1).toLowerCase()}</option>)}
           </select>
@@ -2518,7 +2448,7 @@ function ManagerLogCard({ log }) {
   return (
     <div className="border border-slate-200 rounded-lg p-4 hover: transition-shadow">
       <div className="flex items-start gap-4">
-        <div className="text-2xl">{config.icon}</div>
+        <div style={{width:'2.5rem',height:'2.5rem',background:'var(--navy)',color:'#fff',borderRadius:'6px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.625rem',fontWeight:700,letterSpacing:'0.05em',flexShrink:0}}>{config.icon}</div>
         
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-2 flex-wrap">
@@ -2708,23 +2638,23 @@ function TaskCreateForm({ officers, sites, onClose, onSuccess }) {
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
         <div className="field">
           <label className="label">Task Title</label>
-          <input className="input" value={form.title} onChange={e => setForm(f=>({...f,title:e.target.value}))} placeholder="What needs to be done?" />
+          <input className="officer-input" value={form.title} onChange={e => setForm(f=>({...f,title:e.target.value}))} placeholder="What needs to be done?" />
         </div>
         <div className="field">
           <label className="label">Description</label>
-          <textarea className="input textarea" rows={3} value={form.description} onChange={e => setForm(f=>({...f,description:e.target.value}))} placeholder="Additional details..." />
+          <textarea className="officer-input" rows={3} value={form.description} onChange={e => setForm(f=>({...f,description:e.target.value}))} placeholder="Additional details..." />
         </div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
           <div className="field">
             <label className="label">Assign To</label>
-            <select className="input" value={form.assigned_to} onChange={e => setForm(f=>({...f,assigned_to:e.target.value}))}>
+            <select className="officer-input" value={form.assigned_to} onChange={e => setForm(f=>({...f,assigned_to:e.target.value}))}>
               <option value="">Unassigned</option>
               {officers.map(o => <option key={o.id} value={o.id}>{o.first_name} {o.last_name}</option>)}
             </select>
           </div>
           <div className="field">
             <label className="label">Site</label>
-            <select className="input" value={form.site_id} onChange={e => setForm(f=>({...f,site_id:e.target.value}))}>
+            <select className="officer-input" value={form.site_id} onChange={e => setForm(f=>({...f,site_id:e.target.value}))}>
               <option value="">No site</option>
               {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
@@ -2732,7 +2662,7 @@ function TaskCreateForm({ officers, sites, onClose, onSuccess }) {
         </div>
         <div className="field">
           <label className="label">Due Date</label>
-          <input type="date" className="input" value={form.due_date} onChange={e => setForm(f=>({...f,due_date:e.target.value}))} />
+          <input type="date" className="officer-input" value={form.due_date} onChange={e => setForm(f=>({...f,due_date:e.target.value}))} />
         </div>
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
@@ -3114,24 +3044,24 @@ function UserFormModal({ user, onClose, onSaved }) {
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
           <div className="field">
             <label className="label">First Name</label>
-            <input className="input" value={form.first_name} onChange={e=>f('first_name',e.target.value)} />
+            <input className="officer-input" value={form.first_name} onChange={e=>f('first_name',e.target.value)} />
           </div>
           <div className="field">
             <label className="label">Last Name</label>
-            <input className="input" value={form.last_name} onChange={e=>f('last_name',e.target.value)} />
+            <input className="officer-input" value={form.last_name} onChange={e=>f('last_name',e.target.value)} />
           </div>
           <div className="field" style={{gridColumn:'1/-1'}}>
             <label className="label">Email</label>
-            <input type="email" className="input" value={form.email} onChange={e=>f('email',e.target.value)} disabled={!!user} />
+            <input type="email" className="officer-input" value={form.email} onChange={e=>f('email',e.target.value)} disabled={!!user} />
             {!user && <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginTop:'0.25rem'}}>They will sign in using this email via Clerk</div>}
           </div>
           <div className="field">
             <label className="label">Phone</label>
-            <input className="input" value={form.phone} onChange={e=>f('phone',e.target.value)} />
+            <input className="officer-input" value={form.phone} onChange={e=>f('phone',e.target.value)} />
           </div>
           <div className="field">
             <label className="label">Role</label>
-            <select className="input" value={form.role} onChange={e=>f('role',e.target.value)}>
+            <select className="officer-input" value={form.role} onChange={e=>f('role',e.target.value)}>
               <option value="OFFICER">Officer</option>
               <option value="OPS_MANAGER">Ops Manager</option>
               <option value="FD">Field Director</option>
@@ -3140,11 +3070,11 @@ function UserFormModal({ user, onClose, onSaved }) {
           </div>
           <div className="field">
             <label className="label">SIA Licence No.</label>
-            <input className="input" value={form.sia_licence_number} onChange={e=>f('sia_licence_number',e.target.value)} placeholder="e.g. 1234-5678-9012-3456" />
+            <input className="officer-input" value={form.sia_licence_number} onChange={e=>f('sia_licence_number',e.target.value)} placeholder="e.g. 1234-5678-9012-3456" />
           </div>
           <div className="field">
             <label className="label">SIA Expiry</label>
-            <input type="date" className="input" value={form.sia_expiry_date} onChange={e=>f('sia_expiry_date',e.target.value)} />
+            <input type="date" className="officer-input" value={form.sia_expiry_date} onChange={e=>f('sia_expiry_date',e.target.value)} />
           </div>
         </div>
         <div className="modal-footer">
@@ -3192,7 +3122,7 @@ function Reporting({ user }) {
     <div>
       <div className="topbar">
         <div className="topbar-title">Reports</div>
-        <select className="input" style={{width:'140px'}} value={dateRange} onChange={e => setDateRange(e.target.value)}>
+        <select className="officer-input" style={{width:'140px'}} value={dateRange} onChange={e => setDateRange(e.target.value)}>
           <option value="7">Last 7 days</option>
           <option value="14">Last 14 days</option>
           <option value="30">Last 30 days</option>
@@ -3473,37 +3403,37 @@ function ShiftFormModal({ officers, sites, onClose, onSaved }) {
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
           <div className="field" style={{gridColumn:'1/-1'}}>
             <label className="label">Date</label>
-            <input type="date" className="input" value={form.date} onChange={e => setForm(f=>({...f,date:e.target.value}))} />
+            <input type="date" className="officer-input" value={form.date} onChange={e => setForm(f=>({...f,date:e.target.value}))} />
           </div>
           <div className="field">
             <label className="label">Officer</label>
-            <select className="input" value={form.officer_id} onChange={e => setForm(f=>({...f,officer_id:e.target.value}))}>
+            <select className="officer-input" value={form.officer_id} onChange={e => setForm(f=>({...f,officer_id:e.target.value}))}>
               <option value="">Select officer</option>
               {officers.map(o => <option key={o.id} value={o.id}>{o.first_name} {o.last_name}</option>)}
             </select>
           </div>
           <div className="field">
             <label className="label">Site</label>
-            <select className="input" value={form.site_id} onChange={e => setForm(f=>({...f,site_id:e.target.value}))}>
+            <select className="officer-input" value={form.site_id} onChange={e => setForm(f=>({...f,site_id:e.target.value}))}>
               <option value="">Select site</option>
               {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
           <div className="field">
             <label className="label">Start Time</label>
-            <input type="time" className="input" value={form.start_time} onChange={e => setForm(f=>({...f,start_time:e.target.value}))} />
+            <input type="time" className="officer-input" value={form.start_time} onChange={e => setForm(f=>({...f,start_time:e.target.value}))} />
           </div>
           <div className="field">
             <label className="label">End Time</label>
-            <input type="time" className="input" value={form.end_time} onChange={e => setForm(f=>({...f,end_time:e.target.value}))} />
+            <input type="time" className="officer-input" value={form.end_time} onChange={e => setForm(f=>({...f,end_time:e.target.value}))} />
           </div>
           <div className="field">
             <label className="label">Pay Rate (£/hr)</label>
-            <input type="number" step="0.01" className="input" value={form.pay_rate} onChange={e => setForm(f=>({...f,pay_rate:e.target.value}))} placeholder="e.g. 13.50" />
+            <input type="number" step="0.01" className="officer-input" value={form.pay_rate} onChange={e => setForm(f=>({...f,pay_rate:e.target.value}))} placeholder="e.g. 13.50" />
           </div>
           <div className="field">
             <label className="label">Charge Rate (£/hr)</label>
-            <input type="number" step="0.01" className="input" value={form.charge_rate} onChange={e => setForm(f=>({...f,charge_rate:e.target.value}))} placeholder="e.g. 19.23" />
+            <input type="number" step="0.01" className="officer-input" value={form.charge_rate} onChange={e => setForm(f=>({...f,charge_rate:e.target.value}))} placeholder="e.g. 19.23" />
           </div>
         </div>
         <div className="modal-footer">
@@ -3585,7 +3515,7 @@ function ProfitLoss({ user }) {
     <div>
       <div className="topbar">
         <div className="topbar-title">P&L Dashboard</div>
-        <select className="input" style={{width:'140px'}} value={period} onChange={e => setPeriod(e.target.value)}>
+        <select className="officer-input" style={{width:'140px'}} value={period} onChange={e => setPeriod(e.target.value)}>
           <option value="week">This Week</option>
           <option value="month">This Month</option>
           <option value="quarter">This Quarter</option>
@@ -3745,7 +3675,7 @@ function DocumentsScreen({ user }) {
     <div>
       <div className="topbar">
         <div className="topbar-title">Documents</div>
-        <select className="input" style={{width:'200px'}} value={selectedSite} onChange={e => { setSelectedSite(e.target.value); setSelectedFolder(null); }}>
+        <select className="officer-input" style={{width:'200px'}} value={selectedSite} onChange={e => { setSelectedSite(e.target.value); setSelectedFolder(null); }}>
           <option value="">Select site...</option>
           {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
@@ -3766,7 +3696,7 @@ function DocumentsScreen({ user }) {
               </div>
               {showFolderForm && (
                 <div style={{marginBottom:'0.5rem',display:'flex',gap:'0.5rem'}}>
-                  <input className="input" value={newFolderName} onChange={e=>setNewFolderName(e.target.value)} placeholder="Folder name" onKeyDown={e=>e.key==='Enter'&&createFolder()} />
+                  <input className="officer-input" value={newFolderName} onChange={e=>setNewFolderName(e.target.value)} placeholder="Folder name" onKeyDown={e=>e.key==='Enter'&&createFolder()} />
                   <button className="btn btn-primary btn-sm" onClick={createFolder}>Add</button>
                 </div>
               )}
@@ -3902,7 +3832,7 @@ function PatrolRoutesScreen({ user }) {
       <div className="topbar">
         <div className="topbar-title">Patrol Routes</div>
         <div style={{display:'flex',gap:'0.75rem',alignItems:'center'}}>
-          <select className="input" style={{width:'200px'}} value={selectedSite} onChange={e => setSelectedSite(e.target.value)}>
+          <select className="officer-input" style={{width:'200px'}} value={selectedSite} onChange={e => setSelectedSite(e.target.value)}>
             <option value="">Select site...</option>
             {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
@@ -3990,11 +3920,11 @@ function PatrolRouteFormModal({ route, siteId, onClose, onSaved }) {
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
         <div className="field">
           <label className="label">Route Name</label>
-          <input className="input" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Perimeter Check" />
+          <input className="officer-input" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Perimeter Check" />
         </div>
         <div className="field">
           <label className="label">Instructions</label>
-          <textarea className="input" rows={2} value={instructions} onChange={e => setInstructions(e.target.value)} placeholder="General instructions for this route..." />
+          <textarea className="officer-input" rows={2} value={instructions} onChange={e => setInstructions(e.target.value)} placeholder="General instructions for this route..." />
         </div>
         <div style={{marginBottom:'1rem'}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.5rem'}}>
@@ -4003,8 +3933,8 @@ function PatrolRouteFormModal({ route, siteId, onClose, onSaved }) {
           </div>
           {checkpoints.map((cp, i) => (
             <div key={i} style={{display:'grid',gridTemplateColumns:'1fr 1fr auto',gap:'0.5rem',marginBottom:'0.5rem',alignItems:'center'}}>
-              <input className="input" value={cp.name} onChange={e => updateCheckpoint(i, 'name', e.target.value)} placeholder={`Checkpoint ${i+1} name`} />
-              <input className="input" value={cp.instructions} onChange={e => updateCheckpoint(i, 'instructions', e.target.value)} placeholder="Instructions (optional)" />
+              <input className="officer-input" value={cp.name} onChange={e => updateCheckpoint(i, 'name', e.target.value)} placeholder={`Checkpoint ${i+1} name`} />
+              <input className="officer-input" value={cp.instructions} onChange={e => updateCheckpoint(i, 'instructions', e.target.value)} placeholder="Instructions (optional)" />
               <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={() => removeCheckpoint(i)}>x</button>
             </div>
           ))}
@@ -4115,9 +4045,9 @@ function ShiftPatternFormModal({ pattern, sites, onClose, onSaved }) {
         </div>
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
-          <div className="field" style={{gridColumn:'1/-1'}}><label className="label">Pattern Name</label><input className="input" value={form.name} onChange={e=>f('name',e.target.value)} placeholder="e.g. Weekday Nights" /></div>
+          <div className="field" style={{gridColumn:'1/-1'}}><label className="label">Pattern Name</label><input className="officer-input" value={form.name} onChange={e=>f('name',e.target.value)} placeholder="e.g. Weekday Nights" /></div>
           <div className="field" style={{gridColumn:'1/-1'}}><label className="label">Site</label>
-            <select className="input" value={form.site_id} onChange={e=>f('site_id',e.target.value)}>
+            <select className="officer-input" value={form.site_id} onChange={e=>f('site_id',e.target.value)}>
               <option value="">Select site</option>
               {sites.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
@@ -4132,10 +4062,10 @@ function ShiftPatternFormModal({ pattern, sites, onClose, onSaved }) {
               ))}
             </div>
           </div>
-          <div className="field"><label className="label">Start Time</label><input type="time" className="input" value={form.start_time} onChange={e=>f('start_time',e.target.value)} /></div>
-          <div className="field"><label className="label">End Time</label><input type="time" className="input" value={form.end_time} onChange={e=>f('end_time',e.target.value)} /></div>
-          <div className="field"><label className="label">Pay Rate (£/hr)</label><input type="number" step="0.01" className="input" value={form.pay_rate} onChange={e=>f('pay_rate',e.target.value)} /></div>
-          <div className="field"><label className="label">Charge Rate (£/hr)</label><input type="number" step="0.01" className="input" value={form.charge_rate} onChange={e=>f('charge_rate',e.target.value)} /></div>
+          <div className="field"><label className="label">Start Time</label><input type="time" className="officer-input" value={form.start_time} onChange={e=>f('start_time',e.target.value)} /></div>
+          <div className="field"><label className="label">End Time</label><input type="time" className="officer-input" value={form.end_time} onChange={e=>f('end_time',e.target.value)} /></div>
+          <div className="field"><label className="label">Pay Rate (£/hr)</label><input type="number" step="0.01" className="officer-input" value={form.pay_rate} onChange={e=>f('pay_rate',e.target.value)} /></div>
+          <div className="field"><label className="label">Charge Rate (£/hr)</label><input type="number" step="0.01" className="officer-input" value={form.charge_rate} onChange={e=>f('charge_rate',e.target.value)} /></div>
         </div>
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
@@ -4216,19 +4146,19 @@ function RateFormModal({ officers, sites, onClose, onSaved }) {
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
           <div className="field" style={{gridColumn:'1/-1'}}><label className="label">Officer</label>
-            <select className="input" value={form.officer_id} onChange={e=>f('officer_id',e.target.value)}>
+            <select className="officer-input" value={form.officer_id} onChange={e=>f('officer_id',e.target.value)}>
               <option value="">Select officer</option>
               {officers.map(o=><option key={o.id} value={o.id}>{o.first_name} {o.last_name}</option>)}
             </select>
           </div>
           <div className="field"><label className="label">Site (optional)</label>
-            <select className="input" value={form.site_id} onChange={e=>f('site_id',e.target.value)}>
+            <select className="officer-input" value={form.site_id} onChange={e=>f('site_id',e.target.value)}>
               <option value="">All sites</option>
               {sites.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
-          <div className="field"><label className="label">Hourly Rate (£)</label><input type="number" step="0.01" className="input" value={form.hourly_rate} onChange={e=>f('hourly_rate',e.target.value)} placeholder="e.g. 13.50" /></div>
-          <div className="field" style={{gridColumn:'1/-1'}}><label className="label">Role Label</label><input className="input" value={form.role_label} onChange={e=>f('role_label',e.target.value)} placeholder="e.g. Door Supervisor" /></div>
+          <div className="field"><label className="label">Hourly Rate (£)</label><input type="number" step="0.01" className="officer-input" value={form.hourly_rate} onChange={e=>f('hourly_rate',e.target.value)} placeholder="e.g. 13.50" /></div>
+          <div className="field" style={{gridColumn:'1/-1'}}><label className="label">Role Label</label><input className="officer-input" value={form.role_label} onChange={e=>f('role_label',e.target.value)} placeholder="e.g. Door Supervisor" /></div>
         </div>
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
@@ -4323,17 +4253,17 @@ function AlertFormModal({ sites, onClose, onSaved }) {
       <div className="modal" onClick={e=>e.stopPropagation()}>
         <div className="modal-header"><div className="modal-title">Raise Alert</div><button className="modal-close" onClick={onClose}>x</button></div>
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
-        <div className="field"><label className="label">Title</label><input className="input" value={form.title} onChange={e=>f('title',e.target.value)} placeholder="Brief description of the issue" /></div>
-        <div className="field"><label className="label">Details</label><textarea className="input" rows={3} value={form.description} onChange={e=>f('description',e.target.value)} placeholder="Additional details..." /></div>
+        <div className="field"><label className="label">Title</label><input className="officer-input" value={form.title} onChange={e=>f('title',e.target.value)} placeholder="Brief description of the issue" /></div>
+        <div className="field"><label className="label">Details</label><textarea className="officer-input" rows={3} value={form.description} onChange={e=>f('description',e.target.value)} placeholder="Additional details..." /></div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
           <div className="field"><label className="label">Site</label>
-            <select className="input" value={form.site_id} onChange={e=>f('site_id',e.target.value)}>
+            <select className="officer-input" value={form.site_id} onChange={e=>f('site_id',e.target.value)}>
               <option value="">All sites</option>
               {sites.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
           <div className="field"><label className="label">Severity</label>
-            <select className="input" value={form.severity} onChange={e=>f('severity',e.target.value)}>
+            <select className="officer-input" value={form.severity} onChange={e=>f('severity',e.target.value)}>
               <option value="low">Low</option>
               <option value="medium">Medium</option>
               <option value="high">High</option>
@@ -4402,10 +4332,10 @@ function PoliciesScreen({ user }) {
                 {canEdit ? (
                   <>
                     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.5rem'}}>
-                      <input className="input" value={sec.title} onChange={e=>updateSection(i,'title',e.target.value)} placeholder="Section title" style={{fontWeight:600,fontSize:'1rem'}} />
+                      <input className="officer-input" value={sec.title} onChange={e=>updateSection(i,'title',e.target.value)} placeholder="Section title" style={{fontWeight:600,fontSize:'1rem'}} />
                       <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)',marginLeft:'0.5rem'}} onClick={()=>removeSection(i)}>Remove</button>
                     </div>
-                    <textarea className="input" rows={6} value={sec.content} onChange={e=>updateSection(i,'content',e.target.value)} placeholder="Policy content..." />
+                    <textarea className="officer-input" rows={6} value={sec.content} onChange={e=>updateSection(i,'content',e.target.value)} placeholder="Policy content..." />
                   </>
                 ) : (
                   <>
@@ -4462,7 +4392,7 @@ function SiteInstructionsScreen({ user }) {
       <div className="topbar">
         <div className="topbar-title">Site Instructions</div>
         <div style={{display:'flex',gap:'0.75rem',alignItems:'center'}}>
-          <select className="input" style={{width:'200px'}} value={selectedSite} onChange={e => setSelectedSite(e.target.value)}>
+          <select className="officer-input" style={{width:'200px'}} value={selectedSite} onChange={e => setSelectedSite(e.target.value)}>
             <option value="">Select site...</option>
             {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
@@ -4492,10 +4422,10 @@ function SiteInstructionsScreen({ user }) {
             {sections.map((sec,i) => (
               <div key={i} className="card">
                 <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.5rem'}}>
-                  <input className="input" value={sec.title} onChange={e=>update(i,'title',e.target.value)} placeholder="Section title" style={{fontWeight:600}} />
+                  <input className="officer-input" value={sec.title} onChange={e=>update(i,'title',e.target.value)} placeholder="Section title" style={{fontWeight:600}} />
                   <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)',marginLeft:'0.5rem'}} onClick={()=>remove(i)}>Remove</button>
                 </div>
-                <textarea className="input" rows={5} value={sec.content} onChange={e=>update(i,'content',e.target.value)} placeholder="Instructions content..." />
+                <textarea className="officer-input" rows={5} value={sec.content} onChange={e=>update(i,'content',e.target.value)} placeholder="Instructions content..." />
               </div>
             ))}
           </div>
@@ -4583,13 +4513,13 @@ function NewMessageModal({ officers, onClose, onSaved }) {
         <div className="modal-header"><div className="modal-title">New Message</div><button className="modal-close" onClick={onClose}>x</button></div>
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
         <div className="field"><label className="label">To (leave blank for all)</label>
-          <select className="input" value={form.recipient_id} onChange={e=>setForm(f=>({...f,recipient_id:e.target.value}))}>
+          <select className="officer-input" value={form.recipient_id} onChange={e=>setForm(f=>({...f,recipient_id:e.target.value}))}>
             <option value="">All officers</option>
             {officers.map(o=><option key={o.id} value={o.id}>{o.first_name} {o.last_name}</option>)}
           </select>
         </div>
         <div className="field"><label className="label">Message</label>
-          <textarea className="input" rows={4} value={form.body} onChange={e=>setForm(f=>({...f,body:e.target.value}))} placeholder="Your message..." />
+          <textarea className="officer-input" rows={4} value={form.body} onChange={e=>setForm(f=>({...f,body:e.target.value}))} placeholder="Your message..." />
         </div>
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>Cancel</button>

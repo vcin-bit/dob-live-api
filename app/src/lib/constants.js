@@ -21,7 +21,6 @@ export const LOG_TYPES = {
   // Emergency/Critical
   EMERGENCY: 'EMERGENCY',
   FIRE_ALARM: 'FIRE_ALARM',
-  MEDICAL: 'MEDICAL',
   EVACUATION: 'EVACUATION',
   
   // Administrative
@@ -33,7 +32,7 @@ export const LOG_TYPE_CONFIG = {
   [LOG_TYPES.PATROL]: {
     label: 'Patrol',
     color: 'info',
-    icon: '🚶‍♂️',
+    icon: 'PAT',
     description: 'Routine patrol or walkthrough',
     fields: ['location', 'observations', 'issues_found']
   },
@@ -41,7 +40,7 @@ export const LOG_TYPE_CONFIG = {
   [LOG_TYPES.INCIDENT]: {
     label: 'Incident',
     color: 'warning',
-    icon: '⚠️',
+    icon: 'INC',
     description: 'Security incident or unusual occurrence',
     fields: ['incident_type', 'severity', 'people_involved', 'actions_taken']
   },
@@ -49,7 +48,7 @@ export const LOG_TYPE_CONFIG = {
   [LOG_TYPES.MAINTENANCE]: {
     label: 'Maintenance',
     color: 'info',
-    icon: '🔧',
+    icon: 'MNT',
     description: 'Maintenance issue or observation',
     fields: ['equipment', 'issue_description', 'priority', 'contractor_notified']
   },
@@ -57,7 +56,7 @@ export const LOG_TYPE_CONFIG = {
   [LOG_TYPES.ACCESS_CONTROL]: {
     label: 'Access Control',
     color: 'info',
-    icon: '🗝️',
+    icon: 'ACC',
     description: 'Door, gate, or access-related log',
     fields: ['access_point', 'person_name', 'time_granted', 'authority']
   },
@@ -65,7 +64,7 @@ export const LOG_TYPE_CONFIG = {
   [LOG_TYPES.ALARM]: {
     label: 'Alarm',
     color: 'warning',
-    icon: '🚨',
+    icon: 'ALM',
     description: 'Alarm activation or security system alert',
     fields: ['alarm_type', 'location', 'cause', 'response_time']
   },
@@ -73,7 +72,7 @@ export const LOG_TYPE_CONFIG = {
   [LOG_TYPES.VISITOR]: {
     label: 'Visitor',
     color: 'info',
-    icon: '👥',
+    icon: 'VIS',
     description: 'Visitor or guest log',
     fields: ['visitor_name', 'company', 'purpose', 'host', 'badge_issued']
   },
@@ -81,7 +80,7 @@ export const LOG_TYPE_CONFIG = {
   [LOG_TYPES.VEHICLE_CHECK]: {
     label: 'Vehicle Check',
     color: 'info',
-    icon: '🚗',
+    icon: 'VEH',
     description: 'Vehicle inspection or parking log',
     fields: ['vehicle_reg', 'driver_name', 'purpose', 'permit_checked']
   },
@@ -89,7 +88,7 @@ export const LOG_TYPE_CONFIG = {
   [LOG_TYPES.PROPERTY_CHECK]: {
     label: 'Property Check',
     color: 'info',
-    icon: '🏢',
+    icon: 'BLD',
     description: 'Building or property inspection',
     fields: ['area', 'condition', 'issues', 'photos']
   },
@@ -97,7 +96,7 @@ export const LOG_TYPE_CONFIG = {
   [LOG_TYPES.SHIFT_START]: {
     label: 'Shift Start',
     color: 'success',
-    icon: '✅',
+    icon: 'ON',
     description: 'Beginning of shift duties',
     fields: ['handover_received', 'equipment_checked', 'priorities']
   },
@@ -105,7 +104,7 @@ export const LOG_TYPE_CONFIG = {
   [LOG_TYPES.SHIFT_END]: {
     label: 'Shift End',
     color: 'success',
-    icon: '🏁',
+    icon: 'OFF',
     description: 'End of shift summary',
     fields: ['handover_given', 'outstanding_issues', 'equipment_status']
   },
@@ -113,7 +112,7 @@ export const LOG_TYPE_CONFIG = {
   [LOG_TYPES.BREAK]: {
     label: 'Break',
     color: 'info',
-    icon: '☕',
+    icon: 'BRK',
     description: 'Break or meal period',
     fields: ['break_type', 'duration', 'coverage']
   },
@@ -121,7 +120,7 @@ export const LOG_TYPE_CONFIG = {
   [LOG_TYPES.HANDOVER]: {
     label: 'Handover',
     color: 'info',
-    icon: '🤝',
+    icon: 'HND',
     description: 'Shift handover or briefing',
     fields: ['from_officer', 'to_officer', 'key_points', 'actions_required']
   },
@@ -129,7 +128,7 @@ export const LOG_TYPE_CONFIG = {
   [LOG_TYPES.TRAINING]: {
     label: 'Training',
     color: 'info',
-    icon: '📚',
+    icon: 'TRN',
     description: 'Training activity or drill',
     fields: ['training_type', 'duration', 'participants', 'outcome']
   },
@@ -137,7 +136,7 @@ export const LOG_TYPE_CONFIG = {
   [LOG_TYPES.EMERGENCY]: {
     label: 'Emergency',
     color: 'alert',
-    icon: '🚨',
+    icon: 'ALM',
     description: 'Emergency situation',
     fields: ['emergency_type', 'services_called', 'casualties', 'actions_taken']
   },
@@ -145,23 +144,16 @@ export const LOG_TYPE_CONFIG = {
   [LOG_TYPES.FIRE_ALARM]: {
     label: 'Fire Alarm',
     color: 'alert',
-    icon: '🔥',
+    icon: 'FIR',
     description: 'Fire alarm activation',
     fields: ['alarm_location', 'cause', 'evacuation', 'fire_service']
   },
   
-  [LOG_TYPES.MEDICAL]: {
-    label: 'Medical',
-    color: 'alert',
-    icon: '🏥',
-    description: 'Medical emergency or first aid',
-    fields: ['patient_details', 'injury_description', 'treatment_given', 'ambulance']
-  },
-  
+ 
   [LOG_TYPES.EVACUATION]: {
     label: 'Evacuation',
     color: 'alert',
-    icon: '🚪',
+    icon: 'EVC',
     description: 'Building or area evacuation',
     fields: ['reason', 'areas_affected', 'people_evacuated', 'all_clear_time']
   },
@@ -169,7 +161,7 @@ export const LOG_TYPE_CONFIG = {
   [LOG_TYPES.ADMIN]: {
     label: 'Administrative',
     color: 'info',
-    icon: '📋',
+    icon: 'ADM',
     description: 'Administrative task or note',
     fields: ['task_description', 'completed_by', 'notes']
   },
@@ -177,7 +169,7 @@ export const LOG_TYPE_CONFIG = {
   [LOG_TYPES.OTHER]: {
     label: 'Other',
     color: 'info',
-    icon: '📝',
+    icon: 'GEN',
     description: 'General log entry',
     fields: ['description', 'category', 'notes']
   }
