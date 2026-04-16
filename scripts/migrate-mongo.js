@@ -155,10 +155,11 @@ async function migrate() {
     // 5. Shifts
     const mongoShifts = await db.collection('shiftinstances').find({}).toArray();
     console.log(`⏱️   Migrating ${mongoShifts.length} shifts...`);
+    if (mongoShifts.length > 0) console.log('  Sample shift keys:', Object.keys(mongoShifts[0]).join(', '));
     let shiftOk = 0, shiftFail = 0;
     for (const s of mongoShifts) {
-      const siteId    = siteMap.get(str(s.siteId || s.site));
-      const officerId = userMap.get(str(s.officerId || s.officer));
+      const siteId    = siteMap.get(str(s.siteId || s.site || s.siteID));
+      const officerId = userMap.get(str(s.officerId || s.officer || s.officerID || s.userId || s.user));
       if (!siteId || !officerId) { shiftFail++; continue; }
       const { data, error } = await supabase.from('shifts').insert({
         company_id: cid, site_id: siteId, officer_id: officerId,
@@ -175,7 +176,9 @@ async function migrate() {
     // 6. Entries → Occurrence Logs
     const mongoEntries = await db.collection('entries').find({}).toArray();
     console.log(`📝  Migrating ${mongoEntries.length} log entries...`);
+    if (mongoEntries.length > 0) console.log('  Sample entry keys:', Object.keys(mongoEntries[0]).join(', '));
     let logOk = 0, logFail = 0;
+    let logErrors = [];
     for (const e of mongoEntries) {
       const siteId    = siteMap.get(str(e.siteId || e.site));
       const officerId = userMap.get(str(e.officerId || e.officer || e.createdBy));
@@ -194,8 +197,9 @@ async function migrate() {
         type_data:   e.typeData || e.type_data || e.data || {},
         occurred_at: e.createdAt || e.occurredAt || new Date().toISOString(),
       });
-      if (error) { logFail++; } else { logOk++; }
+      if (error) { logFail++; if (logErrors.length < 3) logErrors.push(error.message); } else { logOk++; }
     }
+    if (logErrors.length) console.log('  First errors:', logErrors);
     console.log(`  ✓ ${logOk} inserted, ${logFail} failed\n`);
 
     // 7. Handovers
