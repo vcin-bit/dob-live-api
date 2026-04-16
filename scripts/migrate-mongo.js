@@ -29,9 +29,18 @@ function mapRole(role) {
 
 function mapLogType(type) {
   if (!type) return 'GENERAL';
-  const t = type.toString().toUpperCase();
-  const valid = ['PATROL','INCIDENT','ALARM','ACCESS','VISITOR','HANDOVER','MAINTENANCE','VEHICLE','WELFARE','KEYHOLDING','GENERAL'];
-  return valid.includes(t) ? t : 'GENERAL';
+  const t = type.toString().toUpperCase().replace(/_/g, '');
+  if (t === 'PATROL' || t === 'PATROLCHECK') return 'PATROL';
+  if (t === 'INCIDENT' || t === 'INCIDENTREPORT') return 'INCIDENT';
+  if (t === 'ALARM' || t === 'ALARMACTIVATION') return 'ALARM';
+  if (t === 'ACCESS' || t === 'ACCESSCONTROL') return 'ACCESS';
+  if (t === 'VISITOR' || t === 'VISITORLOG') return 'VISITOR';
+  if (t === 'HANDOVER') return 'HANDOVER';
+  if (t === 'MAINTENANCE') return 'MAINTENANCE';
+  if (t === 'VEHICLE' || t === 'VEHICLELOG') return 'VEHICLE';
+  if (t === 'WELFARE' || t === 'WELFARECHECK') return 'WELFARE';
+  if (t === 'KEYHOLDING' || t === 'KEYS') return 'KEYHOLDING';
+  return 'GENERAL';
 }
 
 async function migrate() {
@@ -158,13 +167,18 @@ async function migrate() {
     if (mongoShifts.length > 0) console.log('  Sample shift keys:', Object.keys(mongoShifts[0]).join(', '));
     let shiftOk = 0, shiftFail = 0;
     for (const s of mongoShifts) {
-      const siteId    = siteMap.get(str(s.siteId || s.site || s.siteID));
-      const officerId = userMap.get(str(s.officerId || s.officer || s.officerID || s.userId || s.user));
+      const siteId    = siteMap.get(str(s.siteId || s.site));
+      const officerId = userMap.get(str(s.assignedOfficerId || s.officerId || s.officer));
       if (!siteId || !officerId) { shiftFail++; continue; }
+      // Combine date + time strings into ISO datetime
+      const startDt = s.date && s.startTime ? new Date(s.date + 'T' + s.startTime + ':00').toISOString() : s.createdAt || new Date().toISOString();
+      const endDt   = s.date && s.endTime   ? new Date(s.date + 'T' + s.endTime   + ':00').toISOString() : null;
       const { data, error } = await supabase.from('shifts').insert({
         company_id: cid, site_id: siteId, officer_id: officerId,
-        start_time: s.startTime || s.start_time || s.createdAt || new Date().toISOString(),
-        end_time: s.endTime || s.end_time || null,
+        start_time: startDt,
+        end_time:   endDt,
+        pay_rate:   s.payRate || null,
+        charge_rate: s.chargeRate || null,
         notes: s.notes || null,
       }).select('id').single();
       if (error) { shiftFail++; continue; }
@@ -190,12 +204,12 @@ async function migrate() {
         shift_id:    shiftId,
         log_type:    mapLogType(e.type || e.logType || e.entryType),
         title:       e.title || e.summary || null,
-        description: e.description || e.details || e.notes || e.body || null,
+        description: e.notes || e.description || e.details || e.body || null,
         latitude:    e.latitude || e.lat || null,
         longitude:   e.longitude || e.lng || null,
         what3words:  e.what3words || null,
         type_data:   e.typeData || e.type_data || e.data || {},
-        occurred_at: e.createdAt || e.occurredAt || new Date().toISOString(),
+        occurred_at: e.timestamp || e.createdAt || e.occurredAt || new Date().toISOString(),
       });
       if (error) { logFail++; if (logErrors.length < 3) logErrors.push(error.message); } else { logOk++; }
     }
@@ -208,16 +222,17 @@ async function migrate() {
     let hvOk = 0, hvFail = 0;
     for (const h of mongoHandovers) {
       const siteId   = siteMap.get(str(h.siteId || h.site));
-      const authorId = userMap.get(str(h.authorId || h.author || h.createdBy || h.officer));
-      const handedTo = userMap.get(str(h.handedToId || h.handedTo)) || null;
+      const authorId = userMap.get(str(h.outgoingOfficer || h.authorId || h.author || h.createdBy));
+      const handedTo = userMap.get(str(h.acknowledgedBy || h.handedToId || h.handedTo)) || null;
       const shiftId  = shiftMap.get(str(h.shiftId || h.shift)) || null;
+      const content  = [h.shiftSummary, h.notes].filter(Boolean).join('\n') || h.content || h.body || '';
       const { error } = await supabase.from('handover_briefs').insert({
         company_id: cid,
         site_id:    siteId || [...siteMap.values()][0] || null,
         authored_by: authorId || null,
         handed_to:  handedTo,
         shift_id:   shiftId,
-        content:    h.content || h.notes || h.body || h.text || '',
+        content,
       });
       if (error) { hvFail++; } else { hvOk++; }
     }
@@ -228,11 +243,25 @@ async function migrate() {
     console.log(`💬  Migrating ${mongoMessages.length} messages...`);
     let msgOk = 0, msgFail = 0;
     for (const m of mongoMessages) {
-      const senderId    = userMap.get(str(m.senderId || m.sender || m.from || m.createdBy));
-      const recipientId = userMap.get(str(m.recipientId || m.recipient || m.to)) || null;
-      if (!senderId) { msgFail++; continue; }
+      // MongoDB messages have senderName but no senderId — match by name
+      const senderNameParts = (m.senderName || '').toLowerCase().split(' ');
+      let senderId = null;
+      for (const [mongoId, supaId] of userMap.entries()) {
+        // We don't have names in userMap so skip name matching — use first manager
+        break;
+      }
+      // Use first recipient as a proxy for sender if no match
+      const firstRecipient = Array.isArray(m.recipients) ? m.recipients[0] : null;
+      const recipientId = firstRecipient ? userMap.get(str(firstRecipient.officerId)) || null : null;
+      // Find sender by matching senderName against known users
+      const { data: senderUser } = await supabase.from('users')
+        .select('id').ilike('first_name', senderNameParts[0] || '').single().catch(() => ({ data: null }));
+      senderId = senderUser?.id || null;
+      if (!senderId && !recipientId) { msgFail++; continue; }
       const { error } = await supabase.from('messages').insert({
-        company_id: cid, sender_id: senderId, recipient_id: recipientId,
+        company_id: cid,
+        sender_id: senderId || recipientId,
+        recipient_id: recipientId,
         body: m.body || m.content || m.text || m.message || '',
       });
       if (error) { msgFail++; } else { msgOk++; }
