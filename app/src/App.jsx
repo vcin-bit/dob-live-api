@@ -579,10 +579,10 @@ function AuthenticatedApp() {
 // Loading screen
 function LoadingScreen() {
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center">
-        <div className="spinner mb-4"></div>
-        <p className="text-slate-600">Loading your dashboard...</p>
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#0f1623'}}>
+      <div style={{textAlign:'center'}}>
+        <div className="spinner" style={{borderTopColor:'#1a52a8',borderColor:'rgba(255,255,255,0.1)',width:'2rem',height:'2rem',margin:'0 auto 1rem'}} />
+        <p style={{color:'rgba(255,255,255,0.4)',fontSize:'0.875rem'}}>Loading...</p>
       </div>
     </div>
   );
@@ -591,19 +591,13 @@ function LoadingScreen() {
 // Error screen
 function ErrorScreen({ error, onRetry }) {
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center max-w-md">
-        <div className="text-6xl mb-4">⚠️</div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-4">Connection Error</h2>
-        <p className="text-slate-600 mb-6">
-          {error instanceof ApiError 
-            ? `API Error: ${error.message}` 
-            : 'Unable to connect to DOB Live services.'
-          }
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#0f1623',padding:'1.5rem'}}>
+      <div style={{textAlign:'center',maxWidth:'360px'}}>
+        <div style={{fontSize:'1.125rem',fontWeight:700,color:'#fff',marginBottom:'0.75rem'}}>Connection Error</div>
+        <p style={{color:'rgba(255,255,255,0.5)',fontSize:'0.875rem',marginBottom:'1.5rem'}}>
+          {error instanceof ApiError ? error.message : 'Unable to connect to DOB Live.'}
         </p>
-        <button onClick={onRetry} className="btn btn-primary">
-          Try Again
-        </button>
+        <button onClick={onRetry} style={{padding:'0.75rem 1.5rem',background:'var(--blue)',color:'#fff',border:'none',borderRadius:'8px',fontSize:'0.9375rem',fontWeight:600,cursor:'pointer'}}>Try Again</button>
       </div>
     </div>
   );
@@ -612,17 +606,11 @@ function ErrorScreen({ error, onRetry }) {
 // User not found screen
 function UserNotFoundScreen() {
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center max-w-md">
-        <div className="text-6xl mb-4">👤</div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-4">Account Setup Required</h2>
-        <p className="text-slate-600 mb-6">
-          Your account exists but needs to be set up by your administrator. 
-          Please contact your operations manager.
-        </p>
-        <button onClick={() => window.Clerk.signOut()} className="btn btn-secondary">
-          Sign Out
-        </button>
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#0f1623',padding:'1.5rem'}}>
+      <div style={{textAlign:'center',maxWidth:'360px'}}>
+        <div style={{fontSize:'1.125rem',fontWeight:700,color:'#fff',marginBottom:'0.75rem'}}>Account Setup Required</div>
+        <p style={{color:'rgba(255,255,255,0.5)',fontSize:'0.875rem',marginBottom:'1.5rem'}}>Your account exists but needs to be set up by your administrator. Contact your operations manager.</p>
+        <button onClick={() => window.Clerk?.signOut()} style={{padding:'0.75rem 1.5rem',background:'#1a2235',color:'rgba(255,255,255,0.7)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'8px',fontSize:'0.9375rem',fontWeight:600,cursor:'pointer'}}>Sign Out</button>
       </div>
     </div>
   );
@@ -863,30 +851,22 @@ function OfficerDashboard({ user, site, shift }) {
 }
 
 // Quick Action Button Component
-function QuickActionButton({ to, icon, title, subtitle, color = 'primary' }) {
-  const navigate = useNavigate();
-  
-  const colorClasses = {
-    primary: 'bg-slate-50 hover:bg-slate-100 text-slate-700',
-    accent: 'bg-[#e8f0fb] hover:bg-[#dce8f8] text-[#163f87]',
-    info: 'bg-blue-50 hover:bg-blue-100 text-blue-700'
-  };
-  
+function QuickActionButton({ to, icon, title, subtitle }) {
   return (
-    <button
-      onClick={() => navigate(to)}
-      className={`p-4 rounded-lg text-left transition-colors ${colorClasses[color]}`}
+    <Link to={to} style={{display:'flex',alignItems:'center',gap:'0.75rem',padding:'0.875rem',background:'#1a2235',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'8px',textDecoration:'none',color:'#fff',transition:'border-color 0.15s'}}
+      onMouseEnter={e=>e.currentTarget.style.borderColor='rgba(255,255,255,0.2)'}
+      onMouseLeave={e=>e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'}
     >
-      <div className="flex items-center gap-3 mb-2">
-        {icon}
-        <span className="font-medium">{title}</span>
+      <span style={{color:'rgba(255,255,255,0.5)'}}>{icon}</span>
+      <div>
+        <div style={{fontSize:'0.875rem',fontWeight:600}}>{title}</div>
+        {subtitle && <div style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.4)'}}>{subtitle}</div>}
       </div>
-      <p className="text-sm opacity-75">{subtitle}</p>
-    </button>
+    </Link>
   );
 }
 
-// Log Preview Card
+
 function LogPreviewCard({ log }) {
   const typeMap = {
     PATROL:'PAT', INCIDENT:'INC', ALARM:'ALM', ACCESS:'ACC',
@@ -911,27 +891,19 @@ function LogPreviewCard({ log }) {
 
 function TaskPreviewCard({ task }) {
   return (
-    <div className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg">
-      <div style={{width:'2.5rem',height:'2.5rem',background:'var(--navy)',color:'#fff',borderRadius:'6px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.625rem',fontWeight:700,flexShrink:0}}>LOG</div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="font-medium text-slate-900">{task.title}</span>
-          <span className={`status-badge status-pending`}>
-            {task.priority || 'Normal'}
-          </span>
-        </div>
-        <p className="text-sm text-slate-600 truncate">{task.description}</p>
-        {task.due_date && (
-          <p className="text-xs text-slate-500 mt-1">
-            Due: {formatDateTime(task.due_date)}
-          </p>
-        )}
+    <div style={{display:'flex',alignItems:'center',gap:'0.75rem',padding:'0.75rem',background:'rgba(255,255,255,0.05)',borderRadius:'8px'}}>
+      <div style={{width:'2.25rem',height:'2.25rem',background:'rgba(26,82,168,0.3)',borderRadius:'5px',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+        <ClipboardDocumentListIcon style={{width:'1rem',height:'1rem',color:'#60a5fa'}} />
+      </div>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{fontSize:'0.875rem',fontWeight:600,color:'#fff',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{task.title}</div>
+        {task.description && <div style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.4)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{task.description}</div>}
       </div>
     </div>
   );
 }
 
-// Log Entry Screen with comprehensive form
+
 function LogEntryScreen({ user, site, shift }) {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -1083,12 +1055,10 @@ function LogEntryScreen({ user, site, shift }) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Date & Time
-                </label>
+                <label className="officer-label">Date & Time</label>
                 <input
                   type="datetime-local"
-                  className="input"
+                  className="officer-input"
                   value={formData.occurred_at}
                   onChange={(e) => setFormData(prev => ({ ...prev, occurred_at: e.target.value }))}
                 />
@@ -1096,55 +1066,31 @@ function LogEntryScreen({ user, site, shift }) {
             </div>
           </div>
 
-          {/* Location Information */}
-          <div className="card">
-            <h3 className="text-lg font-semibold text-slate-900 mb-4">Location</h3>
-            <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <button
-                  type="button"
-                  onClick={getCurrentLocation}
-                  disabled={locationLoading}
-                  className="btn btn-secondary flex items-center gap-2"
-                >
-                  {locationLoading ? (
-                    <>
-                      <div className="spinner"></div>
-                      <span>Getting Location...</span>
-                    </>
-                  ) : (
-                    <>
-                      <MapPinIcon className="w-4 h-4" />
-                      <span>Get Current Location</span>
-                    </>
-                  )}
-                </button>
-                
-                {formData.latitude && formData.longitude && (
-                  <div className="flex items-center gap-2 text-sm text-green-600">
-                    <span>✓</span>
-                    <span>Location captured</span>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  What3Words (Optional)
-                </label>
-                <input
-                  type="text"
-                  className="input font-mono"
-                  value={formData.what3words}
-                  onChange={(e) => setFormData(prev => ({ ...prev, what3words: e.target.value }))}
-                  placeholder="e.g. filled.count.soap"
-                />
-              </div>
-            </div>
+          {/* Location */}
+          <div style={{marginBottom:'1.25rem'}}>
+            <div style={{fontSize:'0.6875rem',fontWeight:600,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.625rem'}}>Location (Optional)</div>
+            <button
+              type="button"
+              onClick={getCurrentLocation}
+              disabled={locationLoading}
+              style={{padding:'0.75rem 1rem',background:'#1a2235',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'8px',color:formData.latitude?'#4ade80':'rgba(255,255,255,0.6)',fontSize:'0.875rem',fontWeight:500,cursor:'pointer',display:'flex',alignItems:'center',gap:'0.5rem',marginBottom:'0.625rem'}}
+            >
+              <MapPinIcon style={{width:'1rem',height:'1rem'}} />
+              {locationLoading ? 'Getting location...' : formData.latitude ? 'Location captured' : 'Use my location'}
+            </button>
+            <label className="officer-label">what3words (optional)</label>
+            <input
+              type="text"
+              className="officer-input"
+              style={{fontFamily:'monospace'}}
+              value={formData.what3words}
+              onChange={(e) => setFormData(prev => ({ ...prev, what3words: e.target.value }))}
+              placeholder="filled.count.soap"
+            />
           </div>
 
           {/* Type-Specific Fields */}
-          {selectedLogConfig && (
+          {selectedLogConfig && formData.log_type && (
             <TypeSpecificFields
               logType={formData.log_type}
               config={selectedLogConfig}
@@ -1201,11 +1147,9 @@ function TypeSpecificFields({ logType, config, data, onChange }) {
   }
 
   return (
-    <div className="card">
-      <h3 className="text-lg font-semibold text-slate-900 mb-4">
-        {config.label} Details
-      </h3>
-      <div className="space-y-4">
+    <div style={{marginBottom:'1.25rem'}}>
+      <div style={{fontSize:'0.6875rem',fontWeight:600,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.625rem'}}>{config.label} Details</div>
+      <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
         {config.fields.map((field) => (
           <TypeSpecificField
             key={field}
@@ -1336,7 +1280,7 @@ function TypeSpecificField({ field, logType, value, onChange }) {
             {fieldConfig.label}
           </label>
           <select
-            className="input select"
+            className="officer-input"
             value={value}
             onChange={(e) => onChange(e.target.value)}
           >
@@ -1467,227 +1411,96 @@ function LogHistoryScreen({ user, site }) {
   }
 
   return (
-    <div className="container py-6 pb-24">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">Log History</h2>
-        <p className="text-slate-600">View your recent log entries</p>
+    <div style={{padding:'1rem',paddingBottom:'5rem'}}>
+      <div style={{marginBottom:'1rem'}}>
+        <h2 style={{fontSize:'1.125rem',fontWeight:700,color:'#fff',marginBottom:'0.125rem'}}>Log History</h2>
+        <p style={{fontSize:'0.8125rem',color:'rgba(255,255,255,0.4)'}}>{site.name}</p>
       </div>
 
       {/* Filters */}
-      <div className="card mb-6">
-        <div style={{fontSize:"0.6875rem",fontWeight:600,color:"rgba(255,255,255,0.4)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:"0.625rem"}}>Filters</div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="officer-label">
-              Log Type
-            </label>
-            <select
-              className="input select"
-              value={filters.log_type}
-              onChange={(e) => handleFilterChange('log_type', e.target.value)}
-            >
-              <option value="">All Types</option>
-              {Object.entries(LOG_TYPE_CONFIG).map(([type, config]) => (
-                <option key={type} value={type}>{config.label}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div>
-            <label className="officer-label">
-              From Date
-            </label>
-            <input
-              type="date"
-              className="officer-input"
-              value={filters.from}
-              onChange={(e) => handleFilterChange('from', e.target.value)}
-            />
-          </div>
-          
-          <div>
-            <label className="officer-label">
-              To Date
-            </label>
-            <input
-              type="date"
-              className="officer-input"
-              value={filters.to}
-              onChange={(e) => handleFilterChange('to', e.target.value)}
-            />
-          </div>
-        </div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.5rem',marginBottom:'1rem'}}>
+        <select className="officer-input" value={filters.log_type} onChange={e => handleFilterChange('log_type', e.target.value)} style={{gridColumn:'1/-1'}}>
+          <option value="">All Types</option>
+          {Object.entries(LOG_TYPE_CONFIG).map(([type, config]) => (
+            <option key={type} value={type}>{config.label}</option>
+          ))}
+        </select>
+        <input type="date" className="officer-input" value={filters.from} onChange={e => handleFilterChange('from', e.target.value)} />
+        <input type="date" className="officer-input" value={filters.to} onChange={e => handleFilterChange('to', e.target.value)} />
       </div>
 
-      {/* Error State */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-          <div className="flex items-center gap-2">
-            <span className="text-red-600">⚠️</span>
-            <p className="text-red-800 font-medium">Error loading logs</p>
-          </div>
-          <p className="text-red-700 mt-1">{error}</p>
-          <button 
-            onClick={() => fetchLogs()} 
-            className="btn btn-secondary mt-3"
-          >
-            Try Again
-          </button>
-        </div>
-      )}
+      {error && <div className="alert alert-danger" style={{marginBottom:'0.75rem'}}>{error}</div>}
 
-      {/* Logs List */}
-      <div className="space-y-4">
+      <div>
         {loading && logs.length === 0 ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <div className="spinner mb-4"></div>
-              <p className="text-slate-600">Loading logs...</p>
-            </div>
-          </div>
+          <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" style={{borderTopColor:'#fff',borderColor:'rgba(255,255,255,0.15)'}} /></div>
         ) : logs.length === 0 ? (
-          <div className="text-center py-12">
-            <ClipboardDocumentListIcon className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-            <p className="text-slate-600">No logs found</p>
-            <p className="text-slate-500 text-sm mt-1">
-              {filters.log_type || filters.from || filters.to 
-                ? 'Try adjusting your filters' 
-                : 'Start by creating your first log entry'
-              }
-            </p>
+          <div style={{textAlign:'center',padding:'3rem',color:'rgba(255,255,255,0.3)'}}>
+            <ClipboardDocumentListIcon style={{width:'2.5rem',height:'2.5rem',margin:'0 auto 0.75rem'}} />
+            <p style={{fontSize:'0.875rem'}}>{filters.log_type || filters.from || filters.to ? 'No logs match filters' : 'No logs yet'}</p>
           </div>
         ) : (
           <>
-            {logs.map((log) => (
-              <LogHistoryCard key={log.id} log={log} />
-            ))}
-            
-            {/* Load More Button */}
+            {logs.map(log => <LogHistoryCard key={log.id} log={log} />)}
             {hasMore && (
-              <div className="text-center pt-4">
-                <button
-                  onClick={loadMore}
-                  disabled={loading}
-                  className="btn btn-secondary"
-                >
-                  {loading ? (
-                    <>
-                      <div className="spinner"></div>
-                      <span>Loading...</span>
-                    </>
-                  ) : (
-                    'Load More'
-                  )}
-                </button>
-              </div>
+              <button onClick={loadMore} disabled={loading} style={{width:'100%',padding:'0.875rem',background:'#1a2235',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',color:'rgba(255,255,255,0.6)',fontSize:'0.875rem',fontWeight:500,cursor:'pointer',marginTop:'0.5rem'}}>
+                {loading ? 'Loading...' : 'Load More'}
+              </button>
             )}
           </>
         )}
       </div>
     </div>
-  );
+  )
 }
 
-// Log History Card Component
 function LogHistoryCard({ log }) {
   const [expanded, setExpanded] = useState(false);
   const config = LOG_TYPE_CONFIG[log.log_type] || LOG_TYPE_CONFIG.OTHER;
-  
+  const typeMap = {
+    PATROL:'PAT',INCIDENT:'INC',ALARM:'ALM',ACCESS:'ACC',VISITOR:'VIS',
+    HANDOVER:'HND',MAINTENANCE:'MNT',VEHICLE:'VEH',KEYHOLDING:'KEY',GENERAL:'GEN',
+    SHIFT_START:'ON',SHIFT_END:'OFF',BREAK:'BRK',TRAINING:'TRN',
+    EMERGENCY:'SOS',FIRE_ALARM:'FIR',EVACUATION:'EVC',ADMIN:'ADM',OTHER:'OTH',
+  };
+  const code = typeMap[log.log_type] || log.log_type?.slice(0,3) || 'LOG';
+
   return (
-    <div className="card">
-      <div className="flex items-start gap-4">
-        <div className="text-2xl flex-shrink-0">{config.icon}</div>
-        
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <h3 className="font-semibold text-slate-900">{log.title}</h3>
-            <span className={`status-badge status-${config.color}`}>
-              {config.label}
-            </span>
-            <span className="text-xs text-slate-500">
-              {formatDateTime(log.occurred_at)}
-            </span>
-          </div>
-          
-          <p className="text-slate-600 mb-3 leading-relaxed">
-            {expanded ? log.description : (
-              log.description.length > 150 
-                ? `${log.description.substring(0, 150)}...`
-                : log.description
-            )}
-          </p>
-          
-          {/* Location */}
-          {(log.latitude && log.longitude) && (
-            <div className="flex items-center gap-2 mb-2 text-sm text-slate-600">
-              <MapPinIcon className="w-4 h-4" />
-              <span>
-                {log.what3words 
-                  ? `${log.what3words} (${log.latitude.toFixed(6)}, ${log.longitude.toFixed(6)})`
-                  : `${log.latitude.toFixed(6)}, ${log.longitude.toFixed(6)}`
-                }
-              </span>
-            </div>
-          )}
-          
-          {/* Site Info */}
-          {log.site && (
-            <div className="flex items-center gap-2 mb-2 text-sm text-slate-600">
-              <span>📍</span>
-              <span>{log.site.name}</span>
-            </div>
-          )}
-          
-          {/* Type-specific data */}
-          {log.type_data && Object.keys(log.type_data).length > 0 && expanded && (
-            <div className="mt-4 p-3 bg-slate-50 rounded-lg">
-              <h4 className="text-sm font-medium text-slate-700 mb-2">Additional Details</h4>
-              <div className="space-y-2">
-                {Object.entries(log.type_data).map(([key, value]) => {
-                  if (!value) return null;
-                  return (
-                    <div key={key} className="flex gap-2 text-sm">
-                      <span className="font-medium text-slate-600 capitalize min-w-0">
-                        {key.replace(/_/g, ' ')}:
-                      </span>
-                      <span className="text-slate-700">{value}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-          
-          {/* Photos indicator */}
-          {log.photos && log.photos.length > 0 && (
-            <div className="flex items-center gap-2 mt-2 text-sm text-slate-600">
-              <span>📷</span>
-              <span>{log.photos.length} photo{log.photos.length !== 1 ? 's' : ''} attached</span>
-            </div>
-          )}
-          
-          {/* Actions */}
-          <div className="flex items-center gap-4 mt-4 pt-3 border-t border-slate-100">
-            {log.description.length > 150 && (
-              <button
-                onClick={() => setExpanded(!expanded)}
-                className="text-sm text-[#1a52a8] hover:text-[#1a52a8] font-medium"
-              >
-                {expanded ? 'Show Less' : 'Show More'}
-              </button>
-            )}
-            
-            <span className="text-xs text-slate-400">
-              Created {getRelativeTime(log.created_at)}
-            </span>
+    <div
+      onClick={() => setExpanded(!expanded)}
+      className="officer-log-item"
+      style={{cursor:'pointer',flexDirection:'column',gap:0}}
+    >
+      <div style={{display:'flex',alignItems:'flex-start',gap:'0.75rem',width:'100%'}}>
+        <div className="officer-log-type">{code}</div>
+        <div style={{flex:1,minWidth:0}}>
+          <div className="officer-log-title">{log.title || config.label}</div>
+          <div className="officer-log-meta">
+            {new Date(log.occurred_at).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'})}
           </div>
         </div>
+        <div style={{color:'rgba(255,255,255,0.3)',fontSize:'0.75rem',flexShrink:0,marginTop:'2px'}}>{expanded ? '▲' : '▼'}</div>
       </div>
+      {expanded && (
+        <div style={{marginTop:'0.75rem',paddingTop:'0.75rem',borderTop:'1px solid rgba(255,255,255,0.08)',width:'100%'}}>
+          {log.description && <p style={{fontSize:'0.875rem',color:'rgba(255,255,255,0.7)',marginBottom:'0.5rem',lineHeight:1.5}}>{log.description}</p>}
+          {log.type_data && Object.keys(log.type_data).length > 0 && (
+            <div style={{display:'flex',flexDirection:'column',gap:'0.25rem'}}>
+              {Object.entries(log.type_data).map(([key, value]) => value ? (
+                <div key={key} style={{display:'flex',gap:'0.5rem',fontSize:'0.8125rem'}}>
+                  <span style={{color:'rgba(255,255,255,0.35)',textTransform:'capitalize',minWidth:'6rem'}}>{key.replace(/_/g,' ')}:</span>
+                  <span style={{color:'rgba(255,255,255,0.7)'}}>{String(value)}</span>
+                </div>
+              ) : null)}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
-// Tasks Screen
+
 function TasksScreen({ user, site, shift }) {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1748,210 +1561,113 @@ function TasksScreen({ user, site, shift }) {
   };
 
   return (
-    <div className="container py-6 pb-24">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">Tasks</h2>
-        <p className="text-slate-600">Manage your assigned tasks</p>
+    <div style={{padding:'1rem',paddingBottom:'5rem'}}>
+      <div style={{marginBottom:'1rem'}}>
+        <h2 style={{fontSize:'1.125rem',fontWeight:700,color:'#fff',marginBottom:'0.125rem'}}>Tasks</h2>
+        <p style={{fontSize:'0.8125rem',color:'rgba(255,255,255,0.4)'}}>Your assigned tasks</p>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex gap-1 mb-6 bg-slate-100 p-1 rounded-lg">
+      {/* Status tabs */}
+      <div style={{display:'flex',gap:'0.5rem',marginBottom:'1rem',borderBottom:'1px solid rgba(255,255,255,0.08)',paddingBottom:'0'}}>
         {[
-          { key: 'all', label: 'All Tasks', count: tasks.length },
-          { key: 'pending', label: 'Pending', count: tasksByStatus.pending.length },
-          { key: 'in_progress', label: 'In Progress', count: tasksByStatus.in_progress.length },
-          { key: 'completed', label: 'Completed', count: tasksByStatus.completed.length }
+          { key: 'pending',     label: 'Pending',     count: taskGroups.pending.length },
+          { key: 'in_progress', label: 'In Progress', count: taskGroups.in_progress.length },
+          { key: 'completed',   label: 'Done',        count: taskGroups.completed.length },
         ].map(({ key, label, count }) => (
           <button
             key={key}
-            onClick={() => setFilter(key)}
-            className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-              filter === key
-                ? 'bg-white text-slate-900 '
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
+            onClick={() => setActiveTab(key)}
+            style={{padding:'0.5rem 0.75rem',background:'none',border:'none',borderBottom:`2px solid ${activeTab===key?'var(--blue)':'transparent'}`,color:activeTab===key?'#fff':'rgba(255,255,255,0.4)',fontSize:'0.8125rem',fontWeight:600,cursor:'pointer',marginBottom:'-1px'}}
           >
-            {label} ({count})
+            {label} {count > 0 && <span style={{background:activeTab===key?'var(--blue)':'rgba(255,255,255,0.15)',color:activeTab===key?'#fff':'rgba(255,255,255,0.6)',borderRadius:'999px',padding:'1px 6px',fontSize:'0.6875rem',marginLeft:'4px'}}>{count}</span>}
           </button>
         ))}
       </div>
 
-      {/* Error State */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-          <div className="flex items-center gap-2">
-            <span className="text-red-600">⚠️</span>
-            <p className="text-red-800 font-medium">Error loading tasks</p>
-          </div>
-          <p className="text-red-700 mt-1">{error}</p>
-        </div>
-      )}
+      {error && <div className="alert alert-danger" style={{marginBottom:'0.75rem'}}>{error}</div>}
 
-      {/* Tasks List */}
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <div className="spinner mb-4"></div>
-            <p className="text-slate-600">Loading tasks...</p>
-          </div>
+        <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}>
+          <div className="spinner" style={{borderTopColor:'#fff',borderColor:'rgba(255,255,255,0.15)'}} />
         </div>
-      ) : tasks.length === 0 ? (
-        <div className="text-center py-12">
-          <ClockIcon className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-          <p className="text-slate-600">No tasks found</p>
-          <p className="text-slate-500 text-sm mt-1">
-            Tasks will appear here when assigned by your manager
-          </p>
+      ) : currentTasks.length === 0 ? (
+        <div style={{textAlign:'center',padding:'3rem',color:'rgba(255,255,255,0.3)'}}>
+          <ClipboardDocumentListIcon style={{width:'2.5rem',height:'2.5rem',margin:'0 auto 0.75rem'}} />
+          <p style={{fontSize:'0.875rem'}}>No {activeTab.replace('_',' ')} tasks</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {tasks.map((task) => (
-            <TaskCard 
-              key={task.id} 
-              task={task} 
-              onUpdateStatus={updateTaskStatus}
-            />
-          ))}
+        <div style={{display:'flex',flexDirection:'column',gap:'0.625rem'}}>
+          {currentTasks.map(task => <TaskCard key={task.id} task={task} onUpdateStatus={updateTaskStatus} />)}
         </div>
       )}
     </div>
   );
 }
 
-// Task Card Component
 function TaskCard({ task, onUpdateStatus }) {
   const [expanded, setExpanded] = useState(false);
-  
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'PENDING': return 'status-info';
-      case 'IN_PROGRESS': return 'status-pending';
-      case 'COMPLETED': return 'status-active';
-      case 'CANCELLED': return 'status-alert';
-      default: return 'status-info';
-    }
-  };
-
-  const getNextStatus = (currentStatus) => {
-    switch (currentStatus) {
-      case 'PENDING': return 'IN_PROGRESS';
-      case 'IN_PROGRESS': return 'COMPLETED';
-      default: return null;
-    }
-  };
-
-  const getStatusLabel = (status) => {
-    return status.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
-  };
-
-  const nextStatus = getNextStatus(task.status);
+  const priorityColor = { URGENT:'#ef4444', HIGH:'#f97316', NORMAL:'rgba(255,255,255,0.4)', LOW:'rgba(255,255,255,0.25)' };
+  const statusColor = { PENDING:'rgba(255,255,255,0.5)', IN_PROGRESS:'#60a5fa', COMPLETED:'#4ade80' };
 
   return (
-    <div className="card">
-      <div className="flex items-start gap-4">
-        <div className="text-2xl flex-shrink-0">
-          {task.priority === 'HIGH' ? '🔥' :
-           task.priority === 'URGENT' ? '⚡' : '📋'}
-        </div>
-        
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <h3 className="font-semibold text-slate-900">{task.title}</h3>
-            <span className={`status-badge ${getStatusColor(task.status)}`}>
-              {getStatusLabel(task.status)}
+    <div style={{background:'#1a2235',border:'1px solid rgba(255,255,255,0.07)',borderRadius:'8px',overflow:'hidden'}}>
+      <div
+        onClick={() => setExpanded(!expanded)}
+        style={{padding:'0.875rem',cursor:'pointer',display:'flex',alignItems:'flex-start',gap:'0.75rem'}}
+      >
+        <div style={{width:'3px',alignSelf:'stretch',borderRadius:'2px',background:priorityColor[task.priority]||priorityColor.NORMAL,flexShrink:0,marginTop:'2px'}} />
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:'0.9375rem',fontWeight:600,color:'#fff',marginBottom:'0.25rem'}}>{task.title}</div>
+          <div style={{display:'flex',gap:'0.75rem',flexWrap:'wrap',alignItems:'center'}}>
+            <span style={{fontSize:'0.75rem',color:statusColor[task.status]||statusColor.PENDING,fontWeight:500}}>
+              {task.status?.replace('_',' ') || 'Pending'}
             </span>
-            {task.priority && task.priority !== 'NORMAL' && (
-              <span className={`status-badge ${
-                task.priority === 'URGENT' ? 'status-alert' : 'status-pending'
-              }`}>
-                {task.priority}
+            {task.due_date && (
+              <span style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.35)'}}>
+                Due {new Date(task.due_date).toLocaleDateString('en-GB')}
               </span>
             )}
-          </div>
-          
-          <p className="text-slate-600 mb-3 leading-relaxed">
-            {expanded ? task.description : (
-              task.description && task.description.length > 120 
-                ? `${task.description.substring(0, 120)}...`
-                : task.description
-            )}
-          </p>
-          
-          {/* Due Date */}
-          {task.due_date && (
-            <div className="flex items-center gap-2 mb-2 text-sm">
-              <ClockIcon className="w-4 h-4 text-slate-500" />
-              <span className={`${
-                new Date(task.due_date) < new Date() && task.status !== 'COMPLETED'
-                  ? 'text-red-600 font-medium'
-                  : 'text-slate-600'
-              }`}>
-                Due: {formatDateTime(task.due_date)}
-              </span>
-            </div>
-          )}
-          
-          {/* Assigned by */}
-          {task.assigned_by && (
-            <div className="flex items-center gap-2 mb-3 text-sm text-slate-600">
-              <UserGroupIcon className="w-4 h-4" />
-              <span>Assigned by {task.assigned_by.first_name} {task.assigned_by.last_name}</span>
-            </div>
-          )}
-          
-          {/* Task Details */}
-          {task.task_data && Object.keys(task.task_data).length > 0 && expanded && (
-            <div className="mt-4 p-3 bg-slate-50 rounded-lg">
-              <h4 className="text-sm font-medium text-slate-700 mb-2">Task Details</h4>
-              <div className="space-y-2">
-                {Object.entries(task.task_data).map(([key, value]) => {
-                  if (!value) return null;
-                  return (
-                    <div key={key} className="flex gap-2 text-sm">
-                      <span className="font-medium text-slate-600 capitalize min-w-0">
-                        {key.replace(/_/g, ' ')}:
-                      </span>
-                      <span className="text-slate-700">{value}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-          
-          {/* Actions */}
-          <div className="flex items-center gap-4 mt-4 pt-3 border-t border-slate-100">
-            {nextStatus && (
-              <button
-                onClick={() => onUpdateStatus(task.id, nextStatus)}
-                className={`btn btn-sm ${
-                  nextStatus === 'COMPLETED' ? 'btn-success' : 'btn-primary'
-                }`}
-              >
-                {nextStatus === 'COMPLETED' ? '✓ Complete' : 'Start Task'}
-              </button>
-            )}
-            
-            {task.description && task.description.length > 120 && (
-              <button
-                onClick={() => setExpanded(!expanded)}
-                className="text-sm text-[#1a52a8] hover:text-[#1a52a8] font-medium"
-              >
-                {expanded ? 'Show Less' : 'Show More'}
-              </button>
-            )}
-            
-            <span className="text-xs text-slate-400 ml-auto">
-              Created {getRelativeTime(task.created_at)}
-            </span>
+            {task.site && <span style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.35)'}}>{task.site.name}</span>}
           </div>
         </div>
+        <span style={{color:'rgba(255,255,255,0.25)',fontSize:'0.75rem',flexShrink:0}}>{expanded?'▲':'▼'}</span>
       </div>
+
+      {expanded && (
+        <div style={{padding:'0 0.875rem 0.875rem',borderTop:'1px solid rgba(255,255,255,0.06)'}}>
+          {task.description && (
+            <p style={{fontSize:'0.875rem',color:'rgba(255,255,255,0.6)',marginBottom:'0.875rem',marginTop:'0.75rem',lineHeight:1.5}}>
+              {task.description}
+            </p>
+          )}
+          {task.status !== 'COMPLETED' && (
+            <div style={{display:'flex',gap:'0.5rem'}}>
+              {task.status !== 'IN_PROGRESS' && (
+                <button
+                  onClick={() => onUpdateStatus(task.id, 'IN_PROGRESS')}
+                  style={{flex:1,padding:'0.625rem',background:'rgba(26,82,168,0.3)',border:'1px solid rgba(26,82,168,0.5)',borderRadius:'6px',color:'#60a5fa',fontSize:'0.8125rem',fontWeight:600,cursor:'pointer'}}
+                >
+                  Start
+                </button>
+              )}
+              <button
+                onClick={() => onUpdateStatus(task.id, 'COMPLETED')}
+                style={{flex:1,padding:'0.625rem',background:'rgba(74,222,128,0.15)',border:'1px solid rgba(74,222,128,0.3)',borderRadius:'6px',color:'#4ade80',fontSize:'0.8125rem',fontWeight:600,cursor:'pointer'}}
+              >
+                Complete
+              </button>
+            </div>
+          )}
+          {task.status === 'COMPLETED' && (
+            <div style={{fontSize:'0.8125rem',color:'#4ade80',fontWeight:500}}>Completed</div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
-// Manager Application
+
 function ManagerApp({ user }) {
   return (
     <div className="manager-shell">
@@ -4537,22 +4253,23 @@ function OfficerInstructionsScreen({ user, site }) {
   }, [site?.id]);
 
   if (!site) return (
-    <div style={{padding:'1.5rem'}}>
-      <div className="empty-state"><p>Select a site first</p></div>
+    <div style={{padding:'1.25rem',paddingBottom:'5rem'}}>
+      <div style={{textAlign:'center',padding:'3rem',color:'rgba(255,255,255,0.3)',fontSize:'0.875rem'}}>Select a site first</div>
     </div>
   );
 
   return (
-    <div style={{padding:'1rem'}}>
-      <h2 style={{fontWeight:600,marginBottom:'1rem',fontSize:'1rem'}}>{site.name} — Site Instructions</h2>
-      {loading ? <div style={{display:'flex',justifyContent:'center',padding:'2rem'}}><div className="spinner" /></div>
-      : !data || data.sections?.length===0 ? <div className="empty-state"><p>No instructions for this site</p></div>
+    <div style={{padding:'1rem',paddingBottom:'5rem'}}>
+      <h2 style={{fontWeight:700,marginBottom:'1rem',fontSize:'1.125rem',color:'#fff'}}>{site.name}</h2>
+      <p style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.06em',fontWeight:600,marginBottom:'0.875rem'}}>Site Instructions</p>
+      {loading ? <div style={{display:'flex',justifyContent:'center',padding:'2rem'}}><div className="spinner" style={{borderTopColor:'#fff',borderColor:'rgba(255,255,255,0.15)'}} /></div>
+      : !data || data.sections?.length===0 ? <div style={{textAlign:'center',padding:'2rem',color:'rgba(255,255,255,0.3)',fontSize:'0.875rem'}}>No instructions for this site</div>
       : (
         <div style={{display:'flex',flexDirection:'column',gap:'0.875rem'}}>
           {data.sections.map((sec, i) => (
-            <div key={i} className="card">
-              <div style={{fontWeight:600,marginBottom:'0.375rem'}}>{sec.title}</div>
-              <div style={{fontSize:'0.875rem',color:'var(--text-2)',whiteSpace:'pre-line'}}>{sec.content}</div>
+            <div key={i} className="officer-card">
+              <div style={{fontWeight:600,marginBottom:'0.375rem',color:'#fff'}}>{sec.title}</div>
+              <div style={{fontSize:'0.875rem',color:'rgba(255,255,255,0.6)',whiteSpace:'pre-line',lineHeight:1.6}}>{sec.content}</div>
             </div>
           ))}
         </div>
@@ -4570,16 +4287,16 @@ function OfficerPoliciesScreen({ user }) {
   }, []);
 
   return (
-    <div style={{padding:'1rem'}}>
-      <h2 style={{fontWeight:600,marginBottom:'1rem',fontSize:'1rem'}}>Company Policies</h2>
-      {loading ? <div style={{display:'flex',justifyContent:'center',padding:'2rem'}}><div className="spinner" /></div>
-      : sections.length===0 ? <div className="empty-state"><p>No policies published yet</p></div>
+    <div style={{padding:'1rem',paddingBottom:'5rem'}}>
+      <p style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.06em',fontWeight:600,marginBottom:'0.875rem'}}>Company Policies</p>
+      {loading ? <div style={{display:'flex',justifyContent:'center',padding:'2rem'}}><div className="spinner" style={{borderTopColor:'#fff',borderColor:'rgba(255,255,255,0.15)'}} /></div>
+      : sections.length===0 ? <div style={{textAlign:'center',padding:'2rem',color:'rgba(255,255,255,0.3)',fontSize:'0.875rem'}}>No policies published yet</div>
       : (
         <div style={{display:'flex',flexDirection:'column',gap:'0.875rem'}}>
           {sections.map((sec,i) => (
-            <div key={i} className="card">
-              <div style={{fontWeight:600,marginBottom:'0.375rem'}}>{sec.title}</div>
-              <div style={{fontSize:'0.875rem',color:'var(--text-2)',whiteSpace:'pre-line'}}>{sec.content}</div>
+            <div key={i} className="officer-card">
+              <div style={{fontWeight:600,marginBottom:'0.375rem',color:'#fff'}}>{sec.title}</div>
+              <div style={{fontSize:'0.875rem',color:'rgba(255,255,255,0.6)',whiteSpace:'pre-line',lineHeight:1.6}}>{sec.content}</div>
             </div>
           ))}
         </div>
