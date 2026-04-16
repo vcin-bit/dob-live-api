@@ -196,9 +196,7 @@ async function migrate() {
           client_id:  clientId,
           name: s.name || 'Unknown Site',
           address: s.address || null,
-          what3words: s.what3words || s.w3w || null,
           active: s.active !== false,
-          status: s.status?.toUpperCase() || 'ACTIVE',
         };
 
         const { data, error } = await supabase.from('sites').insert(payload).select('id').single();
