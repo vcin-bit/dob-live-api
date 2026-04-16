@@ -525,6 +525,177 @@ body {
 .manager-nav-item.active::before {
   height: 24px;
 }
+
+/* Clerk Authentication Styling */
+.cl-rootBox {
+  width: 100%;
+}
+
+.cl-card {
+  box-shadow: none !important;
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+.cl-headerTitle {
+  font-family: var(--font-sans) !important;
+  color: var(--text) !important;
+  font-weight: 600 !important;
+  font-size: 1.25rem !important;
+  text-align: center !important;
+  margin-bottom: 1.5rem !important;
+}
+
+.cl-headerSubtitle {
+  font-family: var(--font-sans) !important;
+  color: var(--text-secondary) !important;
+  text-align: center !important;
+  margin-bottom: 1.5rem !important;
+}
+
+.cl-formFieldLabel {
+  font-family: var(--font-sans) !important;
+  color: var(--text) !important;
+  font-weight: 500 !important;
+  font-size: 0.875rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+.cl-formFieldInput {
+  font-family: var(--font-sans) !important;
+  width: 100% !important;
+  padding: 0.75rem 1rem !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--border-strong) !important;
+  border-radius: var(--radius) !important;
+  transition: var(--transition) !important;
+  font-size: 0.875rem !important;
+}
+
+.cl-formFieldInput:focus {
+  outline: none !important;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px rgb(6 182 212 / 0.1) !important;
+}
+
+.cl-formButtonPrimary {
+  font-family: var(--font-sans) !important;
+  width: 100% !important;
+  background: var(--accent) !important;
+  color: white !important;
+  font-weight: 500 !important;
+  padding: 0.75rem 1rem !important;
+  border-radius: var(--radius) !important;
+  border: none !important;
+  transition: var(--transition) !important;
+  cursor: pointer !important;
+  font-size: 0.875rem !important;
+}
+
+.cl-formButtonPrimary:hover {
+  background: var(--accent-hover) !important;
+}
+
+.cl-socialButtonsBlockButton {
+  font-family: var(--font-sans) !important;
+  width: 100% !important;
+  margin-bottom: 1rem !important;
+  padding: 0.75rem 1rem !important;
+  background: var(--surface-elevated) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  transition: var(--transition) !important;
+  color: var(--text) !important;
+  font-weight: 500 !important;
+}
+
+.cl-socialButtonsBlockButton:hover {
+  background: var(--border) !important;
+}
+
+.cl-dividerLine {
+  background: var(--border) !important;
+}
+
+.cl-dividerText {
+  color: var(--text-muted) !important;
+  font-size: 0.875rem !important;
+  font-family: var(--font-sans) !important;
+}
+
+.cl-footerActionLink {
+  color: var(--accent) !important;
+  font-weight: 500 !important;
+  font-family: var(--font-sans) !important;
+  transition: var(--transition) !important;
+}
+
+.cl-footerActionLink:hover {
+  color: var(--accent-hover) !important;
+}
+
+.cl-otpCodeFieldInput {
+  width: 3rem !important;
+  height: 3rem !important;
+  text-align: center !important;
+  border: 1px solid var(--border-strong) !important;
+  border-radius: var(--radius) !important;
+  font-family: var(--font-mono) !important;
+  font-size: 1.125rem !important;
+  font-weight: 600 !important;
+}
+
+.cl-otpCodeFieldInput:focus {
+  outline: none !important;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px rgb(6 182 212 / 0.1) !important;
+}
+
+.cl-formResendCodeLink {
+  color: var(--accent) !important;
+  font-weight: 500 !important;
+  font-size: 0.875rem !important;
+  font-family: var(--font-sans) !important;
+}
+
+.cl-formResendCodeLink:hover {
+  color: var(--accent-hover) !important;
+}
+
+.cl-identityPreviewEditButton {
+  color: var(--accent) !important;
+  font-family: var(--font-sans) !important;
+}
+
+.cl-identityPreviewEditButton:hover {
+  color: var(--accent-hover) !important;
+}
+
+/* Loading states for auth */
+.cl-loading {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Auth form spacing improvements */
+.cl-formFieldRow {
+  margin-bottom: 1rem !important;
+}
+
+.cl-formFieldAction {
+  margin-top: 0.5rem !important;
+}
+
+.cl-footerAction {
+  margin-top: 1.5rem !important;
+  text-align: center !important;
+}
 @media (max-width: 768px) {
   .container {
     padding: 0 var(--space-4);

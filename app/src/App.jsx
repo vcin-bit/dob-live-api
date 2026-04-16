@@ -32,11 +32,40 @@ if (!clerkPubKey) {
 // Main App with Clerk Provider
 function App() {
   return (
-    <ClerkProvider publishableKey={clerkPubKey}>
+    <ClerkProvider 
+      publishableKey={clerkPubKey}
+      appearance={{
+        baseTheme: undefined,
+        variables: {
+          colorPrimary: '#06B6D4',
+          colorText: '#0F172A',
+          colorTextSecondary: '#475569',
+          colorBackground: '#FFFFFF',
+          colorInputBackground: '#FFFFFF',
+          colorInputText: '#0F172A',
+          borderRadius: '0.5rem',
+          fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+        }
+      }}
+      localization={{
+        signIn: {
+          start: {
+            title: 'Sign in to DOB Live',
+            subtitle: 'Access your security management dashboard'
+          }
+        },
+        signUp: {
+          start: {
+            title: 'Create your account',
+            subtitle: 'Join the DOB Live security platform'
+          }
+        }
+      }}
+    >
       <Router>
         <div className="min-h-screen bg-slate-50">
           <SignedOut>
-            <div className="min-h-screen flex items-center justify-center">
+            <div className="min-h-screen flex items-center justify-center p-4">
               <AuthFlow />
             </div>
           </SignedOut>
@@ -56,53 +85,130 @@ function AuthFlow() {
   return (
     <div className="w-full max-w-md">
       <div className="text-center mb-8">
+        <div className="w-16 h-16 bg-slate-900 rounded-xl flex items-center justify-center mx-auto mb-4">
+          <div className="w-8 h-8 bg-cyan-500 rounded-lg flex items-center justify-center">
+            <div className="w-4 h-4 bg-slate-900 rounded-sm"></div>
+          </div>
+        </div>
         <h1 className="text-3xl font-bold text-slate-900 mb-2">DOB Live</h1>
-        <p className="text-slate-600">Security Officer Portal</p>
+        <p className="text-slate-600">Security Management Platform</p>
       </div>
       
       {mode === 'signin' ? (
-        <div className="space-y-4">
-          <SignIn 
-            routing="hash" 
-            signUpUrl="#sign-up"
-            appearance={{
-              elements: {
-                formButtonPrimary: 'btn btn-primary',
-                card: 'shadow-lg border-0'
-              }
-            }}
-          />
-          <p className="text-center text-sm text-slate-600">
-            Need an account?{' '}
-            <button
-              onClick={() => setMode('signup')}
-              className="text-cyan-600 hover:text-cyan-500 font-medium"
-            >
-              Sign up
-            </button>
-          </p>
+        <div className="space-y-6">
+          <div className="card p-8">
+            <SignIn 
+              appearance={{
+                elements: {
+                  rootBox: 'w-full',
+                  card: 'shadow-none border-0 p-0 bg-transparent',
+                  headerTitle: 'text-xl font-semibold text-slate-900 text-center mb-6',
+                  headerSubtitle: 'text-slate-600 text-center mb-6',
+                  socialButtonsBlockButton: 'w-full mb-4 p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors text-slate-700 font-medium',
+                  socialButtonsBlockButtonText: 'font-medium',
+                  dividerLine: 'bg-slate-200',
+                  dividerText: 'text-slate-500 text-sm',
+                  formFieldLabel: 'text-sm font-medium text-slate-700 mb-2',
+                  formFieldInput: 'w-full px-4 py-3 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors',
+                  formButtonPrimary: 'w-full bg-cyan-600 hover:bg-cyan-700 text-white font-medium py-3 px-4 rounded-lg transition-colors',
+                  formFieldInputShowPasswordButton: 'text-slate-500 hover:text-slate-700',
+                  identityPreviewEditButton: 'text-cyan-600 hover:text-cyan-700',
+                  formHeaderTitle: 'text-xl font-semibold text-slate-900 mb-2',
+                  formHeaderSubtitle: 'text-slate-600 mb-6',
+                  footerActionLink: 'text-cyan-600 hover:text-cyan-700 font-medium',
+                  otpCodeFieldInput: 'w-12 h-12 text-center border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500',
+                  formResendCodeLink: 'text-cyan-600 hover:text-cyan-700 font-medium text-sm'
+                },
+                layout: {
+                  socialButtonsVariant: 'blockButton',
+                  socialButtonsPlacement: 'top'
+                },
+                variables: {
+                  colorPrimary: '#06B6D4',
+                  colorText: '#0F172A',
+                  colorTextSecondary: '#475569',
+                  colorBackground: '#FFFFFF',
+                  colorInputBackground: '#FFFFFF',
+                  colorInputText: '#0F172A',
+                  borderRadius: '0.5rem',
+                  fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+                }
+              }}
+              redirectUrl={window.location.origin}
+              afterSignInUrl={window.location.origin}
+              signUpUrl="#"
+            />
+          </div>
+          
+          <div className="text-center">
+            <p className="text-sm text-slate-600">
+              Need an account?{' '}
+              <button
+                onClick={() => setMode('signup')}
+                className="text-cyan-600 hover:text-cyan-500 font-medium transition-colors"
+              >
+                Create account
+              </button>
+            </p>
+          </div>
         </div>
       ) : (
-        <div className="space-y-4">
-          <SignUp 
-            routing="hash" 
-            signInUrl="#sign-in"
-            appearance={{
-              elements: {
-                formButtonPrimary: 'btn btn-primary',
-                card: 'shadow-lg border-0'
-              }
-            }}
-          />
-          <p className="text-center text-sm text-slate-600">
-            Already have an account?{' '}
-            <button
-              onClick={() => setMode('signin')}
-              className="text-cyan-600 hover:text-cyan-500 font-medium"
-            >
-              Sign in
-            </button>
-          </p>
+        <div className="space-y-6">
+          <div className="card p-8">
+            <SignUp 
+              appearance={{
+                elements: {
+                  rootBox: 'w-full',
+                  card: 'shadow-none border-0 p-0 bg-transparent',
+                  headerTitle: 'text-xl font-semibold text-slate-900 text-center mb-6',
+                  headerSubtitle: 'text-slate-600 text-center mb-6',
+                  socialButtonsBlockButton: 'w-full mb-4 p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors text-slate-700 font-medium',
+                  socialButtonsBlockButtonText: 'font-medium',
+                  dividerLine: 'bg-slate-200',
+                  dividerText: 'text-slate-500 text-sm',
+                  formFieldLabel: 'text-sm font-medium text-slate-700 mb-2',
+                  formFieldInput: 'w-full px-4 py-3 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors',
+                  formButtonPrimary: 'w-full bg-cyan-600 hover:bg-cyan-700 text-white font-medium py-3 px-4 rounded-lg transition-colors',
+                  formFieldInputShowPasswordButton: 'text-slate-500 hover:text-slate-700',
+                  identityPreviewEditButton: 'text-cyan-600 hover:text-cyan-700',
+                  formHeaderTitle: 'text-xl font-semibold text-slate-900 mb-2',
+                  formHeaderSubtitle: 'text-slate-600 mb-6',
+                  footerActionLink: 'text-cyan-600 hover:text-cyan-700 font-medium',
+                  otpCodeFieldInput: 'w-12 h-12 text-center border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500',
+                  formResendCodeLink: 'text-cyan-600 hover:text-cyan-700 font-medium text-sm'
+                },
+                layout: {
+                  socialButtonsVariant: 'blockButton',
+                  socialButtonsPlacement: 'top'
+                },
+                variables: {
+                  colorPrimary: '#06B6D4',
+                  colorText: '#0F172A',
+                  colorTextSecondary: '#475569',
+                  colorBackground: '#FFFFFF',
+                  colorInputBackground: '#FFFFFF',
+                  colorInputText: '#0F172A',
+                  borderRadius: '0.5rem',
+                  fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+                }
+              }}
+              redirectUrl={window.location.origin}
+              afterSignUpUrl={window.location.origin}
+              signInUrl="#"
+            />
+          </div>
+          
+          <div className="text-center">
+            <p className="text-sm text-slate-600">
+              Already have an account?{' '}
+              <button
+                onClick={() => setMode('signin')}
+                className="text-cyan-600 hover:text-cyan-500 font-medium transition-colors"
+              >
+                Sign in
+              </button>
+            </p>
+          </div>
         </div>
       )}
     </div>
