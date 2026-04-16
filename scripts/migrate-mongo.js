@@ -1,17 +1,9 @@
 /**
- * DOB Live — MongoDB → Supabase Migration Script
- * 
- * Run once on Render (or locally with both env vars set):
- *   node scripts/migrate-mongo.js
- * 
- * Requires env vars:
- *   MONGODB_URI     — MongoDB SRV connection string
- *   SUPABASE_URL    — Supabase project URL
- *   SUPABASE_KEY    — Supabase service role key (not anon key)
+ * DOB Live — MongoDB → Supabase Full Migration Script (v2)
+ * Run: export MONGODB_URI='...' && node scripts/migrate-mongo.js
  */
-
 require('dotenv').config();
-const { MongoClient, ObjectId } = require('mongodb');
+const { MongoClient } = require('mongodb');
 const { createClient } = require('@supabase/supabase-js');
 
 const MONGODB_URI  = process.env.MONGODB_URI;
@@ -20,268 +12,255 @@ const SUPABASE_KEY = process.env.SUPABASE_SECRET_KEY;
 
 if (!MONGODB_URI)  { console.error('❌  MONGODB_URI not set');  process.exit(1); }
 if (!SUPABASE_URL) { console.error('❌  SUPABASE_URL not set'); process.exit(1); }
-if (!SUPABASE_KEY) { console.error('❌  SUPABASE_KEY not set'); process.exit(1); }
+if (!SUPABASE_KEY) { console.error('❌  SUPABASE_SECRET_KEY not set'); process.exit(1); }
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-// ── Helpers ──────────────────────────────────────────────────
 function str(id) { return id ? id.toString() : null; }
 
 function mapRole(role) {
   if (!role) return 'OFFICER';
-  const r = role.toUpperCase();
-  if (r === 'ADMIN' || r === 'COMPANY_ADMIN' || r === 'COMPANY') return 'COMPANY';
-  if (r === 'OPS_MANAGER' || r === 'MANAGER' || r === 'OPS') return 'OPS_MANAGER';
-  if (r === 'FD' || r === 'FIELD_DIRECTOR') return 'FD';
+  const r = role.toString().toUpperCase();
+  if (['ADMIN','COMPANY_ADMIN','COMPANY'].includes(r)) return 'COMPANY';
+  if (['OPS_MANAGER','MANAGER','OPS'].includes(r)) return 'OPS_MANAGER';
+  if (['FD','FIELD_DIRECTOR'].includes(r)) return 'FD';
   if (r === 'SUPER_ADMIN') return 'SUPER_ADMIN';
   return 'OFFICER';
 }
 
 function mapLogType(type) {
   if (!type) return 'GENERAL';
-  const t = type.toUpperCase();
-  const types = ['PATROL', 'INCIDENT', 'ALARM', 'ACCESS', 'VISITOR', 'HANDOVER', 'MAINTENANCE', 'VEHICLE', 'WELFARE', 'KEYHOLDING', 'GENERAL'];
-  return types.includes(t) ? t : 'GENERAL';
+  const t = type.toString().toUpperCase();
+  const valid = ['PATROL','INCIDENT','ALARM','ACCESS','VISITOR','HANDOVER','MAINTENANCE','VEHICLE','WELFARE','KEYHOLDING','GENERAL'];
+  return valid.includes(t) ? t : 'GENERAL';
 }
 
-function splitName(fullName) {
-  if (!fullName) return { first: '', last: '' };
-  const parts = fullName.trim().split(' ');
-  return { first: parts[0] || '', last: parts.slice(1).join(' ') || '' };
-}
-
-// ── Main ─────────────────────────────────────────────────────
 async function migrate() {
   const mongo = new MongoClient(MONGODB_URI);
-  
   try {
     await mongo.connect();
-    console.log('✅  Connected to MongoDB');
+    console.log('✅  Connected to MongoDB\n');
+    const db = mongo.db('dob_live');
 
-    // Discover available databases and collections
-    const adminDb = mongo.db().admin();
-    const { databases } = await adminDb.listDatabases();
-    console.log('\n📂  Databases found:', databases.map(d => d.name).join(', '));
+    const companyMap = new Map();
+    const clientMap  = new Map();
+    const userMap    = new Map();
+    const siteMap    = new Map();
+    const shiftMap   = new Map();
 
-    // Try to find the right database (skip admin/local/config)
-    const appDbs = databases.filter(d => !['admin', 'local', 'config'].includes(d.name));
-    if (appDbs.length === 0) { console.error('❌  No app databases found'); return; }
+    // 0. Clean previous partial run
+    console.log('🧹  Cleaning previous data...');
+    for (const table of ['tasks','handover_briefs','messages','occurrence_logs','shifts','sites','clients']) {
+      await supabase.from(table).delete().not('id', 'is', null);
+    }
+    console.log('  ✓ Cleared\n');
 
-    const dbName = appDbs[0].name;
-    console.log(`\n📁  Using database: ${dbName}`);
-    const db = mongo.db(dbName);
+    // 1. Get existing company
+    const { data: co } = await supabase.from('companies').select('id').single();
+    if (!co) { console.error('❌  No company in Supabase'); return; }
+    companyMap.set('default', co.id);
+    const cid = co.id;
+    console.log(`🏢  Using company ${cid}\n`);
 
-    const collections = await db.listCollections().toArray();
-    console.log('📋  Collections:', collections.map(c => c.name).join(', '));
+    // 2. Clients (from Mongo companies collection)
+    const mongoCos = await db.collection('companies').find({}).toArray();
+    console.log(`👥  Migrating ${mongoCos.length} clients...`);
+    for (const c of mongoCos) {
+      const { data, error } = await supabase.from('clients').insert({
+        company_id: cid,
+        client_company_name: c.name || c.companyName || 'Unknown',
+        contact_name: c.contactName || c.contact_name || '',
+        contact_email: c.email || null,
+        contact_phone: c.phone || null,
+        active: c.active !== false,
+      }).select('id').single();
+      if (error) { console.error(`  ⚠️  ${c.name}: ${error.message}`); continue; }
+      clientMap.set(str(c._id), data.id);
+      console.log(`  ✓ ${c.name || 'Unknown'}`);
+    }
     console.log('');
 
-    // ── ID Maps (MongoDB ObjectId → Supabase UUID) ────────────
-    const companyMap = new Map(); // mongoId → supabaseId
-    const userMap    = new Map();
-    const clientMap  = new Map();
-    const siteMap    = new Map();
-
-    const collectionNames = collections.map(c => c.name.toLowerCase());
-
-    // ── 1. Companies ─────────────────────────────────────────
-    const companyColName = collectionNames.find(n => n.includes('compan'));
-    if (companyColName) {
-      const companies = await db.collection(companyColName).find({}).toArray();
-      console.log(`🏢  Migrating ${companies.length} companies...`);
-
-      for (const c of companies) {
-        const payload = {
-          name: c.name || c.companyName || 'DOB Live Client',
-          email: c.email || null,
-          phone: c.phone || null,
-          address: c.address || null,
-          active: c.active !== false,
-        };
-        const { data, error } = await supabase.from('companies').insert(payload).select('id').single();
-        if (error) { console.error('  ⚠️  Company insert failed:', error.message, payload.name); continue; }
-        companyMap.set(str(c._id), data.id);
-        console.log(`  ✓ ${payload.name} → ${data.id}`);
-      }
-    } else {
-      // Create a default company if none found
-      console.log('🏢  No companies collection — creating default company...');
-      const { data, error } = await supabase
-        .from('companies')
-        .insert({ name: 'DOB Live', active: true })
-        .select('id').single();
-      if (!error) {
-        companyMap.set('default', data.id);
-        console.log(`  ✓ Default company → ${data.id}`);
-      }
+    // 3. Users
+    const mongoUsers = await db.collection('users').find({}).toArray();
+    console.log(`👤  Migrating ${mongoUsers.length} users...`);
+    for (const u of mongoUsers) {
+      const email = (u.email || '').toLowerCase().trim();
+      if (!email) continue;
+      const { data: exists } = await supabase.from('users').select('id').eq('email', email).single();
+      if (exists) { userMap.set(str(u._id), exists.id); console.log(`  ↩  ${email}`); continue; }
+      const parts = (u.name || u.fullName || '').trim().split(' ');
+      const { data, error } = await supabase.from('users').insert({
+        company_id: cid, clerk_id: null,
+        role: mapRole(u.role),
+        first_name: u.firstName || parts[0] || email.split('@')[0],
+        last_name: u.lastName || parts.slice(1).join(' ') || '',
+        email, phone: u.phone || null,
+        sia_licence_number: u.siaLicenceNumber || null,
+        sia_expiry_date: u.siaExpiryDate || null,
+        active: u.active !== false,
+      }).select('id').single();
+      if (error) { console.error(`  ⚠️  ${email}: ${error.message}`); continue; }
+      userMap.set(str(u._id), data.id);
+      console.log(`  ✓ ${email} [${mapRole(u.role)}]`);
     }
 
-    const defaultCompanyId = [...companyMap.values()][0];
-    if (!defaultCompanyId) { console.error('❌  No company ID — cannot continue'); return; }
-
-    // ── 2. Clients ───────────────────────────────────────────
-    const clientColName = collectionNames.find(n => n.includes('client'));
-    if (clientColName) {
-      const clients = await db.collection(clientColName).find({}).toArray();
-      console.log(`\n👥  Migrating ${clients.length} clients...`);
-
-      for (const c of clients) {
-        const companyId = companyMap.get(str(c.company || c.company_id)) || defaultCompanyId;
-        const payload = {
-          company_id: companyId,
-          client_company_name: c.name || c.companyName || c.client_company_name || 'Unknown Client',
-          contact_name: c.contactName || c.contact_name || '',
-          contact_email: c.email || c.contactEmail || null,
-          contact_phone: c.phone || c.contactPhone || null,
-          active: c.active !== false,
-        };
-        const { data, error } = await supabase.from('clients').insert(payload).select('id').single();
-        if (error) { console.error('  ⚠️  Client insert failed:', error.message); continue; }
-        clientMap.set(str(c._id), data.id);
-        console.log(`  ✓ ${payload.client_company_name}`);
-      }
+    // Also check officers collection
+    const mongoOfficers = await db.collection('officers').find({}).toArray();
+    for (const o of mongoOfficers) {
+      const email = (o.email || '').toLowerCase().trim();
+      if (!email) continue;
+      const { data: exists } = await supabase.from('users').select('id').eq('email', email).single();
+      if (exists) { userMap.set(str(o._id), exists.id); continue; }
+      const parts = (o.name || '').trim().split(' ');
+      const { data, error } = await supabase.from('users').insert({
+        company_id: cid, clerk_id: null, role: 'OFFICER',
+        first_name: o.firstName || parts[0] || email.split('@')[0],
+        last_name: o.lastName || parts.slice(1).join(' ') || '',
+        email, phone: o.phone || null,
+        sia_licence_number: o.siaNumber || null,
+        sia_expiry_date: o.siaExpiryDate || null,
+        active: o.active !== false,
+      }).select('id').single();
+      if (error) continue;
+      userMap.set(str(o._id), data.id);
+      console.log(`  ✓ officer: ${email}`);
     }
+    console.log('');
 
-    // ── 3. Users ─────────────────────────────────────────────
-    const userColName = collectionNames.find(n => n.includes('user'));
-    if (userColName) {
-      const users = await db.collection(userColName).find({}).toArray();
-      console.log(`\n👤  Migrating ${users.length} users...`);
-
-      for (const u of users) {
-        const companyId = companyMap.get(str(u.company || u.company_id || u.companyId)) || defaultCompanyId;
-        const { first, last } = u.firstName ? { first: u.firstName, last: u.lastName || '' } : splitName(u.name || u.fullName || '');
-        
-        const payload = {
-          company_id: companyId,
-          clerk_id: null,               // will be stamped on first Clerk sign-in
-          role: mapRole(u.role),
-          first_name: first || u.email?.split('@')[0] || 'Unknown',
-          last_name: last || '',
-          email: (u.email || '').toLowerCase().trim(),
-          phone: u.phone || u.phoneNumber || null,
-          sia_licence_number: u.siaLicenceNumber || u.sia_licence_number || u.siaNumber || null,
-          sia_expiry_date: u.siaExpiryDate || u.sia_expiry_date || null,
-          active: u.active !== false,
-        };
-
-        if (!payload.email) { console.warn('  ⚠️  Skipping user with no email'); continue; }
-
-        // Check if email already exists (idempotent)
-        const { data: existing } = await supabase.from('users').select('id').eq('email', payload.email).single();
-        if (existing) {
-          userMap.set(str(u._id), existing.id);
-          console.log(`  ↩  ${payload.email} already exists`);
-          continue;
-        }
-
-        const { data, error } = await supabase.from('users').insert(payload).select('id').single();
-        if (error) { console.error('  ⚠️  User insert failed:', error.message, payload.email); continue; }
-        userMap.set(str(u._id), data.id);
-        console.log(`  ✓ ${payload.email} [${payload.role}]`);
-      }
+    // 4. Sites
+    const mongoSites = await db.collection('sites').find({}).toArray();
+    console.log(`📍  Migrating ${mongoSites.length} sites...`);
+    for (const s of mongoSites) {
+      const { data, error } = await supabase.from('sites').insert({
+        company_id: cid,
+        client_id: clientMap.get(str(s.clientId)) || null,
+        name: s.name || 'Unknown Site',
+        address: [s.address, s.city].filter(Boolean).join(', ') || null,
+        geofence_lat: s.geofenceLat || null,
+        geofence_lng: s.geofenceLng || null,
+        geofence_radius_metres: s.geofenceRadius || null,
+        active: s.status === 'active' || s.active !== false,
+      }).select('id').single();
+      if (error) { console.error(`  ⚠️  ${s.name}: ${error.message}`); continue; }
+      siteMap.set(str(s._id), data.id);
+      console.log(`  ✓ ${s.name}`);
     }
+    console.log('');
 
-    // ── 4. Sites ─────────────────────────────────────────────
-    const siteColName = collectionNames.find(n => n.includes('site'));
-    if (siteColName) {
-      const sites = await db.collection(siteColName).find({}).toArray();
-      console.log(`\n📍  Migrating ${sites.length} sites...`);
-
-      for (const s of sites) {
-        const companyId = companyMap.get(str(s.company || s.company_id)) || defaultCompanyId;
-        const clientId  = clientMap.get(str(s.client || s.client_id)) || null;
-
-        const payload = {
-          company_id: companyId,
-          client_id:  clientId,
-          name: s.name || 'Unknown Site',
-          address: s.address || null,
-          active: s.active !== false,
-        };
-
-        const { data, error } = await supabase.from('sites').insert(payload).select('id').single();
-        if (error) { console.error('  ⚠️  Site insert failed:', error.message, payload.name); continue; }
-        siteMap.set(str(s._id), data.id);
-        console.log(`  ✓ ${payload.name}`);
-      }
+    // 5. Shifts
+    const mongoShifts = await db.collection('shiftinstances').find({}).toArray();
+    console.log(`⏱️   Migrating ${mongoShifts.length} shifts...`);
+    let shiftOk = 0, shiftFail = 0;
+    for (const s of mongoShifts) {
+      const siteId    = siteMap.get(str(s.siteId || s.site));
+      const officerId = userMap.get(str(s.officerId || s.officer));
+      if (!siteId || !officerId) { shiftFail++; continue; }
+      const { data, error } = await supabase.from('shifts').insert({
+        company_id: cid, site_id: siteId, officer_id: officerId,
+        start_time: s.startTime || s.start_time || s.createdAt || new Date().toISOString(),
+        end_time: s.endTime || s.end_time || null,
+        notes: s.notes || null,
+      }).select('id').single();
+      if (error) { shiftFail++; continue; }
+      shiftMap.set(str(s._id), data.id);
+      shiftOk++;
     }
+    console.log(`  ✓ ${shiftOk} inserted, ${shiftFail} skipped\n`);
 
-    // ── 5. Occurrence Logs ───────────────────────────────────
-    const logColName = collectionNames.find(n => n.includes('log') || n.includes('occurrence') || n.includes('incident'));
-    if (logColName) {
-      const logs = await db.collection(logColName).find({}).toArray();
-      console.log(`\n📝  Migrating ${logs.length} logs...`);
-      let ok = 0, fail = 0;
-
-      for (const l of logs) {
-        const companyId = companyMap.get(str(l.company || l.company_id)) || defaultCompanyId;
-        const siteId    = siteMap.get(str(l.site || l.site_id)) || [...siteMap.values()][0] || null;
-        const officerId = userMap.get(str(l.officer || l.officer_id || l.user || l.user_id)) || null;
-
-        const payload = {
-          company_id:  companyId,
-          site_id:     siteId,
-          officer_id:  officerId,
-          log_type:    mapLogType(l.type || l.log_type || l.logType),
-          title:       l.title || l.summary || null,
-          description: l.description || l.details || l.notes || null,
-          occurred_at: l.createdAt || l.occurred_at || l.occurredAt || new Date().toISOString(),
-          meta:        l.meta || l.details || null,
-        };
-
-        const { error } = await supabase.from('occurrence_logs').insert(payload);
-        if (error) { fail++; } else { ok++; }
-      }
-      console.log(`  ✓ ${ok} inserted, ${fail} failed`);
+    // 6. Entries → Occurrence Logs
+    const mongoEntries = await db.collection('entries').find({}).toArray();
+    console.log(`📝  Migrating ${mongoEntries.length} log entries...`);
+    let logOk = 0, logFail = 0;
+    for (const e of mongoEntries) {
+      const siteId    = siteMap.get(str(e.siteId || e.site));
+      const officerId = userMap.get(str(e.officerId || e.officer || e.createdBy));
+      const shiftId   = shiftMap.get(str(e.shiftId || e.shift)) || null;
+      const { error } = await supabase.from('occurrence_logs').insert({
+        company_id:  cid,
+        site_id:     siteId || [...siteMap.values()][0] || null,
+        officer_id:  officerId || null,
+        shift_id:    shiftId,
+        log_type:    mapLogType(e.type || e.logType || e.entryType),
+        title:       e.title || e.summary || null,
+        description: e.description || e.details || e.notes || e.body || null,
+        latitude:    e.latitude || e.lat || null,
+        longitude:   e.longitude || e.lng || null,
+        what3words:  e.what3words || null,
+        type_data:   e.typeData || e.type_data || e.data || {},
+        occurred_at: e.createdAt || e.occurredAt || new Date().toISOString(),
+      });
+      if (error) { logFail++; } else { logOk++; }
     }
+    console.log(`  ✓ ${logOk} inserted, ${logFail} failed\n`);
 
-    // ── 6. Tasks ─────────────────────────────────────────────
-    const taskColName = collectionNames.find(n => n.includes('task'));
-    if (taskColName) {
-      const tasks = await db.collection(taskColName).find({}).toArray();
-      console.log(`\n✅  Migrating ${tasks.length} tasks...`);
-      let ok = 0, fail = 0;
-
-      for (const t of tasks) {
-        const companyId  = companyMap.get(str(t.company || t.company_id)) || defaultCompanyId;
-        const siteId     = siteMap.get(str(t.site || t.site_id)) || null;
-        const assignedTo = userMap.get(str(t.assignedTo || t.assigned_to || t.officer)) || null;
-        const createdBy  = userMap.get(str(t.createdBy || t.created_by)) || null;
-
-        const status = (() => {
-          const s = (t.status || '').toUpperCase();
-          if (s === 'COMPLETE' || s === 'COMPLETED' || s === 'DONE') return 'COMPLETE';
-          if (s === 'IN_PROGRESS' || s === 'INPROGRESS' || s === 'ACTIVE') return 'IN_PROGRESS';
-          return 'PENDING';
-        })();
-
-        const payload = {
-          company_id:  companyId,
-          site_id:     siteId,
-          assigned_to: assignedTo,
-          assigned_by: createdBy,
-          title:       t.title || t.name || 'Untitled Task',
-          description: t.description || t.notes || null,
-          due_date:    t.dueDate || t.due_date || null,
-        };
-
-        const { error } = await supabase.from('tasks').insert(payload);
-        if (error) { console.error('  ⚠️  Task failed:', error.message, '|', payload.title); fail++; } else { ok++; }
-      }
-      console.log(`  ✓ ${ok} inserted, ${fail} failed`);
+    // 7. Handovers
+    const mongoHandovers = await db.collection('handoverbriefs').find({}).toArray();
+    console.log(`📋  Migrating ${mongoHandovers.length} handover briefs...`);
+    let hvOk = 0, hvFail = 0;
+    for (const h of mongoHandovers) {
+      const siteId   = siteMap.get(str(h.siteId || h.site));
+      const authorId = userMap.get(str(h.authorId || h.author || h.createdBy || h.officer));
+      const handedTo = userMap.get(str(h.handedToId || h.handedTo)) || null;
+      const shiftId  = shiftMap.get(str(h.shiftId || h.shift)) || null;
+      const { error } = await supabase.from('handover_briefs').insert({
+        company_id: cid,
+        site_id:    siteId || [...siteMap.values()][0] || null,
+        authored_by: authorId || null,
+        handed_to:  handedTo,
+        shift_id:   shiftId,
+        content:    h.content || h.notes || h.body || h.text || '',
+      });
+      if (error) { hvFail++; } else { hvOk++; }
     }
+    console.log(`  ✓ ${hvOk} inserted, ${hvFail} failed\n`);
 
-    // ── Summary ───────────────────────────────────────────────
-    console.log('\n🎉  Migration complete!');
-    console.log(`    Companies : ${companyMap.size}`);
-    console.log(`    Clients   : ${clientMap.size}`);
-    console.log(`    Users     : ${userMap.size}`);
-    console.log(`    Sites     : ${siteMap.size}`);
-    console.log('\nNext: remove MONGODB_URI from Render env vars.');
+    // 8. Messages
+    const mongoMessages = await db.collection('messages').find({}).toArray();
+    console.log(`💬  Migrating ${mongoMessages.length} messages...`);
+    let msgOk = 0, msgFail = 0;
+    for (const m of mongoMessages) {
+      const senderId    = userMap.get(str(m.senderId || m.sender || m.from || m.createdBy));
+      const recipientId = userMap.get(str(m.recipientId || m.recipient || m.to)) || null;
+      if (!senderId) { msgFail++; continue; }
+      const { error } = await supabase.from('messages').insert({
+        company_id: cid, sender_id: senderId, recipient_id: recipientId,
+        body: m.body || m.content || m.text || m.message || '',
+      });
+      if (error) { msgFail++; } else { msgOk++; }
+    }
+    console.log(`  ✓ ${msgOk} inserted, ${msgFail} skipped\n`);
+
+    // 9. Tasks
+    const mongoTasks = await db.collection('clienttasks').find({}).toArray();
+    console.log(`✅  Migrating ${mongoTasks.length} tasks...`);
+    let taskOk = 0, taskFail = 0;
+    for (const t of mongoTasks) {
+      const { error } = await supabase.from('tasks').insert({
+        company_id:  cid,
+        site_id:     siteMap.get(str(t.siteId || t.site)) || null,
+        assigned_to: userMap.get(str(t.assignedTo || t.officer)) || null,
+        assigned_by: userMap.get(str(t.assignedBy || t.createdBy || t.manager)) || null,
+        title:       t.title || t.name || 'Untitled Task',
+        description: t.description || t.notes || null,
+        due_date:    t.dueDate || t.due_date || null,
+      });
+      if (error) { taskFail++; } else { taskOk++; }
+    }
+    console.log(`  ✓ ${taskOk} inserted, ${taskFail} failed\n`);
+
+    // Summary
+    console.log('🎉  Migration complete!');
+    console.log(`    Clients    : ${clientMap.size}`);
+    console.log(`    Users      : ${userMap.size}`);
+    console.log(`    Sites      : ${siteMap.size}`);
+    console.log(`    Shifts     : ${shiftOk}`);
+    console.log(`    Log entries: ${logOk}`);
+    console.log(`    Handovers  : ${hvOk}`);
+    console.log(`    Messages   : ${msgOk}`);
+    console.log(`    Tasks      : ${taskOk}`);
+    console.log('\nDone. Remove MONGODB_URI from Render env vars.');
 
   } catch (err) {
     console.error('❌  Migration failed:', err.message);
-    console.error(err);
   } finally {
     await mongo.close();
   }
