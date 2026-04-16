@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ClerkProvider, SignIn, SignUp, SignedIn, SignedOut, UserButton, useUser, useAuth } from '@clerk/clerk-react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation, useParams } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Link, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { api, ApiError } from './lib/api';
 import { LOG_TYPES, LOG_TYPE_CONFIG, formatDateTime, getRelativeTime } from './lib/constants';
 import { 
@@ -45,14 +45,14 @@ function App() {
 function AuthFlow() {
   const [mode, setMode] = useState('signin');
   return (
-    <div className="auth-page">
-      <div className="auth-box">
-        <div className="auth-logo">
-          <div className="wordmark"><span className="dob">DOB</span><span className="live"> Live</span></div>
+    <div className="auth-page" style={{padding:'1rem'}}>
+      <div className="auth-box" style={{maxWidth:'380px'}}>
+        <div className="auth-logo" style={{marginBottom:'1.5rem'}}>
+          <div className="wordmark" style={{fontSize:'1.75rem'}}><span className="dob">DOB</span><span className="live"> Live</span></div>
           <div className="sub">Security Management Platform</div>
         </div>
-        <div className="auth-card">
-          <h2 style={{fontSize:'1rem',fontWeight:600,marginBottom:'1.25rem',color:'var(--text)'}}>
+        <div className="auth-card" style={{padding:'1.5rem'}}>
+          <h2 style={{fontSize:'0.9375rem',fontWeight:600,marginBottom:'1.25rem',color:'var(--text)'}}>
             {mode === 'signin' ? 'Sign in to your account' : 'Create your account'}
           </h2>
           {mode === 'signin' ? (

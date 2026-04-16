@@ -348,6 +348,15 @@ body {
 .officer-nav-item.active { color: var(--blue); }
 .officer-nav-item:hover { color: var(--text); }
 
+/* ── Mobile base ── */
+@media (max-width: 640px) {
+  .auth-card { padding: 1.5rem 1.25rem; }
+  .auth-logo { margin-bottom: 1.5rem; }
+  .manager-shell { flex-direction: column; }
+  .sidebar { width: 100%; height: auto; flex-direction: row; flex-wrap: wrap; }
+  .main-content { overflow-y: auto; }
+}
+
 /* ── Auth page ── */
 .auth-page {
   min-height: 100vh;
