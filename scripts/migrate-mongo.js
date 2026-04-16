@@ -203,7 +203,7 @@ async function migrate() {
         officer_id:  officerId || null,
         shift_id:    shiftId,
         log_type:    mapLogType(e.type || e.logType || e.entryType),
-        title:       e.title || e.summary || null,
+        title:       e.title || e.summary || e.type || 'Log Entry',
         description: e.notes || e.description || e.details || e.body || null,
         latitude:    e.latitude || e.lat || null,
         longitude:   e.longitude || e.lng || null,
@@ -243,26 +243,18 @@ async function migrate() {
     console.log(`💬  Migrating ${mongoMessages.length} messages...`);
     let msgOk = 0, msgFail = 0;
     for (const m of mongoMessages) {
-      // MongoDB messages have senderName but no senderId — match by name
-      const senderNameParts = (m.senderName || '').toLowerCase().split(' ');
-      let senderId = null;
-      for (const [mongoId, supaId] of userMap.entries()) {
-        // We don't have names in userMap so skip name matching — use first manager
-        break;
-      }
-      // Use first recipient as a proxy for sender if no match
       const firstRecipient = Array.isArray(m.recipients) ? m.recipients[0] : null;
       const recipientId = firstRecipient ? userMap.get(str(firstRecipient.officerId)) || null : null;
-      // Find sender by matching senderName against known users
-      const { data: senderUser } = await supabase.from('users')
-        .select('id').ilike('first_name', senderNameParts[0] || '').single().catch(() => ({ data: null }));
-      senderId = senderUser?.id || null;
-      if (!senderId && !recipientId) { msgFail++; continue; }
+      // Match sender by first name
+      const firstName = (m.senderName || '').split(' ')[0];
+      const { data: senderRows } = await supabase.from('users').select('id').ilike('first_name', firstName);
+      const senderId = senderRows?.[0]?.id || recipientId || null;
+      if (!senderId) { msgFail++; continue; }
       const { error } = await supabase.from('messages').insert({
         company_id: cid,
-        sender_id: senderId || recipientId,
+        sender_id: senderId,
         recipient_id: recipientId,
-        body: m.body || m.content || m.text || m.message || '',
+        body: m.body || m.content || m.text || '',
       });
       if (error) { msgFail++; } else { msgOk++; }
     }
