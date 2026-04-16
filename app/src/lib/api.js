@@ -93,6 +93,15 @@ export const api = {
     delete: (id) => request(`/api/sites/${id}`, { method: 'DELETE' }),
   },
 
+  // Officer-site assignments
+  officerSites: {
+    list: (officerId) => request(`/api/users/${officerId}/sites`),
+    update: (officerId, siteIds) => request(`/api/users/${officerId}/sites`, {
+      method: 'PUT',
+      body: JSON.stringify({ site_ids: siteIds }),
+    }),
+  },
+
   // Shifts
   shifts: {
     list: (params = {}) => request(`/api/shifts?${new URLSearchParams(params)}`),

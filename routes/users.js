@@ -78,3 +78,31 @@ router.patch('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MA
 });
 
 module.exports = router;
+
+// GET /api/users/:id/sites — sites assigned to an officer
+router.get('/:id/sites', authenticate, async (req, res, next) => {
+  try {
+    const { data, error } = await supabase
+      .from('officer_sites')
+      .select('site:sites(id, name, address)')
+      .eq('officer_id', req.params.id);
+    if (error) throw error;
+    res.json({ data: data.map(r => r.site) });
+  } catch (err) { next(err); }
+});
+
+// PUT /api/users/:id/sites — replace all site assignments for an officer
+router.put('/:id/sites', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER'), async (req, res, next) => {
+  try {
+    const { site_ids } = req.body;
+    // Delete existing
+    await supabase.from('officer_sites').delete().eq('officer_id', req.params.id);
+    // Insert new
+    if (site_ids && site_ids.length > 0) {
+      const rows = site_ids.map(site_id => ({ officer_id: req.params.id, site_id }));
+      const { error } = await supabase.from('officer_sites').insert(rows);
+      if (error) throw error;
+    }
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});

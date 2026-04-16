@@ -225,8 +225,8 @@ function OfficerApp({ user }) {
   useEffect(() => {
     async function fetchOfficerData() {
       try {
-        // Get sites for this officer
-        const sitesResponse = await api.sites.list();
+        // Get sites assigned to this officer
+        const sitesResponse = await api.officerSites.list(user.id);
         setSites(sitesResponse.data || []);
 
         // Get active shift
@@ -2453,12 +2453,97 @@ function SiteDetail({ user }) {
 }
 
 // ── TEAM MANAGEMENT ────────────────────────────────────────────────────────────
+function SiteAssignModal({ officer, onClose }) {
+  const [sites, setSites] = useState([]);
+  const [assigned, setAssigned] = useState(new Set());
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const [allSites, officerSites] = await Promise.all([
+          api.sites.list(),
+          api.officerSites.list(officer.id),
+        ]);
+        setSites(allSites.data || []);
+        setAssigned(new Set((officerSites.data || []).map(s => s.id)));
+      } catch (err) { setError(err.message); }
+      finally { setLoading(false); }
+    }
+    load();
+  }, [officer.id]);
+
+  function toggle(siteId) {
+    setAssigned(prev => {
+      const next = new Set(prev);
+      next.has(siteId) ? next.delete(siteId) : next.add(siteId);
+      return next;
+    });
+  }
+
+  async function save() {
+    try {
+      setSaving(true);
+      await api.officerSites.update(officer.id, [...assigned]);
+      onClose();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-title">Assign Sites — {officer.first_name} {officer.last_name}</div>
+          <button className="modal-close" onClick={onClose}>x</button>
+        </div>
+        {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
+        {loading ? (
+          <div style={{display:'flex',justifyContent:'center',padding:'2rem'}}><div className="spinner" /></div>
+        ) : sites.length === 0 ? (
+          <div className="empty-state"><p>No sites available</p></div>
+        ) : (
+          <div style={{display:'flex',flexDirection:'column',gap:'0.5rem',maxHeight:'320px',overflowY:'auto'}}>
+            {sites.map(site => (
+              <label key={site.id} style={{display:'flex',alignItems:'center',gap:'0.75rem',padding:'0.625rem',border:'1px solid var(--border)',borderRadius:'var(--radius)',cursor:'pointer',background:assigned.has(site.id)?'var(--blue-light)':'var(--surface)'}}>
+                <input
+                  type="checkbox"
+                  checked={assigned.has(site.id)}
+                  onChange={() => toggle(site.id)}
+                  style={{width:'1rem',height:'1rem',accentColor:'var(--blue)'}}
+                />
+                <div>
+                  <div style={{fontSize:'0.875rem',fontWeight:500}}>{site.name}</div>
+                  {site.address && <div style={{fontSize:'0.75rem',color:'var(--text-2)'}}>{site.address}</div>}
+                </div>
+              </label>
+            ))}
+          </div>
+        )}
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={save} disabled={saving||loading}>
+            {saving ? 'Saving...' : 'Save Assignments'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 function TeamManagement({ user }) {
   const [officers, setOfficers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [editUser, setEditUser] = useState(null);
+  const [siteAssignOfficer, setSiteAssignOfficer] = useState(null);
 
   async function load() {
     try {
@@ -2508,7 +2593,8 @@ function TeamManagement({ user }) {
                     ):'—'}
                   </td>
                   <td><span className={`badge ${o.active!==false?'badge-success':'badge-neutral'}`}>{o.active!==false?'Active':'Inactive'}</span></td>
-                  <td style={{textAlign:'right'}}>
+                  <td style={{textAlign:'right',display:'flex',gap:'0.5rem',justifyContent:'flex-end'}}>
+                    <button className="btn btn-ghost btn-sm" onClick={() => setSiteAssignOfficer(o)}>Sites</button>
                     <button className="btn btn-ghost btn-sm" onClick={() => { setEditUser(o); setShowForm(true); }}>Edit</button>
                   </td>
                 </tr>
@@ -2522,6 +2608,12 @@ function TeamManagement({ user }) {
           user={editUser}
           onClose={() => setShowForm(false)}
           onSaved={() => { setShowForm(false); load(); }}
+        />
+      )}
+      {siteAssignOfficer && (
+        <SiteAssignModal
+          officer={siteAssignOfficer}
+          onClose={() => setSiteAssignOfficer(null)}
         />
       )}
     </div>
