@@ -59,6 +59,10 @@ export const api = {
     me: () => request('/api/users/me'),
     list: (params = {}) => request(`/api/users?${new URLSearchParams(params)}`),
     get: (id) => request(`/api/users/${id}`),
+    create: (data) => request('/api/users', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
     update: (id, data) => request(`/api/users/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),

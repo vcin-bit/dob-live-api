@@ -2453,29 +2453,30 @@ function TeamManagement({ user }) {
   const [officers, setOfficers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+  const [editUser, setEditUser] = useState(null);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const res = await api.users.list();
-        setOfficers(res.data || []);
-      } catch (err) { setError(err.message); }
-      finally { setLoading(false); }
-    }
-    load();
-  }, []);
+  async function load() {
+    try {
+      const res = await api.users.list();
+      setOfficers(res.data || []);
+    } catch (err) { setError(err.message); }
+    finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
 
   const roleLabels = { OFFICER:'Officer', OPS_MANAGER:'Ops Manager', FD:'Field Director', COMPANY:'Admin', SUPER_ADMIN:'Super Admin' };
   const roleBadge  = { OFFICER:'badge-neutral', OPS_MANAGER:'badge-blue', FD:'badge-navy', COMPANY:'badge-navy', SUPER_ADMIN:'badge-danger' };
-
   const isSiaExpired      = d => d && new Date(d) < new Date();
-  const isSiaExpiringSoon = d => { if (!d) return false; const days = (new Date(d)-new Date())/(86400000); return days > 0 && days < 90; };
+  const isSiaExpiringSoon = d => { if (!d) return false; const days=(new Date(d)-new Date())/86400000; return days>0&&days<90; };
 
   return (
     <div>
       <div className="topbar">
         <div className="topbar-title">Team</div>
-        <span style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>{officers.length} members</span>
+        <button className="btn btn-primary btn-sm" onClick={() => { setEditUser(null); setShowForm(true); }}>
+          <PlusIcon style={{width:'0.875rem',height:'0.875rem'}} /> Add Officer
+        </button>
       </div>
       <div className="page-content">
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
@@ -2484,7 +2485,7 @@ function TeamManagement({ user }) {
         ) : (
           <table className="table">
             <thead>
-              <tr><th>Name</th><th>Email</th><th>Role</th><th>SIA Licence</th><th>SIA Expiry</th><th>Status</th></tr>
+              <tr><th>Name</th><th>Email</th><th>Role</th><th>SIA Licence</th><th>SIA Expiry</th><th>Status</th><th></th></tr>
             </thead>
             <tbody>
               {officers.map(o => (
@@ -2492,32 +2493,125 @@ function TeamManagement({ user }) {
                   <td style={{fontWeight:500}}>{o.first_name} {o.last_name}</td>
                   <td style={{color:'var(--text-2)',fontSize:'0.8125rem'}}>{o.email}</td>
                   <td><span className={`badge ${roleBadge[o.role]||'badge-neutral'}`}>{roleLabels[o.role]||o.role}</span></td>
-                  <td style={{fontFamily:'monospace',fontSize:'0.8125rem',color:'var(--text-2)'}}>{o.sia_licence_number || '—'}</td>
+                  <td style={{fontFamily:'monospace',fontSize:'0.8125rem',color:'var(--text-2)'}}>{o.sia_licence_number||'—'}</td>
                   <td style={{fontSize:'0.8125rem'}}>
                     {o.sia_expiry_date ? (
-                      <span style={{color: isSiaExpired(o.sia_expiry_date) ? 'var(--danger)' : isSiaExpiringSoon(o.sia_expiry_date) ? 'var(--warning)' : 'var(--text-2)'}}>
+                      <span style={{color:isSiaExpired(o.sia_expiry_date)?'var(--danger)':isSiaExpiringSoon(o.sia_expiry_date)?'var(--warning)':'var(--text-2)'}}>
                         {new Date(o.sia_expiry_date).toLocaleDateString('en-GB')}
-                        {isSiaExpired(o.sia_expiry_date) && ' (Expired)'}
-                        {isSiaExpiringSoon(o.sia_expiry_date) && ' (Soon)'}
+                        {isSiaExpired(o.sia_expiry_date)&&' (Expired)'}
+                        {isSiaExpiringSoon(o.sia_expiry_date)&&' (Soon)'}
                       </span>
-                    ) : '—'}
+                    ):'—'}
                   </td>
-                  <td>
-                    <span className={`badge ${o.active !== false ? 'badge-success' : 'badge-neutral'}`}>
-                      {o.active !== false ? 'Active' : 'Inactive'}
-                    </span>
+                  <td><span className={`badge ${o.active!==false?'badge-success':'badge-neutral'}`}>{o.active!==false?'Active':'Inactive'}</span></td>
+                  <td style={{textAlign:'right'}}>
+                    <button className="btn btn-ghost btn-sm" onClick={() => { setEditUser(o); setShowForm(true); }}>Edit</button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
-        <div className="card" style={{marginTop:'1.25rem',background:'var(--surface-2)'}}>
-          <div style={{fontSize:'0.875rem',fontWeight:500,marginBottom:'0.375rem'}}>Adding Team Members</div>
-          <div style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>
-            New officers sign up at <strong>{window.location.origin}</strong> using their work email.
-            Once registered, update their <code>role</code> and <code>company_id</code> in the Supabase users table.
+      </div>
+      {showForm && (
+        <UserFormModal
+          user={editUser}
+          onClose={() => setShowForm(false)}
+          onSaved={() => { setShowForm(false); load(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function UserFormModal({ user, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    first_name: user?.first_name || '',
+    last_name:  user?.last_name  || '',
+    email:      user?.email      || '',
+    phone:      user?.phone      || '',
+    role:       user?.role       || 'OFFICER',
+    sia_licence_number: user?.sia_licence_number || '',
+    sia_expiry_date:    user?.sia_expiry_date ? user.sia_expiry_date.split('T')[0] : '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function save() {
+    if (!form.first_name.trim() || !form.email.trim()) { setError('Name and email are required'); return; }
+    try {
+      setSaving(true);
+      const payload = {
+        first_name: form.first_name,
+        last_name:  form.last_name,
+        email:      form.email.toLowerCase().trim(),
+        phone:      form.phone || null,
+        role:       form.role,
+        sia_licence_number: form.sia_licence_number || null,
+        sia_expiry_date:    form.sia_expiry_date || null,
+      };
+      if (user) {
+        await api.users.update(user.id, payload);
+      } else {
+        await api.users.create(payload);
+      }
+      onSaved();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const f = (k, v) => setForm(p => ({...p, [k]: v}));
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-title">{user ? 'Edit Team Member' : 'Add Officer'}</div>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+        {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
+          <div className="field">
+            <label className="label">First Name</label>
+            <input className="input" value={form.first_name} onChange={e=>f('first_name',e.target.value)} />
           </div>
+          <div className="field">
+            <label className="label">Last Name</label>
+            <input className="input" value={form.last_name} onChange={e=>f('last_name',e.target.value)} />
+          </div>
+          <div className="field" style={{gridColumn:'1/-1'}}>
+            <label className="label">Email</label>
+            <input type="email" className="input" value={form.email} onChange={e=>f('email',e.target.value)} disabled={!!user} />
+            {!user && <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginTop:'0.25rem'}}>They will sign in using this email via Clerk</div>}
+          </div>
+          <div className="field">
+            <label className="label">Phone</label>
+            <input className="input" value={form.phone} onChange={e=>f('phone',e.target.value)} />
+          </div>
+          <div className="field">
+            <label className="label">Role</label>
+            <select className="input" value={form.role} onChange={e=>f('role',e.target.value)}>
+              <option value="OFFICER">Officer</option>
+              <option value="OPS_MANAGER">Ops Manager</option>
+              <option value="FD">Field Director</option>
+              <option value="COMPANY">Admin</option>
+            </select>
+          </div>
+          <div className="field">
+            <label className="label">SIA Licence No.</label>
+            <input className="input" value={form.sia_licence_number} onChange={e=>f('sia_licence_number',e.target.value)} placeholder="e.g. 1234-5678-9012-3456" />
+          </div>
+          <div className="field">
+            <label className="label">SIA Expiry</label>
+            <input type="date" className="input" value={form.sia_expiry_date} onChange={e=>f('sia_expiry_date',e.target.value)} />
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={save} disabled={saving}>{saving?'Saving...':'Save'}</button>
         </div>
       </div>
     </div>
