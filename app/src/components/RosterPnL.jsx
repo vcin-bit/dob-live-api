@@ -227,37 +227,37 @@ function ShiftFormModal({ officers, sites, onClose, onSaved }) {
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
           <div className="field" style={{gridColumn:'1/-1'}}>
             <label className="label">Date</label>
-            <input type="date" className="officer-input" value={form.date} onChange={e => setForm(f=>({...f,date:e.target.value}))} />
+            <input type="date" className="input" value={form.date} onChange={e => setForm(f=>({...f,date:e.target.value}))} />
           </div>
           <div className="field">
             <label className="label">Officer</label>
-            <select className="officer-input" value={form.officer_id} onChange={e => setForm(f=>({...f,officer_id:e.target.value}))}>
+            <select className="input" value={form.officer_id} onChange={e => setForm(f=>({...f,officer_id:e.target.value}))}>
               <option value="">Select officer</option>
               {officers.map(o => <option key={o.id} value={o.id}>{o.first_name} {o.last_name}</option>)}
             </select>
           </div>
           <div className="field">
             <label className="label">Site</label>
-            <select className="officer-input" value={form.site_id} onChange={e => setForm(f=>({...f,site_id:e.target.value}))}>
+            <select className="input" value={form.site_id} onChange={e => setForm(f=>({...f,site_id:e.target.value}))}>
               <option value="">Select site</option>
               {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
           <div className="field">
             <label className="label">Start Time</label>
-            <input type="time" className="officer-input" value={form.start_time} onChange={e => setForm(f=>({...f,start_time:e.target.value}))} />
+            <input type="time" className="input" value={form.start_time} onChange={e => setForm(f=>({...f,start_time:e.target.value}))} />
           </div>
           <div className="field">
             <label className="label">End Time</label>
-            <input type="time" className="officer-input" value={form.end_time} onChange={e => setForm(f=>({...f,end_time:e.target.value}))} />
+            <input type="time" className="input" value={form.end_time} onChange={e => setForm(f=>({...f,end_time:e.target.value}))} />
           </div>
           <div className="field">
             <label className="label">Pay Rate (£/hr)</label>
-            <input type="number" step="0.01" className="officer-input" value={form.pay_rate} onChange={e => setForm(f=>({...f,pay_rate:e.target.value}))} placeholder="e.g. 13.50" />
+            <input type="number" step="0.01" className="input" value={form.pay_rate} onChange={e => setForm(f=>({...f,pay_rate:e.target.value}))} placeholder="e.g. 13.50" />
           </div>
           <div className="field">
             <label className="label">Charge Rate (£/hr)</label>
-            <input type="number" step="0.01" className="officer-input" value={form.charge_rate} onChange={e => setForm(f=>({...f,charge_rate:e.target.value}))} placeholder="e.g. 19.23" />
+            <input type="number" step="0.01" className="input" value={form.charge_rate} onChange={e => setForm(f=>({...f,charge_rate:e.target.value}))} placeholder="e.g. 19.23" />
           </div>
         </div>
         <div className="modal-footer">
@@ -339,7 +339,7 @@ function ProfitLoss({ user }) {
     <div>
       <div className="topbar">
         <div className="topbar-title">P&L Dashboard</div>
-        <select className="officer-input" style={{width:'140px'}} value={period} onChange={e => setPeriod(e.target.value)}>
+        <select className="input" style={{width:'140px'}} value={period} onChange={e => setPeriod(e.target.value)}>
           <option value="week">This Week</option>
           <option value="month">This Month</option>
           <option value="quarter">This Quarter</option>

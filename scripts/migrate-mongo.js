@@ -298,3 +298,6 @@ async function migrate() {
 }
 
 migrate();
+
+// Run this standalone to migrate site instructions only:
+// MONGODB_URI=... node scripts/migrate-instructions.js

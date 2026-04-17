@@ -70,7 +70,7 @@ function DocumentsScreen({ user }) {
     <div>
       <div className="topbar">
         <div className="topbar-title">Documents</div>
-        <select className="officer-input" style={{width:'200px'}} value={selectedSite} onChange={e => { setSelectedSite(e.target.value); setSelectedFolder(null); }}>
+        <select className="input" style={{width:'200px'}} value={selectedSite} onChange={e => { setSelectedSite(e.target.value); setSelectedFolder(null); }}>
           <option value="">Select site...</option>
           {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
@@ -91,7 +91,7 @@ function DocumentsScreen({ user }) {
               </div>
               {showFolderForm && (
                 <div style={{marginBottom:'0.5rem',display:'flex',gap:'0.5rem'}}>
-                  <input className="officer-input" value={newFolderName} onChange={e=>setNewFolderName(e.target.value)} placeholder="Folder name" onKeyDown={e=>e.key==='Enter'&&createFolder()} />
+                  <input className="input" value={newFolderName} onChange={e=>setNewFolderName(e.target.value)} placeholder="Folder name" onKeyDown={e=>e.key==='Enter'&&createFolder()} />
                   <button className="btn btn-primary btn-sm" onClick={createFolder}>Add</button>
                 </div>
               )}
@@ -227,7 +227,7 @@ function PatrolRoutesScreen({ user }) {
       <div className="topbar">
         <div className="topbar-title">Patrol Routes</div>
         <div style={{display:'flex',gap:'0.75rem',alignItems:'center'}}>
-          <select className="officer-input" style={{width:'200px'}} value={selectedSite} onChange={e => setSelectedSite(e.target.value)}>
+          <select className="input" style={{width:'200px'}} value={selectedSite} onChange={e => setSelectedSite(e.target.value)}>
             <option value="">Select site...</option>
             {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
@@ -315,11 +315,11 @@ function PatrolRouteFormModal({ route, siteId, onClose, onSaved }) {
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
         <div className="field">
           <label className="label">Route Name</label>
-          <input className="officer-input" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Perimeter Check" />
+          <input className="input" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Perimeter Check" />
         </div>
         <div className="field">
           <label className="label">Instructions</label>
-          <textarea className="officer-input" rows={2} value={instructions} onChange={e => setInstructions(e.target.value)} placeholder="General instructions for this route..." />
+          <textarea className="input" rows={2} value={instructions} onChange={e => setInstructions(e.target.value)} placeholder="General instructions for this route..." />
         </div>
         <div style={{marginBottom:'1rem'}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.5rem'}}>
@@ -328,8 +328,8 @@ function PatrolRouteFormModal({ route, siteId, onClose, onSaved }) {
           </div>
           {checkpoints.map((cp, i) => (
             <div key={i} style={{display:'grid',gridTemplateColumns:'1fr 1fr auto',gap:'0.5rem',marginBottom:'0.5rem',alignItems:'center'}}>
-              <input className="officer-input" value={cp.name} onChange={e => updateCheckpoint(i, 'name', e.target.value)} placeholder={`Checkpoint ${i+1} name`} />
-              <input className="officer-input" value={cp.instructions} onChange={e => updateCheckpoint(i, 'instructions', e.target.value)} placeholder="Instructions (optional)" />
+              <input className="input" value={cp.name} onChange={e => updateCheckpoint(i, 'name', e.target.value)} placeholder={`Checkpoint ${i+1} name`} />
+              <input className="input" value={cp.instructions} onChange={e => updateCheckpoint(i, 'instructions', e.target.value)} placeholder="Instructions (optional)" />
               <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={() => removeCheckpoint(i)}>x</button>
             </div>
           ))}
@@ -440,9 +440,9 @@ function ShiftPatternFormModal({ pattern, sites, onClose, onSaved }) {
         </div>
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
-          <div className="field" style={{gridColumn:'1/-1'}}><label className="label">Pattern Name</label><input className="officer-input" value={form.name} onChange={e=>f('name',e.target.value)} placeholder="e.g. Weekday Nights" /></div>
+          <div className="field" style={{gridColumn:'1/-1'}}><label className="label">Pattern Name</label><input className="input" value={form.name} onChange={e=>f('name',e.target.value)} placeholder="e.g. Weekday Nights" /></div>
           <div className="field" style={{gridColumn:'1/-1'}}><label className="label">Site</label>
-            <select className="officer-input" value={form.site_id} onChange={e=>f('site_id',e.target.value)}>
+            <select className="input" value={form.site_id} onChange={e=>f('site_id',e.target.value)}>
               <option value="">Select site</option>
               {sites.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
@@ -457,10 +457,10 @@ function ShiftPatternFormModal({ pattern, sites, onClose, onSaved }) {
               ))}
             </div>
           </div>
-          <div className="field"><label className="label">Start Time</label><input type="time" className="officer-input" value={form.start_time} onChange={e=>f('start_time',e.target.value)} /></div>
-          <div className="field"><label className="label">End Time</label><input type="time" className="officer-input" value={form.end_time} onChange={e=>f('end_time',e.target.value)} /></div>
-          <div className="field"><label className="label">Pay Rate (£/hr)</label><input type="number" step="0.01" className="officer-input" value={form.pay_rate} onChange={e=>f('pay_rate',e.target.value)} /></div>
-          <div className="field"><label className="label">Charge Rate (£/hr)</label><input type="number" step="0.01" className="officer-input" value={form.charge_rate} onChange={e=>f('charge_rate',e.target.value)} /></div>
+          <div className="field"><label className="label">Start Time</label><input type="time" className="input" value={form.start_time} onChange={e=>f('start_time',e.target.value)} /></div>
+          <div className="field"><label className="label">End Time</label><input type="time" className="input" value={form.end_time} onChange={e=>f('end_time',e.target.value)} /></div>
+          <div className="field"><label className="label">Pay Rate (£/hr)</label><input type="number" step="0.01" className="input" value={form.pay_rate} onChange={e=>f('pay_rate',e.target.value)} /></div>
+          <div className="field"><label className="label">Charge Rate (£/hr)</label><input type="number" step="0.01" className="input" value={form.charge_rate} onChange={e=>f('charge_rate',e.target.value)} /></div>
         </div>
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
@@ -541,19 +541,19 @@ function RateFormModal({ officers, sites, onClose, onSaved }) {
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
           <div className="field" style={{gridColumn:'1/-1'}}><label className="label">Officer</label>
-            <select className="officer-input" value={form.officer_id} onChange={e=>f('officer_id',e.target.value)}>
+            <select className="input" value={form.officer_id} onChange={e=>f('officer_id',e.target.value)}>
               <option value="">Select officer</option>
               {officers.map(o=><option key={o.id} value={o.id}>{o.first_name} {o.last_name}</option>)}
             </select>
           </div>
           <div className="field"><label className="label">Site (optional)</label>
-            <select className="officer-input" value={form.site_id} onChange={e=>f('site_id',e.target.value)}>
+            <select className="input" value={form.site_id} onChange={e=>f('site_id',e.target.value)}>
               <option value="">All sites</option>
               {sites.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
-          <div className="field"><label className="label">Hourly Rate (£)</label><input type="number" step="0.01" className="officer-input" value={form.hourly_rate} onChange={e=>f('hourly_rate',e.target.value)} placeholder="e.g. 13.50" /></div>
-          <div className="field" style={{gridColumn:'1/-1'}}><label className="label">Role Label</label><input className="officer-input" value={form.role_label} onChange={e=>f('role_label',e.target.value)} placeholder="e.g. Door Supervisor" /></div>
+          <div className="field"><label className="label">Hourly Rate (£)</label><input type="number" step="0.01" className="input" value={form.hourly_rate} onChange={e=>f('hourly_rate',e.target.value)} placeholder="e.g. 13.50" /></div>
+          <div className="field" style={{gridColumn:'1/-1'}}><label className="label">Role Label</label><input className="input" value={form.role_label} onChange={e=>f('role_label',e.target.value)} placeholder="e.g. Door Supervisor" /></div>
         </div>
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
@@ -648,17 +648,17 @@ function AlertFormModal({ sites, onClose, onSaved }) {
       <div className="modal" onClick={e=>e.stopPropagation()}>
         <div className="modal-header"><div className="modal-title">Raise Alert</div><button className="modal-close" onClick={onClose}>x</button></div>
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
-        <div className="field"><label className="label">Title</label><input className="officer-input" value={form.title} onChange={e=>f('title',e.target.value)} placeholder="Brief description of the issue" /></div>
-        <div className="field"><label className="label">Details</label><textarea className="officer-input" rows={3} value={form.description} onChange={e=>f('description',e.target.value)} placeholder="Additional details..." /></div>
+        <div className="field"><label className="label">Title</label><input className="input" value={form.title} onChange={e=>f('title',e.target.value)} placeholder="Brief description of the issue" /></div>
+        <div className="field"><label className="label">Details</label><textarea className="input" rows={3} value={form.description} onChange={e=>f('description',e.target.value)} placeholder="Additional details..." /></div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
           <div className="field"><label className="label">Site</label>
-            <select className="officer-input" value={form.site_id} onChange={e=>f('site_id',e.target.value)}>
+            <select className="input" value={form.site_id} onChange={e=>f('site_id',e.target.value)}>
               <option value="">All sites</option>
               {sites.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
           <div className="field"><label className="label">Severity</label>
-            <select className="officer-input" value={form.severity} onChange={e=>f('severity',e.target.value)}>
+            <select className="input" value={form.severity} onChange={e=>f('severity',e.target.value)}>
               <option value="low">Low</option>
               <option value="medium">Medium</option>
               <option value="high">High</option>
@@ -727,10 +727,10 @@ function PoliciesScreen({ user }) {
                 {canEdit ? (
                   <>
                     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.5rem'}}>
-                      <input className="officer-input" value={sec.title} onChange={e=>updateSection(i,'title',e.target.value)} placeholder="Section title" style={{fontWeight:600,fontSize:'1rem'}} />
+                      <input className="input" value={sec.title} onChange={e=>updateSection(i,'title',e.target.value)} placeholder="Section title" style={{fontWeight:600,fontSize:'1rem'}} />
                       <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)',marginLeft:'0.5rem'}} onClick={()=>removeSection(i)}>Remove</button>
                     </div>
-                    <textarea className="officer-input" rows={6} value={sec.content} onChange={e=>updateSection(i,'content',e.target.value)} placeholder="Policy content..." />
+                    <textarea className="input" rows={6} value={sec.content} onChange={e=>updateSection(i,'content',e.target.value)} placeholder="Policy content..." />
                   </>
                 ) : (
                   <>
@@ -787,7 +787,7 @@ function SiteInstructionsScreen({ user }) {
       <div className="topbar">
         <div className="topbar-title">Site Instructions</div>
         <div style={{display:'flex',gap:'0.75rem',alignItems:'center'}}>
-          <select className="officer-input" style={{width:'200px'}} value={selectedSite} onChange={e => setSelectedSite(e.target.value)}>
+          <select className="input" style={{width:'200px'}} value={selectedSite} onChange={e => setSelectedSite(e.target.value)}>
             <option value="">Select site...</option>
             {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
@@ -817,10 +817,10 @@ function SiteInstructionsScreen({ user }) {
             {sections.map((sec,i) => (
               <div key={i} className="card">
                 <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.5rem'}}>
-                  <input className="officer-input" value={sec.title} onChange={e=>update(i,'title',e.target.value)} placeholder="Section title" style={{fontWeight:600}} />
+                  <input className="input" value={sec.title} onChange={e=>update(i,'title',e.target.value)} placeholder="Section title" style={{fontWeight:600}} />
                   <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)',marginLeft:'0.5rem'}} onClick={()=>remove(i)}>Remove</button>
                 </div>
-                <textarea className="officer-input" rows={5} value={sec.content} onChange={e=>update(i,'content',e.target.value)} placeholder="Instructions content..." />
+                <textarea className="input" rows={5} value={sec.content} onChange={e=>update(i,'content',e.target.value)} placeholder="Instructions content..." />
               </div>
             ))}
           </div>
@@ -908,13 +908,13 @@ function NewMessageModal({ officers, onClose, onSaved }) {
         <div className="modal-header"><div className="modal-title">New Message</div><button className="modal-close" onClick={onClose}>x</button></div>
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
         <div className="field"><label className="label">To (leave blank for all)</label>
-          <select className="officer-input" value={form.recipient_id} onChange={e=>setForm(f=>({...f,recipient_id:e.target.value}))}>
+          <select className="input" value={form.recipient_id} onChange={e=>setForm(f=>({...f,recipient_id:e.target.value}))}>
             <option value="">All officers</option>
             {officers.map(o=><option key={o.id} value={o.id}>{o.first_name} {o.last_name}</option>)}
           </select>
         </div>
         <div className="field"><label className="label">Message</label>
-          <textarea className="officer-input" rows={4} value={form.body} onChange={e=>setForm(f=>({...f,body:e.target.value}))} placeholder="Your message..." />
+          <textarea className="input" rows={4} value={form.body} onChange={e=>setForm(f=>({...f,body:e.target.value}))} placeholder="Your message..." />
         </div>
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>Cancel</button>

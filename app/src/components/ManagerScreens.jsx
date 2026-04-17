@@ -274,11 +274,11 @@ function SiteFormModal({ site, onClose, onSaved }) {
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
         <div className="field">
           <label className="label">Site Name</label>
-          <input className="officer-input" value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} placeholder="e.g. Brindleyplace" />
+          <input className="input" value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} placeholder="e.g. Brindleyplace" />
         </div>
         <div className="field">
           <label className="label">Address</label>
-          <input className="officer-input" value={form.address} onChange={e => setForm(f => ({...f, address: e.target.value}))} placeholder="Street, City, Postcode" />
+          <input className="input" value={form.address} onChange={e => setForm(f => ({...f, address: e.target.value}))} placeholder="Street, City, Postcode" />
         </div>
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
@@ -340,13 +340,13 @@ function LogReview({ user }) {
         <div className="topbar-title">Log Review</div>
         <div style={{display:'flex',gap:'0.5rem',alignItems:'center'}}>
           <input
-            className="officer-input"
+            className="input"
             style={{width:'200px'}}
             placeholder="Search logs..."
             value={filter}
             onChange={e => setFilter(e.target.value)}
           />
-          <select className="officer-input" style={{width:'140px'}} value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
+          <select className="input" style={{width:'140px'}} value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
             <option value="">All types</option>
             {logTypes.map(t => <option key={t} value={t}>{t.charAt(0)+t.slice(1).toLowerCase()}</option>)}
           </select>
@@ -577,23 +577,23 @@ function TaskCreateForm({ officers, sites, onClose, onSuccess }) {
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
         <div className="field">
           <label className="label">Task Title</label>
-          <input className="officer-input" value={form.title} onChange={e => setForm(f=>({...f,title:e.target.value}))} placeholder="What needs to be done?" />
+          <input className="input" value={form.title} onChange={e => setForm(f=>({...f,title:e.target.value}))} placeholder="What needs to be done?" />
         </div>
         <div className="field">
           <label className="label">Description</label>
-          <textarea className="officer-input" rows={3} value={form.description} onChange={e => setForm(f=>({...f,description:e.target.value}))} placeholder="Additional details..." />
+          <textarea className="input" rows={3} value={form.description} onChange={e => setForm(f=>({...f,description:e.target.value}))} placeholder="Additional details..." />
         </div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
           <div className="field">
             <label className="label">Assign To</label>
-            <select className="officer-input" value={form.assigned_to} onChange={e => setForm(f=>({...f,assigned_to:e.target.value}))}>
+            <select className="input" value={form.assigned_to} onChange={e => setForm(f=>({...f,assigned_to:e.target.value}))}>
               <option value="">Unassigned</option>
               {officers.map(o => <option key={o.id} value={o.id}>{o.first_name} {o.last_name}</option>)}
             </select>
           </div>
           <div className="field">
             <label className="label">Site</label>
-            <select className="officer-input" value={form.site_id} onChange={e => setForm(f=>({...f,site_id:e.target.value}))}>
+            <select className="input" value={form.site_id} onChange={e => setForm(f=>({...f,site_id:e.target.value}))}>
               <option value="">No site</option>
               {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
@@ -601,7 +601,7 @@ function TaskCreateForm({ officers, sites, onClose, onSuccess }) {
         </div>
         <div className="field">
           <label className="label">Due Date</label>
-          <input type="date" className="officer-input" value={form.due_date} onChange={e => setForm(f=>({...f,due_date:e.target.value}))} />
+          <input type="date" className="input" value={form.due_date} onChange={e => setForm(f=>({...f,due_date:e.target.value}))} />
         </div>
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
@@ -934,24 +934,24 @@ function UserFormModal({ user, onClose, onSaved }) {
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
           <div className="field">
             <label className="label">First Name</label>
-            <input className="officer-input" value={form.first_name} onChange={e=>f('first_name',e.target.value)} />
+            <input className="input" value={form.first_name} onChange={e=>f('first_name',e.target.value)} />
           </div>
           <div className="field">
             <label className="label">Last Name</label>
-            <input className="officer-input" value={form.last_name} onChange={e=>f('last_name',e.target.value)} />
+            <input className="input" value={form.last_name} onChange={e=>f('last_name',e.target.value)} />
           </div>
           <div className="field" style={{gridColumn:'1/-1'}}>
             <label className="label">Email</label>
-            <input type="email" className="officer-input" value={form.email} onChange={e=>f('email',e.target.value)} disabled={!!user} />
+            <input type="email" className="input" value={form.email} onChange={e=>f('email',e.target.value)} disabled={!!user} />
             {!user && <div style={{fontSize:'0.75rem',color:'var(--text-2)',marginTop:'0.25rem'}}>An invitation email will be sent to this address</div>}
           </div>
           <div className="field">
             <label className="label">Phone</label>
-            <input className="officer-input" value={form.phone} onChange={e=>f('phone',e.target.value)} />
+            <input className="input" value={form.phone} onChange={e=>f('phone',e.target.value)} />
           </div>
           <div className="field">
             <label className="label">Role</label>
-            <select className="officer-input" value={form.role} onChange={e=>f('role',e.target.value)}>
+            <select className="input" value={form.role} onChange={e=>f('role',e.target.value)}>
               <option value="OFFICER">Officer</option>
               <option value="OPS_MANAGER">Ops Manager</option>
               <option value="FD">Field Director</option>
@@ -960,11 +960,11 @@ function UserFormModal({ user, onClose, onSaved }) {
           </div>
           <div className="field">
             <label className="label">SIA Licence No.</label>
-            <input className="officer-input" value={form.sia_licence_number} onChange={e=>f('sia_licence_number',e.target.value)} placeholder="e.g. 1234-5678-9012-3456" />
+            <input className="input" value={form.sia_licence_number} onChange={e=>f('sia_licence_number',e.target.value)} placeholder="e.g. 1234-5678-9012-3456" />
           </div>
           <div className="field">
             <label className="label">SIA Expiry</label>
-            <input type="date" className="officer-input" value={form.sia_expiry_date} onChange={e=>f('sia_expiry_date',e.target.value)} />
+            <input type="date" className="input" value={form.sia_expiry_date} onChange={e=>f('sia_expiry_date',e.target.value)} />
           </div>
         </div>
         <div className="modal-footer">
