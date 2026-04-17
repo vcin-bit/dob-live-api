@@ -72,7 +72,16 @@ function OfficerApp({ user }) {
   }, [user]);
 
   if (loading) {
-    return <LoadingScreen />;
+    return (
+      <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#0f1623'}}>
+        <div style={{textAlign:'center'}}>
+          <div style={{fontSize:'1.5rem',fontWeight:800,marginBottom:'1.5rem'}}>
+            <span style={{color:'#1a52a8'}}>DOB</span><span style={{color:'#fff'}}> Live</span>
+          </div>
+          <div className="spinner" style={{borderTopColor:'#1a52a8',borderColor:'rgba(255,255,255,0.1)',width:'2rem',height:'2rem',margin:'0 auto'}}/>
+        </div>
+      </div>
+    );
   }
 
   // If no site selected and not on site picker page, redirect to site picker
