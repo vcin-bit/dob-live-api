@@ -415,7 +415,8 @@ function ReportModal({ user, site, session, onClose }) {
       const form = new FormData();
       form.append('file', file);
       try {
-        const res = await fetch('/api/patrols/media/upload', {
+        const API = import.meta.env.VITE_API_URL || 'https://dob-live-api.onrender.com';
+        const res = await fetch(`${API}/api/patrols/media/upload`, {
           method: 'POST',
           body: form,
           headers: { Authorization: `Bearer ${await getToken()}` },
