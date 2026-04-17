@@ -16,15 +16,24 @@ function LogEntryScreen({ user, site, shift }) {
     log_type: '',
     title: '',
     description: '',
-    occurred_at: new Date().toISOString().slice(0, 16), // YYYY-MM-DDTHH:mm
+    occurred_at: new Date().toISOString().slice(0, 16),
     latitude: null,
     longitude: null,
     what3words: '',
-    type_data: {}
+    type_data: {},
+    client_reportable: false,
+    media: [],
+    police_attended: false,
+    police_reported: false,
+    police_incident_number: '',
+    police_force: '',
+    police_officer_name: '',
+    police_shoulder_number: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [locationLoading, setLocationLoading] = useState(false);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
 
   // Get current location
   const getCurrentLocation = () => {
@@ -51,6 +60,28 @@ function LogEntryScreen({ user, site, shift }) {
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
     );
   };
+
+  const API = import.meta.env.VITE_API_URL || 'https://dob-live-api.onrender.com';
+
+  async function handleMediaUpload(files) {
+    setUploadingMedia(true);
+    const uploads = [];
+    for (const file of files) {
+      const form = new FormData();
+      form.append('file', file);
+      try {
+        const token = window.Clerk?.session ? await window.Clerk.session.getToken() : '';
+        const res = await fetch(`${API}/api/patrols/media/upload`, {
+          method: 'POST', body: form,
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (data.url) uploads.push({ url: data.url, name: file.name, type: file.type });
+      } catch (e) { console.error('Upload failed:', e); }
+    }
+    setFormData(prev => ({ ...prev, media: [...prev.media, ...uploads] }));
+    setUploadingMedia(false);
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -80,7 +111,15 @@ function LogEntryScreen({ user, site, shift }) {
         latitude: formData.latitude,
         longitude: formData.longitude,
         what3words: formData.what3words?.trim() || null,
-        type_data: formData.type_data
+        type_data: formData.type_data,
+        client_reportable: formData.client_reportable,
+        media: formData.media,
+        police_attended: formData.police_attended,
+        police_reported: formData.police_reported,
+        police_incident_number: formData.police_incident_number || null,
+        police_force: formData.police_force || null,
+        police_officer_name: formData.police_officer_name || null,
+        police_shoulder_number: formData.police_shoulder_number || null,
       };
 
       await api.logs.create(logData);
@@ -190,6 +229,117 @@ function LogEntryScreen({ user, site, shift }) {
               onChange={(typeData) => setFormData(prev => ({ ...prev, type_data: typeData }))}
             />
           )}
+
+          {/* Media Upload */}
+          <div style={{marginBottom:'1.25rem'}}>
+            <div style={{fontSize:'0.6875rem',fontWeight:600,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.625rem'}}>Photos / Video</div>
+            <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'8px'}}>
+              {formData.media.map((m, i) => (
+                <div key={i} style={{width:72,height:72,borderRadius:'8px',background:'#1a2235',border:'1px solid rgba(255,255,255,0.1)',overflow:'hidden',position:'relative'}}>
+                  {m.type?.startsWith('image') ? (
+                    <img src={m.url} style={{width:'100%',height:'100%',objectFit:'cover'}} />
+                  ) : (
+                    <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:'4px'}}>
+                      <div style={{fontSize:'20px'}}>🎥</div>
+                      <div style={{fontSize:'9px',color:'rgba(255,255,255,0.4)',textAlign:'center',padding:'0 4px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:'70px'}}>{m.name}</div>
+                    </div>
+                  )}
+                  <button onClick={() => setFormData(p => ({ ...p, media: p.media.filter((_,j)=>j!==i) }))}
+                    style={{position:'absolute',top:2,right:2,width:18,height:18,background:'rgba(220,38,38,0.85)',borderRadius:'50%',border:'none',color:'#fff',fontSize:12,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>×</button>
+                </div>
+              ))}
+              {uploadingMedia && (
+                <div style={{width:72,height:72,borderRadius:'8px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <div className="spinner" style={{width:'1.25rem',height:'1.25rem',borderTopColor:'#3b82f6',borderColor:'rgba(255,255,255,0.1)'}}/>
+                </div>
+              )}
+              <label style={{width:72,height:72,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>
+                <div style={{fontSize:'22px',color:'rgba(59,130,246,0.5)',lineHeight:1}}>+</div>
+                <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)'}}>Add Photo</div>
+                <input type="file" accept="image/*" multiple capture="environment" style={{display:'none'}} onChange={e => handleMediaUpload(Array.from(e.target.files))} />
+              </label>
+              <label style={{width:72,height:72,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(139,92,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'4px'}}>
+                <div style={{fontSize:'20px',lineHeight:1}}>🎥</div>
+                <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)'}}>Add Video</div>
+                <input type="file" accept="video/*" capture="environment" style={{display:'none'}} onChange={e => handleMediaUpload(Array.from(e.target.files))} />
+              </label>
+            </div>
+          </div>
+
+          {/* Police Report — INCIDENT only */}
+          {(formData.log_type === 'INCIDENT' || formData.log_type === 'EMERGENCY') && (
+            <div style={{marginBottom:'1.25rem',padding:'12px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'10px'}}>
+              <div style={{fontSize:'0.6875rem',fontWeight:600,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'10px'}}>Police</div>
+              
+              <div style={{display:'flex',gap:'8px',marginBottom:'10px'}}>
+                <button type="button" onClick={() => setFormData(p=>({...p,police_reported:!p.police_reported}))}
+                  style={{flex:1,padding:'10px 8px',background:formData.police_reported?'rgba(59,130,246,0.12)':'rgba(255,255,255,0.03)',border:`1.5px solid ${formData.police_reported?'rgba(59,130,246,0.4)':'rgba(255,255,255,0.08)'}`,borderRadius:'8px',color:formData.police_reported?'#60a5fa':'rgba(255,255,255,0.5)',fontSize:'12px',fontWeight:600,cursor:'pointer'}}>
+                  {formData.police_reported ? '✓' : ''} Reported to Police
+                </button>
+                <button type="button" onClick={() => setFormData(p=>({...p,police_attended:!p.police_attended}))}
+                  style={{flex:1,padding:'10px 8px',background:formData.police_attended?'rgba(59,130,246,0.12)':'rgba(255,255,255,0.03)',border:`1.5px solid ${formData.police_attended?'rgba(59,130,246,0.4)':'rgba(255,255,255,0.08)'}`,borderRadius:'8px',color:formData.police_attended?'#60a5fa':'rgba(255,255,255,0.5)',fontSize:'12px',fontWeight:600,cursor:'pointer'}}>
+                  {formData.police_attended ? '✓' : ''} Police Attended
+                </button>
+              </div>
+
+              {formData.police_reported && (
+                <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
+                  <div>
+                    <label className="officer-label">Crime / Incident Reference Number</label>
+                    <input className="officer-input" value={formData.police_incident_number}
+                      onChange={e=>setFormData(p=>({...p,police_incident_number:e.target.value}))}
+                      placeholder="e.g. 01WM/12345/24" />
+                  </div>
+                  <div>
+                    <label className="officer-label">Police Force</label>
+                    <select className="officer-input" value={formData.police_force}
+                      onChange={e=>setFormData(p=>({...p,police_force:e.target.value}))}>
+                      <option value="">Select force...</option>
+                      {['Avon and Somerset','Bedfordshire','Cambridgeshire','Cheshire','City of London','Cleveland','Cumbria','Derbyshire','Devon and Cornwall','Dorset','Durham','Dyfed-Powys','Essex','Gloucestershire','Greater Manchester','Gwent','Hampshire','Hertfordshire','Humberside','Kent','Lancashire','Leicestershire','Lincolnshire','Merseyside','Metropolitan Police','Norfolk','North Wales','North Yorkshire','Northamptonshire','Northumbria','Nottinghamshire','South Wales','South Yorkshire','Staffordshire','Suffolk','Surrey','Sussex','Thames Valley','Warwickshire','West Mercia','West Midlands','West Yorkshire','Wiltshire'].map(f => (
+                        <option key={f} value={f}>{f}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {formData.police_attended && (
+                <div style={{display:'flex',flexDirection:'column',gap:'8px',marginTop: formData.police_reported ? '8px' : '0'}}>
+                  <div>
+                    <label className="officer-label">Attending Officer Name</label>
+                    <input className="officer-input" value={formData.police_officer_name}
+                      onChange={e=>setFormData(p=>({...p,police_officer_name:e.target.value}))}
+                      placeholder="e.g. PC Smith" />
+                  </div>
+                  <div>
+                    <label className="officer-label">Shoulder / Collar Number</label>
+                    <input className="officer-input" value={formData.police_shoulder_number}
+                      onChange={e=>setFormData(p=>({...p,police_shoulder_number:e.target.value}))}
+                      placeholder="e.g. 1234" />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Client Reportable */}
+          <div style={{marginBottom:'1.25rem'}}>
+            <div onClick={() => setFormData(p=>({...p,client_reportable:!p.client_reportable}))}
+              style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 14px',
+                background:formData.client_reportable?'rgba(59,130,246,0.07)':'rgba(255,255,255,0.03)',
+                border:`1.5px solid ${formData.client_reportable?'rgba(59,130,246,0.3)':'rgba(255,255,255,0.08)'}`,
+                borderRadius:'10px',cursor:'pointer'}}>
+              <div>
+                <div style={{fontSize:'13px',fontWeight:600,color:'#fff'}}>Report to client</div>
+                <div style={{fontSize:'11px',color:'rgba(255,255,255,0.35)',marginTop:'1px'}}>
+                  {formData.client_reportable ? 'Visible in client portal + ops' : 'Ops manager only'}
+                </div>
+              </div>
+              <div style={{width:'38px',height:'22px',background:formData.client_reportable?'#3b82f6':'rgba(255,255,255,0.1)',borderRadius:'999px',position:'relative',flexShrink:0}}>
+                <div style={{position:'absolute',top:3,left:formData.client_reportable?'auto':'3px',right:formData.client_reportable?'3px':'auto',width:16,height:16,background:'#fff',borderRadius:'50%'}} />
+              </div>
+            </div>
+          </div>
 
           {/* Submit Buttons */}
           <div style={{display:'flex',gap:'0.75rem',marginTop:'1rem'}}>
