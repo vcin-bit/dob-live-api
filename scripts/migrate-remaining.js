@@ -121,7 +121,7 @@ async function run() {
   for (const c of checklists) {
     const siteId = siteById[c.siteId?.toString()];
     if (!siteId) { console.log(`  skip - no site`); continue; }
-    const { data: route, error } = await supabase.from('patrol_routes').insert({
+    const { data: route, error } = await supabase.from('named_patrol_routes').insert({
       company_id: companyId,
       site_id:    siteId,
       name:       'Default Patrol Route',
@@ -131,7 +131,7 @@ async function run() {
     const checkpoints = c.checkpoints || [];
     for (let i = 0; i < checkpoints.length; i++) {
       const cp = checkpoints[i];
-      await supabase.from('patrol_checkpoints').insert({
+      await supabase.from('named_patrol_checkpoints').insert({
         route_id:    route.id,
         name:        cp.name || cp.label || `Checkpoint ${i+1}`,
         instructions: cp.instructions || cp.description || '',
