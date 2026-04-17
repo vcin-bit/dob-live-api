@@ -13,7 +13,7 @@ async function resolveUser(req, res, next) {
     // Primary lookup: by clerk_id
     let { data: user } = await supabase
       .from('users')
-      .select('id, clerk_id, company_id, role, first_name, last_name, email, active')
+      .select('id, clerk_id, company_id, role, first_name, last_name, email, active, is_route_planner')
       .eq('clerk_id', clerkId)
       .single();
 
@@ -26,7 +26,7 @@ async function resolveUser(req, res, next) {
         if (clerkEmail) {
           const { data: emailUser } = await supabase
             .from('users')
-            .select('id, clerk_id, company_id, role, first_name, last_name, email, active')
+            .select('id, clerk_id, company_id, role, first_name, last_name, email, active, is_route_planner')
             .eq('email', clerkEmail.toLowerCase())
             .is('clerk_id', null)
             .single();

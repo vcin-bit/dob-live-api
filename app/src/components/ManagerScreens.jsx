@@ -1026,9 +1026,10 @@ function UserFormModal({ user, onClose, onSaved }) {
     last_name:  user?.last_name  || '',
     email:      user?.email      || '',
     phone:      user?.phone      || '',
-    role:       user?.role       || 'OFFICER',
+    role:            user?.role       || 'OFFICER',
     sia_licence_number: user?.sia_licence_number || '',
     sia_expiry_date:    user?.sia_expiry_date ? user.sia_expiry_date.split('T')[0] : '',
+    is_route_planner:  user?.is_route_planner || false,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -1105,6 +1106,12 @@ function UserFormModal({ user, onClose, onSaved }) {
             <label className="label">SIA Expiry</label>
             <input type="date" className="input" value={form.sia_expiry_date} onChange={e=>f('sia_expiry_date',e.target.value)} />
           </div>
+        </div>
+        <div className="field">
+          <label style={{display:'flex',alignItems:'center',gap:'0.5rem',cursor:'pointer'}}>
+            <input type="checkbox" checked={form.is_route_planner||false} onChange={e=>setForm(f=>({...f,is_route_planner:e.target.checked}))} style={{width:'1rem',height:'1rem',accentColor:'var(--blue)'}} />
+            <span className="label" style={{margin:0}}>Route Planner — can create &amp; edit patrol routes</span>
+          </label>
         </div>
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>Cancel</button>

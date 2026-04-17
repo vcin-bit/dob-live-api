@@ -197,10 +197,14 @@ export const api = {
     },
   },
   patrols: {
-    list: (params = {}) => request(`/api/patrols?${new URLSearchParams(params)}`),
-    create: (data) => request('/api/patrols', { method: 'POST', body: JSON.stringify(data) }),
-    update: (id, data) => request(`/api/patrols/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-    delete: (id) => request(`/api/patrols/${id}`, { method: 'DELETE' }),
+    getRoutes:     (siteId) => request(`/api/patrols/routes?site_id=${siteId}`),
+    createRoute:   (siteId, name, instructions, checkpoints) => request('/api/patrols/routes', { method:'POST', body: JSON.stringify({ site_id: siteId, name, instructions, checkpoints }) }),
+    updateRoute:   (id, name, instructions, checkpoints) => request(`/api/patrols/routes/${id}`, { method:'PUT', body: JSON.stringify({ name, instructions, checkpoints }) }),
+    deleteRoute:   (id) => request(`/api/patrols/routes/${id}`, { method:'DELETE' }),
+    startSession:  (siteId, routeId) => request('/api/patrols/sessions/start', { method:'POST', body: JSON.stringify({ site_id: siteId, route_id: routeId }) }),
+    gps:           (sessionId, lat, lng) => request(`/api/patrols/sessions/${sessionId}/gps`, { method:'PATCH', body: JSON.stringify({ lat, lng }) }),
+    checkpoint:    (sessionId, checkpointId, name, lat, lng) => request(`/api/patrols/sessions/${sessionId}/checkpoint`, { method:'PATCH', body: JSON.stringify({ checkpoint_id: checkpointId, checkpoint_name: name, lat, lng }) }),
+    endSession:    (sessionId) => request(`/api/patrols/sessions/${sessionId}/end`, { method:'POST' }),
   },
   patterns: {
     list: (params = {}) => request(`/api/patterns?${new URLSearchParams(params)}`),

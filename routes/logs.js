@@ -69,7 +69,8 @@ router.post('/', authenticate, async (req, res, next) => {
   try {
     const {
       site_id, shift_id, log_type, title, description,
-      latitude, longitude, what3words, type_data, occurred_at
+      latitude, longitude, what3words, type_data, occurred_at,
+      client_reportable, patrol_session_id
     } = req.body;
 
     const { data, error } = await supabase
@@ -86,7 +87,8 @@ router.post('/', authenticate, async (req, res, next) => {
         longitude,
         what3words,
         type_data: type_data || {},
-        occurred_at: occurred_at || new Date().toISOString()
+        occurred_at: occurred_at || new Date().toISOString(),
+        client_reportable: client_reportable || false
       })
       .select()
       .single();

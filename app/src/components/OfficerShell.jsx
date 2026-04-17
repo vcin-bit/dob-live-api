@@ -6,7 +6,7 @@ import { LOG_TYPES, LOG_TYPE_CONFIG, formatDateTime, getRelativeTime } from '../
 import { LogEntryScreen, LogHistoryScreen } from './OfficerLog';
 import { TasksScreen } from './OfficerTasks';
 import { OfficerInstructionsScreen, OfficerPoliciesScreen, OfficerNavigation } from './OfficerInfo';
-import { PatrolScreen } from './PatrolScreen';
+import PatrolScreen from './PatrolScreen';
 import { HandoverScreen } from './HandoverScreen';
 import {
   HomeIcon, ClipboardDocumentListIcon, MapPinIcon, ClockIcon,

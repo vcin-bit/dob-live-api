@@ -64,7 +64,7 @@ router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY'), async (req
 // PATCH /api/users/:id
 router.patch('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER'), async (req, res, next) => {
   try {
-    const allowed = ['first_name', 'last_name', 'phone', 'sia_licence_number', 'sia_expiry_date', 'active', 'role'];
+    const allowed = ['first_name', 'last_name', 'phone', 'sia_licence_number', 'sia_expiry_date', 'active', 'role', 'is_route_planner'];
     const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
     const { data, error } = await supabase
       .from('users')
