@@ -1,8 +1,8 @@
-const { requireAuth, clerkClient } = require('@clerk/express');
+const { requireAuth, clerkClient, createClerkClient } = require('@clerk/express');
 const supabase = require('../lib/supabase');
 
 // Require a valid Clerk session - return 401 JSON, never redirect
-const requireClerkAuth = requireAuth({ signInUrl: null });
+const requireClerkAuth = requireAuth({ secretKey: process.env.CLERK_SECRET_KEY });
 
 // Middleware to convert Clerk redirects to 401 JSON
 function clerkAuthMiddleware(req, res, next) {
