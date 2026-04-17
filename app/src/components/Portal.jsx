@@ -415,7 +415,7 @@ class ErrorBoundary extends React.Component {
 }
 
 // Clerk configuration
-const clerkPubKey = 'pk_test_c3BlY2lhbC1ib2JjYXQtNDguY2xlcmsuYWNjb3VudHMuZGV2JA';
+const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 if (!clerkPubKey) {
   throw new Error("Missing Publishable Key")
