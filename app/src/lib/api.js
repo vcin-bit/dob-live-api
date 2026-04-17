@@ -22,9 +22,17 @@ async function request(endpoint, options = {}) {
       ...options,
     };
 
-    // Add Clerk session token for auth
-    if (typeof window !== 'undefined' && window.Clerk?.session) {
-      const token = await window.Clerk.session.getToken();
+    // Add Clerk session token for auth — wait for Clerk to be ready
+    if (typeof window !== 'undefined') {
+      let token = null;
+      // Wait up to 5s for Clerk session to be available
+      for (let i = 0; i < 10; i++) {
+        if (window.Clerk?.session) {
+          token = await window.Clerk.session.getToken();
+          if (token) break;
+        }
+        await new Promise(r => setTimeout(r, 500));
+      }
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
