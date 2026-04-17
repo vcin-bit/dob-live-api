@@ -993,9 +993,20 @@ function TeamManagement({ user }) {
                     ):'—'}
                   </td>
                   <td><span className={`badge ${o.active!==false?'badge-success':'badge-neutral'}`}>{o.active!==false?'Active':'Inactive'}</span></td>
-                  <td style={{textAlign:'right',display:'flex',gap:'0.5rem',justifyContent:'flex-end'}}>
+                  <td style={{textAlign:'right',display:'flex',gap:'0.375rem',justifyContent:'flex-end',flexWrap:'wrap'}}>
                     <button className="btn btn-ghost btn-sm" onClick={() => setSiteAssignOfficer(o)}>Sites</button>
                     <button className="btn btn-ghost btn-sm" onClick={() => { setEditUser(o); setShowForm(true); }}>Edit</button>
+                    {!o.clerk_id && (
+                      <button className="btn btn-ghost btn-sm" onClick={async () => {
+                        try { await api.invite.resend(o.id); setSuccessMsg(`Invite resent to ${o.email}`); setTimeout(()=>setSuccessMsg(null),5000); }
+                        catch(e) { alert('Could not resend: ' + e.message); }
+                      }}>Resend</button>
+                    )}
+                    <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={async () => {
+                      if (!window.confirm(`Delete ${o.first_name} ${o.last_name}? This cannot be undone.`)) return;
+                      try { await api.users.delete(o.id); load(); }
+                      catch(e) { alert('Could not delete: ' + e.message); }
+                    }}>Delete</button>
                   </td>
                 </tr>
               ))}
@@ -1028,6 +1039,7 @@ function UserFormModal({ user, onClose, onSaved }) {
     phone:      user?.phone      || '',
     role:            user?.role       || 'OFFICER',
     sia_licence_number: user?.sia_licence_number || '',
+    sia_licence_type:   user?.sia_licence_type  || '',
     sia_expiry_date:    user?.sia_expiry_date ? user.sia_expiry_date.split('T')[0] : '',
     is_route_planner:  user?.is_route_planner || false,
   });
@@ -1045,6 +1057,7 @@ function UserFormModal({ user, onClose, onSaved }) {
         phone:      form.phone || null,
         role:       form.role,
         sia_licence_number: form.sia_licence_number || null,
+        sia_licence_type:   form.sia_licence_type   || null,
         sia_expiry_date:    form.sia_expiry_date || null,
       };
       if (user) {
@@ -1100,7 +1113,20 @@ function UserFormModal({ user, onClose, onSaved }) {
           </div>
           <div className="field">
             <label className="label">SIA Licence No.</label>
-            <input className="input" value={form.sia_licence_number} onChange={e=>f('sia_licence_number',e.target.value)} placeholder="e.g. 1234-5678-9012-3456" />
+            <input className="input" value={form.sia_licence_number} onChange={e=>f('sia_licence_number',e.target.value)} placeholder="16-digit number" />
+          </div>
+          <div className="field">
+            <label className="label">SIA Licence Type</label>
+            <select className="input" value={form.sia_licence_type||''} onChange={e=>f('sia_licence_type',e.target.value)}>
+              <option value="">Select...</option>
+              <option value="DS">Door Supervisor (DS)</option>
+              <option value="SG">Security Guard (SG)</option>
+              <option value="CCTV">CCTV Operator</option>
+              <option value="CV">Close Protection (CV)</option>
+              <option value="CG">Cash &amp; Valuables (CG)</option>
+              <option value="KH">Key Holding (KH)</option>
+              <option value="VR">Vehicle Immobiliser (VR)</option>
+            </select>
           </div>
           <div className="field">
             <label className="label">SIA Expiry</label>

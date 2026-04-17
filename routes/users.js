@@ -64,7 +64,7 @@ router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY'), async (req
 // PATCH /api/users/:id
 router.patch('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER'), async (req, res, next) => {
   try {
-    const allowed = ['first_name', 'last_name', 'phone', 'sia_licence_number', 'sia_expiry_date', 'active', 'role', 'is_route_planner'];
+    const allowed = ['first_name', 'last_name', 'phone', 'sia_licence_number', 'sia_licence_type', 'sia_expiry_date', 'active', 'role', 'is_route_planner'];
     const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
     const { data, error } = await supabase
       .from('users')
@@ -109,3 +109,14 @@ router.put('/:id/sites', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OP
 });
 
 module.exports = router;
+
+// DELETE /api/users/:id
+router.delete('/:id', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANAGER'), async (req, res, next) => {
+  try {
+    const { error } = await supabase.from('users').delete()
+      .eq('id', req.params.id)
+      .eq('company_id', req.user.company_id);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});

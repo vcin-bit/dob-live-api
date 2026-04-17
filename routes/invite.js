@@ -16,7 +16,7 @@ const APP_URL = process.env.APP_URL || 'https://app.doblive.co.uk';
 // POST /api/invite
 router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER'), async (req, res, next) => {
   try {
-    const { email, first_name, last_name, role, sia_licence_number, sia_expiry_date, phone } = req.body;
+    const { email, first_name, last_name, role, sia_licence_number, sia_licence_type, sia_expiry_date, phone } = req.body;
 
     if (!email || !first_name) {
       return res.status(400).json({ error: 'Email and first name are required' });
@@ -47,6 +47,7 @@ router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGE
         email: normalised,
         phone: phone || null,
         sia_licence_number: sia_licence_number || null,
+        sia_licence_type:   sia_licence_type   || null,
         sia_expiry_date: sia_expiry_date || null,
         active: true,
       })
@@ -106,6 +107,26 @@ router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGE
         : `User created. Email not sent — check SENDGRID_API_KEY on Render.`,
     });
 
+  } catch (err) { next(err); }
+});
+
+// POST /api/invite/resend
+router.post('/resend', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANAGER'), async (req, res, next) => {
+  try {
+    const { user_id } = req.body;
+    const { data: officer, error } = await supabase.from('users').select('*').eq('id', user_id).eq('company_id', req.user.company_id).single();
+    if (error || !officer) return res.status(404).json({ error: 'Officer not found' });
+    if (officer.clerk_id) return res.status(400).json({ error: 'Officer has already signed up' });
+    const sg = getSg();
+    if (sg) {
+      await sg.send({
+        to: officer.email,
+        from: FROM,
+        subject: 'Reminder: Your DOB Live invitation',
+        html: `<p>Hi ${officer.first_name},</p><p>This is a reminder that you have been invited to DOB Live.</p><p><a href="${APP_URL}" style="background:#1a52a8;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:600">Sign Up Now</a></p><p>Use your email address: <strong>${officer.email}</strong></p>`,
+      });
+    }
+    res.json({ success: true, emailSent: !!sg });
   } catch (err) { next(err); }
 });
 

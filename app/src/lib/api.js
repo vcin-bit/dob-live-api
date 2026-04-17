@@ -65,7 +65,8 @@ export const api = {
   // Users
   users: {
     me: () => request('/api/users/me?_=' + Date.now()),
-    list: (params = {}) => request(`/api/users?${new URLSearchParams(params)}`),
+    list:   (params = {}) => request(`/api/users?${new URLSearchParams(params)}`),
+    delete: (id) => request(`/api/users/${id}`, { method: 'DELETE' }),
     get: (id) => request(`/api/users/${id}`),
     create: (data) => request('/api/users', {
       method: 'POST',
@@ -238,7 +239,8 @@ export const api = {
   },
 
   invite: {
-    send: (data) => request('/api/invite', { method: 'POST', body: JSON.stringify(data) }),
+    send:   (data)   => request('/api/invite', { method: 'POST', body: JSON.stringify(data) }),
+    resend: (userId) => request('/api/invite/resend', { method: 'POST', body: JSON.stringify({ user_id: userId }) }),
   },
 
   portal: {
