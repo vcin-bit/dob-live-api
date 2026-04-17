@@ -571,12 +571,12 @@ function LogHistoryCard({ log }) {
           {log.description && <p style={{fontSize:'0.875rem',color:'rgba(255,255,255,0.7)',marginBottom:'0.5rem',lineHeight:1.5}}>{log.description}</p>}
           {log.type_data && Object.keys(log.type_data).length > 0 && (
             <div style={{display:'flex',flexDirection:'column',gap:'0.25rem'}}>
-              {Object.entries(log.type_data).map(([key, value]) => value ? (
+              {Object.entries(log.type_data).filter(([key, value]) => value && typeof value !== 'object' && key !== 'ai_generated').map(([key, value]) => (
                 <div key={key} style={{display:'flex',gap:'0.5rem',fontSize:'0.8125rem'}}>
                   <span style={{color:'rgba(255,255,255,0.35)',textTransform:'capitalize',minWidth:'6rem'}}>{key.replace(/_/g,' ')}:</span>
                   <span style={{color:'rgba(255,255,255,0.7)'}}>{String(value)}</span>
                 </div>
-              ) : null)}
+              ))}
             </div>
           )}
         </div>
