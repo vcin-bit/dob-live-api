@@ -1,7 +1,6 @@
-const { clerkClient } = require('@clerk/express');
+const { verifyToken, clerkClient } = require('@clerk/express');
 const supabase = require('../lib/supabase');
 
-// Decode JWT without verification to get userId - then verify via Clerk API
 async function requireClerkSession(req, res, next) {
   try {
     const authHeader = req.headers.authorization;
@@ -9,20 +8,13 @@ async function requireClerkSession(req, res, next) {
       return res.status(401).json({ error: 'Unauthorised' });
     }
     const token = authHeader.slice(7);
-    
-    // Decode the JWT payload without verification
-    const parts = token.split('.');
-    if (parts.length !== 3) return res.status(401).json({ error: 'Invalid token' });
-    
-    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
-    const userId = payload.sub;
-    
-    if (!userId) return res.status(401).json({ error: 'No user ID in token' });
-    
-    req.auth = { userId };
+    const payload = await verifyToken(token, {
+      secretKey: process.env.CLERK_SECRET_KEY,
+    });
+    req.auth = { userId: payload.sub };
     next();
   } catch (err) {
-    console.error('Auth error:', err.message);
+    console.error('Token verify failed:', err.message);
     return res.status(401).json({ error: 'Unauthorised' });
   }
 }
