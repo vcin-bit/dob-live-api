@@ -264,7 +264,7 @@ function PortalDashboard({ session, onLogout }) {
                               <div style={{fontSize:'0.875rem',fontWeight:500}}>{d.name}</div>
                               <div style={{fontSize:'0.75rem',color:'var(--text-3)'}}>{d.file_size ? `${(d.file_size/1024).toFixed(0)} KB` : ''}</div>
                             </div>
-                            <a href={`https://bxesqjzkuredqzvepomn.supabase.co/storage/v1/object/public/documents/${d.storage_path}`} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm">View</a>
+                            <a href={d.storage_path?.startsWith("http") ? d.storage_path : `https://bxesqjzkuredqzvepomn.supabase.co/storage/v1/object/public/documents/${d.storage_path}`} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm">View</a>
                           </div>
                         ))
                       )}
@@ -277,7 +277,7 @@ function PortalDashboard({ session, onLogout }) {
                     {documents.filter(d => !d.folder_id).map(d => (
                       <div key={d.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.5rem 0',borderBottom:'1px solid var(--border)'}}>
                         <div style={{fontSize:'0.875rem',fontWeight:500}}>{d.name}</div>
-                        <a href={`https://bxesqjzkuredqzvepomn.supabase.co/storage/v1/object/public/documents/${d.storage_path}`} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm">View</a>
+                        <a href={d.storage_path?.startsWith("http") ? d.storage_path : `https://bxesqjzkuredqzvepomn.supabase.co/storage/v1/object/public/documents/${d.storage_path}`} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm">View</a>
                       </div>
                     ))}
                   </div>

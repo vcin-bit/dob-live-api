@@ -129,7 +129,7 @@ function DocumentsScreen({ user }) {
                         <td style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>{d.file_size ? `${(d.file_size/1024).toFixed(0)} KB` : '—'}</td>
                         <td style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>{new Date(d.created_at).toLocaleDateString('en-GB')}</td>
                         <td style={{textAlign:'right',display:'flex',gap:'0.5rem',justifyContent:'flex-end'}}>
-                          <a href={`https://bxesqjzkuredqzvepomn.supabase.co/storage/v1/object/public/documents/${d.storage_path}`} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">View</a>
+                          <a href={d.storage_path?.startsWith('http') ? d.storage_path : `https://bxesqjzkuredqzvepomn.supabase.co/storage/v1/object/public/documents/${d.storage_path}`} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">View</a>
                           <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={()=>deleteDocument(d.id)}>Delete</button>
                         </td>
                       </tr>
