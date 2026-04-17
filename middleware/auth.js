@@ -1,38 +1,26 @@
-const { verifyToken, clerkClient } = require('@clerk/express');
+const { clerkMiddleware, getAuth, clerkClient } = require('@clerk/express');
 const supabase = require('../lib/supabase');
 
-async function requireClerkSession(req, res, next) {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Unauthorised' });
-    }
-    const token = authHeader.slice(7);
-    const payload = await verifyToken(token, {
-      secretKey: process.env.CLERK_SECRET_KEY,
-    });
-    req.auth = { userId: payload.sub };
-    next();
-  } catch (err) {
-    console.error('Token verify failed:', err.message, err.code, JSON.stringify(err));
-    return res.status(401).json({ error: 'Unauthorised', detail: err.message });
-  }
-}
+// Use official Clerk middleware
+const clerkMw = clerkMiddleware({
+  secretKey: process.env.CLERK_SECRET_KEY,
+  publishableKey: process.env.CLERK_PUBLISHABLE_KEY,
+});
 
 async function resolveUser(req, res, next) {
   try {
-    const clerkId = req.auth?.userId;
-    if (!clerkId) return res.status(401).json({ error: 'Unauthorised' });
+    const { userId } = getAuth(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorised' });
 
     let { data: user } = await supabase
       .from('users')
       .select('id, clerk_id, company_id, role, first_name, last_name, email, active, is_route_planner')
-      .eq('clerk_id', clerkId)
+      .eq('clerk_id', userId)
       .single();
 
     if (!user) {
       try {
-        const clerkUser = await clerkClient.users.getUser(clerkId);
+        const clerkUser = await clerkClient.users.getUser(userId);
         const clerkEmail = clerkUser?.emailAddresses?.[0]?.emailAddress;
         if (clerkEmail) {
           const { data: emailUser } = await supabase
@@ -42,12 +30,12 @@ async function resolveUser(req, res, next) {
             .is('clerk_id', null)
             .single();
           if (emailUser) {
-            await supabase.from('users').update({ clerk_id: clerkId }).eq('id', emailUser.id);
-            user = { ...emailUser, clerk_id: clerkId };
+            await supabase.from('users').update({ clerk_id: userId }).eq('id', emailUser.id);
+            user = { ...emailUser, clerk_id: userId };
           }
         }
-      } catch (clerkErr) {
-        console.error('Clerk user fetch failed:', clerkErr.message);
+      } catch (e) {
+        console.error('Clerk lookup failed:', e.message);
       }
     }
 
@@ -67,5 +55,5 @@ function requireRole(...roles) {
   };
 }
 
-const authenticate = [requireClerkSession, resolveUser];
-module.exports = { authenticate, requireRole };
+const authenticate = [clerkMw, resolveUser];
+module.exports = { authenticate, requireRole, clerkMw };
