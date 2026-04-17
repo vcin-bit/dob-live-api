@@ -14,8 +14,8 @@ async function requireClerkSession(req, res, next) {
     req.auth = { userId: payload.sub };
     next();
   } catch (err) {
-    console.error('Token verify failed:', err.message);
-    return res.status(401).json({ error: 'Unauthorised' });
+    console.error('Token verify failed:', err.message, err.code, JSON.stringify(err));
+    return res.status(401).json({ error: 'Unauthorised', detail: err.message });
   }
 }
 
