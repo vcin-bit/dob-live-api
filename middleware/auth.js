@@ -39,7 +39,6 @@ async function resolveUser(req, res, next) {
             .from('users')
             .select('id, clerk_id, company_id, role, first_name, last_name, email, active, is_route_planner')
             .eq('email', clerkEmail.toLowerCase())
-            .is('clerk_id', null)
             .single();
           if (emailUser) {
             await supabase.from('users').update({ clerk_id: clerkId }).eq('id', emailUser.id);
