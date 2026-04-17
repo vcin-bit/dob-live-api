@@ -206,6 +206,7 @@ function SiteManagement({ user }) {
   const [editSite, setEditSite] = useState(null);
   const [portalSite, setPortalSite] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
+  const [resendingId, setResendingId] = useState(null);
 
   async function load() {
     try {
@@ -998,21 +999,18 @@ function TeamManagement({ user }) {
                     <button className="btn btn-ghost btn-sm" onClick={() => setSiteAssignOfficer(o)}>Sites</button>
                     <button className="btn btn-ghost btn-sm" onClick={() => { setEditUser(o); setShowForm(true); }}>Edit</button>
                     {!o.clerk_id && (
-                      <button className="btn btn-ghost btn-sm" onClick={async (e) => {
-                        const btn = e.target;
-                        btn.disabled = true;
-                        btn.textContent = '...';
+                      <button className="btn btn-ghost btn-sm" disabled={resendingId===o.id} onClick={async () => {
+                        setResendingId(o.id);
                         try {
                           const r = await api.invite.resend(o.id);
                           setSuccessMsg(r.message || `Invite resent to ${o.email}`);
                           setTimeout(() => setSuccessMsg(null), 8000);
-                        } catch(e) {
-                          alert('Could not resend: ' + e.message);
+                        } catch(err) {
+                          alert('Could not resend: ' + err.message);
                         } finally {
-                          btn.disabled = false;
-                          btn.textContent = 'Resend';
+                          setResendingId(null);
                         }
-                      }}>Resend</button>
+                      }}>{resendingId===o.id ? '...' : 'Resend'}</button>
                     )}
                     <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={async () => {
                       if (!window.confirm(`Delete ${o.first_name} ${o.last_name}? This cannot be undone.`)) return;
