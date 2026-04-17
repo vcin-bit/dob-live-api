@@ -162,6 +162,7 @@ function SiteManagement({ user }) {
   const [showForm, setShowForm] = useState(false);
   const [editSite, setEditSite] = useState(null);
   const [portalSite, setPortalSite] = useState(null);
+  const [successMsg, setSuccessMsg] = useState(null);
 
   async function load() {
     try {
@@ -182,7 +183,6 @@ function SiteManagement({ user }) {
       </div>
       <div className="page-content">
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
-        {successMsg && <div className="alert alert-success" style={{marginBottom:'1rem'}}>{successMsg}</div>}
         {loading ? (
           <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>
         ) : sites.length === 0 ? (
@@ -354,7 +354,6 @@ function LogReview({ user }) {
       </div>
       <div className="page-content">
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
-        {successMsg && <div className="alert alert-success" style={{marginBottom:'1rem'}}>{successMsg}</div>}
         {loading ? (
           <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>
         ) : filtered.length === 0 ? (
@@ -761,7 +760,6 @@ function SiteAssignModal({ officer, onClose }) {
           <button className="modal-close" onClick={onClose}>x</button>
         </div>
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
-        {successMsg && <div className="alert alert-success" style={{marginBottom:'1rem'}}>{successMsg}</div>}
         {loading ? (
           <div style={{display:'flex',justifyContent:'center',padding:'2rem'}}><div className="spinner" /></div>
         ) : sites.length === 0 ? (
@@ -829,7 +827,6 @@ function TeamManagement({ user }) {
       </div>
       <div className="page-content">
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
-        {successMsg && <div className="alert alert-success" style={{marginBottom:'1rem'}}>{successMsg}</div>}
         {loading ? (
           <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>
         ) : (

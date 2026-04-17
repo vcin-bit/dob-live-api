@@ -393,7 +393,6 @@ function ShiftPatternsScreen({ user }) {
                   <td><span className={`badge ${p.active!==false?'badge-success':'badge-neutral'}`}>{p.active!==false?'Active':'Inactive'}</span></td>
                   <td style={{textAlign:'right',display:'flex',gap:'0.5rem',justifyContent:'flex-end'}}>
                     <button className="btn btn-ghost btn-sm" onClick={() => { setEditPattern(p); setShowForm(true); }}>Edit</button>
-                    <button className="btn btn-ghost btn-sm" onClick={() => setPortalSite(site)}>Portal</button>
                     <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={async () => { if(window.confirm('Delete pattern?')){ await api.patterns.delete(p.id); load(); }}}>Delete</button>
                   </td>
                 </tr>
