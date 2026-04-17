@@ -284,50 +284,138 @@ function SiteManagement({ user }) {
 
 function SiteFormModal({ site, onClose, onSaved }) {
   const [form, setForm] = useState({
-    name: site?.name || '',
-    address: site?.address || '',
+    name:                    site?.name || '',
+    address:                 site?.address || '',
+    city:                    site?.city || '',
+    postcode:                site?.postcode || '',
+    contact_name:            site?.contact_name || '',
+    contact_phone:           site?.contact_phone || '',
+    contact_email:           site?.contact_email || '',
+    escalation_contact_1_name:   site?.escalation_contact_1_name || '',
+    escalation_contact_1_mobile: site?.escalation_contact_1_mobile || '',
+    escalation_contact_2_name:   site?.escalation_contact_2_name || '',
+    escalation_contact_2_mobile: site?.escalation_contact_2_mobile || '',
+    geofence_lat:            site?.geofence_lat || '',
+    geofence_lng:            site?.geofence_lng || '',
+    geofence_radius:         site?.geofence_radius || 500,
+    notes:                   site?.notes || '',
+    active:                  site?.active !== false,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const f = (k, v) => setForm(p => ({...p, [k]: v}));
 
   async function save() {
     if (!form.name.trim()) { setError('Site name is required'); return; }
     try {
       setSaving(true);
-      if (site) {
-        await api.sites.update(site.id, form);
-      } else {
-        await api.sites.create(form);
-      }
+      const payload = {
+        ...form,
+        geofence_lat: form.geofence_lat ? parseFloat(form.geofence_lat) : null,
+        geofence_lng: form.geofence_lng ? parseFloat(form.geofence_lng) : null,
+        geofence_radius: parseInt(form.geofence_radius) || 500,
+      };
+      if (site) await api.sites.update(site.id, payload);
+      else await api.sites.create(payload);
       onSaved();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSaving(false);
-    }
+    } catch (err) { setError(err.message); }
+    finally { setSaving(false); }
   }
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
+      <div className="modal" style={{maxWidth:'640px'}} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title">{site ? 'Edit Site' : 'Add Site'}</div>
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
-        <div className="field">
-          <label className="label">Site Name</label>
-          <input className="input" value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} placeholder="e.g. Brindleyplace" />
+
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
+          <div className="field" style={{gridColumn:'1/-1'}}>
+            <label className="label">Site Name *</label>
+            <input className="input" value={form.name} onChange={e=>f('name',e.target.value)} placeholder="e.g. Brindleyplace" />
+          </div>
+          <div className="field" style={{gridColumn:'1/-1'}}>
+            <label className="label">Address</label>
+            <input className="input" value={form.address} onChange={e=>f('address',e.target.value)} placeholder="Street address" />
+          </div>
+          <div className="field">
+            <label className="label">City</label>
+            <input className="input" value={form.city} onChange={e=>f('city',e.target.value)} />
+          </div>
+          <div className="field">
+            <label className="label">Postcode</label>
+            <input className="input" value={form.postcode} onChange={e=>f('postcode',e.target.value)} />
+          </div>
+
+          <div className="field" style={{gridColumn:'1/-1',borderTop:'1px solid var(--border)',paddingTop:'0.75rem',marginTop:'0.25rem'}}>
+            <div className="section-title" style={{marginBottom:'0.5rem'}}>Site Contact</div>
+          </div>
+          <div className="field">
+            <label className="label">Contact Name</label>
+            <input className="input" value={form.contact_name} onChange={e=>f('contact_name',e.target.value)} />
+          </div>
+          <div className="field">
+            <label className="label">Contact Phone</label>
+            <input className="input" value={form.contact_phone} onChange={e=>f('contact_phone',e.target.value)} />
+          </div>
+          <div className="field" style={{gridColumn:'1/-1'}}>
+            <label className="label">Contact Email</label>
+            <input type="email" className="input" value={form.contact_email} onChange={e=>f('contact_email',e.target.value)} />
+          </div>
+
+          <div className="field" style={{gridColumn:'1/-1',borderTop:'1px solid var(--border)',paddingTop:'0.75rem',marginTop:'0.25rem'}}>
+            <div className="section-title" style={{marginBottom:'0.5rem'}}>Escalation Contacts</div>
+          </div>
+          <div className="field">
+            <label className="label">Escalation 1 Name</label>
+            <input className="input" value={form.escalation_contact_1_name} onChange={e=>f('escalation_contact_1_name',e.target.value)} />
+          </div>
+          <div className="field">
+            <label className="label">Escalation 1 Mobile</label>
+            <input className="input" value={form.escalation_contact_1_mobile} onChange={e=>f('escalation_contact_1_mobile',e.target.value)} />
+          </div>
+          <div className="field">
+            <label className="label">Escalation 2 Name</label>
+            <input className="input" value={form.escalation_contact_2_name} onChange={e=>f('escalation_contact_2_name',e.target.value)} />
+          </div>
+          <div className="field">
+            <label className="label">Escalation 2 Mobile</label>
+            <input className="input" value={form.escalation_contact_2_mobile} onChange={e=>f('escalation_contact_2_mobile',e.target.value)} />
+          </div>
+
+          <div className="field" style={{gridColumn:'1/-1',borderTop:'1px solid var(--border)',paddingTop:'0.75rem',marginTop:'0.25rem'}}>
+            <div className="section-title" style={{marginBottom:'0.5rem'}}>Geofence</div>
+          </div>
+          <div className="field">
+            <label className="label">Latitude</label>
+            <input type="number" step="any" className="input" value={form.geofence_lat} onChange={e=>f('geofence_lat',e.target.value)} placeholder="e.g. 52.4862" />
+          </div>
+          <div className="field">
+            <label className="label">Longitude</label>
+            <input type="number" step="any" className="input" value={form.geofence_lng} onChange={e=>f('geofence_lng',e.target.value)} placeholder="e.g. -1.8904" />
+          </div>
+          <div className="field">
+            <label className="label">Radius (metres)</label>
+            <input type="number" className="input" value={form.geofence_radius} onChange={e=>f('geofence_radius',e.target.value)} placeholder="500" />
+          </div>
+
+          <div className="field" style={{gridColumn:'1/-1',borderTop:'1px solid var(--border)',paddingTop:'0.75rem',marginTop:'0.25rem'}}>
+            <label className="label">Notes</label>
+            <textarea className="input" rows={3} value={form.notes} onChange={e=>f('notes',e.target.value)} />
+          </div>
+          <div className="field">
+            <label style={{display:'flex',alignItems:'center',gap:'0.5rem',cursor:'pointer'}}>
+              <input type="checkbox" checked={form.active} onChange={e=>f('active',e.target.checked)} style={{width:'1rem',height:'1rem',accentColor:'var(--blue)'}} />
+              <span className="label" style={{margin:0}}>Active site</span>
+            </label>
+          </div>
         </div>
-        <div className="field">
-          <label className="label">Address</label>
-          <input className="input" value={form.address} onChange={e => setForm(f => ({...f, address: e.target.value}))} placeholder="Street, City, Postcode" />
-        </div>
+
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={save} disabled={saving}>
-            {saving ? 'Saving...' : 'Save'}
-          </button>
+          <button className="btn btn-primary" onClick={save} disabled={saving}>{saving?'Saving...':'Save'}</button>
         </div>
       </div>
     </div>
@@ -338,16 +426,22 @@ function SiteFormModal({ site, onClose, onSaved }) {
 
 function LogReview({ user }) {
   const [logs, setLogs] = useState([]);
+  const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+  const [siteFilter, setSiteFilter] = useState('');
 
   useEffect(() => {
     async function load() {
       try {
-        const res = await api.logs.list({ limit: 100 });
-        setLogs(res.data || []);
+        const [logsRes, sitesRes] = await Promise.all([
+          api.logs.list({ limit: 500 }),
+          api.sites.list(),
+        ]);
+        setLogs(logsRes.data || []);
+        setSites(sitesRes.data || []);
       } catch (err) { setError(err.message); }
       finally { setLoading(false); }
     }
@@ -358,6 +452,7 @@ function LogReview({ user }) {
 
   const filtered = logs.filter(l => {
     if (typeFilter && l.log_type !== typeFilter) return false;
+    if (siteFilter && l.site_id !== siteFilter) return false;
     if (filter) {
       const q = filter.toLowerCase();
       return (l.title || '').toLowerCase().includes(q) ||
@@ -384,12 +479,16 @@ function LogReview({ user }) {
         <div style={{display:'flex',gap:'0.5rem',alignItems:'center'}}>
           <input
             className="input"
-            style={{width:'200px'}}
-            placeholder="Search logs..."
+            style={{width:'160px'}}
+            placeholder="Search..."
             value={filter}
             onChange={e => setFilter(e.target.value)}
           />
-          <select className="input" style={{width:'140px'}} value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
+          <select className="input" style={{width:'140px'}} value={siteFilter} onChange={e => setSiteFilter(e.target.value)}>
+            <option value="">All sites</option>
+            {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+          <select className="input" style={{width:'130px'}} value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
             <option value="">All types</option>
             {logTypes.map(t => <option key={t} value={t}>{t.charAt(0)+t.slice(1).toLowerCase()}</option>)}
           </select>
