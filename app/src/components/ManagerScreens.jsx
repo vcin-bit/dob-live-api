@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation, useParams, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import { api, ApiError } from '../lib/api';
+import { PortalSettingsModal } from './Portal';
 import { LOG_TYPES, LOG_TYPE_CONFIG, formatDateTime, getRelativeTime } from '../lib/constants';
 import {
   HomeIcon, ClipboardDocumentListIcon, MapPinIcon, ClockIcon,
@@ -15,14 +16,17 @@ function ManagerDashboard({ user }) {
   const [recentLogs, setRecentLogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const [activeShifts, setActiveShifts] = useState([]);
+
   useEffect(() => {
     async function load() {
       try {
-        const [sitesRes, logsRes, tasksRes, usersRes] = await Promise.all([
+        const [sitesRes, logsRes, tasksRes, usersRes, shiftsRes] = await Promise.all([
           api.sites.list(),
           api.logs.list({ limit: 8 }),
           api.tasks.list({ status: 'PENDING' }),
           api.users.list(),
+          api.shifts.list({ status: 'active', limit: 50 }),
         ]);
         setStats({
           activeSites:  sitesRes.data?.length || 0,
@@ -31,6 +35,7 @@ function ManagerDashboard({ user }) {
           totalUsers:   usersRes.data?.length || 0,
         });
         setRecentLogs(logsRes.data?.slice(0, 6) || []);
+        setActiveShifts(shiftsRes.data || []);
       } catch (err) {
         console.error(err);
       } finally {
@@ -69,6 +74,32 @@ function ManagerDashboard({ user }) {
             <div className="stat-value" style={{color: stats.pendingTasks > 0 ? 'var(--warning)' : 'var(--text)'}}>{stats.pendingTasks}</div>
             <div className="stat-label">Pending Tasks</div>
           </div>
+        </div>
+
+        {/* Officers on duty */}
+        <div className="card" style={{marginBottom:'1.25rem'}}>
+          <div className="section-header" style={{marginBottom:'0.75rem'}}>
+            <div className="section-title">Officers On Duty</div>
+            <span style={{fontSize:'0.8125rem',color:activeShifts.length>0?'var(--success)':'var(--text-3)',fontWeight:600}}>{activeShifts.length} active</span>
+          </div>
+          {activeShifts.length === 0 ? (
+            <div style={{fontSize:'0.875rem',color:'var(--text-3)'}}>No officers currently on shift</div>
+          ) : (
+            <div style={{display:'flex',flexWrap:'wrap',gap:'0.5rem'}}>
+              {activeShifts.map(s => (
+                <div key={s.id} style={{display:'flex',alignItems:'center',gap:'0.5rem',padding:'0.375rem 0.75rem',background:'rgba(74,222,128,0.1)',border:'1px solid rgba(74,222,128,0.25)',borderRadius:'999px'}}>
+                  <div style={{width:'6px',height:'6px',borderRadius:'50%',background:'#4ade80',flexShrink:0}} />
+                  <span style={{fontSize:'0.8125rem',fontWeight:500}}>
+                    {s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unknown'}
+                  </span>
+                  {s.site && <span style={{fontSize:'0.75rem',color:'var(--text-2)'}}>· {s.site.name}</span>}
+                  <span style={{fontSize:'0.6875rem',color:'var(--text-3)'}}>
+                    since {new Date(s.checked_in_at||s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1.25rem'}}>
