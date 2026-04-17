@@ -118,15 +118,27 @@ router.post('/resend', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MA
     if (error || !officer) return res.status(404).json({ error: 'Officer not found' });
     if (officer.clerk_id) return res.status(400).json({ error: 'Officer has already signed up' });
     const sg = getSg();
+    let emailSent = false;
     if (sg) {
-      await sg.send({
-        to: officer.email,
-        from: FROM,
-        subject: 'Reminder: Your DOB Live invitation',
-        html: `<p>Hi ${officer.first_name},</p><p>This is a reminder that you have been invited to DOB Live.</p><p><a href="${APP_URL}" style="background:#1a52a8;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:600">Sign Up Now</a></p><p>Use your email address: <strong>${officer.email}</strong></p>`,
-      });
+      try {
+        await sg.send({
+          to: officer.email,
+          from: FROM,
+          subject: 'Reminder: Your DOB Live invitation',
+          html: `<p>Hi ${officer.first_name},</p><p>This is a reminder that you have been invited to DOB Live.</p><p><a href="${APP_URL}" style="background:#1a52a8;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:600">Sign Up Now</a></p><p>Please sign up using your email address: <strong>${officer.email}</strong></p>`,
+        });
+        emailSent = true;
+      } catch (sgErr) {
+        console.error('SendGrid error:', sgErr.message);
+      }
     }
-    res.json({ success: true, emailSent: !!sg });
+    res.json({ 
+      success: true, 
+      emailSent,
+      message: emailSent 
+        ? `Invite email sent to ${officer.email}` 
+        : `No email sent — ask ${officer.first_name} to sign up at ${APP_URL} using ${officer.email}`
+    });
   } catch (err) { next(err); }
 });
 

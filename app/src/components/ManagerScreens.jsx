@@ -998,7 +998,7 @@ function TeamManagement({ user }) {
                     <button className="btn btn-ghost btn-sm" onClick={() => { setEditUser(o); setShowForm(true); }}>Edit</button>
                     {!o.clerk_id && (
                       <button className="btn btn-ghost btn-sm" onClick={async () => {
-                        try { await api.invite.resend(o.id); setSuccessMsg(`Invite resent to ${o.email}`); setTimeout(()=>setSuccessMsg(null),5000); }
+                        try { const r = await api.invite.resend(o.id); setSuccessMsg(r.message || `Invite resent to ${o.email}`); setTimeout(()=>setSuccessMsg(null),8000); }
                         catch(e) { alert('Could not resend: ' + e.message); }
                       }}>Resend</button>
                     )}
