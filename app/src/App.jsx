@@ -367,7 +367,7 @@ function AuthenticatedApp() {
       setError(null);
 
       // Try up to 6 times over ~30 seconds to handle Render cold starts
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < 3; i++) {
         try {
           const res = await api.users.me();
           if (!cancelled) {
@@ -377,12 +377,12 @@ function AuthenticatedApp() {
           return;
         } catch (err) {
           console.log(`Attempt ${i+1} failed:`, err.message);
-          if (i < 5) await new Promise(r => setTimeout(r, 5000));
+          if (i < 2) await new Promise(r => setTimeout(r, 2000));
         }
       }
 
       if (!cancelled) {
-        setError('Could not connect after multiple attempts');
+        setError('Could not connect. Please try again.');
         setLoading(false);
       }
     }
@@ -398,8 +398,7 @@ function AuthenticatedApp() {
           <span style={{color:'#1a52a8'}}>DOB</span><span style={{color:'#fff'}}> Live</span>
         </div>
         <div className="spinner" style={{borderTopColor:'#1a52a8',borderColor:'rgba(255,255,255,0.1)',width:'2rem',height:'2rem',margin:'0 auto 1rem'}}/>
-        <p style={{color:'rgba(255,255,255,0.4)',fontSize:'0.875rem'}}>Connecting to server...</p>
-        <p style={{color:'rgba(255,255,255,0.2)',fontSize:'0.75rem',marginTop:'0.5rem'}}>This may take up to 30 seconds</p>
+        <p style={{color:'rgba(255,255,255,0.4)',fontSize:'0.875rem'}}>Loading...</p>
       </div>
     </div>
   );
