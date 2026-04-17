@@ -5,7 +5,7 @@ const { authenticate, requireRole } = require('../middleware/auth');
 router.get('/', authenticate, async (req, res, next) => {
   try {
     const { site_id } = req.query;
-    let q = supabase.from('named_patrol_routes').select('*, checkpoints:patrol_checkpoints(*)').eq('company_id', req.user.company_id).order('name');
+    let q = supabase.from('named_patrol_routes').select('*, checkpoints:named_patrol_checkpoints(*)').eq('company_id', req.user.company_id).order('name');
     if (site_id) q = q.eq('site_id', site_id);
     const { data, error } = await q;
     if (error) throw error;
