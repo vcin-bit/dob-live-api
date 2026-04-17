@@ -80,6 +80,7 @@ function OfficerNavigation() {
     { to: '/log',   icon: PlusIcon,                   label: 'Log Entry' },
     { to: '/logs',  icon: ClipboardDocumentListIcon,  label: 'History' },
     { to: '/tasks',        icon: ClipboardDocumentListIcon, label: 'Tasks' },
+    { to: '/patrol',       icon: MapPinIcon,                label: 'Patrol' },
     { to: '/instructions', icon: DocumentTextIcon,          label: 'Site Info' },
   ];
   return (

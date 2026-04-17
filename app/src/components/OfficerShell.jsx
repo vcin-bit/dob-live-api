@@ -6,6 +6,7 @@ import { LOG_TYPES, LOG_TYPE_CONFIG, formatDateTime, getRelativeTime } from '../
 import { LogEntryScreen, LogHistoryScreen } from './OfficerLog';
 import { TasksScreen } from './OfficerTasks';
 import { OfficerInstructionsScreen, OfficerPoliciesScreen, OfficerNavigation } from './OfficerInfo';
+import { PatrolScreen } from './PatrolScreen';
 import {
   HomeIcon, ClipboardDocumentListIcon, MapPinIcon, ClockIcon,
   UserGroupIcon, Cog6ToothIcon, PlusIcon, ArrowRightOnRectangleIcon,
@@ -98,6 +99,7 @@ function OfficerApp({ user }) {
           />
         } />
         <Route path="/instructions" element={<OfficerInstructionsScreen user={user} site={selectedSite} />} />
+        <Route path="/patrol" element={<PatrolScreen user={user} site={selectedSite} shift={activeShift} />} />
         <Route path="/policies" element={<OfficerPoliciesScreen user={user} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
