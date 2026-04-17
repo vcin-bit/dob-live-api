@@ -106,6 +106,9 @@ export const api = {
   shifts: {
     list: (params = {}) => request(`/api/shifts?${new URLSearchParams(params)}`),
     get: (id) => request(`/api/shifts/${id}`),
+    start: (data) => request('/api/shifts/start', { method: 'POST', body: JSON.stringify(data) }),
+    checkin: (id, data) => request(`/api/shifts/${id}/checkin`, { method: 'POST', body: JSON.stringify(data) }),
+    checkout: (id) => request(`/api/shifts/${id}/checkout`, { method: 'POST', body: JSON.stringify({}) }),
     create: (data) => request('/api/shifts', {
       method: 'POST',
       body: JSON.stringify(data),

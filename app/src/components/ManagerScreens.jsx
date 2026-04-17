@@ -1004,20 +1004,40 @@ function Reporting({ user }) {
   const typeColors = {
     PATROL:'#1a52a8', INCIDENT:'#dc2626', ALARM:'#d97706',
     ACCESS:'#7c3aed', VISITOR:'#0891b2', HANDOVER:'#15803d',
-    MAINTENANCE:'#ea580c', VEHICLE:'#64748b', WELFARE:'#db2777',
-    GENERAL:'#94a3b8',
+    MAINTENANCE:'#ea580c', VEHICLE:'#64748b', GENERAL:'#94a3b8',
   };
 
   return (
     <div>
       <div className="topbar">
         <div className="topbar-title">Reports</div>
-        <select className="officer-input" style={{width:'140px'}} value={dateRange} onChange={e => setDateRange(e.target.value)}>
-          <option value="7">Last 7 days</option>
-          <option value="14">Last 14 days</option>
-          <option value="30">Last 30 days</option>
-          <option value="90">Last 90 days</option>
-        </select>
+        <div style={{display:'flex',gap:'0.5rem',alignItems:'center'}}>
+          <button
+            className="btn btn-secondary btn-sm"
+            disabled={logs.length === 0}
+            onClick={async () => {
+              const token = await window.Clerk?.session?.getToken();
+              if (!token) return;
+              const from = new Date();
+              from.setDate(from.getDate() - parseInt(dateRange));
+              const url = import.meta.env.VITE_API_URL + '/api/logs/export?from=' + from.toISOString();
+              const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+              const blob = await res.blob();
+              const a = document.createElement('a');
+              a.href = URL.createObjectURL(blob);
+              a.download = 'doblive-logs.csv';
+              a.click();
+            }}
+          >
+            Export CSV
+          </button>
+          <select className="input" style={{width:'140px'}} value={dateRange} onChange={e => setDateRange(e.target.value)}>
+            <option value="7">Last 7 days</option>
+            <option value="14">Last 14 days</option>
+            <option value="30">Last 30 days</option>
+            <option value="90">Last 90 days</option>
+          </select>
+        </div>
       </div>
       <div className="page-content">
         {loading ? (
@@ -1042,7 +1062,7 @@ function Reporting({ user }) {
                           {type.charAt(0)+type.slice(1).toLowerCase()}
                         </span>
                         <div style={{flex:1,background:'var(--surface-2)',borderRadius:'2px',height:'8px',overflow:'hidden'}}>
-                          <div style={{width:`${(count/maxCount)*100}%`,height:'100%',background:typeColors[type]||'#94a3b8',borderRadius:'2px'}} />
+                          <div style={{width:((count/maxCount)*100)+'%',height:'100%',background:typeColors[type]||'#94a3b8',borderRadius:'2px'}} />
                         </div>
                         <span style={{fontSize:'0.75rem',fontWeight:600,width:'1.5rem',textAlign:'right'}}>{count}</span>
                       </div>
@@ -1074,8 +1094,6 @@ function Reporting({ user }) {
   );
 }
 
-
-// ── SHIFT ROSTER ─────────────────────────────────────────────────────────────
 
 export { ManagerDashboard };
 export { SiteManagement };

@@ -142,3 +142,45 @@ router.delete('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_M
 });
 
 module.exports = router;
+
+// GET /api/logs/export — CSV download
+router.get('/export', authenticate, async (req, res, next) => {
+  try {
+    const { site_id, log_type, from, to } = req.query;
+
+    let query = supabase
+      .from('occurrence_logs')
+      .select('*, officer:users(first_name,last_name), site:sites(name)')
+      .eq('company_id', req.user.company_id)
+      .order('occurred_at', { ascending: false })
+      .limit(5000);
+
+    if (req.user.role === 'OFFICER') query = query.eq('officer_id', req.user.id);
+    if (site_id)  query = query.eq('site_id', site_id);
+    if (log_type) query = query.eq('log_type', log_type);
+    if (from)     query = query.gte('occurred_at', from);
+    if (to)       query = query.lte('occurred_at', to);
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const escape = v => '"' + String(v || '').replace(/"/g, '""').replace(/\r?\n/g, ' ') + '"';
+
+    const headers = ['Date','Time','Type','Title','Description','Officer','Site'];
+    const rows = (data || []).map(l => [
+      new Date(l.occurred_at).toLocaleDateString('en-GB'),
+      new Date(l.occurred_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+      l.log_type || '',
+      l.title || '',
+      l.description || '',
+      l.officer ? (l.officer.first_name + ' ' + l.officer.last_name) : '',
+      l.site ? l.site.name : '',
+    ]);
+
+    const csv = [headers, ...rows].map(r => r.map(escape).join(',')).join('\r\n');
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="doblive-logs.csv"');
+    res.send(csv);
+  } catch (err) { next(err); }
+});

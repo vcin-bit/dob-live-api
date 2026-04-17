@@ -7,6 +7,7 @@ import { LogEntryScreen, LogHistoryScreen } from './OfficerLog';
 import { TasksScreen } from './OfficerTasks';
 import { OfficerInstructionsScreen, OfficerPoliciesScreen, OfficerNavigation } from './OfficerInfo';
 import { PatrolScreen } from './PatrolScreen';
+import { HandoverScreen } from './HandoverScreen';
 import {
   HomeIcon, ClipboardDocumentListIcon, MapPinIcon, ClockIcon,
   UserGroupIcon, Cog6ToothIcon, PlusIcon, ArrowRightOnRectangleIcon,
@@ -20,6 +21,27 @@ function OfficerApp({ user }) {
   const [selectedSite, setSelectedSite] = useState(null);
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  async function startShift() {
+    if (!selectedSite) return;
+    try {
+      let lat, lng;
+      try {
+        const pos = await new Promise((res,rej) => navigator.geolocation.getCurrentPosition(res,rej,{timeout:8000}));
+        lat = pos.coords.latitude; lng = pos.coords.longitude;
+      } catch {}
+      const r = await api.shifts.start({ site_id: selectedSite.id, lat, lng });
+      setActiveShift(r.data);
+    } catch (err) { alert(err.message); }
+  }
+
+  async function endShift() {
+    if (!activeShift || !window.confirm('End your shift?')) return;
+    try {
+      await api.shifts.checkout(activeShift.id);
+      setActiveShift(null);
+    } catch (err) { alert(err.message); }
+  }
 
   // Fetch officer data
   useEffect(() => {
@@ -76,6 +98,8 @@ function OfficerApp({ user }) {
             user={user}
             site={selectedSite}
             shift={activeShift}
+            onStartShift={startShift}
+            onEndShift={endShift}
           />
         } />
         <Route path="/log" element={
@@ -99,7 +123,8 @@ function OfficerApp({ user }) {
           />
         } />
         <Route path="/instructions" element={<OfficerInstructionsScreen user={user} site={selectedSite} />} />
-        <Route path="/patrol" element={<PatrolScreen user={user} site={selectedSite} shift={activeShift} />} />
+        <Route path="/patrol"   element={<PatrolScreen user={user} site={selectedSite} shift={activeShift} />} />
+        <Route path="/handover" element={<HandoverScreen user={user} site={selectedSite} shift={activeShift} onShiftEnded={() => { setActiveShift(null); }} />} />
         <Route path="/policies" element={<OfficerPoliciesScreen user={user} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
@@ -168,7 +193,7 @@ function SitePickerScreen({ sites, onSiteSelect, user }) {
 }
 
 // Officer Dashboard
-function OfficerDashboard({ user, site, shift }) {
+function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
   const [recentLogs, setRecentLogs] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -214,6 +239,25 @@ function OfficerDashboard({ user, site, shift }) {
   
   return (
     <div style={{padding:'1rem',paddingBottom:'5rem'}}>
+      {/* Shift status */}
+      {shift ? (
+        <div style={{background:'rgba(74,222,128,0.1)',border:'1px solid rgba(74,222,128,0.25)',borderRadius:'10px',padding:'0.875rem 1rem',display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.75rem'}}>
+          <div>
+            <div style={{fontSize:'0.6875rem',fontWeight:600,color:'#4ade80',textTransform:'uppercase',letterSpacing:'0.06em'}}>Shift Active</div>
+            <div style={{fontSize:'0.8125rem',color:'rgba(255,255,255,0.5)',marginTop:'0.125rem'}}>
+              Since {new Date(shift.checked_in_at||shift.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}
+            </div>
+          </div>
+          <Link to="/handover" style={{padding:'0.5rem 0.875rem',background:'rgba(220,38,38,0.2)',border:'1px solid rgba(220,38,38,0.3)',borderRadius:'6px',color:'#fca5a5',fontSize:'0.8125rem',fontWeight:600,cursor:'pointer',textDecoration:'none',display:'inline-flex',alignItems:'center'}}>
+            Handover
+          </Link>
+        </div>
+      ) : (
+        <button onClick={onStartShift} style={{width:'100%',padding:'0.875rem',background:'rgba(74,222,128,0.12)',border:'1px solid rgba(74,222,128,0.2)',borderRadius:'10px',color:'#4ade80',fontSize:'0.9375rem',fontWeight:700,cursor:'pointer',marginBottom:'0.75rem'}}>
+          Start Shift
+        </button>
+      )}
+
       {/* Primary action */}
       <Link to="/log" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.5rem',fontSize:'1.0625rem'}}>
         <PlusIcon style={{width:'1.25rem',height:'1.25rem'}} />

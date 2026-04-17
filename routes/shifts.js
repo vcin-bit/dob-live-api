@@ -76,3 +76,74 @@ router.patch('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MA
 });
 
 module.exports = router;
+
+// POST /api/shifts/:id/checkin — officer checks in
+router.post('/:id/checkin', authenticate, async (req, res, next) => {
+  try {
+    const { lat, lng } = req.body;
+    const { data, error } = await supabase
+      .from('shifts')
+      .update({
+        status: 'active',
+        checked_in_at: new Date().toISOString(),
+        check_in_lat: lat || null,
+        check_in_lng: lng || null,
+      })
+      .eq('id', req.params.id)
+      .eq('officer_id', req.user.id)
+      .select().single();
+    if (error) throw error;
+    res.json({ data });
+  } catch (err) { next(err); }
+});
+
+// POST /api/shifts/:id/checkout — officer checks out
+router.post('/:id/checkout', authenticate, async (req, res, next) => {
+  try {
+    const { data, error } = await supabase
+      .from('shifts')
+      .update({
+        status: 'completed',
+        checked_out_at: new Date().toISOString(),
+      })
+      .eq('id', req.params.id)
+      .eq('officer_id', req.user.id)
+      .select().single();
+    if (error) throw error;
+    res.json({ data });
+  } catch (err) { next(err); }
+});
+
+// POST /api/shifts/start — officer starts an ad-hoc shift
+router.post('/start', authenticate, async (req, res, next) => {
+  try {
+    const { site_id, lat, lng } = req.body;
+    if (!site_id) return res.status(400).json({ error: 'site_id required' });
+
+    // Check no active shift already
+    const { data: existing } = await supabase
+      .from('shifts')
+      .select('id')
+      .eq('officer_id', req.user.id)
+      .eq('status', 'active')
+      .single();
+    if (existing) return res.status(400).json({ error: 'You already have an active shift' });
+
+    const { data, error } = await supabase
+      .from('shifts')
+      .insert({
+        company_id: req.user.company_id,
+        site_id,
+        officer_id: req.user.id,
+        start_time: new Date().toISOString(),
+        status: 'active',
+        checked_in_at: new Date().toISOString(),
+        check_in_lat: lat || null,
+        check_in_lng: lng || null,
+      })
+      .select('*, site:sites(id,name)')
+      .single();
+    if (error) throw error;
+    res.status(201).json({ data });
+  } catch (err) { next(err); }
+});
