@@ -969,6 +969,7 @@ function TeamManagement({ user }) {
       </div>
       <div className="page-content">
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
+        {successMsg && <div className="alert alert-success" style={{marginBottom:'1rem'}}>{successMsg}</div>}
         {loading ? (
           <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>
         ) : (
@@ -997,9 +998,20 @@ function TeamManagement({ user }) {
                     <button className="btn btn-ghost btn-sm" onClick={() => setSiteAssignOfficer(o)}>Sites</button>
                     <button className="btn btn-ghost btn-sm" onClick={() => { setEditUser(o); setShowForm(true); }}>Edit</button>
                     {!o.clerk_id && (
-                      <button className="btn btn-ghost btn-sm" onClick={async () => {
-                        try { const r = await api.invite.resend(o.id); setSuccessMsg(r.message || `Invite resent to ${o.email}`); setTimeout(()=>setSuccessMsg(null),8000); }
-                        catch(e) { alert('Could not resend: ' + e.message); }
+                      <button className="btn btn-ghost btn-sm" onClick={async (e) => {
+                        const btn = e.target;
+                        btn.disabled = true;
+                        btn.textContent = '...';
+                        try {
+                          const r = await api.invite.resend(o.id);
+                          setSuccessMsg(r.message || `Invite resent to ${o.email}`);
+                          setTimeout(() => setSuccessMsg(null), 8000);
+                        } catch(e) {
+                          alert('Could not resend: ' + e.message);
+                        } finally {
+                          btn.disabled = false;
+                          btn.textContent = 'Resend';
+                        }
                       }}>Resend</button>
                     )}
                     <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={async () => {
