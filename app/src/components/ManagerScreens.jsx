@@ -206,7 +206,6 @@ function SiteManagement({ user }) {
   const [editSite, setEditSite] = useState(null);
   const [portalSite, setPortalSite] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
-  const [resendingId, setResendingId] = useState(null);
 
   async function load() {
     try {
@@ -945,6 +944,7 @@ function TeamManagement({ user }) {
   const [editUser, setEditUser] = useState(null);
   const [siteAssignOfficer, setSiteAssignOfficer] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
+  const [resendingId, setResendingId] = useState(null);
 
   async function load() {
     try {
