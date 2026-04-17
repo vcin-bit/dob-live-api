@@ -1,8 +1,17 @@
 const { requireAuth, clerkClient } = require('@clerk/express');
 const supabase = require('../lib/supabase');
 
-// Require a valid Clerk session
-const requireClerkAuth = requireAuth();
+// Require a valid Clerk session - return 401 JSON, never redirect
+const requireClerkAuth = requireAuth({ signInUrl: null });
+
+// Middleware to convert Clerk redirects to 401 JSON
+function clerkAuthMiddleware(req, res, next) {
+  requireClerkAuth(req, res, (err) => {
+    if (err) return res.status(401).json({ error: 'Unauthorised' });
+    if (!req.auth?.userId) return res.status(401).json({ error: 'Unauthorised' });
+    next();
+  });
+}
 
 // Resolve the Clerk user to a DB user and attach to req
 async function resolveUser(req, res, next) {
@@ -67,6 +76,6 @@ function requireRole(...roles) {
 }
 
 // Combined: Clerk auth + DB user resolution
-const authenticate = [requireClerkAuth, resolveUser];
+const authenticate = [clerkAuthMiddleware, resolveUser];
 
 module.exports = { authenticate, requireRole, requireClerkAuth, resolveUser };
