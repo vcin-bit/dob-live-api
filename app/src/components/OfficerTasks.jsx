@@ -99,14 +99,14 @@ function TasksScreen({ user, site, shift }) {
         <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}>
           <div className="spinner" style={{borderTopColor:'#fff',borderColor:'rgba(255,255,255,0.15)'}} />
         </div>
-      ) : tasksByStatus[filter]?.length === 0 || filter === "all" && tasks.length === 0 ? (
+      ) : (filter === 'all' ? tasks : tasksByStatus[filter] || []).length === 0 ? (
         <div style={{textAlign:'center',padding:'3rem',color:'rgba(255,255,255,0.3)'}}>
           <ClipboardDocumentListIcon style={{width:'2.5rem',height:'2.5rem',margin:'0 auto 0.75rem'}} />
           <p style={{fontSize:'0.875rem'}}>No {filter.replace('_',' ')} tasks</p>
         </div>
       ) : (
         <div style={{display:'flex',flexDirection:'column',gap:'0.625rem'}}>
-          {(tasksByStatus[filter] || tasks).map(task => <TaskCard key={task.id} task={task} onUpdateStatus={updateTaskStatus} />)}
+          {(filter === 'all' ? tasks : tasksByStatus[filter] || []).map(task => <TaskCard key={task.id} task={task} onUpdateStatus={updateTaskStatus} />)}
         </div>
       )}
     </div>
