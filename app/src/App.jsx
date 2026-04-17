@@ -54,50 +54,57 @@ function App() {
 
 // Auth flow for signed-out users
 function AuthFlow() {
-  const [mode, setMode] = useState('signin');
+  const [mode, setMode] = useState('signin'); // signin | signup | forgot | reset
+  const [step, setStep] = useState('email'); // email | password | verify | sent | code
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState('email'); // email | password | verify
   const [code, setCode] = useState('');
-  const { signIn, setActive: setSignInActive } = useSignIn();
-  const { signUp, setActive: setSignUpActive } = useSignUp();
+  const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { signIn, setActive: setSignInActive, isLoaded: signInLoaded } = useSignIn();
+  const { signUp, setActive: setSignUpActive, isLoaded: signUpLoaded } = useSignUp();
 
-  async function handleEmailSubmit(e) {
-    e.preventDefault();
-    if (!email.trim()) return;
-    setStep('password');
+  function reset(m) {
+    setMode(m); setStep('email');
+    setEmail(''); setPassword(''); setCode('');
+    setError(''); setInfo('');
   }
 
+  // ── Sign In ────────────────────────────────────────────────────────────
   async function handleSignIn(e) {
     e.preventDefault();
+    if (step === 'email') { setStep('password'); return; }
+    if (!signInLoaded) return;
     setLoading(true); setError('');
     try {
       const result = await signIn.create({ identifier: email, password });
       if (result.status === 'complete') {
         await setSignInActive({ session: result.createdSessionId });
       } else {
-        setError('Sign in could not be completed. Please try again.');
+        setError('Sign in incomplete. Please try again.');
       }
     } catch (err) {
-      setError(err.errors?.[0]?.message || 'Incorrect email or password');
+      setError(err.errors?.[0]?.longMessage || err.errors?.[0]?.message || 'Incorrect email or password');
     } finally { setLoading(false); }
   }
 
+  // ── Sign Up ────────────────────────────────────────────────────────────
   async function handleSignUp(e) {
     e.preventDefault();
+    if (step === 'email') { setStep('password'); return; }
+    if (!signUpLoaded) return;
     setLoading(true); setError('');
     try {
       const result = await signUp.create({ emailAddress: email, password });
       if (result.status === 'complete') {
         await setSignUpActive({ session: result.createdSessionId });
-      } else if (result.status === 'missing_requirements') {
+      } else {
         await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
         setStep('verify');
       }
     } catch (err) {
-      setError(err.errors?.[0]?.message || 'Could not create account');
+      setError(err.errors?.[0]?.longMessage || err.errors?.[0]?.message || 'Could not create account');
     } finally { setLoading(false); }
   }
 
@@ -116,11 +123,44 @@ function AuthFlow() {
     } finally { setLoading(false); }
   }
 
+  // ── Password Reset ─────────────────────────────────────────────────────
+  async function handleForgot(e) {
+    e.preventDefault();
+    if (!signInLoaded) return;
+    setLoading(true); setError('');
+    try {
+      await signIn.create({ strategy: 'reset_password_email_code', identifier: email });
+      setStep('code');
+      setInfo('Check your email for a reset code');
+    } catch (err) {
+      setError(err.errors?.[0]?.message || 'Could not send reset email');
+    } finally { setLoading(false); }
+  }
+
+  async function handleReset(e) {
+    e.preventDefault();
+    setLoading(true); setError('');
+    try {
+      const result = await signIn.attemptFirstFactor({
+        strategy: 'reset_password_email_code',
+        code,
+        password,
+      });
+      if (result.status === 'complete') {
+        await setSignInActive({ session: result.createdSessionId });
+      } else {
+        setError('Reset failed. Please try again.');
+      }
+    } catch (err) {
+      setError(err.errors?.[0]?.message || 'Reset failed');
+    } finally { setLoading(false); }
+  }
+
+  // ── Styles ─────────────────────────────────────────────────────────────
   const inputStyle = {
     width:'100%', padding:'0.75rem 0.875rem', border:'1.5px solid #e2e8f0',
     borderRadius:'8px', fontSize:'1rem', outline:'none', boxSizing:'border-box',
-    fontFamily:'inherit', color:'#0b1222', background:'#fff',
-    transition:'border-color 0.15s',
+    fontFamily:'inherit', color:'#0b1222', background:'#fff', transition:'border-color 0.15s',
   };
   const btnStyle = {
     width:'100%', padding:'0.875rem', background:'#1a52a8', color:'#fff',
@@ -129,135 +169,151 @@ function AuthFlow() {
     marginTop:'0.25rem', fontFamily:'inherit',
   };
   const labelStyle = { display:'block', fontSize:'0.8125rem', fontWeight:600, color:'#374151', marginBottom:'0.375rem' };
+  const fieldStyle = { marginBottom:'1rem' };
+
+  const title = mode === 'forgot' ? 'Reset your password'
+    : mode === 'signup' && step === 'verify' ? 'Check your email'
+    : mode === 'signup' ? 'Create your account'
+    : 'Sign in';
 
   return (
     <div style={{minHeight:'100vh',background:'#0b1222',display:'flex',alignItems:'center',justifyContent:'center',padding:'1.25rem',boxSizing:'border-box'}}>
       <div style={{width:'100%',maxWidth:'380px'}}>
 
-        {/* Logo */}
         <div style={{textAlign:'center',marginBottom:'2rem'}}>
           <div style={{fontSize:'2.25rem',fontWeight:800,letterSpacing:'-0.03em'}}>
-            <span style={{color:'#1a52a8'}}>DOB</span>
-            <span style={{color:'#fff'}}> Live</span>
+            <span style={{color:'#1a52a8'}}>DOB</span><span style={{color:'#fff'}}> Live</span>
           </div>
           <div style={{fontSize:'0.875rem',color:'rgba(255,255,255,0.4)',marginTop:'0.25rem',fontWeight:500}}>
             Security Management Platform
           </div>
         </div>
 
-        {/* Card */}
         <div style={{background:'#fff',borderRadius:'12px',padding:'1.75rem',boxSizing:'border-box',width:'100%'}}>
-          <div style={{fontSize:'1.0625rem',fontWeight:700,color:'#0b1222',marginBottom:'1.5rem'}}>
-            {mode === 'signin' ? 'Sign in to your account' : step === 'verify' ? 'Check your email' : 'Create your account'}
-          </div>
+          <div style={{fontSize:'1.0625rem',fontWeight:700,color:'#0b1222',marginBottom:'1.25rem'}}>{title}</div>
 
           {error && (
-            <div style={{background:'#fef2f2',border:'1px solid #fca5a5',borderRadius:'8px',padding:'0.75rem',marginBottom:'1rem',fontSize:'0.875rem',color:'#dc2626'}}>
-              {error}
-            </div>
+            <div style={{background:'#fef2f2',border:'1px solid #fca5a5',borderRadius:'8px',padding:'0.75rem',marginBottom:'1rem',fontSize:'0.875rem',color:'#dc2626'}}>{error}</div>
+          )}
+          {info && (
+            <div style={{background:'#f0fdf4',border:'1px solid #86efac',borderRadius:'8px',padding:'0.75rem',marginBottom:'1rem',fontSize:'0.875rem',color:'#16a34a'}}>{info}</div>
           )}
 
-          {/* Sign In */}
+          {/* SIGN IN */}
           {mode === 'signin' && (
-            <form onSubmit={step === 'email' ? handleEmailSubmit : handleSignIn}>
-              <div style={{marginBottom:'1rem'}}>
+            <form onSubmit={handleSignIn}>
+              <div style={fieldStyle}>
                 <label style={labelStyle}>Email address</label>
-                <input
-                  type="email" value={email} onChange={e => setEmail(e.target.value)}
-                  style={inputStyle} placeholder="you@example.com" required autoComplete="email"
-                  onFocus={e => e.target.style.borderColor='#1a52a8'}
-                  onBlur={e => e.target.style.borderColor='#e2e8f0'}
-                />
+                <input type="email" value={email} onChange={e=>setEmail(e.target.value)} style={inputStyle}
+                  placeholder="you@example.com" required autoComplete="email"
+                  onFocus={e=>e.target.style.borderColor='#1a52a8'} onBlur={e=>e.target.style.borderColor='#e2e8f0'} />
               </div>
               {step === 'password' && (
-                <div style={{marginBottom:'1rem'}}>
-                  <label style={labelStyle}>Password</label>
-                  <input
-                    type="password" value={password} onChange={e => setPassword(e.target.value)}
-                    style={inputStyle} placeholder="Your password" required autoComplete="current-password"
-                    onFocus={e => e.target.style.borderColor='#1a52a8'}
-                    onBlur={e => e.target.style.borderColor='#e2e8f0'}
-                    autoFocus
-                  />
+                <div style={fieldStyle}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.375rem'}}>
+                    <label style={{...labelStyle,marginBottom:0}}>Password</label>
+                    <button type="button" onClick={() => { setMode('forgot'); setStep('email'); setError(''); }}
+                      style={{fontSize:'0.8125rem',color:'#1a52a8',background:'none',border:'none',cursor:'pointer',fontWeight:500}}>
+                      Forgot password?
+                    </button>
+                  </div>
+                  <input type="password" value={password} onChange={e=>setPassword(e.target.value)} style={inputStyle}
+                    placeholder="Your password" required autoComplete="current-password" autoFocus
+                    onFocus={e=>e.target.style.borderColor='#1a52a8'} onBlur={e=>e.target.style.borderColor='#e2e8f0'} />
                 </div>
               )}
               <button type="submit" style={btnStyle} disabled={loading}>
-                {loading ? 'Signing in...' : step === 'email' ? 'Continue' : 'Sign in'}
+                {loading ? 'Signing in...' : step === 'email' ? 'Continue →' : 'Sign in'}
               </button>
             </form>
           )}
 
-          {/* Sign Up */}
+          {/* SIGN UP */}
           {mode === 'signup' && step !== 'verify' && (
-            <form onSubmit={step === 'email' ? handleEmailSubmit : handleSignUp}>
-              <div style={{marginBottom:'1rem'}}>
+            <form onSubmit={handleSignUp}>
+              <div style={fieldStyle}>
                 <label style={labelStyle}>Email address</label>
-                <input
-                  type="email" value={email} onChange={e => setEmail(e.target.value)}
-                  style={inputStyle} placeholder="you@example.com" required
-                  onFocus={e => e.target.style.borderColor='#1a52a8'}
-                  onBlur={e => e.target.style.borderColor='#e2e8f0'}
-                />
+                <input type="email" value={email} onChange={e=>setEmail(e.target.value)} style={inputStyle}
+                  placeholder="you@example.com" required
+                  onFocus={e=>e.target.style.borderColor='#1a52a8'} onBlur={e=>e.target.style.borderColor='#e2e8f0'} />
               </div>
               {step === 'password' && (
-                <div style={{marginBottom:'1rem'}}>
+                <div style={fieldStyle}>
                   <label style={labelStyle}>Choose a password</label>
-                  <input
-                    type="password" value={password} onChange={e => setPassword(e.target.value)}
-                    style={inputStyle} placeholder="At least 8 characters" required autoFocus
-                    onFocus={e => e.target.style.borderColor='#1a52a8'}
-                    onBlur={e => e.target.style.borderColor='#e2e8f0'}
-                  />
+                  <input type="password" value={password} onChange={e=>setPassword(e.target.value)} style={inputStyle}
+                    placeholder="At least 8 characters" required autoFocus
+                    onFocus={e=>e.target.style.borderColor='#1a52a8'} onBlur={e=>e.target.style.borderColor='#e2e8f0'} />
                 </div>
               )}
               <button type="submit" style={btnStyle} disabled={loading}>
-                {loading ? 'Creating account...' : step === 'email' ? 'Continue' : 'Create account'}
+                {loading ? 'Creating account...' : step === 'email' ? 'Continue →' : 'Create account'}
               </button>
             </form>
           )}
 
-          {/* Verify email */}
-          {step === 'verify' && (
+          {/* VERIFY EMAIL */}
+          {mode === 'signup' && step === 'verify' && (
             <form onSubmit={handleVerify}>
               <p style={{fontSize:'0.875rem',color:'#64748b',marginBottom:'1rem'}}>
-                We sent a 6-digit code to <strong>{email}</strong>
+                We sent a code to <strong>{email}</strong>
               </p>
-              <div style={{marginBottom:'1rem'}}>
-                <label style={labelStyle}>Verification code</label>
-                <input
-                  type="text" value={code} onChange={e => setCode(e.target.value)}
-                  style={{...inputStyle,letterSpacing:'0.2em',fontSize:'1.25rem',textAlign:'center'}}
+              <div style={fieldStyle}>
+                <label style={labelStyle}>6-digit code</label>
+                <input type="text" value={code} onChange={e=>setCode(e.target.value)} style={{...inputStyle,letterSpacing:'0.25em',fontSize:'1.25rem',textAlign:'center'}}
                   placeholder="000000" required maxLength={6} autoFocus
-                  onFocus={e => e.target.style.borderColor='#1a52a8'}
-                  onBlur={e => e.target.style.borderColor='#e2e8f0'}
-                />
+                  onFocus={e=>e.target.style.borderColor='#1a52a8'} onBlur={e=>e.target.style.borderColor='#e2e8f0'} />
               </div>
-              <button type="submit" style={btnStyle} disabled={loading}>
-                {loading ? 'Verifying...' : 'Verify email'}
-              </button>
+              <button type="submit" style={btnStyle} disabled={loading}>{loading ? 'Verifying...' : 'Verify email'}</button>
             </form>
           )}
 
-          {/* Switch mode */}
-          {step !== 'verify' && (
-            <div style={{borderTop:'1px solid #f1f5f9',marginTop:'1.25rem',paddingTop:'1rem',textAlign:'center',fontSize:'0.875rem',color:'#64748b'}}>
-              {mode === 'signin' ? (
-                <span>No account?{' '}
-                  <button onClick={() => { setMode('signup'); setStep('email'); setError(''); }}
-                    style={{color:'#1a52a8',fontWeight:600,background:'none',border:'none',cursor:'pointer'}}>
-                    Create one
-                  </button>
-                </span>
-              ) : (
-                <span>Already have an account?{' '}
-                  <button onClick={() => { setMode('signin'); setStep('email'); setError(''); }}
-                    style={{color:'#1a52a8',fontWeight:600,background:'none',border:'none',cursor:'pointer'}}>
-                    Sign in
-                  </button>
-                </span>
-              )}
-            </div>
+          {/* FORGOT PASSWORD */}
+          {mode === 'forgot' && step === 'email' && (
+            <form onSubmit={handleForgot}>
+              <p style={{fontSize:'0.875rem',color:'#64748b',marginBottom:'1rem'}}>
+                Enter your email and we'll send a reset code.
+              </p>
+              <div style={fieldStyle}>
+                <label style={labelStyle}>Email address</label>
+                <input type="email" value={email} onChange={e=>setEmail(e.target.value)} style={inputStyle}
+                  placeholder="you@example.com" required autoFocus
+                  onFocus={e=>e.target.style.borderColor='#1a52a8'} onBlur={e=>e.target.style.borderColor='#e2e8f0'} />
+              </div>
+              <button type="submit" style={btnStyle} disabled={loading}>{loading ? 'Sending...' : 'Send reset code'}</button>
+            </form>
           )}
+
+          {/* RESET PASSWORD */}
+          {mode === 'forgot' && step === 'code' && (
+            <form onSubmit={handleReset}>
+              <div style={fieldStyle}>
+                <label style={labelStyle}>Reset code</label>
+                <input type="text" value={code} onChange={e=>setCode(e.target.value)} style={{...inputStyle,letterSpacing:'0.25em',fontSize:'1.125rem',textAlign:'center'}}
+                  placeholder="000000" required maxLength={6} autoFocus
+                  onFocus={e=>e.target.style.borderColor='#1a52a8'} onBlur={e=>e.target.style.borderColor='#e2e8f0'} />
+              </div>
+              <div style={fieldStyle}>
+                <label style={labelStyle}>New password</label>
+                <input type="password" value={password} onChange={e=>setPassword(e.target.value)} style={inputStyle}
+                  placeholder="At least 8 characters" required
+                  onFocus={e=>e.target.style.borderColor='#1a52a8'} onBlur={e=>e.target.style.borderColor='#e2e8f0'} />
+              </div>
+              <button type="submit" style={btnStyle} disabled={loading}>{loading ? 'Resetting...' : 'Reset password'}</button>
+            </form>
+          )}
+
+          {/* Footer links */}
+          <div style={{borderTop:'1px solid #f1f5f9',marginTop:'1.25rem',paddingTop:'1rem',textAlign:'center',fontSize:'0.875rem',color:'#64748b'}}>
+            {mode === 'signin' && (
+              <span>No account? <button onClick={() => reset('signup')} style={{color:'#1a52a8',fontWeight:600,background:'none',border:'none',cursor:'pointer'}}>Create one</button></span>
+            )}
+            {mode === 'signup' && step !== 'verify' && (
+              <span>Have an account? <button onClick={() => reset('signin')} style={{color:'#1a52a8',fontWeight:600,background:'none',border:'none',cursor:'pointer'}}>Sign in</button></span>
+            )}
+            {mode === 'forgot' && (
+              <button onClick={() => reset('signin')} style={{color:'#1a52a8',fontWeight:600,background:'none',border:'none',cursor:'pointer'}}>← Back to sign in</button>
+            )}
+          </div>
         </div>
 
         <div style={{textAlign:'center',marginTop:'1.5rem',fontSize:'0.75rem',color:'rgba(255,255,255,0.2)'}}>
