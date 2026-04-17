@@ -85,17 +85,29 @@ function ManagerDashboard({ user }) {
           {activeShifts.length === 0 ? (
             <div style={{fontSize:'0.875rem',color:'var(--text-3)'}}>No officers currently on shift</div>
           ) : (
-            <div style={{display:'flex',flexWrap:'wrap',gap:'0.5rem'}}>
+            <div style={{display:'flex',flexDirection:'column',gap:'0.5rem'}}>
               {activeShifts.map(s => (
-                <div key={s.id} style={{display:'flex',alignItems:'center',gap:'0.5rem',padding:'0.375rem 0.75rem',background:'rgba(74,222,128,0.1)',border:'1px solid rgba(74,222,128,0.25)',borderRadius:'999px'}}>
-                  <div style={{width:'6px',height:'6px',borderRadius:'50%',background:'#4ade80',flexShrink:0}} />
-                  <span style={{fontSize:'0.8125rem',fontWeight:500}}>
-                    {s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unknown'}
-                  </span>
-                  {s.site && <span style={{fontSize:'0.75rem',color:'var(--text-2)'}}>· {s.site.name}</span>}
-                  <span style={{fontSize:'0.6875rem',color:'var(--text-3)'}}>
-                    since {new Date(s.checked_in_at||s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}
-                  </span>
+                <div key={s.id} style={{display:'flex',alignItems:'center',gap:'0.75rem',padding:'0.625rem 0.875rem',background:'rgba(74,222,128,0.08)',border:'1px solid rgba(74,222,128,0.2)',borderRadius:'8px'}}>
+                  <div style={{width:'8px',height:'8px',borderRadius:'50%',background:'#4ade80',flexShrink:0}} />
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:'0.875rem',fontWeight:600}}>
+                      {s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unknown officer'}
+                    </div>
+                    <div style={{fontSize:'0.75rem',color:'var(--text-2)'}}>
+                      {s.site?.name || '—'} · since {new Date(s.checked_in_at||s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}
+                    </div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (!window.confirm(`Force end shift for ${s.officer?.first_name}?`)) return;
+                      await api.shifts.update(s.id, { status: 'COMPLETED', checked_out_at: new Date().toISOString() });
+                      const res = await api.shifts.list({ status: 'ACTIVE', limit: 50 });
+                      setActiveShifts(res.data || []);
+                    }}
+                    style={{padding:'0.375rem 0.625rem',background:'rgba(220,38,38,0.1)',border:'1px solid rgba(220,38,38,0.25)',borderRadius:'6px',color:'var(--danger)',fontSize:'0.75rem',fontWeight:600,cursor:'pointer',flexShrink:0}}
+                  >
+                    End Shift
+                  </button>
                 </div>
               ))}
             </div>
@@ -1122,6 +1134,93 @@ function Reporting({ user }) {
   );
 }
 
+
+function OnDutyScreen({ user }) {
+  const [shifts, setShifts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  async function load() {
+    try {
+      const res = await api.shifts.list({ status: 'ACTIVE', limit: 100 });
+      setShifts(res.data || []);
+    } catch(e){ console.error(e); }
+    finally { setLoading(false); }
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function forceEnd(shift) {
+    if (!window.confirm(`Force end shift for ${shift.officer?.first_name} ${shift.officer?.last_name}?`)) return;
+    await api.shifts.update(shift.id, { status: 'COMPLETED', checked_out_at: new Date().toISOString() });
+    load();
+  }
+
+  const onDuration = s => {
+    const start = new Date(s.checked_in_at || s.start_time);
+    const mins = Math.floor((new Date() - start) / 60000);
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  };
+
+  return (
+    <div>
+      <div className="topbar">
+        <div className="topbar-title">Officers On Duty</div>
+        <button className="btn btn-secondary btn-sm" onClick={load}>Refresh</button>
+      </div>
+      <div className="page-content">
+        {loading ? (
+          <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner"/></div>
+        ) : shifts.length === 0 ? (
+          <div className="empty-state">
+            <div style={{fontSize:'2rem',marginBottom:'0.75rem'}}>💤</div>
+            <p>No officers currently on duty</p>
+          </div>
+        ) : (
+          <>
+            <div style={{marginBottom:'1rem',fontSize:'0.875rem',color:'var(--text-2)'}}>
+              <span style={{color:'var(--success)',fontWeight:700}}>{shifts.length}</span> officer{shifts.length!==1?'s':''} on duty
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
+              {shifts.map(s => (
+                <div key={s.id} className="card" style={{borderLeft:'3px solid var(--success)'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:'1rem'}}>
+                    <div style={{width:'40px',height:'40px',borderRadius:'50%',background:'var(--blue)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:'0.9375rem',flexShrink:0}}>
+                      {s.officer?.first_name?.[0]}{s.officer?.last_name?.[0]}
+                    </div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontWeight:600,fontSize:'0.9375rem'}}>
+                        {s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unknown'}
+                      </div>
+                      <div style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>
+                        {s.site?.name || '—'}
+                      </div>
+                      <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginTop:'0.125rem'}}>
+                        On since {new Date(s.checked_in_at||s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})} · {onDuration(s)}
+                      </div>
+                    </div>
+                    <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:'0.375rem',flexShrink:0}}>
+                      <span className="badge badge-success">ON DUTY</span>
+                      <button
+                        onClick={() => forceEnd(s)}
+                        style={{padding:'0.375rem 0.75rem',background:'rgba(220,38,38,0.1)',border:'1px solid rgba(220,38,38,0.25)',borderRadius:'6px',color:'var(--danger)',fontSize:'0.75rem',fontWeight:600,cursor:'pointer'}}
+                      >
+                        Force End
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export { OnDutyScreen };
 
 export { ManagerDashboard };
 export { SiteManagement };

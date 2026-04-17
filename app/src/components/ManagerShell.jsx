@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation, useParams, Routes, Route, Navigate } fr
 import { useAuth } from '@clerk/clerk-react';
 import { api, ApiError } from '../lib/api';
 import { LOG_TYPES, LOG_TYPE_CONFIG, formatDateTime, getRelativeTime } from '../lib/constants';
-import { ManagerDashboard, SiteManagement, LogReview, TaskAssignment, SiteDetail, TeamManagement, Reporting } from './ManagerScreens';
+import { ManagerDashboard, SiteManagement, LogReview, TaskAssignment, SiteDetail, TeamManagement, Reporting, OnDutyScreen } from './ManagerScreens';
 import { ShiftRoster, ProfitLoss } from './RosterPnL';
 import { DocumentsScreen, PatrolRoutesScreen, ShiftPatternsScreen, RatesScreen, AlertsScreen, PoliciesScreen, SiteInstructionsScreen, MessagesScreen } from './ManagerFeatures';
 import { PortalSettingsModal } from './Portal';
@@ -22,6 +22,7 @@ function ManagerApp({ user }) {
       <div className="main-content">
         <Routes>
           <Route path="/dashboard" element={<ManagerDashboard user={user} />} />
+          <Route path="/on-duty"   element={<OnDutyScreen user={user} />} />
           <Route path="/sites"     element={<SiteManagement user={user} />} />
           <Route path="/sites/:id" element={<SiteDetail user={user} />} />
           <Route path="/team"      element={<TeamManagement user={user} />} />
@@ -56,6 +57,7 @@ function ManagerSidebar({ user }) {
       label: null,
       items: [
         { to: '/dashboard', icon: HomeIcon,                  label: 'Dashboard' },
+        { to: '/on-duty',   icon: UsersIcon,                  label: 'On Duty' },
         { to: '/alerts',    icon: BellAlertIcon,             label: 'Alerts' },
         { to: '/messages',  icon: BellAlertIcon,             label: 'Messages' },
       ]
