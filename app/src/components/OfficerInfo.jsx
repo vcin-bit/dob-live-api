@@ -100,7 +100,6 @@ function OfficerNavigation() {
 }
 
 
-export default App;
 
 export { OfficerInstructionsScreen };
 export { OfficerPoliciesScreen };
