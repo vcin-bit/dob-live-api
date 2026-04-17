@@ -271,11 +271,17 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
         </button>
       )}
 
-      {/* Primary action */}
-      <Link to="/log" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.5rem',fontSize:'1.0625rem'}}>
-        <PlusIcon style={{width:'1.25rem',height:'1.25rem'}} />
-        New Log Entry
-      </Link>
+      {/* Primary actions */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.625rem',marginBottom:'0.625rem'}}>
+        <Link to="/log" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.9375rem',marginBottom:0}}>
+          <PlusIcon style={{width:'1.125rem',height:'1.125rem'}} />
+          Log Entry
+        </Link>
+        <Link to="/patrol" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.9375rem',marginBottom:0,background:shift?'rgba(59,130,246,0.15)':'rgba(255,255,255,0.05)',borderColor:shift?'rgba(59,130,246,0.35)':'rgba(255,255,255,0.1)',color:shift?'#60a5fa':'rgba(255,255,255,0.4)'}}>
+          <MapPinIcon style={{width:'1.125rem',height:'1.125rem'}} />
+          {shift ? 'Start Patrol' : 'Patrol'}
+        </Link>
+      </div>
 
       {/* Task badge */}
       {tasks.length > 0 && (
