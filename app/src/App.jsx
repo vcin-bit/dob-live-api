@@ -55,65 +55,71 @@ function App() {
 // Auth flow for signed-out users
 function AuthFlow() {
   const [mode, setMode] = useState('signin');
+
+  const clerkAppearance = {
+    variables: {
+      colorPrimary: '#1a52a8',
+      colorBackground: '#ffffff',
+      colorText: '#0b1222',
+      colorTextSecondary: '#64748b',
+      colorInputBackground: '#f8fafc',
+      colorInputText: '#0b1222',
+      borderRadius: '8px',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      fontSize: '15px',
+    },
+    elements: {
+      card: { boxShadow: 'none', border: 'none', padding: 0, background: 'transparent' },
+      headerTitle: { display: 'none' },
+      headerSubtitle: { display: 'none' },
+      socialButtons: { display: 'none' },
+      divider: { display: 'none' },
+      footer: { display: 'none' },
+      footerAction: { display: 'none' },
+      identityPreview: { display: 'none' },
+      alternativeMethods: { display: 'none' },
+      formFieldLabel: { fontSize: '0.8125rem', fontWeight: 500, color: '#374151', marginBottom: '0.375rem' },
+      formFieldInput: { border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.625rem 0.875rem', fontSize: '0.9375rem', width: '100%', boxSizing: 'border-box' },
+      formButtonPrimary: { background: '#1a52a8', borderRadius: '8px', padding: '0.75rem', fontSize: '0.9375rem', fontWeight: 600, width: '100%' },
+      formFieldAction: { fontSize: '0.8125rem', color: '#1a52a8' },
+    },
+  };
+
   return (
-    <div className="auth-page" style={{padding:'1rem'}}>
-      <div className="auth-box" style={{maxWidth:'380px'}}>
-        <div className="auth-logo" style={{marginBottom:'1.5rem'}}>
-          <div className="wordmark" style={{fontSize:'1.75rem'}}><span className="dob">DOB</span><span className="live"> Live</span></div>
-          <div className="sub">Security Management Platform</div>
+    <div style={{minHeight:'100vh',background:'#f1f5f9',display:'flex',alignItems:'center',justifyContent:'center',padding:'1.25rem',boxSizing:'border-box'}}>
+      <div style={{width:'100%',maxWidth:'400px'}}>
+        {/* Logo */}
+        <div style={{textAlign:'center',marginBottom:'2rem'}}>
+          <div style={{fontSize:'2rem',fontWeight:800,letterSpacing:'-0.03em'}}>
+            <span style={{color:'#1a52a8'}}>DOB</span>
+            <span style={{color:'#0b1222'}}> Live</span>
+          </div>
+          <div style={{fontSize:'0.875rem',color:'#64748b',marginTop:'0.25rem',fontWeight:500}}>Security Management Platform</div>
         </div>
-        <div className="auth-card" style={{padding:'1.5rem'}}>
-          <h2 style={{fontSize:'0.9375rem',fontWeight:600,marginBottom:'1.25rem',color:'var(--text)'}}>
-            {mode === 'signin' ? 'Sign in to your account' : 'Create your account'}
-          </h2>
+
+        {/* Card */}
+        <div style={{background:'#fff',borderRadius:'12px',boxShadow:'0 1px 3px rgba(0,0,0,0.08),0 4px 16px rgba(0,0,0,0.06)',padding:'2rem',boxSizing:'border-box',width:'100%',overflow:'hidden'}}>
+          <div style={{fontSize:'1rem',fontWeight:700,color:'#0b1222',marginBottom:'1.5rem'}}>
+            {mode === 'signin' ? 'Sign in' : 'Create your account'}
+          </div>
+
           {mode === 'signin' ? (
-            <SignIn       appearance={{
-                elements: {
-                  card: 'shadow-none border-0 bg-transparent p-0 w-full',
-                  headerTitle: 'hidden', headerSubtitle: 'hidden',
-                  socialButtons: 'hidden', socialButtonsBlockButton: 'hidden',
-                  divider: 'hidden', footer: 'hidden', footerAction: 'hidden',
-                  footerActionText: 'hidden', footerActionLink: 'hidden',
-                  identityPreview: 'hidden', alternativeMethods: 'hidden',
-                  formFieldLabel: 'label',
-                  formFieldInput: 'input',
-                  formButtonPrimary: 'btn btn-primary w-full',
-                  formFieldRow: 'field',
-                  formFieldAction: 'text-right mt-1',
-                  formFieldInputShowPasswordButton: '',
-                  formFieldErrorText: 'text-xs mt-1' ,
-                  globalError: 'alert alert-danger mb-4',
-                  otpCodeFieldInput: 'w-10 h-10 text-center border border-[#cbd5e1] rounded text-base font-semibold',
-                }
-              }} />
+            <SignIn appearance={clerkAppearance} />
           ) : (
-            <SignUp       appearance={{
-                elements: {
-                  card: 'shadow-none border-0 bg-transparent p-0 w-full',
-                  headerTitle: 'hidden', headerSubtitle: 'hidden',
-                  socialButtons: 'hidden', socialButtonsBlockButton: 'hidden',
-                  divider: 'hidden', footer: 'hidden', footerAction: 'hidden',
-                  footerActionText: 'hidden', footerActionLink: 'hidden',
-                  identityPreview: 'hidden', alternativeMethods: 'hidden',
-                  formFieldLabel: 'label',
-                  formFieldInput: 'input',
-                  formButtonPrimary: 'btn btn-primary w-full',
-                  formFieldRow: 'field',
-                  formFieldAction: 'text-right mt-1',
-                  formFieldInputShowPasswordButton: '',
-                  formFieldErrorText: 'text-xs mt-1' ,
-                  globalError: 'alert alert-danger mb-4',
-                  otpCodeFieldInput: 'w-10 h-10 text-center border border-[#cbd5e1] rounded text-base font-semibold',
-                }
-              }} />
+            <SignUp appearance={clerkAppearance} />
           )}
-          <div style={{borderTop:'1px solid var(--border)',marginTop:'1.25rem',paddingTop:'1rem',fontSize:'0.875rem',color:'var(--text-2)',textAlign:'center'}}>
+
+          <div style={{borderTop:'1px solid #f1f5f9',marginTop:'1.25rem',paddingTop:'1rem',textAlign:'center',fontSize:'0.875rem',color:'#64748b'}}>
             {mode === 'signin' ? (
-              <span>No account? <button onClick={() => setMode('signup')} style={{color:'var(--blue)',fontWeight:500,background:'none',border:'none',cursor:'pointer'}}>Create one</button></span>
+              <span>No account? <button onClick={() => setMode('signup')} style={{color:'#1a52a8',fontWeight:600,background:'none',border:'none',cursor:'pointer'}}>Create one</button></span>
             ) : (
-              <span>Have an account? <button onClick={() => setMode('signin')} style={{color:'var(--blue)',fontWeight:500,background:'none',border:'none',cursor:'pointer'}}>Sign in</button></span>
+              <span>Already have an account? <button onClick={() => setMode('signin')} style={{color:'#1a52a8',fontWeight:600,background:'none',border:'none',cursor:'pointer'}}>Sign in</button></span>
             )}
           </div>
+        </div>
+
+        <div style={{textAlign:'center',marginTop:'1.5rem',fontSize:'0.75rem',color:'#94a3b8'}}>
+          DOB Live · Secure Officer Management
         </div>
       </div>
     </div>
@@ -136,7 +142,18 @@ function AuthenticatedApp() {
     async function fetchUserData() {
       try {
         setLoading(true);
-        const userData = await api.users.me();
+        // Render free tier spins down - retry up to 3 times with delay
+        let userData, lastErr;
+        for (let i = 0; i < 3; i++) {
+          try {
+            userData = await api.users.me();
+            break;
+          } catch (err) {
+            lastErr = err;
+            if (i < 2) await new Promise(r => setTimeout(r, 2000));
+          }
+        }
+        if (!userData) throw lastErr;
         setDbUser(userData.data);
         setError(null);
       } catch (err) {
