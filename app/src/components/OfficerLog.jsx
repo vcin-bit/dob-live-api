@@ -215,6 +215,7 @@ function LogEntryScreen({ user, site, shift }) {
 }
 
 // Log Type Option Component
+// v2 accordion
 function LogTypeAccordion({ formData, setFormData }) {
   const groups = [
     { key:'patrol',  label:'Patrol & Security', dot:'#ef4444', types:['PATROL','INCIDENT','ALARM','FIRE_ALARM','EVACUATION','EMERGENCY'] },
