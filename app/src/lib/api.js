@@ -238,6 +238,10 @@ export const api = {
     },
   },
 
+  report: {
+    generate: (data) => request('/api/report/generate', { method: 'POST', body: JSON.stringify(data) }),
+    pdf:      (logId) => request('/api/report/pdf', { method: 'POST', body: JSON.stringify({ log_id: logId }) }),
+  },
   invite: {
     send:   (data)   => request('/api/invite', { method: 'POST', body: JSON.stringify(data) }),
     resend: (userId) => request('/api/invite/resend', { method: 'POST', body: JSON.stringify({ user_id: userId }) }),

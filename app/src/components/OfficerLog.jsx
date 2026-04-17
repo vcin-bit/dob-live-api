@@ -1,663 +1,432 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation, useParams, Routes, Route, Navigate } from 'react-router-dom';
-import { useAuth } from '@clerk/clerk-react';
-import { api, ApiError } from '../lib/api';
-import { LOG_TYPES, LOG_TYPE_CONFIG, formatDateTime, getRelativeTime } from '../lib/constants';
-import {
-  HomeIcon, ClipboardDocumentListIcon, MapPinIcon, ClockIcon,
-  UserGroupIcon, Cog6ToothIcon, PlusIcon, ArrowRightOnRectangleIcon,
-  BuildingOfficeIcon, ChartBarIcon, DocumentTextIcon, BellAlertIcon,
-  UsersIcon, EyeIcon, FunnelIcon, ArrowDownTrayIcon
-} from '@heroicons/react/24/outline';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { api } from '../lib/api';
+import { MapPinIcon } from '@heroicons/react/24/outline';
 
+// ── Types config ─────────────────────────────────────────────────────────────
+const HIGH_PRIORITY = [
+  { key:'INCIDENT',   label:'INCIDENT',        sub:'Crime · Disturbance · Threat',  color:'#ef4444', border:'rgba(239,68,68,0.45)', bg:'rgba(239,68,68,0.12)' },
+  { key:'ALARM',      label:'ALARM',           sub:'Intruder · Fire · Technical',   color:'#fbbf24', border:'rgba(251,191,36,0.35)', bg:'rgba(251,191,36,0.1)' },
+  { key:'FIRE_ALARM', label:'FIRE / EVACUATION', sub:'Fire alarm · Evacuation',     color:'rgba(239,68,68,0.8)', border:'rgba(239,68,68,0.25)', bg:'rgba(239,68,68,0.08)' },
+  { key:'EMERGENCY',  label:'EMERGENCY',       sub:'Medical · Serious incident',    color:'#ef4444', border:'rgba(239,68,68,0.4)', bg:'rgba(239,68,68,0.1)' },
+];
+const ROUTINE = [
+  { key:'PATROL',        label:'PATROL',       sub:'Check · Observation' },
+  { key:'ACCESS_CONTROL',label:'ACCESS',       sub:'Entry · Visitor' },
+  { key:'VEHICLE_CHECK', label:'VEHICLE',      sub:'Check · Suspicious' },
+  { key:'MAINTENANCE',   label:'MAINTENANCE',  sub:'Fault · Repair' },
+  { key:'VISITOR',       label:'VISITOR',      sub:'Signin · Log' },
+  { key:'HANDOVER',      label:'HANDOVER',     sub:'Shift handover' },
+  { key:'GENERAL',       label:'GENERAL',      sub:'Observation · Note' },
+  { key:'OTHER',         label:'OTHER',        sub:'Anything else' },
+];
+const SUB_TYPES = {
+  INCIDENT:    ['THEFT','FIGHT/ASSAULT','TRESPASS','VANDALISM','SUSPICIOUS PERSON','DRUG-RELATED','VERBAL ABUSE','OTHER'],
+  ALARM:       ['INTRUDER','FIRE','PANIC','TECHNICAL FAULT','FALSE ALARM','OTHER'],
+  FIRE_ALARM:  ['FIRE','FALSE ALARM','DRILL','EVACUATION','OTHER'],
+  EMERGENCY:   ['MEDICAL','FIRE','SECURITY THREAT','STRUCTURAL','OTHER'],
+  PATROL:      ['ROUTINE PATROL','PERIMETER CHECK','INTERNAL CHECK','WELFARE CHECK','CCTV REVIEW'],
+  ACCESS_CONTROL:['AUTHORISED ENTRY','REFUSED ENTRY','TAILGATE','OUT OF HOURS','CONTRACTOR'],
+  VEHICLE_CHECK: ['ROUTINE CHECK','SUSPICIOUS VEHICLE','ABANDONED','PARKING VIOLATION','DAMAGE'],
+  MAINTENANCE: ['LIGHTING','DOOR/GATE','CCTV','FENCE/PERIMETER','LOCK/KEY','OTHER'],
+};
+
+const ALL_TYPES = [...HIGH_PRIORITY, ...ROUTINE];
+const getType = key => ALL_TYPES.find(t => t.key === key);
+
+// ── Styles helpers ────────────────────────────────────────────────────────────
+const S = {
+  label: { fontSize:'9px', fontWeight:700, color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:'7px' },
+  input: { width:'100%', background:'rgba(255,255,255,0.05)', border:'1.5px solid rgba(255,255,255,0.1)', borderRadius:'8px', padding:'12px', fontSize:'14px', color:'#fff', resize:'none', boxSizing:'border-box', fontFamily:'inherit' },
+  pill: (sel) => ({ padding:'8px 14px', background:sel?'rgba(239,68,68,0.15)':'rgba(255,255,255,0.04)', border:`1.5px solid ${sel?'rgba(239,68,68,0.45)':'rgba(255,255,255,0.1)'}`, borderRadius:'6px', fontSize:'12px', color:sel?'#ef4444':'rgba(255,255,255,0.45)', fontWeight:700, cursor:'pointer', letterSpacing:'0.04em' }),
+  btn: (color) => ({ width:'100%', padding:'16px', background:color||'#1a52a8', border:'none', borderRadius:'10px', color:'#fff', fontSize:'15px', fontWeight:700, cursor:'pointer', letterSpacing:'0.03em' }),
+  ghost: { width:'100%', padding:'12px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'10px', color:'rgba(255,255,255,0.4)', fontSize:'13px', cursor:'pointer', letterSpacing:'0.03em' },
+  toggle: (on) => ({ width:'40px', height:'22px', background:on?'#3b82f6':'rgba(255,255,255,0.1)', borderRadius:'999px', position:'relative', flexShrink:0, cursor:'pointer', transition:'background 0.2s' }),
+  toggleDot: (on) => ({ position:'absolute', top:3, left:on?'auto':'3px', right:on?'3px':'auto', width:16, height:16, background:'#fff', borderRadius:'50%' }),
+};
+
+// ── Step indicator ────────────────────────────────────────────────────────────
+function StepDots({ step }) {
+  return (
+    <div style={{display:'flex',gap:'4px'}}>
+      {[1,2,3].map(n => (
+        <div key={n} style={{height:'8px', width:n===step?'20px':'8px', borderRadius:'4px', background:n===step?'#3b82f6':'rgba(255,255,255,0.2)', transition:'width 0.2s'}} />
+      ))}
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 function LogEntryScreen({ user, site, shift }) {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    log_type: '',
-    title: '',
-    description: '',
-    occurred_at: new Date().toISOString().slice(0, 16),
-    latitude: null,
-    longitude: null,
-    what3words: '',
-    type_data: {},
-    client_reportable: false,
-    media: [],
-    police_attended: false,
-    police_reported: false,
-    police_incident_number: '',
-    police_force: '',
-    police_officer_name: '',
-    police_shoulder_number: '',
+  const [step, setStep] = useState(1);
+  const [form, setForm] = useState({
+    log_type: '', sub_type: '', description: '', location_detail: '', people_involved: '', actions_taken: '',
+    occurred_at: new Date().toISOString().slice(0,16),
+    latitude: null, longitude: null,
+    police_reported: false, police_attended: false,
+    police_incident_number: '', police_force: '', police_officer_name: '', police_shoulder_number: '',
+    client_reportable: false, media: [],
   });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [locationLoading, setLocationLoading] = useState(false);
+  const [narrative, setNarrative] = useState('');
+  const [generatingAI, setGeneratingAI] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [gpsLoading, setGpsLoading] = useState(false);
 
-  // Get current location
-  const getCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      setError('Geolocation is not supported by this browser');
-      return;
-    }
-
-    setLocationLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setFormData(prev => ({
-          ...prev,
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude
-        }));
-        setLocationLoading(false);
-      },
-      (error) => {
-        console.error('Error getting location:', error);
-        setError('Unable to get current location');
-        setLocationLoading(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
-    );
-  };
-
+  const f = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  const type = getType(form.log_type);
   const API = import.meta.env.VITE_API_URL || 'https://dob-live-api.onrender.com';
 
-  async function handleMediaUpload(files) {
+  // GPS
+  function getGPS() {
+    if (!navigator.geolocation) return;
+    setGpsLoading(true);
+    navigator.geolocation.getCurrentPosition(pos => {
+      f('latitude', pos.coords.latitude); f('longitude', pos.coords.longitude);
+      setGpsLoading(false);
+    }, () => setGpsLoading(false), { enableHighAccuracy: true, timeout: 8000 });
+  }
+
+  // Media upload
+  async function uploadMedia(files) {
     setUploadingMedia(true);
+    const token = window.Clerk?.session ? await window.Clerk.session.getToken() : '';
     const uploads = [];
-    for (const file of files) {
-      const form = new FormData();
-      form.append('file', file);
+    for (const file of Array.from(files)) {
+      const fd = new FormData(); fd.append('file', file);
       try {
-        const token = window.Clerk?.session ? await window.Clerk.session.getToken() : '';
-        const res = await fetch(`${API}/api/patrols/media/upload`, {
-          method: 'POST', body: form,
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        if (data.url) uploads.push({ url: data.url, name: file.name, type: file.type });
-      } catch (e) { console.error('Upload failed:', e); }
+        const r = await fetch(`${API}/api/patrols/media/upload`, { method:'POST', body:fd, headers:{ Authorization:`Bearer ${token}` } });
+        const d = await r.json();
+        if (d.url) uploads.push({ url:d.url, name:file.name, type:file.type });
+      } catch {}
     }
-    setFormData(prev => ({ ...prev, media: [...prev.media, ...uploads] }));
+    f('media', [...form.media, ...uploads]);
     setUploadingMedia(false);
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-
+  // AI generate narrative
+  async function generateNarrative() {
+    if (!form.description.trim()) { setError('Please add a description first'); return; }
+    setGeneratingAI(true); setError('');
     try {
-      // Validate required fields
-      if (!formData.log_type) {
-        throw new Error('Please select a log type');
-      }
-      if (!formData.title?.trim()) {
-        throw new Error('Please enter a title');
-      }
-      if (!formData.description?.trim()) {
-        throw new Error('Please enter a description');
-      }
-
-      // Submit log entry
-      const logData = {
-        site_id: site.id,
-        shift_id: shift?.id || null,
-        log_type: formData.log_type,
-        title: formData.title.trim(),
-        description: formData.description.trim(),
-        occurred_at: formData.occurred_at,
-        latitude: formData.latitude,
-        longitude: formData.longitude,
-        what3words: formData.what3words?.trim() || null,
-        type_data: formData.type_data,
-        client_reportable: formData.client_reportable,
-        media: formData.media,
-        police_attended: formData.police_attended,
-        police_reported: formData.police_reported,
-        police_incident_number: formData.police_incident_number || null,
-        police_force: formData.police_force || null,
-        police_officer_name: formData.police_officer_name || null,
-        police_shoulder_number: formData.police_shoulder_number || null,
-      };
-
-      await api.logs.create(logData);
-      
-      // Success - redirect to dashboard
-      navigate('/', { 
-        state: { message: 'Log entry created successfully' }
+      const res = await api.report.generate({
+        log_type: form.log_type,
+        incident_subtype: form.sub_type,
+        description: form.description,
+        site_name: site?.name,
+        officer_name: `${user?.first_name} ${user?.last_name}`,
+        occurred_at: form.occurred_at,
+        police_attended: form.police_attended,
+        police_reported: form.police_reported,
+        police_incident_number: form.police_incident_number,
+        police_force: form.police_force,
+        police_officer_name: form.police_officer_name,
+        police_shoulder_number: form.police_shoulder_number,
+        actions_taken: form.actions_taken,
+        people_involved: form.people_involved,
+        location_detail: form.location_detail,
       });
-    } catch (err) {
-      console.error('Failed to create log entry:', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const selectedLogConfig = LOG_TYPE_CONFIG[formData.log_type];
-
-  return (
-    <div style={{padding:'1rem',paddingBottom:'5rem'}}>
-      <div style={{marginBottom:'1.25rem'}}>
-        <h2 style={{fontSize:'1.125rem',fontWeight:700,color:'#fff',marginBottom:'0.125rem'}}>New Log Entry</h2>
-        <p style={{fontSize:'0.8125rem',color:'rgba(255,255,255,0.4)'}}>Record a security occurrence</p>
-      </div>
-
-      {error && (
-        <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>
-      )}
-
-      <form onSubmit={handleSubmit}>
-        {/* Log Type Selection */}
-        <div style={{marginBottom:'1.25rem'}}>
-          <div style={{fontSize:'0.6875rem',fontWeight:600,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.625rem'}}>Type</div>
-          <LogTypeAccordion formData={formData} setFormData={setFormData} />
-        </div>
-
-        {/* Basic Information */}
-        <div style={{marginBottom:'1.25rem'}}>
-          <div style={{fontSize:'0.6875rem',fontWeight:600,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.625rem'}}>Details</div>
-            <div className="space-y-4">
-              <div style={{marginBottom:'0.875rem'}}>
-                <label className="officer-label">Title</label>
-                <input
-                  type="text"
-                  className="officer-input"
-                  value={formData.title}
-                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder="Brief summary"
-                  required
-                />
-              </div>
-
-              <div style={{marginBottom:'0.875rem'}}>
-                <label className="officer-label">Description</label>
-                <textarea
-                  className="officer-input"
-                  style={{resize:'vertical'}}
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Detailed description of what occurred, actions taken, and any observations"
-                  rows="4"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="officer-label">Date & Time</label>
-                <input
-                  type="datetime-local"
-                  className="officer-input"
-                  value={formData.occurred_at}
-                  onChange={(e) => setFormData(prev => ({ ...prev, occurred_at: e.target.value }))}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Location */}
-          <div style={{marginBottom:'1.25rem'}}>
-            <div style={{fontSize:'0.6875rem',fontWeight:600,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.625rem'}}>Location (Optional)</div>
-            <button
-              type="button"
-              onClick={getCurrentLocation}
-              disabled={locationLoading}
-              style={{padding:'0.75rem 1rem',background:'#1a2235',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'8px',color:formData.latitude?'#4ade80':'rgba(255,255,255,0.6)',fontSize:'0.875rem',fontWeight:500,cursor:'pointer',display:'flex',alignItems:'center',gap:'0.5rem',marginBottom:'0.625rem'}}
-            >
-              <MapPinIcon style={{width:'1rem',height:'1rem'}} />
-              {locationLoading ? 'Getting location...' : formData.latitude ? 'Location captured' : 'Use my location'}
-            </button>
-            <label className="officer-label">what3words (optional)</label>
-            <input
-              type="text"
-              className="officer-input"
-              style={{fontFamily:'monospace'}}
-              value={formData.what3words}
-              onChange={(e) => setFormData(prev => ({ ...prev, what3words: e.target.value }))}
-              placeholder="filled.count.soap"
-            />
-          </div>
-
-          {/* Type-Specific Fields */}
-          {selectedLogConfig && formData.log_type && (
-            <TypeSpecificFields
-              logType={formData.log_type}
-              config={selectedLogConfig}
-              data={formData.type_data}
-              onChange={(typeData) => setFormData(prev => ({ ...prev, type_data: typeData }))}
-            />
-          )}
-
-          {/* Media Upload */}
-          <div style={{marginBottom:'1.25rem'}}>
-            <div style={{fontSize:'0.6875rem',fontWeight:600,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.625rem'}}>Photos / Video</div>
-            <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'8px'}}>
-              {formData.media.map((m, i) => (
-                <div key={i} style={{width:72,height:72,borderRadius:'8px',background:'#1a2235',border:'1px solid rgba(255,255,255,0.1)',overflow:'hidden',position:'relative'}}>
-                  {m.type?.startsWith('image') ? (
-                    <img src={m.url} style={{width:'100%',height:'100%',objectFit:'cover'}} />
-                  ) : (
-                    <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:'4px'}}>
-                      <div style={{fontSize:'20px'}}>🎥</div>
-                      <div style={{fontSize:'9px',color:'rgba(255,255,255,0.4)',textAlign:'center',padding:'0 4px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:'70px'}}>{m.name}</div>
-                    </div>
-                  )}
-                  <button onClick={() => setFormData(p => ({ ...p, media: p.media.filter((_,j)=>j!==i) }))}
-                    style={{position:'absolute',top:2,right:2,width:18,height:18,background:'rgba(220,38,38,0.85)',borderRadius:'50%',border:'none',color:'#fff',fontSize:12,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>×</button>
-                </div>
-              ))}
-              {uploadingMedia && (
-                <div style={{width:72,height:72,borderRadius:'8px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                  <div className="spinner" style={{width:'1.25rem',height:'1.25rem',borderTopColor:'#3b82f6',borderColor:'rgba(255,255,255,0.1)'}}/>
-                </div>
-              )}
-              <label style={{width:72,height:72,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>
-                <div style={{fontSize:'22px',color:'rgba(59,130,246,0.5)',lineHeight:1}}>+</div>
-                <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)'}}>Add Photo</div>
-                <input type="file" accept="image/*" multiple capture="environment" style={{display:'none'}} onChange={e => handleMediaUpload(Array.from(e.target.files))} />
-              </label>
-              <label style={{width:72,height:72,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(139,92,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'4px'}}>
-                <div style={{fontSize:'20px',lineHeight:1}}>🎥</div>
-                <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)'}}>Add Video</div>
-                <input type="file" accept="video/*" capture="environment" style={{display:'none'}} onChange={e => handleMediaUpload(Array.from(e.target.files))} />
-              </label>
-            </div>
-          </div>
-
-          {/* Police Report — INCIDENT only */}
-          {(formData.log_type === 'INCIDENT' || formData.log_type === 'EMERGENCY') && (
-            <div style={{marginBottom:'1.25rem',padding:'12px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'10px'}}>
-              <div style={{fontSize:'0.6875rem',fontWeight:600,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'10px'}}>Police</div>
-              
-              <div style={{display:'flex',gap:'8px',marginBottom:'10px'}}>
-                <button type="button" onClick={() => setFormData(p=>({...p,police_reported:!p.police_reported}))}
-                  style={{flex:1,padding:'10px 8px',background:formData.police_reported?'rgba(59,130,246,0.12)':'rgba(255,255,255,0.03)',border:`1.5px solid ${formData.police_reported?'rgba(59,130,246,0.4)':'rgba(255,255,255,0.08)'}`,borderRadius:'8px',color:formData.police_reported?'#60a5fa':'rgba(255,255,255,0.5)',fontSize:'12px',fontWeight:600,cursor:'pointer'}}>
-                  {formData.police_reported ? '✓' : ''} Reported to Police
-                </button>
-                <button type="button" onClick={() => setFormData(p=>({...p,police_attended:!p.police_attended}))}
-                  style={{flex:1,padding:'10px 8px',background:formData.police_attended?'rgba(59,130,246,0.12)':'rgba(255,255,255,0.03)',border:`1.5px solid ${formData.police_attended?'rgba(59,130,246,0.4)':'rgba(255,255,255,0.08)'}`,borderRadius:'8px',color:formData.police_attended?'#60a5fa':'rgba(255,255,255,0.5)',fontSize:'12px',fontWeight:600,cursor:'pointer'}}>
-                  {formData.police_attended ? '✓' : ''} Police Attended
-                </button>
-              </div>
-
-              {formData.police_reported && (
-                <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
-                  <div>
-                    <label className="officer-label">Crime / Incident Reference Number</label>
-                    <input className="officer-input" value={formData.police_incident_number}
-                      onChange={e=>setFormData(p=>({...p,police_incident_number:e.target.value}))}
-                      placeholder="e.g. 01WM/12345/24" />
-                  </div>
-                  <div>
-                    <label className="officer-label">Police Force</label>
-                    <select className="officer-input" value={formData.police_force}
-                      onChange={e=>setFormData(p=>({...p,police_force:e.target.value}))}>
-                      <option value="">Select force...</option>
-                      {['Avon and Somerset','Bedfordshire','Cambridgeshire','Cheshire','City of London','Cleveland','Cumbria','Derbyshire','Devon and Cornwall','Dorset','Durham','Dyfed-Powys','Essex','Gloucestershire','Greater Manchester','Gwent','Hampshire','Hertfordshire','Humberside','Kent','Lancashire','Leicestershire','Lincolnshire','Merseyside','Metropolitan Police','Norfolk','North Wales','North Yorkshire','Northamptonshire','Northumbria','Nottinghamshire','South Wales','South Yorkshire','Staffordshire','Suffolk','Surrey','Sussex','Thames Valley','Warwickshire','West Mercia','West Midlands','West Yorkshire','Wiltshire'].map(f => (
-                        <option key={f} value={f}>{f}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              {formData.police_attended && (
-                <div style={{display:'flex',flexDirection:'column',gap:'8px',marginTop: formData.police_reported ? '8px' : '0'}}>
-                  <div>
-                    <label className="officer-label">Attending Officer Name</label>
-                    <input className="officer-input" value={formData.police_officer_name}
-                      onChange={e=>setFormData(p=>({...p,police_officer_name:e.target.value}))}
-                      placeholder="e.g. PC Smith" />
-                  </div>
-                  <div>
-                    <label className="officer-label">Shoulder / Collar Number</label>
-                    <input className="officer-input" value={formData.police_shoulder_number}
-                      onChange={e=>setFormData(p=>({...p,police_shoulder_number:e.target.value}))}
-                      placeholder="e.g. 1234" />
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Client Reportable */}
-          <div style={{marginBottom:'1.25rem'}}>
-            <div onClick={() => setFormData(p=>({...p,client_reportable:!p.client_reportable}))}
-              style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 14px',
-                background:formData.client_reportable?'rgba(59,130,246,0.07)':'rgba(255,255,255,0.03)',
-                border:`1.5px solid ${formData.client_reportable?'rgba(59,130,246,0.3)':'rgba(255,255,255,0.08)'}`,
-                borderRadius:'10px',cursor:'pointer'}}>
-              <div>
-                <div style={{fontSize:'13px',fontWeight:600,color:'#fff'}}>Report to client</div>
-                <div style={{fontSize:'11px',color:'rgba(255,255,255,0.35)',marginTop:'1px'}}>
-                  {formData.client_reportable ? 'Visible in client portal + ops' : 'Ops manager only'}
-                </div>
-              </div>
-              <div style={{width:'38px',height:'22px',background:formData.client_reportable?'#3b82f6':'rgba(255,255,255,0.1)',borderRadius:'999px',position:'relative',flexShrink:0}}>
-                <div style={{position:'absolute',top:3,left:formData.client_reportable?'auto':'3px',right:formData.client_reportable?'3px':'auto',width:16,height:16,background:'#fff',borderRadius:'50%'}} />
-              </div>
-            </div>
-          </div>
-
-          {/* Submit Buttons */}
-          <div style={{display:'flex',gap:'0.75rem',marginTop:'1rem'}}>
-            <button
-              type="button"
-              onClick={() => navigate('/')}
-              style={{flex:1,background:'#1a2235',color:'rgba(255,255,255,0.6)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'8px',padding:'0.875rem',fontSize:'0.9375rem',fontWeight:600,cursor:'pointer'}}
-              disabled={loading}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              style={{flex:2,background:'var(--blue)',color:'#fff',border:'none',borderRadius:'8px',padding:'0.875rem',fontSize:'0.9375rem',fontWeight:700,cursor:'pointer',opacity:(loading||!formData.log_type||!formData.title.trim())?0.5:1}}
-              disabled={loading || !formData.log_type || !formData.title.trim()}
-            >
-              {loading ? 'Saving...' : 'Save Log Entry'}
-            </button>
-          </div>
-        </form>
-    </div>
-  );
-}
-
-// Log Type Option Component
-// v2 accordion
-function LogTypeAccordion({ formData, setFormData }) {
-  const groups = [
-    { key:'patrol',  label:'Patrol & Security', dot:'#ef4444', types:['PATROL','INCIDENT','ALARM','FIRE_ALARM','EVACUATION','EMERGENCY'] },
-    { key:'access',  label:'Access & Visitors',  dot:'#3b82f6', types:['ACCESS_CONTROL','VISITOR','VEHICLE_CHECK','PROPERTY_CHECK'] },
-    { key:'shift',   label:'Shift & Admin',       dot:'rgba(255,255,255,0.4)', types:['SHIFT_START','SHIFT_END','BREAK','HANDOVER','MAINTENANCE','TRAINING','ADMIN','OTHER'] },
-  ];
-
-  // Auto-open the group containing the selected type
-  const selectedGroup = groups.find(g => g.types.includes(formData.log_type))?.key || null;
-  const [open, setOpen] = React.useState(selectedGroup);
-
-  const cols = {
-    info:    { bg:'rgba(59,130,246,0.15)',  border:'rgba(59,130,246,0.5)',  dot:'#3b82f6' },
-    warning: { bg:'rgba(251,191,36,0.12)',  border:'rgba(251,191,36,0.5)',  dot:'#fbbf24' },
-    alert:   { bg:'rgba(239,68,68,0.15)',   border:'rgba(239,68,68,0.6)',   dot:'#ef4444' },
-    success: { bg:'rgba(74,222,128,0.1)',   border:'rgba(74,222,128,0.4)',  dot:'#4ade80' },
-    neutral: { bg:'rgba(255,255,255,0.05)', border:'rgba(255,255,255,0.12)',dot:'rgba(255,255,255,0.4)' },
-  };
-
-  return (
-    <div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
-      {groups.map(group => {
-        const isOpen = open === group.key;
-        const hasSelected = group.types.includes(formData.log_type);
-        const selectedLabel = hasSelected ? LOG_TYPE_CONFIG[formData.log_type]?.label : null;
-
-        return (
-          <div key={group.key} style={{borderRadius:'10px',overflow:'hidden',border:`1.5px solid ${hasSelected?'rgba(255,255,255,0.2)':'rgba(255,255,255,0.07)'}`,background:'rgba(255,255,255,0.03)'}}>
-            {/* Group header - tap to open/close */}
-            <button
-              onClick={() => setOpen(isOpen ? null : group.key)}
-              style={{width:'100%',display:'flex',alignItems:'center',gap:'10px',padding:'13px 14px',background:'none',border:'none',cursor:'pointer',textAlign:'left'}}>
-              <div style={{width:'8px',height:'8px',borderRadius:'50%',background:group.dot,flexShrink:0}} />
-              <div style={{flex:1}}>
-                <div style={{fontSize:'14px',fontWeight:600,color:hasSelected?'#fff':'rgba(255,255,255,0.65)'}}>{group.label}</div>
-                {hasSelected && !isOpen && (
-                  <div style={{fontSize:'11px',color:'rgba(255,255,255,0.4)',marginTop:'1px'}}>Selected: {selectedLabel}</div>
-                )}
-              </div>
-              <svg width="12" height="8" viewBox="0 0 12 8" fill="none" style={{transform:isOpen?'rotate(180deg)':'none',transition:'transform 0.2s',flexShrink:0}}>
-                <path d="M1 1L6 7L11 1" stroke="rgba(255,255,255,0.35)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-
-            {/* Type list - shown when open */}
-            {isOpen && (
-              <div style={{borderTop:'1px solid rgba(255,255,255,0.06)',padding:'6px 8px 8px'}}>
-                {group.types.filter(t => LOG_TYPE_CONFIG[t]).map(type => {
-                  const config = LOG_TYPE_CONFIG[type];
-                  const sel = formData.log_type === type;
-                  const c = cols[config.color] || cols.neutral;
-                  return (
-                    <button key={type}
-                      onClick={() => { setFormData(prev => ({ ...prev, log_type: type, type_data: {} })); setOpen(null); }}
-                      style={{display:'flex',alignItems:'center',gap:'10px',padding:'10px 10px',width:'100%',
-                        background:sel?c.bg:'transparent',
-                        border:`1px solid ${sel?c.border:'transparent'}`,
-                        borderRadius:'8px',cursor:'pointer',textAlign:'left',marginBottom:'3px'}}>
-                      <div style={{width:'8px',height:'8px',borderRadius:'50%',background:c.dot,flexShrink:0}} />
-                      <div style={{flex:1,fontSize:'14px',fontWeight:sel?600:400,color:sel?'#fff':'rgba(255,255,255,0.7)'}}>{config.label}</div>
-                      {sel && <svg width="14" height="11" viewBox="0 0 14 11" fill="none"><path d="M1 5.5L4.5 9L13 1" stroke={c.dot} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function LogTypeOption({ type, config, selected, onSelect }) {
-  return (
-    <button
-      className={`log-type-btn${selected ? ' selected' : ''}`}
-      onClick={() => onSelect(type)}
-      type="button"
-    >
-      <div className="type-badge">{config.icon}</div>
-      <div className="log-type-label">{config.label}</div>
-    </button>
-  );
-}
-
-
-function TypeSpecificFields({ logType, config, data, onChange }) {
-  const updateField = (field, value) => {
-    onChange({ ...data, [field]: value });
-  };
-
-  if (!config.fields || config.fields.length === 0) {
-    return null;
+      setNarrative(res.narrative);
+    } catch (e) { setError('AI generation failed. You can write the report manually.'); }
+    finally { setGeneratingAI(false); }
   }
 
-  return (
-    <div style={{marginBottom:'1.25rem'}}>
-      <div style={{fontSize:'0.6875rem',fontWeight:600,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.625rem'}}>{config.label} Details</div>
-      <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
-        {config.fields.map((field) => (
-          <TypeSpecificField
-            key={field}
-            field={field}
-            logType={logType}
-            value={data[field] || ''}
-            onChange={(value) => updateField(field, value)}
-          />
+  // Submit
+  async function submit() {
+    setSubmitting(true); setError('');
+    try {
+      const finalDesc = narrative || form.description;
+      const res = await api.logs.create({
+        site_id: site?.id,
+        shift_id: shift?.id || null,
+        log_type: form.log_type,
+        title: `${form.log_type.replace(/_/g,' ')}${form.sub_type ? ' — ' + form.sub_type : ''}`,
+        description: finalDesc,
+        occurred_at: form.occurred_at,
+        latitude: form.latitude, longitude: form.longitude,
+        client_reportable: form.client_reportable,
+        type_data: {
+          sub_type: form.sub_type,
+          location_detail: form.location_detail,
+          people_involved: form.people_involved,
+          actions_taken: form.actions_taken,
+          police_reported: form.police_reported,
+          police_attended: form.police_attended,
+          police_incident_number: form.police_incident_number,
+          police_force: form.police_force,
+          police_officer_name: form.police_officer_name,
+          police_shoulder_number: form.police_shoulder_number,
+          media: form.media,
+          ai_generated: !!narrative,
+        },
+      });
+      navigate('/', { state: { message: 'Log entry submitted', logId: res.data?.id } });
+    } catch (e) { setError(e.message); }
+    finally { setSubmitting(false); }
+  }
+
+  // ── STEP 1: Select type ─────────────────────────────────────────────────────
+  if (step === 1) return (
+    <div style={{padding:'1rem 1rem 5rem'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'1.25rem'}}>
+        <div>
+          <div style={{fontSize:'11px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.1em'}}>New Log Entry</div>
+          <div style={{fontSize:'9px',color:'rgba(255,255,255,0.2)',marginTop:'2px'}}>Step 1 — Select type</div>
+        </div>
+        <StepDots step={1} />
+      </div>
+
+      <div style={{fontSize:'9px',fontWeight:700,color:'rgba(255,255,255,0.25)',textTransform:'uppercase',letterSpacing:'0.12em',marginBottom:'8px'}}>HIGH PRIORITY</div>
+      <div style={{display:'flex',flexDirection:'column',gap:'7px',marginBottom:'14px'}}>
+        {HIGH_PRIORITY.map(t => (
+          <button key={t.key} onClick={() => { f('log_type', t.key); setStep(2); }}
+            style={{width:'100%',padding:'14px 16px',background:t.bg,border:`2px solid ${t.border}`,borderRadius:'10px',cursor:'pointer',textAlign:'left',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+            <div>
+              <div style={{fontSize:'15px',fontWeight:700,color:t.color,letterSpacing:'0.02em'}}>{t.label}</div>
+              <div style={{fontSize:'11px',color:t.color,opacity:0.6,marginTop:'2px'}}>{t.sub}</div>
+            </div>
+            <div style={{width:'4px',height:'30px',background:t.border,borderRadius:'2px'}} />
+          </button>
+        ))}
+      </div>
+
+      <div style={{fontSize:'9px',fontWeight:700,color:'rgba(255,255,255,0.25)',textTransform:'uppercase',letterSpacing:'0.12em',marginBottom:'8px'}}>ROUTINE</div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'7px'}}>
+        {ROUTINE.map(t => (
+          <button key={t.key} onClick={() => { f('log_type', t.key); setStep(2); }}
+            style={{padding:'13px 12px',background:'rgba(255,255,255,0.04)',border:'1.5px solid rgba(255,255,255,0.1)',borderRadius:'10px',cursor:'pointer',textAlign:'left'}}>
+            <div style={{fontSize:'13px',fontWeight:700,color:'rgba(255,255,255,0.75)',letterSpacing:'0.02em'}}>{t.label}</div>
+            <div style={{fontSize:'10px',color:'rgba(255,255,255,0.3)',marginTop:'2px'}}>{t.sub}</div>
+          </button>
         ))}
       </div>
     </div>
   );
-}
 
-// Individual Type-Specific Field Component
-function TypeSpecificField({ field, logType, value, onChange }) {
-  const getFieldConfig = () => {
-    const fieldConfigs = {
-      // Location fields
-      location: { label: 'Location', type: 'text', placeholder: 'Specific location or area' },
-      area: { label: 'Area', type: 'text', placeholder: 'Building area or zone' },
-      access_point: { label: 'Access Point', type: 'text', placeholder: 'Door, gate, or entry point' },
-      
-      // People fields
-      people_involved: { label: 'People Involved', type: 'textarea', placeholder: 'Names and details of people involved' },
-      person_name: { label: 'Person Name', type: 'text', placeholder: 'Full name' },
-      visitor_name: { label: 'Visitor Name', type: 'text', placeholder: 'Full name of visitor' },
-      driver_name: { label: 'Driver Name', type: 'text', placeholder: 'Full name of driver' },
-      
-      // Observations and issues
-      observations: { label: 'Observations', type: 'textarea', placeholder: 'What was observed during the patrol' },
-      issues_found: { label: 'Issues Found', type: 'textarea', placeholder: 'Any problems or concerns identified' },
-      condition: { label: 'Condition', type: 'select', options: ['Good', 'Fair', 'Poor', 'Damaged'] },
-      issues: { label: 'Issues', type: 'textarea', placeholder: 'Describe any issues or problems' },
-      
-      // Incident fields
-      incident_type: { label: 'Incident Type', type: 'select', options: ['Theft', 'Vandalism', 'Trespass', 'Disturbance', 'Suspicious Activity', 'Other'] },
-      severity: { label: 'Severity', type: 'select', options: ['Low', 'Medium', 'High', 'Critical'] },
-      actions_taken: { label: 'Actions Taken', type: 'textarea', placeholder: 'Describe the response and actions taken' },
-      
-      // Equipment and maintenance
-      equipment: { label: 'Equipment', type: 'text', placeholder: 'Equipment name or ID' },
-      issue_description: { label: 'Issue Description', type: 'textarea', placeholder: 'Describe the maintenance issue' },
-      priority: { label: 'Priority', type: 'select', options: ['Low', 'Normal', 'High', 'Urgent'] },
-      contractor_notified: { label: 'Contractor Notified', type: 'select', options: ['Yes', 'No', 'N/A'] },
-      equipment_checked: { label: 'Equipment Checked', type: 'textarea', placeholder: 'List equipment inspected' },
-      equipment_status: { label: 'Equipment Status', type: 'select', options: ['Good', 'Needs Attention', 'Faulty', 'Out of Service'] },
-      
-      // Vehicle fields
-      vehicle_reg: { label: 'Vehicle Registration', type: 'text', placeholder: 'Registration number' },
-      purpose: { label: 'Purpose', type: 'text', placeholder: 'Reason for visit or access' },
-      permit_checked: { label: 'Permit Checked', type: 'select', options: ['Yes', 'No', 'N/A'] },
-      
-      // Visitor fields
-      company: { label: 'Company', type: 'text', placeholder: 'Visitor\'s company' },
-      host: { label: 'Host', type: 'text', placeholder: 'Person being visited' },
-      badge_issued: { label: 'Badge Issued', type: 'select', options: ['Yes', 'No'] },
-      
-      // Access control
-      time_granted: { label: 'Time Granted', type: 'datetime-local' },
-      authority: { label: 'Authority', type: 'text', placeholder: 'Who authorized access' },
-      
-      // Alarm fields
-      alarm_type: { label: 'Alarm Type', type: 'select', options: ['Intruder', 'Fire', 'Medical', 'Technical Fault', 'Other'] },
-      cause: { label: 'Cause', type: 'text', placeholder: 'Cause of alarm activation' },
-      response_time: { label: 'Response Time', type: 'text', placeholder: 'Time taken to respond (minutes)' },
-      alarm_location: { label: 'Alarm Location', type: 'text', placeholder: 'Specific alarm point or zone' },
-      
-      // Shift fields
-      handover_received: { label: 'Handover Received', type: 'textarea', placeholder: 'Key points from previous shift' },
-      handover_given: { label: 'Handover Given', type: 'textarea', placeholder: 'Information passed to next shift' },
-      priorities: { label: 'Priorities', type: 'textarea', placeholder: 'Key tasks and priorities for the shift' },
-      outstanding_issues: { label: 'Outstanding Issues', type: 'textarea', placeholder: 'Issues that need follow-up' },
-      from_officer: { label: 'From Officer', type: 'text', placeholder: 'Officer giving handover' },
-      to_officer: { label: 'To Officer', type: 'text', placeholder: 'Officer receiving handover' },
-      key_points: { label: 'Key Points', type: 'textarea', placeholder: 'Important information to pass on' },
-      actions_required: { label: 'Actions Required', type: 'textarea', placeholder: 'Tasks that need to be completed' },
-      
-      // Break fields
-      break_type: { label: 'Break Type', type: 'select', options: ['Meal Break', 'Rest Break', 'Toilet Break'] },
-      duration: { label: 'Duration', type: 'text', placeholder: 'Duration in minutes' },
-      coverage: { label: 'Coverage', type: 'text', placeholder: 'Who provided coverage during break' },
-      
-      // Emergency fields
-      emergency_type: { label: 'Emergency Type', type: 'select', options: ['Medical', 'Fire', 'Security', 'Evacuation', 'Other'] },
-      services_called: { label: 'Services Called', type: 'textarea', placeholder: 'Emergency services contacted (Police, Fire, Ambulance)' },
-      casualties: { label: 'Casualties', type: 'textarea', placeholder: 'Any injuries or casualties' },
-      
-      // Medical fields
-      patient_details: { label: 'Patient Details', type: 'textarea', placeholder: 'Patient information (name, age, condition)' },
-      injury_description: { label: 'Injury Description', type: 'textarea', placeholder: 'Nature and extent of injury' },
-      treatment_given: { label: 'Treatment Given', type: 'textarea', placeholder: 'First aid or treatment provided' },
-      ambulance: { label: 'Ambulance Called', type: 'select', options: ['Yes', 'No'] },
-      
-      // Fire/Evacuation fields
-      reason: { label: 'Reason', type: 'text', placeholder: 'Reason for evacuation' },
-      areas_affected: { label: 'Areas Affected', type: 'textarea', placeholder: 'Which areas were evacuated' },
-      people_evacuated: { label: 'People Evacuated', type: 'text', placeholder: 'Approximate number of people' },
-      all_clear_time: { label: 'All Clear Time', type: 'datetime-local' },
-      evacuation: { label: 'Evacuation Required', type: 'select', options: ['Yes', 'No', 'Partial'] },
-      fire_service: { label: 'Fire Service Called', type: 'select', options: ['Yes', 'No'] },
-      
-      // Training fields
-      training_type: { label: 'Training Type', type: 'text', placeholder: 'Type of training or drill' },
-      participants: { label: 'Participants', type: 'textarea', placeholder: 'Who participated in the training' },
-      outcome: { label: 'Outcome', type: 'textarea', placeholder: 'Results and observations from training' },
-      
-      // Admin fields
-      task_description: { label: 'Task Description', type: 'textarea', placeholder: 'Describe the administrative task' },
-      completed_by: { label: 'Completed By', type: 'text', placeholder: 'Who completed the task' },
-      notes: { label: 'Notes', type: 'textarea', placeholder: 'Additional notes or comments' },
-      category: { label: 'Category', type: 'text', placeholder: 'Category or classification' },
-      
-      // Photo field
-      photos: { label: 'Photos Required', type: 'select', options: ['Yes', 'No'] }
-    };
-    
-    return fieldConfigs[field] || { label: field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()), type: 'text' };
-  };
+  // ── STEP 2: Details ─────────────────────────────────────────────────────────
+  if (step === 2) return (
+    <div style={{padding:'1rem 1rem 5rem'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'1.25rem'}}>
+        <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
+          <div style={{width:'3px',height:'24px',background:type?.color||'#3b82f6',borderRadius:'2px'}} />
+          <div>
+            <div style={{fontSize:'14px',fontWeight:700,color:type?.color||'#fff',letterSpacing:'0.02em'}}>{type?.label}</div>
+            <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)',marginTop:'1px'}}>Step 2 — Details</div>
+          </div>
+        </div>
+        <StepDots step={2} />
+      </div>
 
-  const fieldConfig = getFieldConfig();
+      {error && <div style={{background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:'8px',padding:'10px',fontSize:'13px',color:'#ef4444',marginBottom:'12px'}}>{error}</div>}
 
-  switch (fieldConfig.type) {
-    case 'select':
-      return (
-        <div>
-          <label className="officer-label">
-            {fieldConfig.label}
-          </label>
-          <select
-            className="officer-input"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-          >
-            <option value="">Select {fieldConfig.label.toLowerCase()}...</option>
-            {fieldConfig.options?.map(option => (
-              <option key={option} value={option}>{option}</option>
+      {/* Sub-type pills */}
+      {SUB_TYPES[form.log_type] && (
+        <div style={{marginBottom:'14px'}}>
+          <div style={S.label}>TYPE</div>
+          <div style={{display:'flex',flexWrap:'wrap',gap:'6px'}}>
+            {SUB_TYPES[form.log_type].map(s => (
+              <button key={s} onClick={() => f('sub_type', form.sub_type===s?'':s)} style={S.pill(form.sub_type===s)}>{s}</button>
             ))}
-          </select>
+          </div>
         </div>
-      );
-    
-    case 'textarea':
-      return (
-        <div>
-          <label className="officer-label">
-            {fieldConfig.label}
+      )}
+
+      {/* Date/time */}
+      <div style={{marginBottom:'14px'}}>
+        <div style={S.label}>DATE & TIME</div>
+        <input type="datetime-local" value={form.occurred_at} onChange={e=>f('occurred_at',e.target.value)} style={S.input} />
+      </div>
+
+      {/* Description */}
+      <div style={{marginBottom:'14px'}}>
+        <div style={S.label}>WHAT HAPPENED — describe in your own words</div>
+        <textarea value={form.description} onChange={e=>f('description',e.target.value)} rows={4}
+          placeholder="e.g. Saw a man trying car door handles in the car park..."
+          style={S.input} />
+      </div>
+
+      {/* Location on site */}
+      <div style={{marginBottom:'14px'}}>
+        <div style={S.label}>LOCATION ON SITE</div>
+        <input value={form.location_detail} onChange={e=>f('location_detail',e.target.value)}
+          placeholder="e.g. Car park north, Unit 3 rear door..."
+          style={S.input} />
+      </div>
+
+      {/* People involved */}
+      <div style={{marginBottom:'14px'}}>
+        <div style={S.label}>PERSONS INVOLVED (if any)</div>
+        <input value={form.people_involved} onChange={e=>f('people_involved',e.target.value)}
+          placeholder="e.g. Male, 30s, dark jacket, blue jeans..."
+          style={S.input} />
+      </div>
+
+      {/* Actions taken */}
+      <div style={{marginBottom:'14px'}}>
+        <div style={S.label}>ACTIONS TAKEN</div>
+        <input value={form.actions_taken} onChange={e=>f('actions_taken',e.target.value)}
+          placeholder="e.g. Challenged, asked to leave, CCTV reviewed..."
+          style={S.input} />
+      </div>
+
+      {/* Police - only for serious types */}
+      {['INCIDENT','ALARM','FIRE_ALARM','EMERGENCY'].includes(form.log_type) && (
+        <div style={{marginBottom:'14px',padding:'12px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'10px'}}>
+          <div style={S.label}>POLICE</div>
+          <div style={{display:'flex',gap:'7px',marginBottom:form.police_reported||form.police_attended?'12px':'0'}}>
+            <button type="button" onClick={() => f('police_reported',!form.police_reported)}
+              style={{flex:1,padding:'11px 8px',background:form.police_reported?'rgba(59,130,246,0.12)':'rgba(255,255,255,0.03)',border:`1.5px solid ${form.police_reported?'rgba(59,130,246,0.4)':'rgba(255,255,255,0.08)'}`,borderRadius:'8px',fontSize:'11px',fontWeight:700,color:form.police_reported?'#60a5fa':'rgba(255,255,255,0.45)',cursor:'pointer',letterSpacing:'0.04em'}}>
+              {form.police_reported?'✓ ':''}POLICE REPORTED
+            </button>
+            <button type="button" onClick={() => f('police_attended',!form.police_attended)}
+              style={{flex:1,padding:'11px 8px',background:form.police_attended?'rgba(59,130,246,0.12)':'rgba(255,255,255,0.03)',border:`1.5px solid ${form.police_attended?'rgba(59,130,246,0.4)':'rgba(255,255,255,0.08)'}`,borderRadius:'8px',fontSize:'11px',fontWeight:700,color:form.police_attended?'#60a5fa':'rgba(255,255,255,0.45)',cursor:'pointer',letterSpacing:'0.04em'}}>
+              {form.police_attended?'✓ ':''}POLICE ATTENDED
+            </button>
+          </div>
+          {form.police_reported && (
+            <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
+              <input value={form.police_incident_number} onChange={e=>f('police_incident_number',e.target.value)}
+                placeholder="Crime / Incident reference number" style={S.input} />
+              <select value={form.police_force} onChange={e=>f('police_force',e.target.value)} style={S.input}>
+                <option value="">Select police force...</option>
+                {['Avon and Somerset','Bedfordshire','Cambridgeshire','Cheshire','City of London','Cleveland','Cumbria','Derbyshire','Devon and Cornwall','Dorset','Durham','Dyfed-Powys','Essex','Gloucestershire','Greater Manchester','Gwent','Hampshire','Hertfordshire','Humberside','Kent','Lancashire','Leicestershire','Lincolnshire','Merseyside','Metropolitan Police','Norfolk','North Wales','North Yorkshire','Northamptonshire','Northumbria','Nottinghamshire','South Wales','South Yorkshire','Staffordshire','Suffolk','Surrey','Sussex','Thames Valley','Warwickshire','West Mercia','West Midlands','West Yorkshire','Wiltshire'].map(f2=>(<option key={f2} value={f2}>{f2}</option>))}
+              </select>
+            </div>
+          )}
+          {form.police_attended && (
+            <div style={{display:'flex',flexDirection:'column',gap:'8px',marginTop:form.police_reported?'8px':'0'}}>
+              <input value={form.police_officer_name} onChange={e=>f('police_officer_name',e.target.value)} placeholder="Attending officer name e.g. PC Smith" style={S.input} />
+              <input value={form.police_shoulder_number} onChange={e=>f('police_shoulder_number',e.target.value)} placeholder="Shoulder / collar number" style={S.input} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Photos */}
+      <div style={{marginBottom:'14px'}}>
+        <div style={S.label}>PHOTOS / VIDEO</div>
+        <div style={{display:'flex',gap:'7px',flexWrap:'wrap'}}>
+          {form.media.map((m,i) => (
+            <div key={i} style={{width:64,height:64,borderRadius:'8px',background:'#1a2535',border:'1px solid rgba(255,255,255,0.1)',overflow:'hidden',position:'relative'}}>
+              {m.type?.startsWith('image') ? <img src={m.url} style={{width:'100%',height:'100%',objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>VIDEO</div>}
+              <button onClick={() => f('media', form.media.filter((_,j)=>j!==i))} style={{position:'absolute',top:2,right:2,width:16,height:16,background:'rgba(220,38,38,0.85)',borderRadius:'50%',border:'none',color:'#fff',fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>×</button>
+            </div>
+          ))}
+          {uploadingMedia && <div style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)',display:'flex',alignItems:'center',justifyContent:'center'}}><div style={{width:20,height:20,border:'2px solid rgba(255,255,255,0.1)',borderTop:'2px solid #3b82f6',borderRadius:'50%',animation:'spin 1s linear infinite'}}/></div>}
+          <label style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>
+            <div style={{fontSize:'22px',color:'rgba(59,130,246,0.5)',lineHeight:1}}>+</div>
+            <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)',fontWeight:600,letterSpacing:'0.05em'}}>ADD PHOTO</div>
+            <input type="file" accept="image/*,video/*" multiple capture="environment" style={{display:'none'}} onChange={e=>uploadMedia(e.target.files)} />
           </label>
-          <textarea
-            className="officer-input"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={fieldConfig.placeholder}
-            rows="3"
-          />
         </div>
-      );
-    
-    case 'datetime-local':
-      return (
+      </div>
+
+      {/* GPS */}
+      <div style={{marginBottom:'14px'}}>
+        <button type="button" onClick={getGPS} disabled={gpsLoading}
+          style={{width:'100%',padding:'11px',background:form.latitude?'rgba(74,222,128,0.08)':'rgba(255,255,255,0.03)',border:`1px solid ${form.latitude?'rgba(74,222,128,0.25)':'rgba(255,255,255,0.08)'}`,borderRadius:'8px',color:form.latitude?'#4ade80':'rgba(255,255,255,0.4)',fontSize:'12px',fontWeight:700,cursor:'pointer',letterSpacing:'0.05em',display:'flex',alignItems:'center',justifyContent:'center',gap:'6px'}}>
+          <MapPinIcon style={{width:'14px',height:'14px'}} />
+          {gpsLoading?'GETTING LOCATION...':form.latitude?'✓ LOCATION CAPTURED':'CAPTURE LOCATION'}
+        </button>
+      </div>
+
+      <button onClick={() => setStep(3)} style={S.btn()}>NEXT STEP →</button>
+      <div style={{height:'8px'}}/>
+      <button onClick={() => setStep(1)} style={S.ghost}>← BACK</button>
+    </div>
+  );
+
+  // ── STEP 3: Review & AI report ──────────────────────────────────────────────
+  return (
+    <div style={{padding:'1rem 1rem 5rem'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'1.25rem'}}>
         <div>
-          <label className="officer-label">
-            {fieldConfig.label}
-          </label>
-          <input
-            type="datetime-local"
-            className="officer-input"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-          />
+          <div style={{fontSize:'11px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.1em'}}>Review & Submit</div>
+          <div style={{fontSize:'9px',color:'rgba(255,255,255,0.2)',marginTop:'2px'}}>Step 3 — Generate report</div>
         </div>
-      );
-    
-    default:
-      return (
+        <StepDots step={3} />
+      </div>
+
+      {error && <div style={{background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:'8px',padding:'10px',fontSize:'13px',color:'#ef4444',marginBottom:'12px'}}>{error}</div>}
+
+      {/* Summary card */}
+      <div style={{background:type?.bg||'rgba(59,130,246,0.08)',border:`1.5px solid ${type?.border||'rgba(59,130,246,0.2)'}`,borderRadius:'10px',padding:'14px',marginBottom:'12px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'8px'}}>
+          <div style={{width:'3px',height:'32px',background:type?.color||'#3b82f6',borderRadius:'2px',flexShrink:0}} />
+          <div>
+            <div style={{fontSize:'13px',fontWeight:700,color:type?.color||'#fff',letterSpacing:'0.03em'}}>{type?.label}{form.sub_type ? ` — ${form.sub_type}` : ''}</div>
+            <div style={{fontSize:'10px',color:'rgba(255,255,255,0.3)',marginTop:'1px'}}>{site?.name} · {new Date(form.occurred_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})} today</div>
+          </div>
+        </div>
+        <div style={{paddingLeft:'11px',fontSize:'12px',color:'rgba(255,255,255,0.5)',lineHeight:1.5}}>{form.description}</div>
+      </div>
+
+      {/* Status row */}
+      <div style={{display:'flex',gap:'6px',marginBottom:'14px'}}>
+        <div style={{flex:1,padding:'9px',background:form.latitude?'rgba(74,222,128,0.07)':'rgba(255,255,255,0.03)',border:`1px solid ${form.latitude?'rgba(74,222,128,0.2)':'rgba(255,255,255,0.07)'}`,borderRadius:'8px',textAlign:'center'}}>
+          <div style={{fontSize:'9px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em'}}>Location</div>
+          <div style={{fontSize:'11px',color:form.latitude?'rgba(74,222,128,0.8)':'rgba(255,255,255,0.25)',fontWeight:600,marginTop:'2px'}}>{form.latitude?'Captured':'None'}</div>
+        </div>
+        <div style={{flex:1,padding:'9px',background:form.media.length?'rgba(59,130,246,0.07)':'rgba(255,255,255,0.03)',border:`1px solid ${form.media.length?'rgba(59,130,246,0.2)':'rgba(255,255,255,0.07)'}`,borderRadius:'8px',textAlign:'center'}}>
+          <div style={{fontSize:'9px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em'}}>Photos</div>
+          <div style={{fontSize:'11px',color:form.media.length?'rgba(59,130,246,0.8)':'rgba(255,255,255,0.25)',fontWeight:600,marginTop:'2px'}}>{form.media.length||'None'}</div>
+        </div>
+        {(form.police_reported||form.police_attended) && (
+          <div style={{flex:1,padding:'9px',background:'rgba(59,130,246,0.07)',border:'1px solid rgba(59,130,246,0.2)',borderRadius:'8px',textAlign:'center'}}>
+            <div style={{fontSize:'9px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em'}}>Police</div>
+            <div style={{fontSize:'11px',color:'rgba(59,130,246,0.8)',fontWeight:600,marginTop:'2px'}}>{form.police_reported?'Reported':'Attended'}</div>
+          </div>
+        )}
+      </div>
+
+      {/* AI Report generation */}
+      <div style={{marginBottom:'14px',padding:'14px',background:'rgba(99,102,241,0.07)',border:'1.5px solid rgba(99,102,241,0.2)',borderRadius:'10px'}}>
+        <div style={{fontSize:'9px',fontWeight:700,color:'rgba(99,102,241,0.7)',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:'8px'}}>AI REPORT WRITER</div>
+        {!narrative ? (
+          <>
+            <div style={{fontSize:'12px',color:'rgba(255,255,255,0.45)',marginBottom:'10px',lineHeight:1.5}}>
+              Turn your notes into a professional, client-ready incident report automatically.
+            </div>
+            <button onClick={generateNarrative} disabled={generatingAI||!form.description.trim()}
+              style={{width:'100%',padding:'13px',background:generatingAI?'rgba(99,102,241,0.1)':'rgba(99,102,241,0.2)',border:'1.5px solid rgba(99,102,241,0.4)',borderRadius:'8px',color:'#a5b4fc',fontSize:'13px',fontWeight:700,cursor:'pointer',letterSpacing:'0.03em'}}>
+              {generatingAI ? '⏳ GENERATING REPORT...' : '✦ GENERATE PROFESSIONAL REPORT'}
+            </button>
+          </>
+        ) : (
+          <>
+            <div style={{fontSize:'9px',fontWeight:700,color:'rgba(99,102,241,0.6)',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:'6px'}}>AI-GENERATED NARRATIVE — review and edit</div>
+            <textarea value={narrative} onChange={e=>setNarrative(e.target.value)} rows={5}
+              style={{...S.input, border:'1.5px solid rgba(99,102,241,0.3)', background:'rgba(99,102,241,0.05)', marginBottom:'8px'}} />
+            <button onClick={generateNarrative} disabled={generatingAI}
+              style={{width:'100%',padding:'9px',background:'transparent',border:'1px solid rgba(99,102,241,0.2)',borderRadius:'6px',color:'rgba(99,102,241,0.6)',fontSize:'11px',fontWeight:600,cursor:'pointer'}}>
+              ↻ REGENERATE
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Client reportable */}
+      <div onClick={() => f('client_reportable',!form.client_reportable)}
+        style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 14px',background:form.client_reportable?'rgba(59,130,246,0.07)':'rgba(255,255,255,0.03)',border:`1.5px solid ${form.client_reportable?'rgba(59,130,246,0.2)':'rgba(255,255,255,0.08)'}`,borderRadius:'10px',cursor:'pointer',marginBottom:'14px'}}>
         <div>
-          <label className="officer-label">
-            {fieldConfig.label}
-          </label>
-          <input
-            type="text"
-            className="officer-input"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={fieldConfig.placeholder}
-          />
+          <div style={{fontSize:'12px',fontWeight:700,color:'#fff',letterSpacing:'0.02em'}}>REPORT TO CLIENT</div>
+          <div style={{fontSize:'10px',color:'rgba(255,255,255,0.35)',marginTop:'1px'}}>{form.client_reportable?'Visible in client portal + ops manager':'Ops manager only'}</div>
         </div>
-      );
-  }
+        <div style={S.toggle(form.client_reportable)}><div style={S.toggleDot(form.client_reportable)}/></div>
+      </div>
+
+      <button onClick={submit} disabled={submitting}
+        style={S.btn(type?.key==='INCIDENT'||type?.key==='EMERGENCY'?'#ef4444':type?.key==='ALARM'||type?.key==='FIRE_ALARM'?'#d97706':'#1a52a8')}>
+        {submitting ? 'SUBMITTING...' : `SUBMIT ${type?.label || ''} REPORT`}
+      </button>
+      <div style={{height:'8px'}}/>
+      <button onClick={() => setStep(2)} style={S.ghost}>← BACK</button>
+    </div>
+  );
 }
 
-// Log History Screen
 function LogHistoryScreen({ user, site }) {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -816,5 +585,4 @@ function LogHistoryCard({ log }) {
   );
 }
 
-export { LogEntryScreen };
-export { LogHistoryScreen };
+export { LogEntryScreen, LogHistoryScreen };
