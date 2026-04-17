@@ -22,19 +22,18 @@ async function request(endpoint, options = {}) {
       ...options,
     };
 
-    // Add Clerk session token for auth — wait for Clerk to be ready
-    if (typeof window !== 'undefined') {
-      let token = null;
-      // Wait up to 5s for Clerk session to be available
+    // Add Clerk session token
+    if (typeof window !== 'undefined' && window.__clerkGetToken) {
+      const token = await window.__clerkGetToken();
+      if (token) config.headers.Authorization = `Bearer ${token}`;
+    } else if (typeof window !== 'undefined') {
+      // Fallback: try window.Clerk directly
       for (let i = 0; i < 10; i++) {
-        if (window.Clerk?.session) {
-          token = await window.Clerk.session.getToken();
-          if (token) break;
-        }
+        try {
+          const token = await window.Clerk?.session?.getToken?.();
+          if (token) { config.headers.Authorization = `Bearer ${token}`; break; }
+        } catch {}
         await new Promise(r => setTimeout(r, 500));
-      }
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
       }
     }
 
