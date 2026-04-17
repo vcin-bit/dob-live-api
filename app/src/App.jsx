@@ -65,6 +65,20 @@ function AuthFlow() {
   const { signIn, setActive: setSignInActive, isLoaded: signInLoaded } = useSignIn();
   const { signUp, setActive: setSignUpActive, isLoaded: signUpLoaded } = useSignUp();
 
+  // Wait for Clerk to load on mobile
+  if (!signInLoaded || !signUpLoaded) {
+    return (
+      <div style={{minHeight:'100vh',background:'#0b1222',display:'flex',alignItems:'center',justifyContent:'center'}}>
+        <div style={{textAlign:'center'}}>
+          <div style={{fontSize:'2rem',fontWeight:800,marginBottom:'1.5rem'}}>
+            <span style={{color:'#1a52a8'}}>DOB</span><span style={{color:'#fff'}}> Live</span>
+          </div>
+          <div className="spinner" style={{borderTopColor:'#1a52a8',borderColor:'rgba(255,255,255,0.1)',width:'2rem',height:'2rem',margin:'0 auto'}} />
+        </div>
+      </div>
+    );
+  }
+
   function reset(m) {
     setMode(m); setStep('email');
     setEmail(''); setPassword(''); setCode('');
