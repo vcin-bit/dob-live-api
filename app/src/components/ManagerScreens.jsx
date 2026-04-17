@@ -26,7 +26,7 @@ function ManagerDashboard({ user }) {
           api.logs.list({ limit: 8 }),
           api.tasks.list({ status: 'PENDING' }),
           api.users.list(),
-          api.shifts.list({ status: 'active', limit: 50 }),
+          api.shifts.list({ status: 'ACTIVE', limit: 50 }),
         ]);
         setStats({
           activeSites:  sitesRes.data?.length || 0,
