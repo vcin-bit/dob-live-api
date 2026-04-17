@@ -221,47 +221,63 @@ export default function PatrolScreen({ user, site, shift }) {
   return (
     <div style={{display:'flex',flexDirection:'column',height:'100vh',background:'#0b1222',overflow:'hidden'}}>
       {/* Header */}
-      <div style={{background:'#0f1929',padding:'12px 14px',display:'flex',alignItems:'center',justifyContent:'space-between',borderBottom:'1px solid rgba(255,255,255,0.06)',flexShrink:0}}>
+      <div style={{background:'#0f1929',padding:'10px 14px',display:'flex',alignItems:'center',justifyContent:'space-between',borderBottom:'1px solid rgba(255,255,255,0.06)',flexShrink:0}}>
         <div>
           <div style={{fontSize:'13px',fontWeight:600,color:'#fff'}}>{site?.name || 'Patrol'}</div>
           <div style={{fontSize:'10px',color:'rgba(255,255,255,0.35)',marginTop:'1px'}}>
-            {route ? route.name : 'No route configured'}
-            {patrolStarted && ' · ACTIVE'}
+            {route ? route.name : 'No route set'}
+            {patrolStarted && <span style={{color:'#4ade80'}}> · ACTIVE</span>}
           </div>
         </div>
         <div style={{display:'flex',gap:'6px',alignItems:'center'}}>
-          {patrolStarted && <div style={{background:'rgba(74,222,128,0.15)',border:'1px solid rgba(74,222,128,0.3)',borderRadius:'999px',padding:'3px 8px',fontSize:'10px',color:'#4ade80',fontWeight:600}}>ACTIVE</div>}
-          {isRoutePlanner && !patrolStarted && (
-            <button onClick={() => plannerMode ? disablePlannerMode() : enablePlannerMode()}
-              style={{padding:'4px 8px',background:plannerMode?'rgba(167,139,250,0.2)':'rgba(255,255,255,0.08)',border:`1px solid ${plannerMode?'rgba(167,139,250,0.5)':'rgba(255,255,255,0.12)'}`,borderRadius:'6px',color:plannerMode?'#a78bfa':'rgba(255,255,255,0.6)',fontSize:'10px',fontWeight:600,cursor:'pointer'}}>
-              {plannerMode ? 'Exit Planner' : 'Plan Route'}
-            </button>
-          )}
+          {patrolStarted && <div style={{background:'rgba(74,222,128,0.15)',border:'1px solid rgba(74,222,128,0.3)',borderRadius:'999px',padding:'3px 8px',fontSize:'10px',color:'#4ade80',fontWeight:700}}>● LIVE</div>}
         </div>
       </div>
 
+      {/* Route Planner Banner - prominent for route planners when not on patrol */}
+      {isRoutePlanner && !patrolStarted && (
+        <div style={{flexShrink:0,padding:'8px 14px',background:plannerMode?'rgba(167,139,250,0.12)':'rgba(255,255,255,0.03)',borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
+          <button onClick={() => plannerMode ? disablePlannerMode() : enablePlannerMode()}
+            style={{width:'100%',padding:'10px',background:plannerMode?'rgba(167,139,250,0.2)':'rgba(255,255,255,0.06)',border:`1.5px solid ${plannerMode?'rgba(167,139,250,0.5)':'rgba(255,255,255,0.12)'}`,borderRadius:'8px',color:plannerMode?'#c4b5fd':'rgba(255,255,255,0.6)',fontSize:'13px',fontWeight:700,cursor:'pointer',letterSpacing:'0.02em'}}>
+            {plannerMode ? '✕ EXIT ROUTE PLANNER' : '✎ SET UP / EDIT PATROL ROUTE'}
+          </button>
+          {plannerMode && (
+            <div style={{marginTop:'8px',padding:'8px 10px',background:'rgba(167,139,250,0.1)',borderRadius:'6px',fontSize:'11px',color:'rgba(167,139,250,0.8)',lineHeight:1.5}}>
+              <strong>Tap on the map</strong> to place checkpoints in order. Name each one, then tap Save Route.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Start Patrol button — shown before patrol starts, above map */}
+      {!plannerMode && !patrolStarted && (
+        <div style={{padding:'10px 14px',flexShrink:0,background:'rgba(26,82,168,0.08)',borderBottom:'1px solid rgba(59,130,246,0.15)'}}>
+          <button onClick={startPatrol}
+            style={{width:'100%',padding:'15px',background:'#1a52a8',border:'none',borderRadius:'10px',color:'#fff',fontSize:'16px',fontWeight:700,cursor:'pointer',letterSpacing:'0.02em'}}>
+            ▶ START PATROL
+          </button>
+        </div>
+      )}
+
       {/* Map */}
-      <div style={{position:'relative',height:'35vh',flexShrink:0}}>
+      <div style={{position:'relative',height:'32vh',flexShrink:0}}>
         <div ref={mapRef} style={{width:'100%',height:'100%'}} />
-        {/* Map type toggle */}
-        <div style={{position:'absolute',top:'8px',left:'8px',zIndex:1000,display:'flex',background:'rgba(0,0,0,0.65)',borderRadius:'6px',overflow:'hidden',border:'1px solid rgba(255,255,255,0.1)'}}>
+        <div style={{position:'absolute',top:'8px',left:'8px',zIndex:1000,display:'flex',background:'rgba(0,0,0,0.7)',borderRadius:'6px',overflow:'hidden',border:'1px solid rgba(255,255,255,0.1)'}}>
           {['satellite','map'].map(t => (
             <button key={t} onClick={() => switchMapType(t)}
-              style={{padding:'4px 10px',fontSize:'10px',color:mapType===t?'#fff':'rgba(255,255,255,0.4)',background:mapType===t?'rgba(59,130,246,0.5)':'transparent',border:'none',cursor:'pointer',fontWeight:600,textTransform:'uppercase'}}>
+              style={{padding:'5px 12px',fontSize:'11px',color:mapType===t?'#fff':'rgba(255,255,255,0.4)',background:mapType===t?'rgba(59,130,246,0.6)':'transparent',border:'none',cursor:'pointer',fontWeight:700,textTransform:'uppercase'}}>
               {t==='satellite'?'SAT':'MAP'}
             </button>
           ))}
         </div>
-        {/* GPS accuracy */}
         {currentPos && (
-          <div style={{position:'absolute',bottom:'8px',left:'8px',zIndex:1000,background:'rgba(0,0,0,0.55)',borderRadius:'5px',padding:'3px 7px',fontSize:'10px',color:'rgba(255,255,255,0.6)'}}>
+          <div style={{position:'absolute',bottom:'8px',left:'8px',zIndex:1000,background:'rgba(0,0,0,0.6)',borderRadius:'5px',padding:'3px 7px',fontSize:'10px',color:'rgba(255,255,255,0.6)'}}>
             GPS ±{Math.round(currentPos.accuracy)}m
           </div>
         )}
-        {/* Planner hint */}
         {plannerMode && (
-          <div style={{position:'absolute',top:'8px',right:'8px',zIndex:1000,background:'rgba(167,139,250,0.9)',borderRadius:'6px',padding:'5px 10px',fontSize:'11px',color:'#fff',fontWeight:600}}>
-            Tap map to add checkpoint
+          <div style={{position:'absolute',top:'8px',right:'8px',zIndex:1000,background:'rgba(167,139,250,0.95)',borderRadius:'6px',padding:'5px 10px',fontSize:'11px',color:'#fff',fontWeight:700}}>
+            📍 TAP TO ADD CHECKPOINT
           </div>
         )}
       </div>
@@ -354,39 +370,25 @@ export default function PatrolScreen({ user, site, shift }) {
           </div>
         )}
 
-        {/* Start Patrol button - shown ABOVE map when not started */}
-        {!plannerMode && !patrolStarted && (
-          <div style={{padding:'12px 14px 0',flexShrink:0}}>
-            <button onClick={startPatrol}
-              style={{width:'100%',padding:'16px',background:'linear-gradient(135deg,#1a52a8,#2563eb)',border:'none',borderRadius:'12px',color:'#fff',fontSize:'16px',fontWeight:700,cursor:'pointer',boxShadow:'0 4px 20px rgba(59,130,246,0.4)',letterSpacing:'0.01em'}}>
-              ▶ Start Patrol
-            </button>
-          </div>
-        )}
-
-        {/* Action buttons - always visible */}
-        {!plannerMode && (
-          <div style={{padding:'12px 14px',flexShrink:0,borderTop:'1px solid rgba(255,255,255,0.06)'}}>
-            {!patrolStarted ? (
-              <div style={{display:'none'}} />
-            ) : (
-              <div>
-                <button onClick={() => setShowReport(true)}
-                  style={{width:'100%',padding:'13px',background:'rgba(239,68,68,0.1)',border:'1.5px solid rgba(239,68,68,0.3)',borderRadius:'10px',color:'#ef4444',fontSize:'14px',fontWeight:700,cursor:'pointer',marginBottom:'8px',display:'flex',alignItems:'center',justifyContent:'center',gap:'6px'}}>
-                  <span style={{fontSize:'16px'}}>⚠</span> Log Occurrence / Incident
-                </button>
-                {nextCp && (
-                  <button onClick={() => markCheckpoint(nextCp)}
-                    style={{width:'100%',padding:'13px',background:'rgba(251,191,36,0.12)',border:'1.5px solid rgba(251,191,36,0.35)',borderRadius:'10px',color:'#fbbf24',fontSize:'14px',fontWeight:700,cursor:'pointer',marginBottom:'8px'}}>
-                    ✓ Mark Checkpoint Reached — {nextCp.name}
-                  </button>
-                )}
-                <button onClick={endPatrol}
-                  style={{width:'100%',padding:'11px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'10px',color:'rgba(255,255,255,0.35)',fontSize:'12px',cursor:'pointer'}}>
-                  End Patrol
-                </button>
-              </div>
+        {/* Active patrol action buttons — big and obvious */}
+        {!plannerMode && patrolStarted && (
+          <div style={{padding:'10px 14px',flexShrink:0,borderTop:'1px solid rgba(255,255,255,0.08)',background:'#0b1222'}}>
+            {nextCp && (
+              <button onClick={() => markCheckpoint(nextCp)}
+                style={{width:'100%',padding:'14px',background:'rgba(251,191,36,0.15)',border:'2px solid rgba(251,191,36,0.5)',borderRadius:'10px',color:'#fbbf24',fontSize:'15px',fontWeight:700,cursor:'pointer',marginBottom:'8px',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px'}}>
+                ✓ REACHED: {nextCp.name}
+              </button>
             )}
+            <div style={{display:'flex',gap:'8px'}}>
+              <button onClick={() => setShowReport(true)}
+                style={{flex:2,padding:'13px',background:'rgba(239,68,68,0.12)',border:'1.5px solid rgba(239,68,68,0.4)',borderRadius:'10px',color:'#ef4444',fontSize:'13px',fontWeight:700,cursor:'pointer'}}>
+                ⚠ LOG INCIDENT
+              </button>
+              <button onClick={endPatrol}
+                style={{flex:1,padding:'13px',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'10px',color:'rgba(255,255,255,0.45)',fontSize:'12px',fontWeight:600,cursor:'pointer'}}>
+                END
+              </button>
+            </div>
           </div>
         )}
       </div>
