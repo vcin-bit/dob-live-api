@@ -354,19 +354,21 @@ export default function PatrolScreen({ user, site, shift }) {
           </div>
         )}
 
+        {/* Start Patrol button - shown ABOVE map when not started */}
+        {!plannerMode && !patrolStarted && (
+          <div style={{padding:'12px 14px 0',flexShrink:0}}>
+            <button onClick={startPatrol}
+              style={{width:'100%',padding:'16px',background:'linear-gradient(135deg,#1a52a8,#2563eb)',border:'none',borderRadius:'12px',color:'#fff',fontSize:'16px',fontWeight:700,cursor:'pointer',boxShadow:'0 4px 20px rgba(59,130,246,0.4)',letterSpacing:'0.01em'}}>
+              ▶ Start Patrol
+            </button>
+          </div>
+        )}
+
         {/* Action buttons */}
         {!plannerMode && (
           <div style={{padding:'12px 14px',flexShrink:0}}>
             {!patrolStarted ? (
-              <div>
-                <div style={{textAlign:'center',marginBottom:'12px'}}>
-                  <div style={{fontSize:'12px',color:'rgba(255,255,255,0.35)',marginBottom:'4px'}}>Ready to begin patrol?</div>
-                </div>
-                <button onClick={startPatrol}
-                  style={{width:'100%',padding:'16px',background:'linear-gradient(135deg,#1a52a8,#2563eb)',border:'none',borderRadius:'12px',color:'#fff',fontSize:'16px',fontWeight:700,cursor:'pointer',boxShadow:'0 4px 20px rgba(59,130,246,0.4)',letterSpacing:'0.01em'}}>
-                  ▶ Start Patrol
-                </button>
-              </div>
+              <div style={{display:'none'}} />
             ) : (
               <div>
                 <button onClick={() => setShowReport(true)}
