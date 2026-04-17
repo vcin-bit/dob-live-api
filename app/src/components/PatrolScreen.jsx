@@ -241,7 +241,7 @@ export default function PatrolScreen({ user, site, shift }) {
       </div>
 
       {/* Map */}
-      <div style={{position:'relative',height:'45vh',flexShrink:0}}>
+      <div style={{position:'relative',height:'35vh',flexShrink:0}}>
         <div ref={mapRef} style={{width:'100%',height:'100%'}} />
         {/* Map type toggle */}
         <div style={{position:'absolute',top:'8px',left:'8px',zIndex:1000,display:'flex',background:'rgba(0,0,0,0.65)',borderRadius:'6px',overflow:'hidden',border:'1px solid rgba(255,255,255,0.1)'}}>
@@ -267,7 +267,7 @@ export default function PatrolScreen({ user, site, shift }) {
       </div>
 
       {/* Bottom panel */}
-      <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column'}}>
+      <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',minHeight:0}}>
 
         {/* Planner panel */}
         {plannerMode && (
@@ -364,9 +364,9 @@ export default function PatrolScreen({ user, site, shift }) {
           </div>
         )}
 
-        {/* Action buttons */}
+        {/* Action buttons - always visible */}
         {!plannerMode && (
-          <div style={{padding:'12px 14px',flexShrink:0}}>
+          <div style={{padding:'12px 14px',flexShrink:0,borderTop:'1px solid rgba(255,255,255,0.06)'}}>
             {!patrolStarted ? (
               <div style={{display:'none'}} />
             ) : (
