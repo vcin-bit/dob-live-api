@@ -152,7 +152,12 @@ function AuthFlow() {
       setStep('code');
       setInfo('Check your email for a reset code');
     } catch (err) {
-      setError(err.errors?.[0]?.message || 'Could not send reset email');
+      const msg = err.errors?.[0]?.message || '';
+      if (msg.toLowerCase().includes('not found') || msg.toLowerCase().includes('no account')) {
+        setError('No account found for this email. Please sign up first, or contact your manager to invite you.');
+      } else {
+        setError(msg || 'Could not send reset email');
+      }
     } finally { setLoading(false); }
   }
 
@@ -391,7 +396,27 @@ function AuthenticatedApp() {
   }
 
   if (error) {
-    return <ErrorScreen error={error} onRetry={() => window.location.reload()} />;
+    return (
+      <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#0f1623',padding:'1.5rem'}}>
+        <div style={{textAlign:'center',maxWidth:'380px'}}>
+          <div style={{fontSize:'1.5rem',fontWeight:800,marginBottom:'1.5rem'}}>
+            <span style={{color:'#1a52a8'}}>DOB</span><span style={{color:'#fff'}}> Live</span>
+          </div>
+          <div style={{background:'#1a2235',borderRadius:'12px',padding:'1.5rem'}}>
+            <div style={{fontSize:'1rem',fontWeight:700,color:'#fff',marginBottom:'0.75rem'}}>Connection Problem</div>
+            <p style={{color:'rgba(255,255,255,0.5)',fontSize:'0.875rem',marginBottom:'1.5rem'}}>
+              Could not connect to the server. Please check your connection and try again.
+            </p>
+            <button onClick={() => window.location.reload()} style={{width:'100%',padding:'0.75rem',background:'var(--blue)',color:'#fff',border:'none',borderRadius:'8px',fontWeight:600,cursor:'pointer',marginBottom:'0.75rem'}}>
+              Try Again
+            </button>
+            <button onClick={() => signOut()} style={{width:'100%',padding:'0.75rem',background:'transparent',color:'rgba(255,255,255,0.4)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',fontWeight:500,cursor:'pointer',fontSize:'0.875rem'}}>
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (!dbUser) {
