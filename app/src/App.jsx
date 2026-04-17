@@ -354,11 +354,8 @@ function AuthenticatedApp() {
   const { user } = useUser();
   const { signOut, getToken } = useAuth();
 
-  // Make token getter available globally for api.js
-  React.useEffect(() => {
-    window.__clerkGetToken = getToken;
-    return () => { delete window.__clerkGetToken; };
-  }, [getToken]);
+  // Make token getter available globally for api.js immediately
+  window.__clerkGetToken = getToken;
   const [dbUser, setDbUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
