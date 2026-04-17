@@ -114,19 +114,31 @@ function LogEntryScreen({ user, site, shift }) {
         {/* Log Type Selection */}
         <div style={{marginBottom:'1.25rem'}}>
           <div style={{fontSize:'0.6875rem',fontWeight:600,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.625rem'}}>Type</div>
-          <div className="log-type-grid">
-            {Object.entries(LOG_TYPE_CONFIG).map(([type, config]) => (
-              <LogTypeOption
-                key={type}
-                type={type}
-                config={config}
-                selected={formData.log_type === type}
-                onSelect={() => setFormData(prev => ({
-                  ...prev,
-                  log_type: type,
-                  type_data: {}
-                }))}
-              />
+          <div style={{display:'flex',flexDirection:'column',gap:'0.5rem'}}>
+            {[
+              { group: 'Patrol & Security', types: ['PATROL','INCIDENT','ALARM','FIRE_ALARM','EVACUATION','EMERGENCY'] },
+              { group: 'Access & Visitors', types: ['ACCESS_CONTROL','VISITOR','VEHICLE_CHECK','PROPERTY_CHECK'] },
+              { group: 'Shift & Admin',     types: ['SHIFT_START','SHIFT_END','BREAK','HANDOVER','MAINTENANCE','TRAINING','ADMIN','OTHER'] },
+            ].map(({ group, types }) => (
+              <div key={group}>
+                <div style={{fontSize:'0.6875rem',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.375rem',marginTop:'0.25rem'}}>{group}</div>
+                <div style={{display:'flex',flexDirection:'column',gap:'0.375rem'}}>
+                  {types.filter(t => LOG_TYPE_CONFIG[t]).map(type => {
+                    const config = LOG_TYPE_CONFIG[type];
+                    const sel = formData.log_type === type;
+                    const cols = { info:{bg:'rgba(59,130,246,0.15)',border:'rgba(59,130,246,0.5)',dot:'#3b82f6'}, warning:{bg:'rgba(251,191,36,0.12)',border:'rgba(251,191,36,0.5)',dot:'#fbbf24'}, alert:{bg:'rgba(239,68,68,0.15)',border:'rgba(239,68,68,0.6)',dot:'#ef4444'}, success:{bg:'rgba(74,222,128,0.1)',border:'rgba(74,222,128,0.4)',dot:'#4ade80'}, neutral:{bg:'rgba(255,255,255,0.05)',border:'rgba(255,255,255,0.12)',dot:'rgba(255,255,255,0.4)'} };
+                    const c = cols[config.color] || cols.neutral;
+                    return (
+                      <button key={type} onClick={() => setFormData(prev => ({ ...prev, log_type: type, type_data: {} }))}
+                        style={{display:'flex',alignItems:'center',gap:'0.875rem',padding:'0.875rem 1rem',background:sel?c.bg:'rgba(255,255,255,0.03)',border:`1.5px solid ${sel?c.border:'rgba(255,255,255,0.08)'}`,borderRadius:'10px',cursor:'pointer',textAlign:'left',width:'100%'}}>
+                        <div style={{width:'10px',height:'10px',borderRadius:'50%',background:c.dot,flexShrink:0}} />
+                        <div style={{flex:1,fontSize:'0.9375rem',fontWeight:sel?700:400,color:sel?'#fff':'rgba(255,255,255,0.65)'}}>{config.label}</div>
+                        {sel && <svg width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M1 6L5.5 10.5L15 1" stroke={c.dot} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             ))}
           </div>
         </div>
