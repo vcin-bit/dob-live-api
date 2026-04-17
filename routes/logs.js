@@ -184,3 +184,5 @@ router.get('/export', authenticate, async (req, res, next) => {
     res.send(csv);
   } catch (err) { next(err); }
 });
+
+module.exports = router;

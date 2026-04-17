@@ -57,3 +57,5 @@ router.delete('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY'), async
     res.json({ success: true });
   } catch (err) { next(err); }
 });
+
+module.exports = router;

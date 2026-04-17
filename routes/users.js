@@ -106,3 +106,5 @@ router.put('/:id/sites', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OP
     res.json({ success: true });
   } catch (err) { next(err); }
 });
+
+module.exports = router;
