@@ -353,83 +353,99 @@ function AuthFlow() {
 function AuthenticatedApp() {
   const { user } = useUser();
   const { signOut } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
   const [dbUser, setDbUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [attempt, setAttempt] = useState(0);
 
-  // Fetch user data from our database
   useEffect(() => {
-    async function fetchUserData() {
-      try {
-        setLoading(true);
-        // Render free tier spins down - retry up to 5 times with increasing delay
-        let userData, lastErr;
-        for (let i = 0; i < 5; i++) {
-          try {
-            userData = await api.users.me();
-            break;
-          } catch (err) {
-            lastErr = err;
-            if (i < 4) await new Promise(r => setTimeout(r, 3000 + i * 1000));
+    if (!user) return;
+    let cancelled = false;
+
+    async function fetchUser() {
+      setLoading(true);
+      setError(null);
+
+      // Try up to 6 times over ~30 seconds to handle Render cold starts
+      for (let i = 0; i < 6; i++) {
+        try {
+          const res = await api.users.me();
+          if (!cancelled) {
+            setDbUser(res.data);
+            setLoading(false);
           }
+          return;
+        } catch (err) {
+          console.log(`Attempt ${i+1} failed:`, err.message);
+          if (i < 5) await new Promise(r => setTimeout(r, 5000));
         }
-        if (!userData) throw lastErr;
-        setDbUser(userData.data);
-        setError(null);
-      } catch (err) {
-        console.error('Failed to fetch user data:', err);
-        setError(err);
-      } finally {
+      }
+
+      if (!cancelled) {
+        setError('Could not connect after multiple attempts');
         setLoading(false);
       }
     }
 
-    if (user) {
-      fetchUserData();
-    }
-  }, [user]);
+    fetchUser();
+    return () => { cancelled = true; };
+  }, [user, attempt]);
 
-  if (loading) {
-    return <LoadingScreen />;
-  }
+  if (loading) return (
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#0f1623'}}>
+      <div style={{textAlign:'center'}}>
+        <div style={{fontSize:'1.5rem',fontWeight:800,marginBottom:'1.5rem'}}>
+          <span style={{color:'#1a52a8'}}>DOB</span><span style={{color:'#fff'}}> Live</span>
+        </div>
+        <div className="spinner" style={{borderTopColor:'#1a52a8',borderColor:'rgba(255,255,255,0.1)',width:'2rem',height:'2rem',margin:'0 auto 1rem'}}/>
+        <p style={{color:'rgba(255,255,255,0.4)',fontSize:'0.875rem'}}>Connecting to server...</p>
+        <p style={{color:'rgba(255,255,255,0.2)',fontSize:'0.75rem',marginTop:'0.5rem'}}>This may take up to 30 seconds</p>
+      </div>
+    </div>
+  );
 
-  if (error) {
-    return (
-      <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#0f1623',padding:'1.5rem'}}>
-        <div style={{textAlign:'center',maxWidth:'380px'}}>
-          <div style={{fontSize:'1.5rem',fontWeight:800,marginBottom:'1.5rem'}}>
-            <span style={{color:'#1a52a8'}}>DOB</span><span style={{color:'#fff'}}> Live</span>
-          </div>
-          <div style={{background:'#1a2235',borderRadius:'12px',padding:'1.5rem'}}>
-            <div style={{fontSize:'1rem',fontWeight:700,color:'#fff',marginBottom:'0.75rem'}}>Connection Problem</div>
-            <p style={{color:'rgba(255,255,255,0.5)',fontSize:'0.875rem',marginBottom:'1.5rem'}}>
-              Could not connect to the server. Please check your connection and try again.
-            </p>
-            <button onClick={() => window.location.reload()} style={{width:'100%',padding:'0.75rem',background:'var(--blue)',color:'#fff',border:'none',borderRadius:'8px',fontWeight:600,cursor:'pointer',marginBottom:'0.75rem'}}>
-              Try Again
-            </button>
-            <button onClick={() => signOut()} style={{width:'100%',padding:'0.75rem',background:'transparent',color:'rgba(255,255,255,0.4)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',fontWeight:500,cursor:'pointer',fontSize:'0.875rem'}}>
-              Sign Out
-            </button>
-          </div>
+  if (error) return (
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#0f1623',padding:'1.5rem'}}>
+      <div style={{textAlign:'center',maxWidth:'380px'}}>
+        <div style={{fontSize:'1.5rem',fontWeight:800,marginBottom:'1.5rem'}}>
+          <span style={{color:'#1a52a8'}}>DOB</span><span style={{color:'#fff'}}> Live</span>
+        </div>
+        <div style={{background:'#1a2235',borderRadius:'12px',padding:'1.5rem'}}>
+          <div style={{fontSize:'1rem',fontWeight:700,color:'#fff',marginBottom:'0.5rem'}}>Server not responding</div>
+          <p style={{color:'rgba(255,255,255,0.5)',fontSize:'0.875rem',marginBottom:'1.5rem'}}>
+            The server took too long to respond. Please try again.
+          </p>
+          <button onClick={() => setAttempt(a => a+1)} style={{width:'100%',padding:'0.75rem',background:'#1a52a8',color:'#fff',border:'none',borderRadius:'8px',fontWeight:600,cursor:'pointer',marginBottom:'0.75rem',fontSize:'0.9375rem'}}>
+            Try Again
+          </button>
+          <button onClick={() => signOut()} style={{width:'100%',padding:'0.75rem',background:'transparent',color:'rgba(255,255,255,0.4)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',fontWeight:500,cursor:'pointer',fontSize:'0.875rem'}}>
+            Sign Out
+          </button>
         </div>
       </div>
-    );
-  }
+    </div>
+  );
 
-  if (!dbUser) {
-    return <UserNotFoundScreen />;
-  }
+  if (!dbUser) return (
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#0f1623',padding:'1.5rem'}}>
+      <div style={{textAlign:'center',maxWidth:'380px'}}>
+        <div style={{background:'#1a2235',borderRadius:'12px',padding:'1.5rem'}}>
+          <div style={{fontSize:'1rem',fontWeight:700,color:'#fff',marginBottom:'0.5rem'}}>Account not set up</div>
+          <p style={{color:'rgba(255,255,255,0.5)',fontSize:'0.875rem',marginBottom:'1.5rem'}}>
+            Your account needs to be configured by your administrator.
+          </p>
+          <button onClick={() => signOut()} style={{width:'100%',padding:'0.75rem',background:'#1a2235',color:'rgba(255,255,255,0.7)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'8px',fontWeight:600,cursor:'pointer'}}>
+            Sign Out
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
-  // Route based on user role
-  if (dbUser.role === 'OFFICER') {
-    return <OfficerApp user={dbUser} />;
-  } else {
-    return <ManagerApp user={dbUser} />;
-  }
+  if (dbUser.role === 'OFFICER') return <OfficerApp user={dbUser} />;
+  return <ManagerApp user={dbUser} />;
 }
+
 
 // Loading screen
 function LoadingScreen() {
