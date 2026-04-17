@@ -92,7 +92,7 @@ function OfficerApp({ user }) {
 
   return (
     <div className="officer-shell">
-      <OfficerHeader user={user} selectedSite={selectedSite} activeShift={activeShift} onSignOut={signOut} />
+      <OfficerHeader user={user} selectedSite={selectedSite} activeShift={activeShift} />
       <div className="officer-content">
       
       <Routes>
@@ -139,7 +139,7 @@ function OfficerApp({ user }) {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </div>
-      <OfficerNavigation />
+      <OfficerNavigation onSignOut={signOut} />
     </div>
   );
 }
@@ -151,10 +151,7 @@ function OfficerHeader({ user, selectedSite, activeShift, onSignOut }) {
       <div className="logo" style={{flexShrink:0}}><span className="dob">DOB</span><span className="live"> Live</span></div>
       <div style={{textAlign:'right',minWidth:0,overflow:'hidden'}}>
         {selectedSite && <div style={{fontSize:'0.8125rem',fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:'160px'}}>{selectedSite.name}</div>}
-        <div style={{display:'flex',alignItems:'center',gap:'0.625rem',justifyContent:'flex-end'}}>
-          <span style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.5)'}}>{user.first_name}</span>
-          <button onClick={onSignOut} style={{fontSize:'0.6875rem',color:'rgba(255,255,255,0.35)',background:'rgba(255,255,255,0.08)',border:'none',borderRadius:'4px',padding:'0.25rem 0.5rem',cursor:'pointer'}}>Sign out</button>
-        </div>
+        <div style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.5)'}}>{user.first_name} {user.last_name}</div>
       </div>
     </div>
   );
