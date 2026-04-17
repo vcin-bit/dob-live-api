@@ -17,6 +17,7 @@ import {
 
 function OfficerApp({ user }) {
   const location = useLocation();
+  const { signOut } = useAuth();
   const [activeShift, setActiveShift] = useState(null);
   const [selectedSite, setSelectedSite] = useState(null);
   const [sites, setSites] = useState([]);
@@ -91,7 +92,7 @@ function OfficerApp({ user }) {
 
   return (
     <div className="officer-shell">
-      <OfficerHeader user={user} selectedSite={selectedSite} activeShift={activeShift} />
+      <OfficerHeader user={user} selectedSite={selectedSite} activeShift={activeShift} onSignOut={signOut} />
       <div className="officer-content">
       
       <Routes>
@@ -144,13 +145,16 @@ function OfficerApp({ user }) {
 }
 
 // Officer Header
-function OfficerHeader({ user, selectedSite, activeShift }) {
+function OfficerHeader({ user, selectedSite, activeShift, onSignOut }) {
   return (
     <div className="officer-header">
       <div className="logo" style={{flexShrink:0}}><span className="dob">DOB</span><span className="live"> Live</span></div>
       <div style={{textAlign:'right',minWidth:0,overflow:'hidden'}}>
-        {selectedSite && <div style={{fontSize:'0.8125rem',fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:'180px'}}>{selectedSite.name}</div>}
-        <div style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.5)'}}>{user.first_name} {user.last_name}</div>
+        {selectedSite && <div style={{fontSize:'0.8125rem',fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:'160px'}}>{selectedSite.name}</div>}
+        <div style={{display:'flex',alignItems:'center',gap:'0.625rem',justifyContent:'flex-end'}}>
+          <span style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.5)'}}>{user.first_name}</span>
+          <button onClick={onSignOut} style={{fontSize:'0.6875rem',color:'rgba(255,255,255,0.35)',background:'rgba(255,255,255,0.08)',border:'none',borderRadius:'4px',padding:'0.25rem 0.5rem',cursor:'pointer'}}>Sign out</button>
+        </div>
       </div>
     </div>
   );
