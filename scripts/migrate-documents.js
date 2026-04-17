@@ -75,7 +75,6 @@ async function run() {
         file_size:     d.size || 0,
         // Store R2 URL as storage_path so the View link works
         storage_path:  d.r2Url || d.r2Key || '',
-        uploaded_by:   d.uploadedBy || null,
         created_at:    d.createdAt || new Date().toISOString(),
       });
       if (error) { console.log(`  error: ${error.message}`); continue; }
