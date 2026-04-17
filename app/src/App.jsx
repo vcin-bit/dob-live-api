@@ -37,6 +37,11 @@ class ErrorBoundary extends React.Component {
 }
 
 function App() {
+  // Wake up Render on app load so it's ready when user signs in
+  React.useEffect(() => {
+    fetch(import.meta.env.VITE_API_URL + '/health').catch(() => {});
+  }, []);
+
   return (
     <Router>
       <Routes>
@@ -354,15 +359,15 @@ function AuthenticatedApp() {
     async function fetchUserData() {
       try {
         setLoading(true);
-        // Render free tier spins down - retry up to 3 times with delay
+        // Render free tier spins down - retry up to 5 times with increasing delay
         let userData, lastErr;
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < 5; i++) {
           try {
             userData = await api.users.me();
             break;
           } catch (err) {
             lastErr = err;
-            if (i < 2) await new Promise(r => setTimeout(r, 2000));
+            if (i < 4) await new Promise(r => setTimeout(r, 3000 + i * 1000));
           }
         }
         if (!userData) throw lastErr;
@@ -406,8 +411,11 @@ function LoadingScreen() {
   return (
     <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#0f1623'}}>
       <div style={{textAlign:'center'}}>
+        <div style={{fontSize:'1.5rem',fontWeight:800,marginBottom:'1.5rem'}}>
+          <span style={{color:'#1a52a8'}}>DOB</span><span style={{color:'#fff'}}> Live</span>
+        </div>
         <div className="spinner" style={{borderTopColor:'#1a52a8',borderColor:'rgba(255,255,255,0.1)',width:'2rem',height:'2rem',margin:'0 auto 1rem'}} />
-        <p style={{color:'rgba(255,255,255,0.4)',fontSize:'0.875rem'}}>Loading...</p>
+        <p style={{color:'rgba(255,255,255,0.4)',fontSize:'0.875rem'}}>Connecting...</p>
       </div>
     </div>
   );

@@ -48,6 +48,9 @@ app.get('/health', (req, res) => {
 // ── Clerk auth middleware ────────────────────────────────────
 app.use(clerkMiddleware());
 
+// Health check - keeps Render awake
+app.get('/health', (req, res) => res.json({ ok: true, ts: Date.now() }));
+
 // ── Routes ───────────────────────────────────────────────────
 app.use('/api/users',      require('./routes/users'));
 app.use('/api/companies',  require('./routes/companies'));
