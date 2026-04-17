@@ -39,6 +39,10 @@ app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Clerk middleware - must be before routes
+const { clerkMw } = require('./middleware/auth');
+app.use(clerkMw);
+
 // ── Health check (public — before auth middleware) ───────────
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', version: '2.0.0', timestamp: new Date().toISOString() });
