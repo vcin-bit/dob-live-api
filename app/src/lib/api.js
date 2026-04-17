@@ -64,7 +64,7 @@ export const api = {
 
   // Users
   users: {
-    me: () => request('/api/users/me'),
+    me: () => request('/api/users/me?_=' + Date.now()),
     list: (params = {}) => request(`/api/users?${new URLSearchParams(params)}`),
     get: (id) => request(`/api/users/${id}`),
     create: (data) => request('/api/users', {

@@ -5,6 +5,7 @@ const { authenticate, requireRole } = require('../middleware/auth');
 // GET /api/users/me — current user profile
 router.get('/me', authenticate, async (req, res, next) => {
   try {
+    res.set('Cache-Control', 'no-store');
     res.json({ data: req.user });
   } catch (err) { next(err); }
 });

@@ -441,6 +441,14 @@ function AuthenticatedApp() {
     </div>
   );
 
+  if (!dbUser || !dbUser.role) return (
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#0f1623'}}>
+      <div style={{textAlign:'center',color:'rgba(255,255,255,0.5)'}}>
+        <p>Account not configured. Contact your administrator.</p>
+        <button onClick={() => signOut()} style={{marginTop:'1rem',padding:'0.75rem 1.5rem',background:'#1a2235',color:'#fff',border:'none',borderRadius:'8px',cursor:'pointer'}}>Sign Out</button>
+      </div>
+    </div>
+  );
   if (dbUser.role === 'OFFICER') return <OfficerApp user={dbUser} />;
   return <ManagerApp user={dbUser} />;
 }
