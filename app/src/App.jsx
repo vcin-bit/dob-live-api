@@ -12,7 +12,7 @@ import {
 
 import { PortalApp } from './components/Portal';
 
-const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_c3BlY2lhbC1ib2JjYXQtNDguY2xlcmsuYWNjb3VudHMuZGV2JA';
+const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 import { OfficerApp } from './components/OfficerShell';
 import { ManagerApp } from './components/ManagerShell';
 
