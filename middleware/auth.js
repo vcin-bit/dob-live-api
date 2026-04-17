@@ -1,16 +1,14 @@
-const { clerkClient } = require('@clerk/express');
+const { verifyToken, clerkClient } = require('@clerk/express');
 const supabase = require('../lib/supabase');
 
-// Verify Clerk session token manually
 async function requireClerkSession(req, res, next) {
   try {
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!authHeader?.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'Unauthorised' });
     }
     const token = authHeader.slice(7);
-    // Verify with Clerk
-    const payload = await clerkClient.verifyToken(token, {
+    const payload = await verifyToken(token, {
       secretKey: process.env.CLERK_SECRET_KEY,
     });
     req.auth = { userId: payload.sub };
@@ -58,21 +56,16 @@ async function resolveUser(req, res, next) {
 
     req.user = user;
     next();
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 }
 
 function requireRole(...roles) {
   return (req, res, next) => {
     if (!req.user) return res.status(401).json({ error: 'Unauthorised' });
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ error: 'Insufficient permissions' });
-    }
+    if (!roles.includes(req.user.role)) return res.status(403).json({ error: 'Insufficient permissions' });
     next();
   };
 }
 
 const authenticate = [requireClerkSession, resolveUser];
-
 module.exports = { authenticate, requireRole };
