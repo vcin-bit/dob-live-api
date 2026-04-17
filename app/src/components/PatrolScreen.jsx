@@ -358,29 +358,32 @@ export default function PatrolScreen({ user, site, shift }) {
         {!plannerMode && (
           <div style={{padding:'12px 14px',flexShrink:0}}>
             {!patrolStarted ? (
-              <button onClick={startPatrol}
-                style={{width:'100%',padding:'14px',background:'#1a52a8',border:'none',borderRadius:'10px',color:'#fff',fontSize:'15px',fontWeight:700,cursor:'pointer'}}>
-                Start Patrol
-              </button>
+              <div>
+                <div style={{textAlign:'center',marginBottom:'12px'}}>
+                  <div style={{fontSize:'12px',color:'rgba(255,255,255,0.35)',marginBottom:'4px'}}>Ready to begin patrol?</div>
+                </div>
+                <button onClick={startPatrol}
+                  style={{width:'100%',padding:'16px',background:'linear-gradient(135deg,#1a52a8,#2563eb)',border:'none',borderRadius:'12px',color:'#fff',fontSize:'16px',fontWeight:700,cursor:'pointer',boxShadow:'0 4px 20px rgba(59,130,246,0.4)',letterSpacing:'0.01em'}}>
+                  ▶ Start Patrol
+                </button>
+              </div>
             ) : (
-              <div style={{display:'flex',gap:'8px',marginBottom:'8px'}}>
+              <div>
                 <button onClick={() => setShowReport(true)}
-                  style={{flex:1,padding:'12px',background:'rgba(239,68,68,0.12)',border:'1.5px solid rgba(239,68,68,0.3)',borderRadius:'10px',color:'#ef4444',fontSize:'13px',fontWeight:600,cursor:'pointer'}}>
-                  ! Report Issue
+                  style={{width:'100%',padding:'13px',background:'rgba(239,68,68,0.1)',border:'1.5px solid rgba(239,68,68,0.3)',borderRadius:'10px',color:'#ef4444',fontSize:'14px',fontWeight:700,cursor:'pointer',marginBottom:'8px',display:'flex',alignItems:'center',justifyContent:'center',gap:'6px'}}>
+                  <span style={{fontSize:'16px'}}>⚠</span> Log Occurrence / Incident
                 </button>
                 {nextCp && (
                   <button onClick={() => markCheckpoint(nextCp)}
-                    style={{flex:1,padding:'12px',background:'rgba(251,191,36,0.12)',border:'1.5px solid rgba(251,191,36,0.35)',borderRadius:'10px',color:'#fbbf24',fontSize:'13px',fontWeight:600,cursor:'pointer'}}>
-                    ✓ Mark Reached
+                    style={{width:'100%',padding:'13px',background:'rgba(251,191,36,0.12)',border:'1.5px solid rgba(251,191,36,0.35)',borderRadius:'10px',color:'#fbbf24',fontSize:'14px',fontWeight:700,cursor:'pointer',marginBottom:'8px'}}>
+                    ✓ Mark Checkpoint Reached — {nextCp.name}
                   </button>
                 )}
+                <button onClick={endPatrol}
+                  style={{width:'100%',padding:'11px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'10px',color:'rgba(255,255,255,0.35)',fontSize:'12px',cursor:'pointer'}}>
+                  End Patrol
+                </button>
               </div>
-            )}
-            {patrolStarted && (
-              <button onClick={endPatrol}
-                style={{width:'100%',padding:'11px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'10px',color:'rgba(255,255,255,0.45)',fontSize:'13px',cursor:'pointer'}}>
-                End Patrol
-              </button>
             )}
           </div>
         )}
@@ -402,11 +405,13 @@ function ReportModal({ user, site, session, onClose }) {
   const [saving, setSaving] = useState(false);
 
   const types = [
-    { key:'INCIDENT', label:'Incident', color:'#ef4444' },
-    { key:'MAINTENANCE', label:'Maintenance', color:'#f97316' },
-    { key:'ACCESS_CONTROL', label:'Access', color:'#3b82f6' },
-    { key:'GENERAL', label:'Hazard', color:'#fbbf24' },
-    { key:'OTHER', label:'Other', color:'rgba(255,255,255,0.5)' },
+    { key:'INCIDENT',      label:'Security Incident', color:'#ef4444' },
+    { key:'ALARM',          label:'Alarm Activation',  color:'#f97316' },
+    { key:'ACCESS_CONTROL', label:'Access / Entry',    color:'#3b82f6' },
+    { key:'GENERAL',        label:'Safety / Hazard',   color:'#fbbf24' },
+    { key:'VEHICLE_CHECK',  label:'Suspicious Vehicle',color:'#a78bfa' },
+    { key:'MAINTENANCE',    label:'Maintenance',       color:'rgba(255,255,255,0.5)' },
+    { key:'OTHER',          label:'Other',             color:'rgba(255,255,255,0.35)' },
   ];
 
   async function handleMedia(e) {
@@ -458,7 +463,7 @@ function ReportModal({ user, site, session, onClose }) {
         {/* Header */}
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 16px',borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
           <div>
-            <div style={{fontSize:'14px',fontWeight:700,color:'#fff'}}>Report Issue</div>
+            <div style={{fontSize:'14px',fontWeight:700,color:'#fff'}}>Log Occurrence</div>
             <div style={{fontSize:'11px',color:'rgba(255,255,255,0.35)',marginTop:'1px'}}>{site?.name}</div>
           </div>
           <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,0.4)',fontSize:'20px',cursor:'pointer'}}>×</button>
