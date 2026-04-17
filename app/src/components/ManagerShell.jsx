@@ -7,6 +7,7 @@ import { ManagerDashboard, SiteManagement, LogReview, TaskAssignment, SiteDetail
 import { ShiftRoster, ProfitLoss } from './RosterPnL';
 import { DocumentsScreen, PatrolRoutesScreen, ShiftPatternsScreen, RatesScreen, AlertsScreen, PoliciesScreen, SiteInstructionsScreen, MessagesScreen } from './ManagerFeatures';
 import { PortalSettingsModal } from './Portal';
+import { ContractsScreen } from './ContractsScreen';
 import {
   HomeIcon, ClipboardDocumentListIcon, MapPinIcon, ClockIcon,
   UserGroupIcon, Cog6ToothIcon, PlusIcon, ArrowRightOnRectangleIcon,
@@ -37,6 +38,7 @@ function ManagerApp({ user }) {
           <Route path="/policies"   element={<PoliciesScreen user={user} />} />
           <Route path="/instructions" element={<SiteInstructionsScreen user={user} />} />
           <Route path="/messages"     element={<MessagesScreen user={user} />} />
+          <Route path="/contracts"   element={<ContractsScreen user={user} />} />
           <Route path="*"          element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </div>
@@ -84,6 +86,12 @@ function ManagerSidebar({ user }) {
         { to: '/patrols',      icon: MapPinIcon,       label: 'Patrol Routes' },
         { to: '/instructions', icon: DocumentTextIcon, label: 'Instructions' },
         { to: '/policies',     icon: DocumentTextIcon, label: 'Policies' },
+      ]
+    },
+    {
+      label: 'Commercial',
+      items: [
+        { to: '/contracts', icon: DocumentTextIcon, label: 'Contracts' },
       ]
     },
   ];

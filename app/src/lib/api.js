@@ -208,6 +208,20 @@ export const api = {
     update: (id, data) => request(`/api/alerts/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   },
 
+  contracts: {
+    lines: {
+      list: (params = {}) => request(`/api/contracts/lines?${new URLSearchParams(params)}`),
+      create: (data) => request('/api/contracts/lines', { method: 'POST', body: JSON.stringify(data) }),
+      update: (id, data) => request(`/api/contracts/lines/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+      delete: (id) => request(`/api/contracts/lines/${id}`, { method: 'DELETE' }),
+    },
+    queries: {
+      list: (params = {}) => request(`/api/contracts/queries?${new URLSearchParams(params)}`),
+      create: (data) => request('/api/contracts/queries', { method: 'POST', body: JSON.stringify(data) }),
+      respond: (id, data) => request(`/api/contracts/queries/${id}/respond`, { method: 'POST', body: JSON.stringify(data) }),
+    },
+  },
+
   invite: {
     send: (data) => request('/api/invite', { method: 'POST', body: JSON.stringify(data) }),
   },
