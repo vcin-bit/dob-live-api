@@ -182,6 +182,7 @@ function SiteManagement({ user }) {
       </div>
       <div className="page-content">
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
+        {successMsg && <div className="alert alert-success" style={{marginBottom:'1rem'}}>{successMsg}</div>}
         {loading ? (
           <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>
         ) : sites.length === 0 ? (
@@ -224,7 +225,7 @@ function SiteManagement({ user }) {
         <SiteFormModal
           site={editSite}
           onClose={() => setShowForm(false)}
-          onSaved={() => { setShowForm(false); load(); }}
+          onSaved={(msg) => { setShowForm(false); load(); if (msg) { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(null), 5000); } }}
         />
       )}
       {portalSite && (
@@ -353,6 +354,7 @@ function LogReview({ user }) {
       </div>
       <div className="page-content">
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
+        {successMsg && <div className="alert alert-success" style={{marginBottom:'1rem'}}>{successMsg}</div>}
         {loading ? (
           <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>
         ) : filtered.length === 0 ? (
@@ -759,6 +761,7 @@ function SiteAssignModal({ officer, onClose }) {
           <button className="modal-close" onClick={onClose}>x</button>
         </div>
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
+        {successMsg && <div className="alert alert-success" style={{marginBottom:'1rem'}}>{successMsg}</div>}
         {loading ? (
           <div style={{display:'flex',justifyContent:'center',padding:'2rem'}}><div className="spinner" /></div>
         ) : sites.length === 0 ? (
@@ -800,6 +803,7 @@ function TeamManagement({ user }) {
   const [showForm, setShowForm] = useState(false);
   const [editUser, setEditUser] = useState(null);
   const [siteAssignOfficer, setSiteAssignOfficer] = useState(null);
+  const [successMsg, setSuccessMsg] = useState(null);
 
   async function load() {
     try {
@@ -825,6 +829,7 @@ function TeamManagement({ user }) {
       </div>
       <div className="page-content">
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
+        {successMsg && <div className="alert alert-success" style={{marginBottom:'1rem'}}>{successMsg}</div>}
         {loading ? (
           <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>
         ) : (
@@ -863,7 +868,7 @@ function TeamManagement({ user }) {
         <UserFormModal
           user={editUser}
           onClose={() => setShowForm(false)}
-          onSaved={() => { setShowForm(false); load(); }}
+          onSaved={(msg) => { setShowForm(false); load(); if (msg) { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(null), 5000); } }}
         />
       )}
       {siteAssignOfficer && (
@@ -904,10 +909,11 @@ function UserFormModal({ user, onClose, onSaved }) {
       };
       if (user) {
         await api.users.update(user.id, payload);
+        onSaved();
       } else {
-        await api.users.create(payload);
+        const res = await api.invite.send(payload);
+        onSaved(res.message);
       }
-      onSaved();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -921,7 +927,7 @@ function UserFormModal({ user, onClose, onSaved }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <div className="modal-title">{user ? 'Edit Team Member' : 'Add Officer'}</div>
+          <div className="modal-title">{user ? 'Edit Team Member' : 'Invite Team Member'}</div>
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
@@ -937,7 +943,7 @@ function UserFormModal({ user, onClose, onSaved }) {
           <div className="field" style={{gridColumn:'1/-1'}}>
             <label className="label">Email</label>
             <input type="email" className="officer-input" value={form.email} onChange={e=>f('email',e.target.value)} disabled={!!user} />
-            {!user && <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginTop:'0.25rem'}}>They will sign in using this email via Clerk</div>}
+            {!user && <div style={{fontSize:'0.75rem',color:'var(--text-2)',marginTop:'0.25rem'}}>An invitation email will be sent to this address</div>}
           </div>
           <div className="field">
             <label className="label">Phone</label>
@@ -963,7 +969,7 @@ function UserFormModal({ user, onClose, onSaved }) {
         </div>
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={save} disabled={saving}>{saving?'Saving...':'Save'}</button>
+          <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? (user ? 'Saving...' : 'Sending invite...') : (user ? 'Save' : 'Send Invite')}</button>
         </div>
       </div>
     </div>

@@ -170,6 +170,7 @@ function OfficerDashboard({ user, site, shift }) {
   const [recentLogs, setRecentLogs] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState(null);
   
   useEffect(() => {
     async function fetchDashboardData() {
@@ -193,11 +194,15 @@ function OfficerDashboard({ user, site, shift }) {
         console.error('Failed to fetch dashboard data:', err);
       } finally {
         setLoading(false);
+        setLastUpdated(new Date());
       }
     }
     
     if (site) {
       fetchDashboardData();
+      // Auto-refresh every 60s
+      const interval = setInterval(fetchDashboardData, 60000);
+      return () => clearInterval(interval);
     }
   }, [site, user]);
   
@@ -219,6 +224,21 @@ function OfficerDashboard({ user, site, shift }) {
           <span>Tasks</span>
           <span style={{background:'var(--blue)',color:'#fff',borderRadius:'999px',padding:'2px 8px',fontSize:'0.8125rem',fontWeight:700}}>{tasks.length}</span>
         </Link>
+      )}
+
+      {/* Last updated */}
+      {lastUpdated && (
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.75rem'}}>
+          <span style={{fontSize:'0.6875rem',color:'rgba(255,255,255,0.3)'}}>
+            Updated {lastUpdated.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}
+          </span>
+          <button
+            onClick={() => { setLoading(true); /* trigger re-fetch via state change */ setLastUpdated(null); }}
+            style={{fontSize:'0.6875rem',color:'rgba(255,255,255,0.3)',background:'none',border:'none',cursor:'pointer',padding:0}}
+          >
+            Refresh
+          </button>
+        </div>
       )}
 
       {/* Stats row */}

@@ -208,6 +208,10 @@ export const api = {
     update: (id, data) => request(`/api/alerts/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   },
 
+  invite: {
+    send: (data) => request('/api/invite', { method: 'POST', body: JSON.stringify(data) }),
+  },
+
   portal: {
     sites: () => request('/api/portal/sites'),
     auth: (site_id, pin) => request('/api/portal/auth', { method: 'POST', body: JSON.stringify({ site_id, pin }) }),
