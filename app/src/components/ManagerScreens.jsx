@@ -13,138 +13,171 @@ import {
 } from '@heroicons/react/24/outline';
 
 function ManagerDashboard({ user }) {
-  const [stats, setStats] = useState({ activeSites: 0, todayLogs: 0, pendingTasks: 0, totalUsers: 0 });
-  const [recentLogs, setRecentLogs] = useState([]);
+  const [data, setData] = useState({ shifts:[], incidents:[], recentLogs:[], pendingTasks:0, totalOfficers:0 });
   const [loading, setLoading] = useState(true);
+  const [lastRefresh, setLastRefresh] = useState(null);
 
-  const [activeShifts, setActiveShifts] = useState([]);
+  async function load() {
+    try {
+      const [shiftsRes, logsRes, tasksRes, usersRes] = await Promise.all([
+        api.shifts.list({ status: 'ACTIVE', limit: 50 }),
+        api.logs.list({ limit: 20 }),
+        api.tasks.list({ status: 'PENDING' }),
+        api.users.list({ role: 'OFFICER' }),
+      ]);
+      const logs = logsRes.data || [];
+      const incidents = logs.filter(l => ['INCIDENT','ALARM','FIRE_ALARM','EMERGENCY'].includes(l.log_type));
+      setData({
+        shifts: shiftsRes.data || [],
+        incidents,
+        recentLogs: logs.slice(0, 8),
+        pendingTasks: tasksRes.data?.length || 0,
+        totalOfficers: usersRes.data?.length || 0,
+      });
+      setLastRefresh(new Date());
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
+  }
 
   useEffect(() => {
-    async function load() {
-      try {
-        const [sitesRes, logsRes, tasksRes, usersRes, shiftsRes] = await Promise.all([
-          api.sites.list(),
-          api.logs.list({ limit: 8 }),
-          api.tasks.list({ status: 'PENDING' }),
-          api.users.list(),
-          api.shifts.list({ status: 'ACTIVE', limit: 50 }),
-        ]);
-        setStats({
-          activeSites:  sitesRes.data?.length || 0,
-          todayLogs:    logsRes.data?.length || 0,
-          pendingTasks: tasksRes.data?.length || 0,
-          totalUsers:   usersRes.data?.length || 0,
-        });
-        setRecentLogs(logsRes.data?.slice(0, 6) || []);
-        setActiveShifts(shiftsRes.data || []);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    }
     load();
+    const t = setInterval(load, 60000); // auto-refresh every minute
+    return () => clearInterval(t);
   }, []);
 
-  if (loading) return (
-    <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',padding:'3rem'}}>
-      <div className="spinner" />
-    </div>
-  );
+  if (loading) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',padding:'3rem'}}><div className="spinner" /></div>;
+
+  // Compliance alerts — things wrong right now
+  const alerts = [];
+  data.shifts.forEach(s => {
+    const hrs = (Date.now() - new Date(s.checked_in_at||s.start_time).getTime()) / 3600000;
+    if (hrs > 3) alerts.push({ level:'warn', msg:`${s.officer?.first_name} ${s.officer?.last_name} — no patrol logged in ${Math.round(hrs)}h`, site: s.site?.name });
+  });
+  if (data.incidents.length > 0) {
+    const unacked = data.incidents.filter(i => !i.client_reportable);
+    if (unacked.length) alerts.push({ level:'info', msg:`${unacked.length} incident${unacked.length>1?'s':''} recorded tonight — review required`, site: null });
+  }
+
+  const shiftDuration = (s) => {
+    const mins = Math.floor((Date.now() - new Date(s.checked_in_at||s.start_time).getTime()) / 60000);
+    return mins < 60 ? `${mins}m` : `${Math.floor(mins/60)}h ${mins%60}m`;
+  };
 
   return (
     <div>
       <div className="topbar">
-        <div className="topbar-title">Dashboard</div>
+        <div className="topbar-title">Operations Command</div>
+        <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
+          {lastRefresh && <span style={{fontSize:'0.75rem',color:'var(--text-3)'}}>Updated {lastRefresh.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</span>}
+          <button onClick={load} className="btn btn-secondary btn-sm">Refresh</button>
+        </div>
       </div>
       <div className="page-content">
-        <div className="stats-grid" style={{marginBottom:'1.5rem'}}>
-          <div className="stat-card">
-            <div className="stat-value">{stats.activeSites}</div>
-            <div className="stat-label">Sites</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-value">{stats.totalUsers}</div>
-            <div className="stat-label">Team Members</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-value" style={{color:'var(--blue)'}}>{stats.todayLogs}</div>
-            <div className="stat-label">Recent Logs</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-value" style={{color: stats.pendingTasks > 0 ? 'var(--warning)' : 'var(--text)'}}>{stats.pendingTasks}</div>
-            <div className="stat-label">Pending Tasks</div>
-          </div>
-        </div>
 
-        {/* Officers on duty */}
-        <div className="card" style={{marginBottom:'1.25rem'}}>
-          <div className="section-header" style={{marginBottom:'0.75rem'}}>
-            <div className="section-title">Officers On Duty</div>
-            <span style={{fontSize:'0.8125rem',color:activeShifts.length>0?'var(--success)':'var(--text-3)',fontWeight:600}}>{activeShifts.length} active</span>
+        {/* Compliance alerts — red/amber banners */}
+        {alerts.length > 0 && (
+          <div style={{display:'flex',flexDirection:'column',gap:'0.5rem',marginBottom:'1.25rem'}}>
+            {alerts.map((a, i) => (
+              <div key={i} style={{display:'flex',alignItems:'center',gap:'0.75rem',padding:'0.75rem 1rem',background:a.level==='warn'?'rgba(220,38,38,0.08)':'rgba(251,191,36,0.08)',border:`1px solid ${a.level==='warn'?'rgba(220,38,38,0.25)':'rgba(251,191,36,0.25)'}`,borderRadius:'8px'}}>
+                <span style={{fontSize:'1rem'}}>{a.level==='warn'?'⚠':'ℹ'}</span>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:'0.875rem',fontWeight:600,color:a.level==='warn'?'var(--danger)':'var(--warning)'}}>{a.msg}</div>
+                  {a.site && <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginTop:'1px'}}>{a.site}</div>}
+                </div>
+              </div>
+            ))}
           </div>
-          {activeShifts.length === 0 ? (
-            <div style={{fontSize:'0.875rem',color:'var(--text-3)'}}>No officers currently on shift</div>
+        )}
+
+        {/* Live site status — one card per active shift */}
+        <div style={{marginBottom:'1.25rem'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.75rem'}}>
+            <div style={{fontSize:'0.6875rem',fontWeight:700,color:'var(--text-3)',textTransform:'uppercase',letterSpacing:'0.08em'}}>
+              Live — {data.shifts.length} officer{data.shifts.length!==1?'s':''} on duty
+            </div>
+            <Link to="/on-duty" style={{fontSize:'0.8125rem',color:'var(--blue)',textDecoration:'none',fontWeight:500}}>Full view →</Link>
+          </div>
+          {data.shifts.length === 0 ? (
+            <div className="card" style={{textAlign:'center',padding:'1.5rem',color:'var(--text-3)'}}>No officers currently on duty</div>
           ) : (
-            <div style={{display:'flex',flexDirection:'column',gap:'0.5rem'}}>
-              {activeShifts.map(s => (
-                <div key={s.id} style={{display:'flex',alignItems:'center',gap:'0.75rem',padding:'0.625rem 0.875rem',background:'rgba(74,222,128,0.08)',border:'1px solid rgba(74,222,128,0.2)',borderRadius:'8px'}}>
-                  <div style={{width:'8px',height:'8px',borderRadius:'50%',background:'#4ade80',flexShrink:0}} />
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:'0.875rem',fontWeight:600}}>
-                      {s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unknown officer'}
+            <div style={{display:'flex',flexDirection:'column',gap:'0.625rem'}}>
+              {data.shifts.map(s => {
+                const hrs = (Date.now() - new Date(s.checked_in_at||s.start_time).getTime()) / 3600000;
+                const overdue = hrs > 3;
+                return (
+                  <div key={s.id} style={{display:'flex',alignItems:'center',gap:'0.875rem',padding:'0.875rem 1rem',background:overdue?'rgba(220,38,38,0.05)':'rgba(74,222,128,0.05)',border:`1px solid ${overdue?'rgba(220,38,38,0.2)':'rgba(74,222,128,0.15)'}`,borderRadius:'10px'}}>
+                    <div style={{width:'10px',height:'10px',borderRadius:'50%',background:overdue?'#ef4444':'#4ade80',flexShrink:0,boxShadow:`0 0 6px ${overdue?'#ef4444':'#4ade80'}`}} />
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:'0.9375rem',fontWeight:700}}>{s.officer?`${s.officer.first_name} ${s.officer.last_name}`:'Unknown'}</div>
+                      <div style={{fontSize:'0.75rem',color:'var(--text-2)',marginTop:'1px'}}>
+                        {s.site?.name||'—'} · {shiftDuration(s)} on duty
+                        {overdue && <span style={{color:'var(--danger)',fontWeight:600,marginLeft:'6px'}}>· PATROL OVERDUE</span>}
+                      </div>
                     </div>
-                    <div style={{fontSize:'0.75rem',color:'var(--text-2)'}}>
-                      {s.site?.name || '—'} · since {new Date(s.checked_in_at||s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}
+                    <div style={{display:'flex',gap:'0.5rem',flexShrink:0}}>
+                      <Link to={`/sites/${s.site_id}`} className="btn btn-secondary btn-sm">Site</Link>
+                      <button onClick={async()=>{if(!window.confirm(`Force end shift for ${s.officer?.first_name}?`))return;await api.shifts.update(s.id,{status:'COMPLETED',checked_out_at:new Date().toISOString()});load();}} className="btn btn-sm" style={{background:'rgba(220,38,38,0.1)',border:'1px solid rgba(220,38,38,0.25)',color:'var(--danger)'}}>End</button>
                     </div>
                   </div>
-                  <button
-                    onClick={async () => {
-                      if (!window.confirm(`Force end shift for ${s.officer?.first_name}?`)) return;
-                      await api.shifts.update(s.id, { status: 'COMPLETED', checked_out_at: new Date().toISOString() });
-                      const res = await api.shifts.list({ status: 'ACTIVE', limit: 50 });
-                      setActiveShifts(res.data || []);
-                    }}
-                    style={{padding:'0.375rem 0.625rem',background:'rgba(220,38,38,0.1)',border:'1px solid rgba(220,38,38,0.25)',borderRadius:'6px',color:'var(--danger)',fontSize:'0.75rem',fontWeight:600,cursor:'pointer',flexShrink:0}}
-                  >
-                    End Shift
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
 
+        {/* Incidents tonight — always prominent */}
+        {data.incidents.length > 0 && (
+          <div className="card" style={{marginBottom:'1.25rem',borderColor:'rgba(220,38,38,0.2)',background:'rgba(220,38,38,0.03)'}}>
+            <div className="section-header" style={{marginBottom:'0.75rem'}}>
+              <div className="section-title" style={{color:'var(--danger)'}}>⚠ Incidents — {data.incidents.length} recorded</div>
+              <Link to="/logs" style={{fontSize:'0.8125rem',color:'var(--blue)',textDecoration:'none'}}>All logs →</Link>
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:'0.5rem'}}>
+              {data.incidents.slice(0,5).map(l => (
+                <div key={l.id} style={{padding:'0.625rem 0.75rem',background:'rgba(220,38,38,0.06)',border:'1px solid rgba(220,38,38,0.15)',borderRadius:'6px'}}>
+                  <div style={{display:'flex',gap:'0.5rem',alignItems:'flex-start',justifyContent:'space-between'}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:'0.875rem',fontWeight:600,color:'var(--danger)'}}>{l.title||l.log_type}</div>
+                      {l.description && <div style={{fontSize:'0.8125rem',color:'var(--text-2)',marginTop:'2px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{l.description}</div>}
+                      <div style={{fontSize:'0.6875rem',color:'var(--text-3)',marginTop:'2px'}}>
+                        {l.officer?`${l.officer.first_name} ${l.officer.last_name} · `:''}{l.site?.name||''} · {new Date(l.occurred_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}
+                      </div>
+                    </div>
+                    {l.client_reportable && <span className="badge badge-warning" style={{flexShrink:0}}>Client</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Stats row */}
+        <div className="stats-grid" style={{marginBottom:'1.25rem'}}>
+          <div className="stat-card"><div className="stat-value">{data.shifts.length}</div><div className="stat-label">On Duty</div></div>
+          <div className="stat-card"><div className="stat-value" style={{color:data.incidents.length>0?'var(--danger)':'var(--text)'}}>{data.incidents.length}</div><div className="stat-label">Incidents</div></div>
+          <div className="stat-card"><div className="stat-value" style={{color:data.pendingTasks>0?'var(--warning)':'var(--text)'}}>{data.pendingTasks}</div><div className="stat-label">Tasks Due</div></div>
+          <div className="stat-card"><div className="stat-value">{data.totalOfficers}</div><div className="stat-label">Officers</div></div>
+        </div>
+
+        {/* Recent activity + quick actions */}
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1.25rem'}}>
           <div className="card">
-            <div className="section-header">
-              <div className="section-title">Recent Log Entries</div>
-              <Link to="/logs" style={{fontSize:'0.8125rem',color:'var(--blue)',textDecoration:'none'}}>View all</Link>
+            <div className="section-header" style={{marginBottom:'0.75rem'}}>
+              <div className="section-title">Recent Activity</div>
+              <Link to="/logs" style={{fontSize:'0.8125rem',color:'var(--blue)',textDecoration:'none'}}>All →</Link>
             </div>
-            {recentLogs.length === 0 ? (
-              <div className="empty-state"><p>No logs yet</p></div>
-            ) : (
-              <div>
-                {recentLogs.map(log => <ManagerLogPreview key={log.id} log={log} />)}
-              </div>
+            {data.recentLogs.length === 0 ? <div className="empty-state"><p>No logs yet</p></div> : (
+              <div>{data.recentLogs.map(log => <ManagerLogPreview key={log.id} log={log} />)}</div>
             )}
           </div>
-
           <div className="card">
-            <div className="section-title" style={{marginBottom:'1rem'}}>Quick Actions</div>
-            <div style={{display:'flex',flexDirection:'column',gap:'0.625rem'}}>
-              <Link to="/tasks" className="btn btn-secondary" style={{justifyContent:'flex-start',gap:'0.5rem'}}>
-                <PlusIcon style={{width:'1rem',height:'1rem'}} /> Assign Task
-              </Link>
-              <Link to="/logs" className="btn btn-secondary" style={{justifyContent:'flex-start',gap:'0.5rem'}}>
-                <EyeIcon style={{width:'1rem',height:'1rem'}} /> Review Logs
-              </Link>
-              <Link to="/sites" className="btn btn-secondary" style={{justifyContent:'flex-start',gap:'0.5rem'}}>
-                <BuildingOfficeIcon style={{width:'1rem',height:'1rem'}} /> Manage Sites
-              </Link>
-              <Link to="/reports" className="btn btn-secondary" style={{justifyContent:'flex-start',gap:'0.5rem'}}>
-                <ChartBarIcon style={{width:'1rem',height:'1rem'}} /> Reports
-              </Link>
+            <div className="section-title" style={{marginBottom:'0.75rem'}}>Quick Actions</div>
+            <div style={{display:'flex',flexDirection:'column',gap:'0.5rem'}}>
+              <Link to="/tasks" className="btn btn-secondary" style={{justifyContent:'flex-start',gap:'0.5rem'}}><PlusIcon style={{width:'1rem',height:'1rem'}} /> Assign Task</Link>
+              <Link to="/logs" className="btn btn-secondary" style={{justifyContent:'flex-start',gap:'0.5rem'}}><EyeIcon style={{width:'1rem',height:'1rem'}} /> Review Logs</Link>
+              <Link to="/on-duty" className="btn btn-secondary" style={{justifyContent:'flex-start',gap:'0.5rem'}}><UsersIcon style={{width:'1rem',height:'1rem'}} /> Officers On Duty</Link>
+              <Link to="/sites" className="btn btn-secondary" style={{justifyContent:'flex-start',gap:'0.5rem'}}><BuildingOfficeIcon style={{width:'1rem',height:'1rem'}} /> Sites & Playbooks</Link>
+              <Link to="/reports" className="btn btn-secondary" style={{justifyContent:'flex-start',gap:'0.5rem'}}><ChartBarIcon style={{width:'1rem',height:'1rem'}} /> Reports</Link>
             </div>
           </div>
         </div>
