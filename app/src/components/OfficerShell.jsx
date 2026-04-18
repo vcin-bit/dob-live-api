@@ -51,11 +51,11 @@ function OfficerApp({ user }) {
   }
 
   async function endShift() {
-    if (!activeShift || !window.confirm('End your shift?')) return;
+    if (!activeShift) return;
     try {
       await api.shifts.checkout(activeShift.id);
       setActiveShift(null);
-    } catch (err) { alert(err.message); }
+    } catch (err) { console.error(err.message); }
   }
 
   // Fetch officer data
