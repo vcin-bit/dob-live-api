@@ -85,15 +85,18 @@ router.get('/sessions/active', authenticate, async (req, res, next) => {
     const { site_id } = req.query;
     const { data } = await supabase
       .from('patrol_sessions')
-      .select('*, checkpoints:patrol_checkpoints(*)')
+      .select('*')
       .eq('officer_id', req.user.id)
       .eq('status', 'ACTIVE')
       .eq('site_id', site_id)
-      .order('created_at', { ascending: false })
+      .order('started_at', { ascending: false })
       .limit(1)
       .maybeSingle();
-    res.json({ data });
-  } catch (err) { next(err); }
+    res.json({ data: data || null });
+  } catch (err) {
+    // Return null rather than crashing - patrol screen should still load
+    res.json({ data: null });
+  }
 });
 
 router.post('/sessions/start', authenticate, async (req, res, next) => {

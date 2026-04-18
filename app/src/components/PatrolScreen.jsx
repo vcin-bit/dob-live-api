@@ -118,20 +118,20 @@ export default function PatrolScreen({ user, site, shift }) {
     async function load() {
       setLoading(true);
       try {
-        const [routesRes, activeRes] = await Promise.all([
+        const [routesRes, activeRes] = await Promise.allSettled([
           api.patrols.getRoutes(site.id),
           api.patrols.activeSession(site.id),
         ]);
 
-        // Restore active session if one exists
-        if (activeRes.data) {
-          setSession(activeRes.data);
+        // Restore active session if one exists (don't crash if this fails)
+        if (activeRes.status === 'fulfilled' && activeRes.value?.data) {
+          setSession(activeRes.value.data);
           setPatrolStarted(true);
-          const completedIds = (activeRes.data.checkpoints || []).map(c => c.checkpoint_id).filter(Boolean);
-          setCompletedCps(completedIds);
         }
 
-        const routes = routesRes.data || [];
+        const routesData = routesRes.status === 'fulfilled' ? routesRes.value : null;
+
+        const routes = routesData?.data || [];
         if (routes.length > 0) {
           const r = routes[0];
           setRoute(r);
