@@ -225,7 +225,7 @@ export default function PatrolScreen({ user, site, shift }) {
         <div>
           <div style={{fontSize:'13px',fontWeight:600,color:'#fff'}}>{site?.name || 'Patrol'}</div>
           <div style={{fontSize:'10px',color:'rgba(255,255,255,0.35)',marginTop:'1px'}}>
-            {route ? route.name : 'No route set'}
+            {route ? route.name : 'Free patrol — no fixed route'}
             {patrolStarted && <span style={{color:'#4ade80'}}> · ACTIVE</span>}
           </div>
         </div>
@@ -364,7 +364,7 @@ export default function PatrolScreen({ user, site, shift }) {
               </>
             ) : !loading && (
               <div style={{textAlign:'center',padding:'2rem',color:'rgba(255,255,255,0.25)',fontSize:'13px'}}>
-                {isRoutePlanner ? 'Tap "Plan Route" to create a patrol route' : 'No patrol route configured for this site'}
+                {isRoutePlanner ? 'Tap "Set Up / Edit Patrol Route" above to add checkpoints' : 'No fixed route — patrol freely and log any observations or incidents'}
               </div>
             )}
           </div>
