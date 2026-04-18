@@ -79,6 +79,23 @@ router.delete('/routes/:id', authenticate, requireRole('SUPER_ADMIN','COMPANY','
 // ── Patrol sessions ────────────────────────────────────────────────────────────
 
 // POST /api/patrols/sessions/start
+// GET /api/patrols/sessions/active — get officer's current active session
+router.get('/sessions/active', authenticate, async (req, res, next) => {
+  try {
+    const { site_id } = req.query;
+    const { data } = await supabase
+      .from('patrol_sessions')
+      .select('*, checkpoints:patrol_checkpoints(*)')
+      .eq('officer_id', req.user.id)
+      .eq('status', 'ACTIVE')
+      .eq('site_id', site_id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    res.json({ data });
+  } catch (err) { next(err); }
+});
+
 router.post('/sessions/start', authenticate, async (req, res, next) => {
   try {
     const { site_id, route_id } = req.body;

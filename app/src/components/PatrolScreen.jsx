@@ -112,14 +112,26 @@ export default function PatrolScreen({ user, site, shift }) {
     }, err => console.log('GPS error:', err.message), { enableHighAccuracy: true, maximumAge: 5000 });
   }
 
-  // Load route for site
+  // Load route for site AND check for existing active patrol session
   useEffect(() => {
     if (!site?.id) return;
     async function load() {
       setLoading(true);
       try {
-        const res = await api.patrols.getRoutes(site.id);
-        const routes = res.data || [];
+        const [routesRes, activeRes] = await Promise.all([
+          api.patrols.getRoutes(site.id),
+          api.patrols.activeSession(site.id),
+        ]);
+
+        // Restore active session if one exists
+        if (activeRes.data) {
+          setSession(activeRes.data);
+          setPatrolStarted(true);
+          const completedIds = (activeRes.data.checkpoints || []).map(c => c.checkpoint_id).filter(Boolean);
+          setCompletedCps(completedIds);
+        }
+
+        const routes = routesRes.data || [];
         if (routes.length > 0) {
           const r = routes[0];
           setRoute(r);

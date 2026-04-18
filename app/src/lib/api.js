@@ -205,6 +205,7 @@ export const api = {
     startSession:  (siteId, routeId) => request('/api/patrols/sessions/start', { method:'POST', body: JSON.stringify({ site_id: siteId, route_id: routeId }) }),
     gps:           (sessionId, lat, lng) => request(`/api/patrols/sessions/${sessionId}/gps`, { method:'PATCH', body: JSON.stringify({ lat, lng }) }),
     checkpoint:    (sessionId, checkpointId, name, lat, lng) => request(`/api/patrols/sessions/${sessionId}/checkpoint`, { method:'PATCH', body: JSON.stringify({ checkpoint_id: checkpointId, checkpoint_name: name, lat, lng }) }),
+    activeSession:  (siteId) => request(`/api/patrols/sessions/active?site_id=${siteId}`),
     endSession:    (sessionId) => request(`/api/patrols/sessions/${sessionId}/end`, { method:'POST' }),
   },
   patterns: {
