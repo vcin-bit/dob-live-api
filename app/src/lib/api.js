@@ -64,6 +64,7 @@ export const api = {
   // Users
   users: {
     me: () => request('/api/users/me?_=' + Date.now()),
+    updateMe: (data) => request('/api/users/me', { method: 'PATCH', body: JSON.stringify(data) }),
     list:   (params = {}) => request(`/api/users?${new URLSearchParams(params)}`),
     delete: (id) => request(`/api/users/${id}`, { method: 'DELETE' }),
     get: (id) => request(`/api/users/${id}`),

@@ -76,12 +76,11 @@ function OfficerPoliciesScreen({ user }) {
 function OfficerNavigation({ onSignOut }) {
   const location = useLocation();
   const nav = [
-    { to: '/',             icon: HomeIcon,                   label: 'Home' },
-    { to: '/log',          icon: PlusIcon,                   label: 'Log' },
-    { to: '/logs',         icon: ClipboardDocumentListIcon,  label: 'History' },
-    { to: '/tasks',        icon: ClipboardDocumentListIcon,  label: 'Tasks' },
-    { to: '/patrol',       icon: MapPinIcon,                 label: 'Patrol' },
-    { to: '/instructions', icon: DocumentTextIcon,           label: 'Site Info' },
+    { to: '/',        icon: HomeIcon,                   label: 'Home' },
+    { to: '/logs',    icon: ClipboardDocumentListIcon,  label: 'History' },
+    { to: '/tasks',   icon: ClipboardDocumentListIcon,  label: 'Tasks' },
+    { to: '/patrol',  icon: MapPinIcon,                 label: 'Patrol' },
+    { to: '/profile', icon: UserGroupIcon,              label: 'Profile' },
   ];
   return (
     <nav className="officer-nav">
@@ -96,7 +95,7 @@ function OfficerNavigation({ onSignOut }) {
         </Link>
       ))}
       <button
-        onClick={() => { if (window.confirm('Sign out of DOB Live?')) onSignOut?.(); }}
+        onClick={() => { if (window.confirm('Sign out of DOB Live?\n\nPlease ensure your handover is complete before signing out.')) onSignOut?.(); }}
         style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'0.25rem',padding:'0.5rem 0.375rem',background:'none',border:'none',cursor:'pointer',color:'rgba(255,90,90,0.8)',fontSize:'0.625rem',fontWeight:600,minWidth:0,flex:'0 0 auto'}}
       >
         <ArrowRightOnRectangleIcon style={{width:'1.25rem',height:'1.25rem'}} />

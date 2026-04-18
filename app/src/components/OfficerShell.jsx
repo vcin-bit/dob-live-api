@@ -6,6 +6,7 @@ import { LOG_TYPES, LOG_TYPE_CONFIG, formatDateTime, getRelativeTime } from '../
 import { LogEntryScreen, LogHistoryScreen } from './OfficerLog';
 import { TasksScreen } from './OfficerTasks';
 import { OfficerInstructionsScreen, OfficerPoliciesScreen, OfficerNavigation } from './OfficerInfo';
+import OfficerProfile from './OfficerProfile';
 import PatrolScreen from './PatrolScreen';
 import { HandoverScreen } from './HandoverScreen';
 import {
@@ -135,6 +136,7 @@ function OfficerApp({ user }) {
         <Route path="/instructions" element={<OfficerInstructionsScreen user={user} site={selectedSite} />} />
         <Route path="/patrol"   element={<PatrolScreen user={user} site={selectedSite} shift={activeShift} />} />
         <Route path="/handover" element={<HandoverScreen user={user} site={selectedSite} shift={activeShift} onShiftEnded={() => { setActiveShift(null); }} />} />
+          <Route path="/profile" element={<OfficerProfile user={user} />} />
         <Route path="/policies" element={<OfficerPoliciesScreen user={user} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
@@ -310,8 +312,8 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
           <div style={{fontSize:'0.6875rem',color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.06em',marginTop:'0.125rem'}}>Logs Today</div>
         </div>
         <div className="officer-card" style={{textAlign:'center'}}>
-          <div style={{fontSize:'1.75rem',fontWeight:700,color: shift ? '#4ade80' : 'rgba(255,255,255,0.3)'}}>{shift ? 'ON' : 'OFF'}</div>
-          <div style={{fontSize:'0.6875rem',color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.06em',marginTop:'0.125rem'}}>Shift Status</div>
+          <div style={{fontSize:'1.75rem',fontWeight:700,color:'#fff'}}>{tasks.length}</div>
+          <div style={{fontSize:'0.6875rem',color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.06em',marginTop:'0.125rem'}}>Tasks Due</div>
         </div>
       </div>
 

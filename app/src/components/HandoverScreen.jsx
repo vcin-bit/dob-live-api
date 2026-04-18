@@ -126,21 +126,40 @@ function HandoverScreen({ user, site, shift, onShiftEnded }) {
         />
       </div>
 
-      {/* Recent logs preview */}
+      {/* Incidents — highlighted prominently for handover */}
+      {recentLogs.filter(l => ['INCIDENT','ALARM','FIRE_ALARM','EMERGENCY'].includes(l.log_type)).length > 0 && (
+        <div style={{marginBottom:'1.25rem',padding:'12px',background:'rgba(239,68,68,0.07)',border:'1.5px solid rgba(239,68,68,0.2)',borderRadius:'10px'}}>
+          <div style={{fontSize:'0.6875rem',fontWeight:700,color:'rgba(239,68,68,0.7)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'8px'}}>
+            ⚠ Incidents This Shift
+          </div>
+          {recentLogs.filter(l => ['INCIDENT','ALARM','FIRE_ALARM','EMERGENCY'].includes(l.log_type)).map(log => (
+            <div key={log.id} style={{padding:'8px 0',borderBottom:'1px solid rgba(239,68,68,0.1)'}}>
+              <div style={{fontSize:'13px',fontWeight:600,color:'#ef4444'}}>{log.title || log.log_type}</div>
+              {log.description && <div style={{fontSize:'12px',color:'rgba(255,255,255,0.55)',marginTop:'2px',lineHeight:1.4}}>{log.description}</div>}
+              <div style={{fontSize:'11px',color:'rgba(255,255,255,0.3)',marginTop:'2px'}}>
+                {new Date(log.occurred_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* All logs this shift */}
       {recentLogs.length > 0 && (
         <div style={{marginBottom:'1.25rem'}}>
           <div style={{fontSize:'0.6875rem',fontWeight:600,color:'rgba(255,255,255,0.35)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.5rem'}}>
-            This Shift's Logs ({recentLogs.length})
+            All Logs This Shift ({recentLogs.length})
           </div>
           <div style={{maxHeight:'180px',overflowY:'auto',display:'flex',flexDirection:'column',gap:'0.375rem'}}>
-            {recentLogs.slice(0,10).map(log => {
-              const typeMap = {PATROL:'PAT',INCIDENT:'INC',ALARM:'ALM',ACCESS:'ACC',VISITOR:'VIS',HANDOVER:'HND',MAINTENANCE:'MNT',VEHICLE:'VEH',GENERAL:'GEN'};
+            {recentLogs.slice(0,20).map(log => {
+              const typeMap = {PATROL:'PAT',INCIDENT:'INC',ALARM:'ALM',ACCESS:'ACC',VISITOR:'VIS',HANDOVER:'HND',MAINTENANCE:'MNT',VEHICLE:'VEH',GENERAL:'GEN',FIRE_ALARM:'FIR',EMERGENCY:'SOS'};
               const code = typeMap[log.log_type] || 'LOG';
+              const isIncident = ['INCIDENT','ALARM','FIRE_ALARM','EMERGENCY'].includes(log.log_type);
               return (
                 <div key={log.id} style={{display:'flex',gap:'0.5rem',alignItems:'center',padding:'0.375rem 0',borderBottom:'1px solid rgba(255,255,255,0.05)'}}>
-                  <div style={{width:'1.75rem',height:'1.75rem',background:'rgba(26,82,168,0.3)',borderRadius:'4px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.5rem',fontWeight:700,color:'#7aabff',flexShrink:0}}>{code}</div>
+                  <div style={{width:'1.75rem',height:'1.75rem',background:isIncident?'rgba(239,68,68,0.2)':'rgba(26,82,168,0.3)',borderRadius:'4px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.5rem',fontWeight:700,color:isIncident?'#ef4444':'#7aabff',flexShrink:0}}>{code}</div>
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:'0.8125rem',color:'rgba(255,255,255,0.7)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{log.title||log.log_type}</div>
+                    <div style={{fontSize:'0.8125rem',color:isIncident?'rgba(255,150,150,0.9)':'rgba(255,255,255,0.7)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{log.title||log.log_type}</div>
                     <div style={{fontSize:'0.6875rem',color:'rgba(255,255,255,0.3)'}}>
                       {new Date(log.occurred_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}
                     </div>
@@ -153,6 +172,27 @@ function HandoverScreen({ user, site, shift, onShiftEnded }) {
       )}
 
       {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
+
+      {/* Share incidents for briefing */}
+      {recentLogs.filter(l => ['INCIDENT','ALARM','FIRE_ALARM','EMERGENCY'].includes(l.log_type)).length > 0 && (
+        <button
+          onClick={() => {
+            const incidents = recentLogs.filter(l => ['INCIDENT','ALARM','FIRE_ALARM','EMERGENCY'].includes(l.log_type));
+            const text = `DOB Live — ${site?.name || 'Site'} Incident Summary\n` +
+              `${new Date().toLocaleDateString('en-GB')}\n\n` +
+              incidents.map(l => `• ${l.title || l.log_type} — ${new Date(l.occurred_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}\n  ${l.description||''}`).join('\n\n');
+            if (navigator.share) {
+              navigator.share({ title: 'Incident Summary', text });
+            } else {
+              navigator.clipboard?.writeText(text);
+              alert('Incident summary copied to clipboard');
+            }
+          }}
+          style={{width:'100%',padding:'0.875rem',background:'rgba(239,68,68,0.1)',border:'1.5px solid rgba(239,68,68,0.25)',borderRadius:'10px',color:'#ef4444',fontSize:'0.875rem',fontWeight:700,cursor:'pointer',marginBottom:'0.75rem'}}
+        >
+          ⚠ Share Incident Summary
+        </button>
+      )}
 
       <button
         onClick={submit}

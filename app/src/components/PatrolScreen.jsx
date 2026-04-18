@@ -166,15 +166,18 @@ export default function PatrolScreen({ user, site, shift }) {
     } catch (e) { console.error(e); }
   }
 
+  const [confirmEnd, setConfirmEnd] = useState(false);
+
   async function endPatrol() {
     if (!session) return;
-    if (!window.confirm('End this patrol?')) return;
+    if (!confirmEnd) { setConfirmEnd(true); return; }
     try {
       await api.patrols.endSession(session.id);
       setPatrolStarted(false);
       setSession(null);
+      setConfirmEnd(false);
       navigate('/');
-    } catch (e) { alert('Error ending patrol'); }
+    } catch (e) { alert('Error ending patrol: ' + e.message); }
   }
 
   // Planner mode
@@ -385,8 +388,8 @@ export default function PatrolScreen({ user, site, shift }) {
                 ⚠ LOG INCIDENT
               </button>
               <button onClick={endPatrol}
-                style={{flex:1,padding:'13px',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'10px',color:'rgba(255,255,255,0.45)',fontSize:'12px',fontWeight:600,cursor:'pointer'}}>
-                END
+                style={{flex:1,padding:'13px',background:confirmEnd?'rgba(239,68,68,0.15)':'rgba(255,255,255,0.05)',border:`1.5px solid ${confirmEnd?'rgba(239,68,68,0.5)':'rgba(255,255,255,0.12)'}`,borderRadius:'10px',color:confirmEnd?'#ef4444':'rgba(255,255,255,0.45)',fontSize:'12px',fontWeight:700,cursor:'pointer'}}>
+                {confirmEnd ? 'CONFIRM END' : 'END PATROL'}
               </button>
             </div>
           </div>

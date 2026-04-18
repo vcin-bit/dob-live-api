@@ -241,33 +241,17 @@ function LogEntryScreen({ user, site, shift }) {
 
       {/* Description */}
       <div style={{marginBottom:'14px'}}>
-        <div style={S.label}>WHAT HAPPENED — describe in your own words</div>
+        <div style={S.label}>WHAT HAPPENED</div>
         <textarea value={form.description} onChange={e=>f('description',e.target.value)} rows={4}
           placeholder="e.g. Saw a man trying car door handles in the car park..."
           style={S.input} />
       </div>
 
-      {/* Location on site */}
+      {/* Location + people + actions — single combined notes field */}
       <div style={{marginBottom:'14px'}}>
-        <div style={S.label}>LOCATION ON SITE</div>
-        <input value={form.location_detail} onChange={e=>f('location_detail',e.target.value)}
-          placeholder="e.g. Car park north, Unit 3 rear door..."
-          style={S.input} />
-      </div>
-
-      {/* People involved */}
-      <div style={{marginBottom:'14px'}}>
-        <div style={S.label}>PERSONS INVOLVED (if any)</div>
-        <input value={form.people_involved} onChange={e=>f('people_involved',e.target.value)}
-          placeholder="e.g. Male, 30s, dark jacket, blue jeans..."
-          style={S.input} />
-      </div>
-
-      {/* Actions taken */}
-      <div style={{marginBottom:'14px'}}>
-        <div style={S.label}>ACTIONS TAKEN</div>
-        <input value={form.actions_taken} onChange={e=>f('actions_taken',e.target.value)}
-          placeholder="e.g. Challenged, asked to leave, CCTV reviewed..."
+        <div style={S.label}>ADDITIONAL NOTES (location, persons involved, actions taken)</div>
+        <textarea value={form.actions_taken} onChange={e=>f('actions_taken',e.target.value)} rows={2}
+          placeholder="e.g. Car park north — male 30s challenged and asked to leave..."
           style={S.input} />
       </div>
 
