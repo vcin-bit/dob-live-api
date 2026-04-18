@@ -193,3 +193,116 @@ print('OK')
 });
 
 module.exports = router;
+
+// POST /api/report/handover — AI generates a full handover brief from shift logs
+router.post('/handover', authenticate, async (req, res, next) => {
+  try {
+    const { shift_id, site_id, checklist_items } = req.body;
+
+    // Get all logs from this shift
+    const { data: logs } = await supabase
+      .from('occurrence_logs')
+      .select('log_type, title, description, occurred_at, type_data')
+      .eq('shift_id', shift_id)
+      .eq('company_id', req.user.company_id)
+      .order('occurred_at', { ascending: true });
+
+    // Get site name
+    const { data: site } = await supabase
+      .from('sites')
+      .select('name')
+      .eq('id', site_id)
+      .single();
+
+    const officerName = `${req.user.first_name} ${req.user.last_name}`;
+    const siteName = site?.name || 'the site';
+    const date = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+    const logsSummary = (logs || []).map(l =>
+      `- [${l.log_type}] ${l.title || l.log_type} at ${new Date(l.occurred_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}: ${l.description || 'No description'}`
+    ).join('\n');
+
+    const incidents = (logs || []).filter(l => ['INCIDENT','ALARM','FIRE_ALARM','EMERGENCY'].includes(l.log_type));
+
+    const prompt = `You are writing a professional security officer shift handover brief for ${siteName} on ${date}. The outgoing officer is ${officerName}.
+
+Here are all logs recorded during the shift:
+${logsSummary || 'No logs recorded this shift.'}
+
+${checklist_items?.length ? `The outgoing officer has flagged these specific items for the incoming officer:\n${checklist_items.map(i => `- ${i}`).join('\n')}` : ''}
+
+Write a professional handover brief in British English with these sections:
+1. SHIFT OVERVIEW — brief summary of the shift (2-3 sentences)
+2. INCIDENTS & NOTABLE EVENTS — list any incidents, alarms, or significant events with times. If none, state "No incidents recorded."
+3. SITE STATUS — current condition of the site, anything the incoming officer needs to know about
+4. OUTSTANDING ACTIONS — anything that needs following up or attention during the next shift
+5. KEYS & EQUIPMENT — note anything relevant (if no specific info logged, state "Standard equipment as per site assignment")
+
+Keep it factual, professional, and concise. This will be read and acknowledged by the incoming officer. Output ONLY the brief, no preamble.`;
+
+    const message = await anthropic.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 600,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const brief = message.content[0].text.trim();
+
+    // Save to handover_briefs
+    const { data: handover, error } = await supabase
+      .from('handover_briefs')
+      .insert({
+        company_id: req.user.company_id,
+        site_id,
+        shift_id,
+        authored_by: req.user.id,
+        content: brief,
+        checklist: checklist_items || [],
+        ai_generated: true,
+        status: 'PENDING',
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json({ brief, handover_id: handover.id });
+  } catch (err) { next(err); }
+});
+
+// POST /api/report/handover/:id/acknowledge — incoming officer acknowledges handover
+router.post('/handover/:id/acknowledge', authenticate, async (req, res, next) => {
+  try {
+    const { data, error } = await supabase
+      .from('handover_briefs')
+      .update({
+        acknowledged_by: req.user.id,
+        acknowledged_at: new Date().toISOString(),
+        status: 'ACKNOWLEDGED',
+      })
+      .eq('id', req.params.id)
+      .eq('company_id', req.user.company_id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json({ data });
+  } catch (err) { next(err); }
+});
+
+// GET /api/report/handover/pending — get pending handover for current site
+router.get('/handover/pending', authenticate, async (req, res, next) => {
+  try {
+    const { site_id } = req.query;
+    const { data } = await supabase
+      .from('handover_briefs')
+      .select('*, author:authored_by(first_name, last_name)')
+      .eq('company_id', req.user.company_id)
+      .eq('site_id', site_id)
+      .eq('status', 'PENDING')
+      .neq('authored_by', req.user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    res.json({ data });
+  } catch (err) { next(err); }
+});

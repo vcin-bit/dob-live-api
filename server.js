@@ -81,6 +81,7 @@ app.use('/api/alerts',       require('./routes/alerts'));
 app.use('/api/portal',       require('./routes/portal'));
 app.use('/api/invite',       require('./routes/invite'));
 app.use('/api/report',       require('./routes/report'));
+app.use('/api/playbooks',    require('./routes/playbooks'));
 app.use('/api/contracts',    require('./routes/contracts'));
 
 // ── 404 handler ──────────────────────────────────────────────

@@ -238,9 +238,20 @@ export const api = {
     },
   },
 
+  playbooks: {
+    get:         (siteId) => request(`/api/playbooks/${siteId}`),
+    savePatrol:  (siteId, data) => request(`/api/playbooks/${siteId}`, { method:'PUT', body:JSON.stringify(data) }),
+    addTask:     (siteId, data) => request(`/api/playbooks/${siteId}/tasks`, { method:'POST', body:JSON.stringify(data) }),
+    deleteTask:  (siteId, taskId) => request(`/api/playbooks/${siteId}/tasks/${taskId}`, { method:'DELETE' }),
+    addCheck:    (siteId, data) => request(`/api/playbooks/${siteId}/checks`, { method:'POST', body:JSON.stringify(data) }),
+    deleteCheck: (siteId, checkId) => request(`/api/playbooks/${siteId}/checks/${checkId}`, { method:'DELETE' }),
+  },
   report: {
     generate: (data) => request('/api/report/generate', { method: 'POST', body: JSON.stringify(data) }),
     pdf:      (logId) => request('/api/report/pdf', { method: 'POST', body: JSON.stringify({ log_id: logId }) }),
+    generateHandover: (data) => request('/api/report/handover', { method: 'POST', body: JSON.stringify(data) }),
+    acknowledgeHandover: (id) => request(`/api/report/handover/${id}/acknowledge`, { method: 'POST' }),
+    pendingHandover: (siteId) => request(`/api/report/handover/pending?site_id=${siteId}`),
   },
   invite: {
     send:   (data)   => request('/api/invite', { method: 'POST', body: JSON.stringify(data) }),

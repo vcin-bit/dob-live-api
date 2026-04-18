@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation, useParams, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import { api, ApiError } from '../lib/api';
+import SitePlaybook from './SitePlaybook';
 import { PortalSettingsModal } from './Portal';
 import { LOG_TYPES, LOG_TYPE_CONFIG, formatDateTime, getRelativeTime } from '../lib/constants';
 import {
@@ -762,6 +763,7 @@ function SiteDetail({ user }) {
   const [recentLogs, setRecentLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('info');
 
   useEffect(() => {
     if (!id) return;
@@ -810,7 +812,31 @@ function SiteDetail({ user }) {
           {site.active !== false ? 'Active' : 'Inactive'}
         </span>
       </div>
+      {/* Tab bar */}
+      <div style={{display:'flex',gap:0,borderBottom:'1px solid var(--border)',padding:'0 1.5rem',background:'var(--surface)'}}>
+        {[{key:'info',label:'Site Info'},{key:'logs',label:'Recent Logs'},{key:'playbook',label:'Virtual Supervisor'}].map(t => (
+          <button key={t.key} onClick={() => setActiveTab(t.key)}
+            style={{padding:'0.75rem 1rem',background:'none',border:'none',borderBottom:`2px solid ${activeTab===t.key?'var(--blue)':'transparent'}`,color:activeTab===t.key?'var(--blue)':'var(--text-2)',fontSize:'0.875rem',fontWeight:600,cursor:'pointer',marginBottom:'-1px',whiteSpace:'nowrap'}}>
+            {t.label}
+          </button>
+        ))}
+      </div>
       <div className="page-content">
+        {activeTab === 'playbook' && <SitePlaybook siteId={id} />}
+        {activeTab === 'logs' && (
+          <div className="card">
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.875rem'}}>
+              <div className="section-title">Recent Logs</div>
+              <span style={{fontSize:'0.75rem',color:'var(--text-3)'}}>Last 10</span>
+            </div>
+            {recentLogs.length === 0 ? (
+              <div className="empty-state"><p>No logs recorded for this site</p></div>
+            ) : (
+              recentLogs.map(log => <ManagerLogCard key={log.id} log={log} />)
+            )}
+          </div>
+        )}
+        {activeTab === 'info' && <div>
         <div className="card" style={{marginBottom:'1.25rem'}}>
           <div className="section-title" style={{marginBottom:'0.875rem'}}>Site Information</div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.875rem'}}>
@@ -835,17 +861,7 @@ function SiteDetail({ user }) {
           </div>
         </div>
 
-        <div className="card">
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.875rem'}}>
-            <div className="section-title">Recent Logs</div>
-            <span style={{fontSize:'0.75rem',color:'var(--text-3)'}}>Last 10</span>
-          </div>
-          {recentLogs.length === 0 ? (
-            <div className="empty-state"><p>No logs recorded for this site</p></div>
-          ) : (
-            recentLogs.map(log => <ManagerLogCard key={log.id} log={log} />)
-          )}
-        </div>
+        </div>}
       </div>
     </div>
   );

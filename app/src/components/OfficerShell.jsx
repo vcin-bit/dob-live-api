@@ -7,6 +7,7 @@ import { LogEntryScreen, LogHistoryScreen } from './OfficerLog';
 import { TasksScreen } from './OfficerTasks';
 import { OfficerInstructionsScreen, OfficerPoliciesScreen, OfficerNavigation } from './OfficerInfo';
 import OfficerProfile from './OfficerProfile';
+import PlaybookAlerts from './PlaybookAlerts';
 import PatrolScreen from './PatrolScreen';
 import { HandoverScreen } from './HandoverScreen';
 import {
@@ -20,6 +21,7 @@ function OfficerApp({ user }) {
   const location = useLocation();
   const { signOut } = useAuth();
   const [activeShift, setActiveShift] = useState(null);
+  const [lastPatrolTime, setLastPatrolTime] = useState(null);
   const [selectedSite, setSelectedSite] = useState(null);
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -93,6 +95,7 @@ function OfficerApp({ user }) {
 
   return (
     <div className="officer-shell">
+      <PlaybookAlerts user={user} site={selectedSite} shift={activeShift} lastPatrolTime={lastPatrolTime} onTaskDismissed={() => setLastPatrolTime(new Date().toISOString())} />
       <OfficerHeader user={user} selectedSite={selectedSite} activeShift={activeShift} />
       <div className="officer-content">
       
