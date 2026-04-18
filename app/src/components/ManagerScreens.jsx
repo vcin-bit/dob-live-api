@@ -277,7 +277,7 @@ function SiteManagement({ user }) {
             <tbody>
               {sites.map(site => (
                 <tr key={site.id}>
-                  <td style={{fontWeight:500}}>{site.name}</td>
+                  <td style={{fontWeight:500}}><Link to={`/sites/${site.id}`} style={{color:'var(--text)',textDecoration:'none',fontWeight:600}}>{site.name}</Link></td>
                   <td style={{color:'var(--text-2)'}}>{site.address || '—'}</td>
                   <td>
                     <span className={`badge ${site.active !== false ? 'badge-success' : 'badge-neutral'}`}>
@@ -285,6 +285,7 @@ function SiteManagement({ user }) {
                     </span>
                   </td>
                   <td style={{textAlign:'right',display:'flex',gap:'0.5rem',justifyContent:'flex-end'}}>
+                    <Link to={`/sites/${site.id}`} className="btn btn-ghost btn-sm" style={{color:"var(--blue)"}}>Configure</Link>
                     <button className="btn btn-ghost btn-sm" onClick={() => { setEditSite(site); setShowForm(true); }}>Edit</button>
                     <button className="btn btn-ghost btn-sm" onClick={() => setPortalSite(site)}>Portal</button>
                     <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={async () => {
