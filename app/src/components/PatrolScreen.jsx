@@ -365,7 +365,7 @@ export default function PatrolScreen({ user, site, shift }) {
                           <div style={{width:20,height:20,borderRadius:'50%',background:'rgba(74,222,128,0.2)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
                             <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3 5.5L8 1" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round"/></svg>
                           </div>
-                        ) : isCurrent ? (
+                        ) : canMark ? (
                           <div style={{width:20,height:20,borderRadius:'50%',background:'#fbbf24',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
                             <div style={{width:6,height:6,borderRadius:'50%',background:'#0b1222'}} />
                           </div>
@@ -375,7 +375,7 @@ export default function PatrolScreen({ user, site, shift }) {
                         <div style={{flex:1,minWidth:0}}>
                           <div style={{fontSize:'13px',fontWeight:canMark?600:400,color:done?'rgba(255,255,255,0.45)':canMark?'#fff':'rgba(255,255,255,0.5)'}}>{cp.name}</div>
                           {canMark && <div style={{fontSize:'10px',color:'rgba(251,191,36,0.5)',marginTop:'1px',fontWeight:600}}>TAP TO MARK REACHED</div>}
-                          {cp.instructions && !done && !isCurrent && <div style={{fontSize:'10px',color:'rgba(255,255,255,0.25)',marginTop:'1px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{cp.instructions}</div>}
+                          {cp.instructions && !done && !canMark && <div style={{fontSize:'10px',color:'rgba(255,255,255,0.25)',marginTop:'1px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{cp.instructions}</div>}
                         </div>
                         {done && completedCps[completedCps.indexOf(cp.id)] && (
                           <div style={{fontSize:'10px',color:'rgba(74,222,128,0.5)',flexShrink:0}}>✓</div>
