@@ -178,18 +178,26 @@ export default function PatrolScreen({ user, site, shift }) {
     } catch (e) { console.error(e); }
   }
 
-  const [confirmEnd, setConfirmEnd] = useState(false);
+  const [showEndConfirm, setShowEndConfirm] = useState(false);
 
   async function endPatrol() {
-    if (!session) return;
-    if (!confirmEnd) { setConfirmEnd(true); return; }
     try {
-      await api.patrols.endSession(session.id);
+      if (session?.id) {
+        await api.patrols.endSession(session.id);
+      }
       setPatrolStarted(false);
       setSession(null);
-      setConfirmEnd(false);
+      setShowEndConfirm(false);
+      setCompletedCps([]);
       navigate('/');
-    } catch (e) { alert('Error ending patrol: ' + e.message); }
+    } catch (e) {
+      // Even if API fails, reset local state so officer isn't stuck
+      setPatrolStarted(false);
+      setSession(null);
+      setShowEndConfirm(false);
+      setCompletedCps([]);
+      navigate('/');
+    }
   }
 
   // Planner mode
@@ -399,14 +407,36 @@ export default function PatrolScreen({ user, site, shift }) {
                 style={{flex:2,padding:'13px',background:'rgba(239,68,68,0.12)',border:'1.5px solid rgba(239,68,68,0.4)',borderRadius:'10px',color:'#ef4444',fontSize:'13px',fontWeight:700,cursor:'pointer'}}>
                 ⚠ LOG INCIDENT
               </button>
-              <button onClick={endPatrol}
-                style={{flex:1,padding:'13px',background:confirmEnd?'rgba(239,68,68,0.15)':'rgba(255,255,255,0.05)',border:`1.5px solid ${confirmEnd?'rgba(239,68,68,0.5)':'rgba(255,255,255,0.12)'}`,borderRadius:'10px',color:confirmEnd?'#ef4444':'rgba(255,255,255,0.45)',fontSize:'12px',fontWeight:700,cursor:'pointer'}}>
-                {confirmEnd ? 'CONFIRM END' : 'END PATROL'}
+              <button onClick={() => setShowEndConfirm(true)}
+                style={{flex:1,padding:'13px',background:'rgba(255,255,255,0.05)',border:'1.5px solid rgba(255,255,255,0.12)',borderRadius:'10px',color:'rgba(255,255,255,0.6)',fontSize:'12px',fontWeight:700,cursor:'pointer'}}>
+                END PATROL
               </button>
             </div>
           </div>
         )}
       </div>
+
+      {/* End patrol confirm */}
+      {showEndConfirm && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',zIndex:9999,display:'flex',alignItems:'flex-end',justifyContent:'center',padding:'1rem'}}>
+          <div style={{background:'#0f1929',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'16px',padding:'1.5rem',width:'100%',maxWidth:'360px',textAlign:'center'}}>
+            <div style={{fontSize:'15px',fontWeight:700,color:'#fff',marginBottom:'8px'}}>End Patrol?</div>
+            <div style={{fontSize:'13px',color:'rgba(255,255,255,0.45)',marginBottom:'20px',lineHeight:1.5}}>
+              This will end your current patrol session and return you to the home screen.
+            </div>
+            <div style={{display:'flex',gap:'8px'}}>
+              <button onClick={() => setShowEndConfirm(false)}
+                style={{flex:1,padding:'13px',background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'10px',color:'rgba(255,255,255,0.6)',fontSize:'14px',fontWeight:600,cursor:'pointer'}}>
+                Cancel
+              </button>
+              <button onClick={endPatrol}
+                style={{flex:1,padding:'13px',background:'rgba(239,68,68,0.15)',border:'1.5px solid rgba(239,68,68,0.4)',borderRadius:'10px',color:'#ef4444',fontSize:'14px',fontWeight:700,cursor:'pointer'}}>
+                End Patrol
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Report issue modal */}
       {showReport && (
