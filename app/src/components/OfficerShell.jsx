@@ -22,20 +22,31 @@ function OfficerApp({ user }) {
   const { signOut } = useAuth();
   const [activeShift, setActiveShift] = useState(null);
   const [lastPatrolTime, setLastPatrolTime] = useState(null);
+  const [showShiftModal, setShowShiftModal] = useState(false);
+  const [plannedEnd, setPlannedEnd] = useState('');
   const [selectedSite, setSelectedSite] = useState(null);
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(true);
 
   async function startShift() {
     if (!selectedSite) return;
+    if (!plannedEnd) { alert('Please enter your planned finish time.'); return; }
     try {
       let lat, lng;
       try {
         const pos = await new Promise((res,rej) => navigator.geolocation.getCurrentPosition(res,rej,{timeout:8000}));
         lat = pos.coords.latitude; lng = pos.coords.longitude;
       } catch {}
-      const r = await api.shifts.start({ site_id: selectedSite.id, lat, lng });
+      // Build planned end datetime (today or tomorrow if time is earlier than now)
+      const now = new Date();
+      const [h, m] = plannedEnd.split(':').map(Number);
+      const end = new Date(now);
+      end.setHours(h, m, 0, 0);
+      if (end <= now) end.setDate(end.getDate() + 1); // next day
+      const r = await api.shifts.start({ site_id: selectedSite.id, lat, lng, end_time: end.toISOString() });
       setActiveShift(r.data);
+      setShowShiftModal(false);
+      setPlannedEnd('');
     } catch (err) { alert(err.message); }
   }
 
@@ -145,6 +156,36 @@ function OfficerApp({ user }) {
       </Routes>
       </div>
       <OfficerNavigation onSignOut={signOut} />
+
+      {/* Shift start modal */}
+      {showShiftModal && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',zIndex:9998,display:'flex',alignItems:'flex-end',justifyContent:'center',padding:'1rem'}}>
+          <div style={{background:'#0f1929',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'16px',padding:'1.5rem',width:'100%',maxWidth:'360px'}}>
+            <div style={{fontSize:'16px',fontWeight:700,color:'#fff',marginBottom:'4px'}}>Start Shift</div>
+            <div style={{fontSize:'13px',color:'rgba(255,255,255,0.4)',marginBottom:'20px'}}>{selectedSite?.name}</div>
+            <div style={{marginBottom:'16px'}}>
+              <label style={{fontSize:'11px',fontWeight:600,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:'8px'}}>
+                Planned Finish Time
+              </label>
+              <input type="time" value={plannedEnd} onChange={e => setPlannedEnd(e.target.value)}
+                style={{width:'100%',background:'rgba(255,255,255,0.07)',border:'1.5px solid rgba(74,222,128,0.3)',borderRadius:'10px',padding:'14px',fontSize:'24px',color:'#fff',textAlign:'center',boxSizing:'border-box',fontFamily:'monospace'}} />
+              <div style={{fontSize:'11px',color:'rgba(255,255,255,0.3)',marginTop:'6px',textAlign:'center'}}>
+                You will be automatically signed out at this time
+              </div>
+            </div>
+            <div style={{display:'flex',gap:'8px'}}>
+              <button onClick={() => { setShowShiftModal(false); setPlannedEnd(''); }}
+                style={{flex:1,padding:'13px',background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'10px',color:'rgba(255,255,255,0.6)',fontSize:'14px',fontWeight:600,cursor:'pointer'}}>
+                Cancel
+              </button>
+              <button onClick={startShift} disabled={!plannedEnd}
+                style={{flex:2,padding:'13px',background:'rgba(74,222,128,0.15)',border:'1.5px solid rgba(74,222,128,0.4)',borderRadius:'10px',color:'#4ade80',fontSize:'14px',fontWeight:700,cursor:'pointer',opacity:plannedEnd?1:0.5}}>
+                Start Shift
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -268,7 +309,7 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
           </Link>
         </div>
       ) : (
-        <button onClick={onStartShift} style={{width:'100%',padding:'0.875rem',background:'rgba(74,222,128,0.12)',border:'1px solid rgba(74,222,128,0.2)',borderRadius:'10px',color:'#4ade80',fontSize:'0.9375rem',fontWeight:700,cursor:'pointer',marginBottom:'0.75rem'}}>
+        <button onClick={() => setShowShiftModal(true)} style={{width:'100%',padding:'0.875rem',background:'rgba(74,222,128,0.12)',border:'1px solid rgba(74,222,128,0.2)',borderRadius:'10px',color:'#4ade80',fontSize:'0.9375rem',fontWeight:700,cursor:'pointer',marginBottom:'0.75rem'}}>
           Start Shift
         </button>
       )}
