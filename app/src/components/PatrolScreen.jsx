@@ -353,14 +353,14 @@ export default function PatrolScreen({ user, site, shift }) {
                 <div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
                   {checkpoints.map((cp, i) => {
                     const done = completedCps.includes(cp.id);
-                    const isCurrent = patrolStarted && !done && cp.id === nextCp?.id;
+                    const canMark = patrolStarted && !done;
                     return (
-                      <div key={cp.id} onClick={() => isCurrent && markCheckpoint(cp)}
-                        style={{display:'flex',alignItems:'center',gap:'10px',padding:'9px 11px',
-                          background:done?'rgba(74,222,128,0.06)':isCurrent?'rgba(251,191,36,0.08)':'rgba(255,255,255,0.02)',
-                          border:`${isCurrent?'1.5':'1'}px solid ${done?'rgba(74,222,128,0.15)':isCurrent?'rgba(251,191,36,0.35)':'rgba(255,255,255,0.06)'}`,
-                          borderRadius:'9px',cursor:isCurrent?'pointer':'default',
-                          opacity:(!patrolStarted||done||isCurrent)?1:0.45}}>
+                      <div key={cp.id} onClick={() => canMark && markCheckpoint(cp)}
+                        style={{display:'flex',alignItems:'center',gap:'10px',padding:'12px 11px',
+                          background:done?'rgba(74,222,128,0.06)':canMark?'rgba(251,191,36,0.08)':'rgba(255,255,255,0.02)',
+                          border:`${canMark?'1.5':'1'}px solid ${done?'rgba(74,222,128,0.15)':canMark?'rgba(251,191,36,0.35)':'rgba(255,255,255,0.06)'}`,
+                          borderRadius:'9px',cursor:canMark?'pointer':'default',
+                          opacity:1}}>
                         {done ? (
                           <div style={{width:20,height:20,borderRadius:'50%',background:'rgba(74,222,128,0.2)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
                             <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3 5.5L8 1" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round"/></svg>
@@ -373,8 +373,8 @@ export default function PatrolScreen({ user, site, shift }) {
                           <div style={{width:20,height:20,borderRadius:'50%',border:'1.5px solid rgba(255,255,255,0.2)',flexShrink:0}} />
                         )}
                         <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontSize:'13px',fontWeight:isCurrent?600:400,color:done?'rgba(255,255,255,0.45)':isCurrent?'#fff':'rgba(255,255,255,0.5)'}}>{cp.name}</div>
-                          {isCurrent && <div style={{fontSize:'10px',color:'rgba(255,255,255,0.3)',marginTop:'1px'}}>Tap to mark reached</div>}
+                          <div style={{fontSize:'13px',fontWeight:canMark?600:400,color:done?'rgba(255,255,255,0.45)':canMark?'#fff':'rgba(255,255,255,0.5)'}}>{cp.name}</div>
+                          {canMark && <div style={{fontSize:'10px',color:'rgba(251,191,36,0.5)',marginTop:'1px',fontWeight:600}}>TAP TO MARK REACHED</div>}
                           {cp.instructions && !done && !isCurrent && <div style={{fontSize:'10px',color:'rgba(255,255,255,0.25)',marginTop:'1px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{cp.instructions}</div>}
                         </div>
                         {done && completedCps[completedCps.indexOf(cp.id)] && (
@@ -402,16 +402,24 @@ export default function PatrolScreen({ user, site, shift }) {
                 ✓ REACHED: {nextCp.name}
               </button>
             )}
-            <div style={{display:'flex',gap:'8px'}}>
-              <button onClick={() => setShowReport(true)}
-                style={{flex:2,padding:'13px',background:'rgba(239,68,68,0.12)',border:'1.5px solid rgba(239,68,68,0.4)',borderRadius:'10px',color:'#ef4444',fontSize:'13px',fontWeight:700,cursor:'pointer'}}>
-                ⚠ LOG INCIDENT
+            <div style={{display:'flex',gap:'8px',marginBottom:'8px'}}>
+              <button onClick={async () => {
+                const name = `Location ${new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}`;
+                try {
+                  await api.logs.create({ site_id: site.id, shift_id: null, log_type:'PATROL', title: name, description:`Officer location marked at ${name}`, occurred_at:new Date().toISOString(), latitude:currentPos?.lat, longitude:currentPos?.lng });
+                } catch(e) {}
+              }} style={{flex:1,padding:'13px',background:'rgba(59,130,246,0.12)',border:'1.5px solid rgba(59,130,246,0.35)',borderRadius:'10px',color:'#60a5fa',fontSize:'12px',fontWeight:700,cursor:'pointer'}}>
+                📍 MARK LOCATION
               </button>
-              <button onClick={() => setShowEndConfirm(true)}
-                style={{flex:1,padding:'13px',background:'rgba(255,255,255,0.05)',border:'1.5px solid rgba(255,255,255,0.12)',borderRadius:'10px',color:'rgba(255,255,255,0.6)',fontSize:'12px',fontWeight:700,cursor:'pointer'}}>
-                END PATROL
+              <button onClick={() => setShowReport(true)}
+                style={{flex:1,padding:'13px',background:'rgba(239,68,68,0.12)',border:'1.5px solid rgba(239,68,68,0.4)',borderRadius:'10px',color:'#ef4444',fontSize:'12px',fontWeight:700,cursor:'pointer'}}>
+                ⚠ INCIDENT
               </button>
             </div>
+            <button onClick={() => setShowEndConfirm(true)}
+              style={{width:'100%',padding:'12px',background:'rgba(255,255,255,0.05)',border:'1.5px solid rgba(255,255,255,0.12)',borderRadius:'10px',color:'rgba(255,255,255,0.6)',fontSize:'12px',fontWeight:700,cursor:'pointer'}}>
+              END PATROL
+            </button>
           </div>
         )}
       </div>
