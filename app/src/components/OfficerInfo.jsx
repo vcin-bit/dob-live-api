@@ -75,6 +75,8 @@ function OfficerPoliciesScreen({ user }) {
 
 function OfficerNavigation({ onSignOut }) {
   const location = useLocation();
+  const [confirmingSignOut, setConfirmingSignOut] = React.useState(false);
+
   const nav = [
     { to: '/',        icon: HomeIcon,                   label: 'Home' },
     { to: '/logs',    icon: ClipboardDocumentListIcon,  label: 'History' },
@@ -82,26 +84,48 @@ function OfficerNavigation({ onSignOut }) {
     { to: '/patrol',  icon: MapPinIcon,                 label: 'Patrol' },
     { to: '/profile', icon: UserGroupIcon,              label: 'Profile' },
   ];
+
   return (
-    <nav className="officer-nav">
-      {nav.map(({ to, icon: Icon, label }) => (
-        <Link
-          key={to}
-          to={to}
-          className={`officer-nav-item${location.pathname === to ? ' active' : ''}`}
+    <>
+      {/* In-app sign out confirmation — works on all devices */}
+      {confirmingSignOut && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',zIndex:9999,display:'flex',alignItems:'flex-end',justifyContent:'center',padding:'1rem'}}>
+          <div style={{background:'#0f1929',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'16px',padding:'1.5rem',width:'100%',maxWidth:'360px',textAlign:'center'}}>
+            <div style={{fontSize:'15px',fontWeight:700,color:'#fff',marginBottom:'8px'}}>Sign Out?</div>
+            <div style={{fontSize:'13px',color:'rgba(255,255,255,0.45)',marginBottom:'20px',lineHeight:1.5}}>Please ensure your handover is complete before signing out.</div>
+            <div style={{display:'flex',gap:'8px'}}>
+              <button onClick={() => setConfirmingSignOut(false)}
+                style={{flex:1,padding:'13px',background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'10px',color:'rgba(255,255,255,0.6)',fontSize:'14px',fontWeight:600,cursor:'pointer'}}>
+                Cancel
+              </button>
+              <button onClick={() => { setConfirmingSignOut(false); onSignOut?.(); }}
+                style={{flex:1,padding:'13px',background:'rgba(220,38,38,0.15)',border:'1.5px solid rgba(220,38,38,0.4)',borderRadius:'10px',color:'#ef4444',fontSize:'14px',fontWeight:700,cursor:'pointer'}}>
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      <nav className="officer-nav">
+        {nav.map(({ to, icon: Icon, label }) => (
+          <Link
+            key={to}
+            to={to}
+            className={`officer-nav-item${location.pathname === to ? ' active' : ''}`}
+          >
+            <Icon style={{width:'1.25rem',height:'1.25rem'}} />
+            {label}
+          </Link>
+        ))}
+        <button
+          onClick={() => setConfirmingSignOut(true)}
+          style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'0.25rem',padding:'0.5rem 0.375rem',background:'none',border:'none',cursor:'pointer',color:'rgba(255,90,90,0.8)',fontSize:'0.625rem',fontWeight:600,minWidth:0,flex:'0 0 auto'}}
         >
-          <Icon style={{width:'1.25rem',height:'1.25rem'}} />
-          {label}
-        </Link>
-      ))}
-      <button
-        onClick={() => { if (window.confirm('Sign out of DOB Live?\n\nPlease ensure your handover is complete before signing out.')) onSignOut?.(); }}
-        style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'0.25rem',padding:'0.5rem 0.375rem',background:'none',border:'none',cursor:'pointer',color:'rgba(255,90,90,0.8)',fontSize:'0.625rem',fontWeight:600,minWidth:0,flex:'0 0 auto'}}
-      >
-        <ArrowRightOnRectangleIcon style={{width:'1.25rem',height:'1.25rem'}} />
-        Sign Out
-      </button>
-    </nav>
+          <ArrowRightOnRectangleIcon style={{width:'1.25rem',height:'1.25rem'}} />
+          Sign Out
+        </button>
+      </nav>
+    </>
   );
 }
 
