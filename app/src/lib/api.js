@@ -36,8 +36,9 @@ async function request(endpoint, options = {}) {
     const response = await fetch(url, config);
     
     if (!response.ok) {
-      // Expired or invalid session — reload so Clerk shows sign-in
-      if (response.status === 401 && typeof window !== 'undefined') {
+      // Expired or invalid session — reload once so Clerk shows sign-in
+      if (response.status === 401 && typeof window !== 'undefined' && !window.__dob_reloading) {
+        window.__dob_reloading = true;
         window.location.reload();
         return;
       }
