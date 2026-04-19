@@ -17,6 +17,10 @@ function ManagerDashboard({ user }) {
   const [data, setData] = useState({ shifts:[], incidents:[], recentLogs:[], pendingTasks:0, totalOfficers:0 });
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(null);
+  const [refreshPulse, setRefreshPulse] = useState(false);
+  const [forceEndId, setForceEndId] = useState(null);
+  const [incidentAlerts, setIncidentAlerts] = useState([]);
+  const seenIncidentIds = React.useRef(new Set());
 
   async function load() {
     try {
@@ -36,14 +40,50 @@ function ManagerDashboard({ user }) {
         totalOfficers: usersRes.data?.length || 0,
       });
       setLastRefresh(new Date());
+      setRefreshPulse(true);
+      setTimeout(() => setRefreshPulse(false), 1500);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   }
 
+  // Incident polling — every 10 seconds
+  async function pollIncidents() {
+    try {
+      const tenMinsAgo = new Date(Date.now() - 600000).toISOString();
+      const res = await api.logs.list({ from: tenMinsAgo, limit: 50 });
+      const newIncidents = (res.data || []).filter(l =>
+        ['INCIDENT','ALARM','FIRE_ALARM','EMERGENCY'].includes(l.log_type) && !seenIncidentIds.current.has(l.id)
+      );
+      newIncidents.forEach(l => seenIncidentIds.current.add(l.id));
+      if (newIncidents.length > 0) {
+        const newAlerts = newIncidents.map(l => ({
+          id: l.id,
+          msg: `${l.site?.name || 'Unknown site'} — ${new Date(l.occurred_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}`,
+          title: l.title || l.log_type,
+          ts: Date.now(),
+        }));
+        setIncidentAlerts(prev => [...newAlerts, ...prev]);
+        // Auto-dismiss after 30 seconds
+        setTimeout(() => {
+          const cutoff = Date.now() - 30000;
+          setIncidentAlerts(prev => prev.filter(a => a.ts > cutoff || !newAlerts.find(n => n.id === a.id)));
+        }, 30000);
+      }
+    } catch {}
+  }
+
+  // Seed seen IDs from initial load
+  React.useEffect(() => {
+    if (data.incidents.length > 0) {
+      data.incidents.forEach(l => seenIncidentIds.current.add(l.id));
+    }
+  }, [data.incidents]);
+
   useEffect(() => {
     load();
-    const t = setInterval(load, 60000); // auto-refresh every minute
-    return () => clearInterval(t);
+    const t = setInterval(load, 20000);
+    const ip = setInterval(pollIncidents, 10000);
+    return () => { clearInterval(t); clearInterval(ip); };
   }, []);
 
   if (loading) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',padding:'3rem'}}><div className="spinner" /></div>;
@@ -69,11 +109,33 @@ function ManagerDashboard({ user }) {
       <div className="topbar">
         <div className="topbar-title">Operations Command</div>
         <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
-          {lastRefresh && <span style={{fontSize:'0.75rem',color:'var(--text-3)'}}>Updated {lastRefresh.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</span>}
+          {lastRefresh && (
+            <span style={{display:'inline-flex',alignItems:'center',gap:'0.375rem',fontSize:'0.75rem',color:'var(--text-3)'}}>
+              <span style={{width:6,height:6,borderRadius:'50%',background:refreshPulse?'#4ade80':'var(--text-3)',transition:'background 0.3s',boxShadow:refreshPulse?'0 0 6px #4ade80':'none'}} />
+              Updated {lastRefresh.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}
+            </span>
+          )}
           <button onClick={load} className="btn btn-secondary btn-sm">Refresh</button>
         </div>
       </div>
       <div className="page-content">
+
+        {/* Real-time incident alerts */}
+        {incidentAlerts.length > 0 && (
+          <div style={{display:'flex',flexDirection:'column',gap:'0.5rem',marginBottom:'1rem'}}>
+            {incidentAlerts.map(a => (
+              <div key={a.id} style={{display:'flex',alignItems:'center',gap:'0.75rem',padding:'0.75rem 1rem',background:'rgba(220,38,38,0.12)',border:'2px solid rgba(220,38,38,0.4)',borderRadius:'8px',animation:'pulse 2s infinite'}}>
+                <span style={{fontSize:'1.125rem'}}>⚠</span>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:'0.875rem',fontWeight:700,color:'#ef4444'}}>New incident logged</div>
+                  <div style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>{a.title} — {a.msg}</div>
+                </div>
+                <button onClick={() => setIncidentAlerts(prev => prev.filter(x => x.id !== a.id))}
+                  style={{background:'none',border:'none',color:'rgba(220,38,38,0.5)',fontSize:'1.125rem',cursor:'pointer',padding:0}}>×</button>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Compliance alerts — red/amber banners */}
         {alerts.length > 0 && (
@@ -117,7 +179,14 @@ function ManagerDashboard({ user }) {
                     </div>
                     <div style={{display:'flex',gap:'0.5rem',flexShrink:0}}>
                       <Link to={`/sites/${s.site_id}`} className="btn btn-secondary btn-sm">Site</Link>
-                      <button onClick={async()=>{if(!window.confirm(`Force end shift for ${s.officer?.first_name}?`))return;await api.shifts.update(s.id,{status:'COMPLETED',checked_out_at:new Date().toISOString()});load();}} className="btn btn-sm" style={{background:'rgba(220,38,38,0.1)',border:'1px solid rgba(220,38,38,0.25)',color:'var(--danger)'}}>End</button>
+                      {forceEndId === s.id ? (
+                        <>
+                          <button onClick={async()=>{await api.shifts.update(s.id,{status:'COMPLETED',checked_out_at:new Date().toISOString()});setForceEndId(null);load();}} className="btn btn-sm" style={{background:'var(--danger)',color:'#fff',border:'none'}}>Confirm</button>
+                          <button onClick={()=>setForceEndId(null)} className="btn btn-ghost btn-sm">Cancel</button>
+                        </>
+                      ) : (
+                        <button onClick={()=>setForceEndId(s.id)} className="btn btn-sm" style={{background:'rgba(220,38,38,0.1)',border:'1px solid rgba(220,38,38,0.25)',color:'var(--danger)'}}>End</button>
+                      )}
                     </div>
                   </div>
                 );
