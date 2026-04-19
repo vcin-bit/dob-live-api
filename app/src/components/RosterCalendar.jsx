@@ -48,8 +48,12 @@ export default function RosterCalendar({ siteId, user }) {
       from = startOfWeek(today);
       to = addDays(from, 14);
     } else {
-      from = startOfMonth(today);
-      to = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+      // Month view — pad to full weeks (Mon–Sun)
+      from = startOfWeek(startOfMonth(today));
+      const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+      // Pad to end of week (Sunday)
+      const endDay = (monthEnd.getDay() + 6) % 7; // 0=Mon
+      to = endDay === 0 ? monthEnd : addDays(monthEnd, 7 - endDay);
     }
     return { from, to };
   }
@@ -160,62 +164,8 @@ export default function RosterCalendar({ siteId, user }) {
         </div>
       ) : (
         /* ── GRID VIEW (week / 2week / month) ─────────────── */
-        <div style={{overflowX:'auto'}}>
-          <table className="table" style={{minWidth: view === 'month' ? '100%' : '700px', tableLayout:'fixed'}}>
-            <thead>
-              <tr>
-                {days.map(d => (
-                  <th key={isoDate(d)} style={{
-                    background: isToday(d) ? 'var(--blue-light)' : 'var(--surface-2)',
-                    color: isToday(d) ? 'var(--blue)' : 'var(--text-2)',
-                    fontSize: view === 'month' ? '0.6875rem' : '0.75rem',
-                    padding: view === 'month' ? '0.375rem 0.25rem' : '0.5rem',
-                    textAlign:'center',
-                  }}>
-                    {view === 'month'
-                      ? d.toLocaleDateString('en-GB', { weekday:'narrow', day:'numeric' })
-                      : d.toLocaleDateString('en-GB', { weekday:'short', day:'2-digit', month:'short' })}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                {days.map(d => {
-                  const dayShifts = shiftsForDay(d);
-                  return (
-                    <td key={isoDate(d)} style={{verticalAlign:'top',padding: view === 'month' ? '0.25rem' : '0.375rem',minHeight:'60px',position:'relative'}}>
-                      {dayShifts.map(s => (
-                        <div key={s.id} onClick={() => isManager && setEditShift(s)}
-                          style={{
-                            padding: view === 'month' ? '2px 3px' : '0.25rem 0.375rem',
-                            borderRadius:'4px',
-                            marginBottom:'3px',
-                            background: officerColour(s.officer_id) + '18',
-                            borderLeft:`3px solid ${officerColour(s.officer_id)}`,
-                            fontSize: view === 'month' ? '0.625rem' : '0.75rem',
-                            cursor: isManager ? 'pointer' : 'default',
-                            overflow:'hidden',
-                            whiteSpace:'nowrap',
-                            textOverflow:'ellipsis',
-                          }}>
-                          <div style={{fontWeight:600,color:'var(--text)'}}>{s.officer?.first_name || '?'}</div>
-                          <div style={{color:'var(--text-2)'}}>{fmtTime(s.start_time)}–{s.end_time ? fmtTime(s.end_time) : '?'}</div>
-                        </div>
-                      ))}
-                      {isManager && (
-                        <button onClick={() => setAddDate(d)}
-                          style={{width:'100%',padding:'2px',background:'none',border:'1px dashed var(--border)',borderRadius:'3px',color:'var(--text-3)',cursor:'pointer',fontSize:'0.75rem',marginTop:'2px'}}>
-                          +
-                        </button>
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <RotaGrid days={days} view={view} shiftsForDay={shiftsForDay} isToday={isToday} isManager={isManager}
+          onEdit={s => setEditShift(s)} onAdd={d => setAddDate(d)} siteId={siteId} />
       )}
 
       {/* Edit modal */}
@@ -246,6 +196,91 @@ export default function RosterCalendar({ siteId, user }) {
           onSaved={() => { setAddDate(null); load(); }}
         />
       )}
+    </div>
+  );
+}
+
+function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onEdit, onAdd, siteId }) {
+  // Split days into rows of 7
+  const weeks = [];
+  for (let i = 0; i < days.length; i += 7) {
+    weeks.push(days.slice(i, i + 7));
+  }
+
+  const isCompact = view === 'month';
+  const cellMinH = isCompact ? 70 : 80;
+
+  return (
+    <div style={{overflowX:'auto'}}>
+      <div style={{minWidth:'840px'}}>
+        {/* Column headers — Mon to Sun */}
+        <div style={{display:'grid',gridTemplateColumns:'repeat(7, minmax(120px, 1fr))',gap:'1px',background:'var(--border)',borderRadius:'8px 8px 0 0',overflow:'hidden'}}>
+          {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => (
+            <div key={d} style={{background:'var(--surface-2)',padding:'0.5rem',textAlign:'center',fontSize:'0.75rem',fontWeight:700,color:'var(--text-2)',textTransform:'uppercase',letterSpacing:'0.05em'}}>
+              {d}
+            </div>
+          ))}
+        </div>
+
+        {/* Week rows */}
+        {weeks.map((week, wi) => (
+          <div key={wi} style={{display:'grid',gridTemplateColumns:'repeat(7, minmax(120px, 1fr))',gap:'1px',background:'var(--border)'}}>
+            {week.map(d => {
+              const dayShifts = shiftsForDay(d).sort((a,b) => new Date(a.start_time) - new Date(b.start_time));
+              const today = isToday(d);
+              return (
+                <div key={isoDate(d)} style={{
+                  background: today ? 'var(--blue-light)' : 'var(--surface)',
+                  padding: isCompact ? '0.25rem' : '0.375rem',
+                  minHeight: `${cellMinH}px`,
+                  display:'flex',
+                  flexDirection:'column',
+                }}>
+                  {/* Date label */}
+                  <div style={{fontSize: isCompact ? '0.6875rem' : '0.75rem', fontWeight:600, color: today ? 'var(--blue)' : 'var(--text-2)', marginBottom:'0.25rem', textAlign:'center'}}>
+                    {d.toLocaleDateString('en-GB', { day:'numeric', month:'short' })}
+                  </div>
+
+                  {/* Shift blocks */}
+                  <div style={{flex:1,display:'flex',flexDirection:'column',gap:'3px'}}>
+                    {dayShifts.map(s => {
+                      const col = officerColour(s.officer_id);
+                      return (
+                        <div key={s.id} onClick={() => isManager && onEdit(s)}
+                          style={{
+                            padding: isCompact ? '3px 4px' : '4px 6px',
+                            borderRadius:'5px',
+                            background: col + '20',
+                            border: `1px solid ${col}40`,
+                            cursor: isManager ? 'pointer' : 'default',
+                          }}>
+                          <div style={{fontWeight:700,fontSize: isCompact ? '0.625rem' : '0.75rem', color:'var(--text)', overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis'}}>
+                            {s.officer ? `${s.officer.first_name} ${s.officer.last_name?.[0] || ''}` : '?'}
+                          </div>
+                          <div style={{fontSize: isCompact ? '0.5625rem' : '0.6875rem', color:'var(--text-2)'}}>
+                            {fmtTime(s.start_time)}–{s.end_time ? fmtTime(s.end_time) : '?'}
+                          </div>
+                          {!isCompact && !siteId && s.site?.name && (
+                            <div style={{fontSize:'0.625rem',color:'var(--text-3)',overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis'}}>{s.site.name}</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Add button */}
+                  {isManager && (
+                    <button onClick={() => onAdd(d)}
+                      style={{width:'100%',padding:'2px',background:'none',border:'1px dashed var(--border)',borderRadius:'4px',color:'var(--text-3)',cursor:'pointer',fontSize:'0.75rem',marginTop:'3px'}}>
+                      +
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
