@@ -30,7 +30,8 @@ export default function OfficerProfile({ user }) {
       if (!payload.sia_licence_number_2) payload.sia_licence_number_2 = null;
       if (!payload.sia_licence_type_2) payload.sia_licence_type_2 = null;
       await api.users.updateMe(payload);
-      setSuccess('Profile updated successfully.');
+      setSuccess('✓ Profile saved');
+      setTimeout(() => setSuccess(''), 3000);
     } catch (e) { setError(e.message); }
     finally { setSaving(false); }
   }
