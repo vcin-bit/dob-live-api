@@ -43,3 +43,11 @@ View the HTML report after a run:
 ```bash
 cd app && npx playwright show-report
 ```
+
+### API smoke tests
+
+Smoke tests for the live Render API live in `tests/api.test.js`. They use Node's built-in test runner and fetch — no extra dependencies.
+
+```bash
+npm run test:api
+```
