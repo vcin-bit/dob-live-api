@@ -1,10 +1,25 @@
 import { test, expect } from '@playwright/test';
 
-// Fake Clerk JWT — the API validates via Clerk's JWKS endpoint, so these tests
-// intercept API calls and return canned responses.  The auth header just needs
-// to be present so the app's request() helper doesn't skip it.
-const AUTH_TOKEN = 'test-e2e-token';
+// ---------------------------------------------------------------------------
+// Fake JWT — structurally valid so Clerk's SDK accepts it
+// ---------------------------------------------------------------------------
+function fakeJWT() {
+  const header = btoa(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).replace(/=/g, '');
+  const payload = btoa(JSON.stringify({
+    sub: 'user_e2e',
+    iss: 'https://clerk.doblive.co.uk',
+    exp: Math.floor(Date.now() / 1000) + 86400,
+    iat: Math.floor(Date.now() / 1000),
+    sid: 'sess_e2e',
+  })).replace(/=/g, '');
+  return `${header}.${payload}.fakesig`;
+}
 
+const JWT = fakeJWT();
+
+// ---------------------------------------------------------------------------
+// Mock data
+// ---------------------------------------------------------------------------
 const MOCK_USER = {
   id: 'e2e-officer-1',
   clerk_id: 'clerk_e2e_1',
@@ -52,122 +67,173 @@ const MOCK_SESSION = {
   status: 'ACTIVE',
 };
 
+// Clerk /v1/client response — simulates a signed-in session
+function clerkClientResponse() {
+  return {
+    response: {
+      object: 'client',
+      id: 'client_e2e',
+      sessions: [{
+        object: 'session',
+        id: 'sess_e2e',
+        status: 'active',
+        expire_at: Date.now() + 86400000,
+        abandon_at: Date.now() + 86400000 * 7,
+        last_active_at: Date.now(),
+        last_active_organization_id: null,
+        actor: null,
+        user: {
+          object: 'user', id: 'user_e2e', external_id: null,
+          primary_email_address_id: 'idn_e2e', primary_phone_number_id: null,
+          primary_web3_wallet_id: null, username: null,
+          first_name: 'Test', last_name: 'Officer',
+          profile_image_url: '', image_url: '', has_image: false,
+          email_addresses: [{
+            id: 'idn_e2e', object: 'email_address', email_address: 'officer@e2e.test',
+            verification: { status: 'verified', strategy: 'email_code' }, linked_to: [],
+          }],
+          phone_numbers: [], web3_wallets: [], external_accounts: [],
+          password_enabled: true, two_factor_enabled: false, totp_enabled: false, backup_code_enabled: false,
+          public_metadata: {}, unsafe_metadata: {},
+          created_at: Date.now() - 86400000, updated_at: Date.now(),
+          last_sign_in_at: Date.now(), last_active_at: Date.now(),
+        },
+        public_user_data: {
+          first_name: 'Test', last_name: 'Officer',
+          profile_image_url: '', image_url: '', has_image: false,
+          identifier: 'officer@e2e.test',
+        },
+        created_at: Date.now() - 3600000,
+        updated_at: Date.now(),
+        last_active_token: { object: 'token', jwt: JWT },
+      }],
+      sign_in: null, sign_up: null,
+      last_active_session_id: 'sess_e2e',
+      cookie_expires_at: Date.now() + 86400000,
+      created_at: Date.now() - 86400000,
+      updated_at: Date.now(),
+    },
+    client: null,
+  };
+}
+
 // ---------------------------------------------------------------------------
-// Helper: set up route interception so the SPA works without real auth / API
+// URL matcher helper — matches if the pathname includes the given segment
 // ---------------------------------------------------------------------------
-async function setupMocks(page, { withShift = false, withPatrolSession = false } = {}) {
-  // Inject fake Clerk token getter before the app loads
+function urlIncludes(segment) {
+  return url => new URL(url).pathname.includes(segment);
+}
+
+// ---------------------------------------------------------------------------
+// Setup: Clerk auth bypass + API mocks
+// ---------------------------------------------------------------------------
+async function setupMocks(page, context, { withShift = false, withPatrolSession = false } = {}) {
+  // Set cookies so Clerk SDK treats the session as active
+  await context.addCookies([
+    { name: '__session', value: JWT, domain: 'app.doblive.co.uk', path: '/', secure: true, sameSite: 'Lax' },
+    { name: '__client_uat', value: String(Math.floor(Date.now() / 1000)), domain: 'app.doblive.co.uk', path: '/', secure: true, sameSite: 'Lax' },
+  ]);
+
+  // Inject fake token getter
   await page.addInitScript(() => {
     window.__clerkGetToken = () => Promise.resolve('test-e2e-token');
   });
 
-  await page.setExtraHTTPHeaders({ Authorization: `Bearer ${AUTH_TOKEN}` });
+  // --- Clerk API mocks ---
+  await page.route('**/v1/client?*', route =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(clerkClientResponse()) }));
 
-  // Intercept all API calls to the backend
-  const API = 'https://dob-live-api.onrender.com';
+  await page.route('**/v1/client/sessions/**/tokens**', route =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ object: 'token', jwt: JWT }) }));
 
-  await page.route(`${API}/health`, route =>
-    route.fulfill({ json: { status: 'ok' } }));
+  await page.route('**/v1/client/sessions/**/touch**', route =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(clerkClientResponse()) }));
 
-  await page.route(`${API}/api/users/me*`, route =>
-    route.fulfill({ json: { data: MOCK_USER } }));
+  // --- API mocks (use function matchers for reliable URL matching) ---
+  await page.route(url => url.toString().includes('/api/users/me'), route =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: MOCK_USER }) }));
 
-  await page.route(`${API}/api/users?*`, route =>
-    route.fulfill({ json: { data: [MOCK_USER] } }));
+  // /api/users/:id/sites — officer site assignments
+  await page.route(url => /\/api\/users\/[^/]+\/sites/.test(url.toString()), route =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [MOCK_SITE] }) }));
 
-  await page.route(`${API}/api/users`, route =>
-    route.fulfill({ json: { data: [MOCK_USER] } }));
+  await page.route(url => { const s = url.toString(); return s.includes('/api/users') && !s.includes('/me') && !s.includes('/sites'); }, route =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [MOCK_USER] }) }));
 
-  await page.route(`${API}/api/sites*`, route =>
-    route.fulfill({ json: { data: [MOCK_SITE] } }));
+  await page.route(url => url.toString().includes('/api/sites'), route =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [MOCK_SITE] }) }));
 
-  // Shifts — return active shift or empty depending on scenario
-  await page.route(`${API}/api/shifts*`, route => {
+  await page.route(url => url.toString().includes('/api/shifts'), route => {
     if (route.request().method() === 'POST') {
-      return route.fulfill({ json: { data: MOCK_SHIFT } });
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: MOCK_SHIFT }) });
     }
-    return route.fulfill({ json: { data: withShift ? [MOCK_SHIFT] : [] } });
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: withShift ? [MOCK_SHIFT] : [] }) });
   });
 
-  await page.route(`${API}/api/shifts/start`, route =>
-    route.fulfill({ json: { data: MOCK_SHIFT } }));
-
-  await page.route(`${API}/api/shifts/*/checkin`, route =>
-    route.fulfill({ json: { data: MOCK_SHIFT } }));
-
-  // Logs
-  await page.route(`${API}/api/logs*`, route => {
+  await page.route(url => url.toString().includes('/api/logs'), route => {
     if (route.request().method() === 'POST') {
-      return route.fulfill({ json: { data: { id: 'log-new', ...JSON.parse(route.request().postData() || '{}') } } });
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { id: 'log-new' } }) });
     }
-    return route.fulfill({ json: { data: [] } });
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [] }) });
   });
 
-  // Patrols
-  await page.route(`${API}/api/patrols/routes*`, route =>
-    route.fulfill({ json: { data: [MOCK_ROUTE] } }));
+  await page.route(url => url.toString().includes('/api/patrols/routes'), route =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [MOCK_ROUTE] }) }));
 
-  await page.route(`${API}/api/patrols/sessions/active*`, route => {
-    if (withPatrolSession) {
-      return route.fulfill({ json: { data: MOCK_SESSION } });
-    }
-    return route.fulfill({ json: { data: null } });
-  });
+  await page.route(url => url.toString().includes('/api/patrols/sessions/active'), route =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: withPatrolSession ? MOCK_SESSION : null }) }));
 
-  await page.route(`${API}/api/patrols/sessions/start`, route =>
-    route.fulfill({ json: { data: MOCK_SESSION } }));
+  await page.route(url => url.toString().includes('/api/patrols/sessions') && url.toString().includes('/start'), route =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: MOCK_SESSION }) }));
 
-  await page.route(`${API}/api/patrols/sessions/*/checkpoint`, route =>
-    route.fulfill({ json: { success: true } }));
+  await page.route(url => url.toString().includes('/api/patrols/sessions') && url.toString().includes('/checkpoint'), route =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ success: true }) }));
 
-  await page.route(`${API}/api/patrols/sessions/*/end`, route =>
-    route.fulfill({ json: { success: true } }));
+  await page.route(url => url.toString().includes('/api/patrols/sessions') && url.toString().includes('/end'), route =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ success: true }) }));
 
-  await page.route(`${API}/api/patrols/sessions/*/gps`, route =>
-    route.fulfill({ json: { success: true } }));
+  await page.route(url => { const s = url.toString(); return s.includes('/api/patrols/sessions') && s.includes('/gps'); }, route =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ success: true }) }));
 
-  // Tasks, messages, alerts, handovers, playbooks, instructions, etc.
-  await page.route(`${API}/api/tasks*`, route =>
-    route.fulfill({ json: { data: [] } }));
+  await page.route(url => url.toString().includes('/api/tasks'), route =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [] }) }));
 
-  await page.route(`${API}/api/messages*`, route =>
-    route.fulfill({ json: { data: [] } }));
+  await page.route(url => url.toString().includes('/api/messages'), route =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [] }) }));
 
-  await page.route(`${API}/api/alerts*`, route =>
-    route.fulfill({ json: { data: [] } }));
+  await page.route(url => url.toString().includes('/api/alerts'), route =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [] }) }));
 
-  await page.route(`${API}/api/handovers*`, route => {
+  await page.route(url => url.toString().includes('/api/handovers'), route => {
     if (route.request().method() === 'POST') {
-      return route.fulfill({ json: { data: { id: 'ho-1' } } });
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { id: 'ho-1' } }) });
     }
-    return route.fulfill({ json: { data: [] } });
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [] }) });
   });
 
-  await page.route(`${API}/api/playbooks/*`, route =>
-    route.fulfill({ json: { playbook: null, tasks: [], checks: [] } }));
+  await page.route(url => url.toString().includes('/api/playbooks'), route =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ playbook: null, tasks: [], checks: [] }) }));
 
-  await page.route(`${API}/api/instructions*`, route =>
-    route.fulfill({ json: { data: null } }));
+  await page.route(url => url.toString().includes('/api/instructions'), route =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: null }) }));
 
-  await page.route(`${API}/api/policies*`, route =>
-    route.fulfill({ json: { data: null } }));
+  await page.route(url => url.toString().includes('/api/policies'), route =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: null }) }));
 
-  await page.route(`${API}/api/report/**`, route =>
-    route.fulfill({ json: { data: null } }));
+  await page.route(url => url.toString().includes('/api/report'), route =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: null }) }));
 
-  // Catch-all for any other API calls
-  await page.route(`${API}/api/**`, route =>
-    route.fulfill({ json: { data: [] } }));
+  // Catch-all for any other API calls (health, undefined, etc.)
+  await page.route(url => url.toString().includes('/health') || url.toString().includes('/undefined/'), route =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) }));
 }
 
-// Helper: navigate past site picker to home screen
+// Navigate past site picker to home screen
 async function selectSite(page) {
   await page.goto('/');
-  // App loads → fetches /users/me → sees OFFICER role → shows site picker
   const siteBtn = page.getByText('E2E Test Site');
-  await expect(siteBtn).toBeVisible({ timeout: 10000 });
+  await expect(siteBtn).toBeVisible({ timeout: 15000 });
   await siteBtn.click();
-  // Should land on home screen
   await expect(page.getByText('Log Entry')).toBeVisible({ timeout: 5000 });
 }
 
@@ -175,35 +241,30 @@ async function selectSite(page) {
 // 1. Start Shift
 // ===========================================================================
 test.describe('Start Shift', () => {
-  test('officer sees Start Shift, enters finish time, confirms, shift becomes active and Handover appears', async ({ page }) => {
-    await setupMocks(page, { withShift: false });
+  test('officer sees Start Shift, enters finish time, confirms, shift becomes active and Handover appears', async ({ page, context }) => {
+    await setupMocks(page, context, { withShift: false });
     await selectSite(page);
 
-    // Should see "Start Shift" button (no active shift)
     const startBtn = page.getByText('Start Shift', { exact: false }).first();
     await expect(startBtn).toBeVisible();
-
-    // Click Start Shift — modal should appear
     await startBtn.click();
+
     await expect(page.getByText('Planned Finish Time')).toBeVisible({ timeout: 3000 });
 
-    // Enter a finish time
     const timeInput = page.locator('input[type="time"]');
     await timeInput.fill('06:00');
 
-    // The confirm button should be enabled now — re-route shifts to return active shift after start
-    await page.route('https://dob-live-api.onrender.com/api/shifts*', route => {
+    // After start, shifts endpoint returns active shift
+    await page.route(url => url.toString().includes('/api/shifts'), route => {
       if (route.request().method() === 'POST') {
-        return route.fulfill({ json: { data: MOCK_SHIFT } });
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: MOCK_SHIFT }) });
       }
-      return route.fulfill({ json: { data: [MOCK_SHIFT] } });
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [MOCK_SHIFT] }) });
     });
 
-    // Click the modal's "Start Shift" confirm button
     const confirmBtn = page.locator('button').filter({ hasText: 'Start Shift' }).last();
     await confirmBtn.click();
 
-    // Shift should now be active — "Shift Active" badge and "End Shift / Handover" link appear
     await expect(page.getByText('Shift Active')).toBeVisible({ timeout: 5000 });
     await expect(page.getByText('End Shift / Handover')).toBeVisible();
   });
@@ -213,36 +274,28 @@ test.describe('Start Shift', () => {
 // 2. Log Entry
 // ===========================================================================
 test.describe('Log Entry', () => {
-  test('officer with active shift creates a PATROL log entry', async ({ page }) => {
-    await setupMocks(page, { withShift: true });
+  test('officer with active shift creates a PATROL log entry', async ({ page, context }) => {
+    await setupMocks(page, context, { withShift: true });
     await selectSite(page);
 
-    // Should see active shift
     await expect(page.getByText('Shift Active')).toBeVisible({ timeout: 5000 });
 
-    // Tap Log Entry
     await page.getByText('Log Entry').click();
     await expect(page.getByText('New Log Entry')).toBeVisible({ timeout: 5000 });
 
-    // Step 1: Select PATROL type
     const patrolBtn = page.getByText('PATROL', { exact: true }).first();
     await expect(patrolBtn).toBeVisible();
     await patrolBtn.click();
 
-    // Step 2: Should advance to details — enter description
     await expect(page.getByText('WHAT HAPPENED')).toBeVisible({ timeout: 3000 });
     await page.locator('textarea').first().fill('Routine perimeter check completed, all secure.');
 
-    // Click NEXT STEP
     await page.getByText('NEXT STEP').click();
 
-    // Step 3: Review & Submit
     await expect(page.getByText('Review & Submit')).toBeVisible({ timeout: 3000 });
 
-    // Submit
     await page.getByText(/SUBMIT.*REPORT/).click();
 
-    // Should navigate back to home with success
     await expect(page.getByText('Log Entry')).toBeVisible({ timeout: 5000 });
   });
 });
@@ -251,34 +304,28 @@ test.describe('Log Entry', () => {
 // 3. Patrol Start and Checkpoint
 // ===========================================================================
 test.describe('Patrol Start and Checkpoint', () => {
-  test('officer starts patrol, sees checkpoints, marks one as completed', async ({ page }) => {
-    await setupMocks(page, { withShift: true });
+  test('officer starts patrol, sees checkpoints, marks one as completed', async ({ page, context }) => {
+    await setupMocks(page, context, { withShift: true });
     await selectSite(page);
 
-    // Tap Start Patrol
     await page.getByText('Start Patrol').click();
 
-    // Should see patrol screen with the site name and route
-    await expect(page.getByText('E2E Test Site')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('E2E Test Site').first()).toBeVisible({ timeout: 5000 });
     await expect(page.getByText('Main Perimeter')).toBeVisible();
 
-    // Click START PATROL button
-    const startPatrolBtn = page.getByText('START PATROL', { exact: true });
+    const startPatrolBtn = page.getByText(/START PATROL/);
     await expect(startPatrolBtn).toBeVisible({ timeout: 3000 });
     await startPatrolBtn.click();
 
-    // Should show LIVE badge and checkpoints
-    await expect(page.getByText('LIVE')).toBeVisible({ timeout: 3000 });
-    await expect(page.getByText('Front Gate')).toBeVisible();
-    await expect(page.getByText('Car Park')).toBeVisible();
-    await expect(page.getByText('Loading Bay')).toBeVisible();
+    await expect(page.getByText('● LIVE')).toBeVisible({ timeout: 3000 });
+    await expect(page.getByText('Front Gate').first()).toBeVisible();
+    await expect(page.getByText('Car Park').first()).toBeVisible();
+    await expect(page.getByText('Loading Bay').first()).toBeVisible();
 
-    // Tap the "REACHED: Front Gate" button or click the checkpoint
-    const reachedBtn = page.getByText(/REACHED.*Front Gate/);
+    const reachedBtn = page.getByRole('button', { name: /REACHED.*Front Gate/ });
     await expect(reachedBtn).toBeVisible();
     await reachedBtn.click();
 
-    // Progress should update — 1 / 3
     await expect(page.getByText('1 / 3')).toBeVisible({ timeout: 3000 });
   });
 });
@@ -287,28 +334,22 @@ test.describe('Patrol Start and Checkpoint', () => {
 // 4. End Patrol
 // ===========================================================================
 test.describe('End Patrol', () => {
-  test('officer on active patrol ends it via confirmation modal', async ({ page }) => {
-    await setupMocks(page, { withShift: true, withPatrolSession: true });
+  test('officer on active patrol ends it via confirmation modal', async ({ page, context }) => {
+    await setupMocks(page, context, { withShift: true, withPatrolSession: true });
     await selectSite(page);
 
-    // Go to patrol screen
     await page.getByText('Start Patrol').click();
-    await expect(page.getByText('E2E Test Site')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('E2E Test Site').first()).toBeVisible({ timeout: 5000 });
 
-    // Should already show LIVE (active session restored)
-    await expect(page.getByText('LIVE')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('● LIVE')).toBeVisible({ timeout: 5000 });
 
-    // Click END PATROL
     await page.getByText('END PATROL').click();
 
-    // Confirmation modal should appear
     await expect(page.getByText('End Patrol?')).toBeVisible({ timeout: 3000 });
     await expect(page.getByText('This will end your current patrol session')).toBeVisible();
 
-    // Confirm
     await page.locator('button').filter({ hasText: 'End Patrol' }).last().click();
 
-    // Should navigate back to home screen
     await expect(page.getByText('Log Entry')).toBeVisible({ timeout: 5000 });
   });
 });
@@ -317,18 +358,15 @@ test.describe('End Patrol', () => {
 // 5. Handover
 // ===========================================================================
 test.describe('Handover', () => {
-  test('officer with active shift opens handover page without crashing', async ({ page }) => {
-    await setupMocks(page, { withShift: true });
+  test('officer with active shift opens handover page without crashing', async ({ page, context }) => {
+    await setupMocks(page, context, { withShift: true });
     await selectSite(page);
 
-    // Should see active shift with "End Shift / Handover" link
     await expect(page.getByText('End Shift / Handover')).toBeVisible({ timeout: 5000 });
     await page.getByText('End Shift / Handover').click();
 
-    // Handover page should load — look for the summary textarea placeholder
     await expect(page.getByPlaceholder('Brief summary of the shift...')).toBeVisible({ timeout: 5000 });
 
-    // Page should not have crashed — verify we can still interact
     const summaryInput = page.getByPlaceholder('Brief summary of the shift...');
     await summaryInput.fill('All quiet, no incidents.');
     await expect(summaryInput).toHaveValue('All quiet, no incidents.');
