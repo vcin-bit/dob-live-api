@@ -106,7 +106,8 @@ function AuthFlow() {
       if (result.status === 'complete') {
         await setSignInActive({ session: result.createdSessionId });
       } else {
-        setError('Sign in incomplete. Please try again.');
+        setError(`Sign in status: ${result.status}. Please try again or contact support.`);
+        console.log('Sign in result:', JSON.stringify(result));
       }
     } catch (err) {
       const e0 = err.errors?.[0];
