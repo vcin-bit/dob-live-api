@@ -987,11 +987,15 @@ function SiteDetail({ user }) {
                 </thead>
                 <tbody>
                   {assignedOfficers.map(o => {
-                    const expiry = o.sia_expiry_date ? new Date(o.sia_expiry_date) : null;
                     const now = new Date();
-                    const daysLeft = expiry ? (expiry - now) / 86400000 : null;
-                    const siaColor = !expiry ? 'var(--text-3)' : daysLeft < 0 ? '#ef4444' : daysLeft < 90 ? '#f59e0b' : '#22c55e';
-                    const siaLabel = !expiry ? '—' : daysLeft < 0 ? 'Expired' : daysLeft < 90 ? 'Expiring' : 'Valid';
+                    const exp1 = o.sia_expiry_date ? new Date(o.sia_expiry_date) : null;
+                    const exp2 = o.sia_expiry_date_2 ? new Date(o.sia_expiry_date_2) : null;
+                    const days1 = exp1 ? (exp1 - now) / 86400000 : null;
+                    const days2 = exp2 ? (exp2 - now) / 86400000 : null;
+                    const anyExpired = (days1 !== null && days1 < 0) || (days2 !== null && days2 < 0);
+                    const anyExpiring = (days1 !== null && days1 >= 0 && days1 < 90) || (days2 !== null && days2 >= 0 && days2 < 90);
+                    const siaColor = anyExpired ? '#ef4444' : anyExpiring ? '#f59e0b' : (days1 !== null || days2 !== null) ? '#22c55e' : 'var(--text-3)';
+                    const siaLabel = anyExpired ? 'Expired' : anyExpiring ? 'Expiring' : (days1 !== null || days2 !== null) ? 'Valid' : '—';
                     return (
                       <tr key={o.id}>
                         <td style={{fontWeight:500}}>{o.first_name} {o.last_name}</td>
@@ -1298,6 +1302,7 @@ function TeamManagement({ user }) {
 }
 
 function UserFormModal({ user, onClose, onSaved }) {
+  const SIA_TYPES = ['Security Guarding','Door Supervisor','CCTV Operator','Close Protection','Vehicle Immobiliser','Key Holding'];
   const [form, setForm] = useState({
     first_name: user?.first_name || '',
     last_name:  user?.last_name  || '',
@@ -1307,6 +1312,11 @@ function UserFormModal({ user, onClose, onSaved }) {
     sia_licence_number: user?.sia_licence_number || '',
     sia_licence_type:   user?.sia_licence_type  || '',
     sia_expiry_date:    user?.sia_expiry_date ? user.sia_expiry_date.split('T')[0] : '',
+    sia_licence_type_2:   user?.sia_licence_type_2  || '',
+    sia_licence_number_2: user?.sia_licence_number_2 || '',
+    sia_expiry_date_2:    user?.sia_expiry_date_2 ? user.sia_expiry_date_2.split('T')[0] : '',
+    bs7858_clearance_date: user?.bs7858_clearance_date ? user.bs7858_clearance_date.split('T')[0] : '',
+    bs7858_expiry_date:    user?.bs7858_expiry_date ? user.bs7858_expiry_date.split('T')[0] : '',
     is_route_planner:  user?.is_route_planner || false,
   });
   const [saving, setSaving] = useState(false);
@@ -1317,87 +1327,50 @@ function UserFormModal({ user, onClose, onSaved }) {
     try {
       setSaving(true);
       const payload = {
-        first_name: form.first_name,
-        last_name:  form.last_name,
-        email:      form.email.toLowerCase().trim(),
-        phone:      form.phone || null,
-        role:       form.role,
-        sia_licence_number: form.sia_licence_number || null,
-        sia_licence_type:   form.sia_licence_type   || null,
-        sia_expiry_date:    form.sia_expiry_date || null,
+        first_name: form.first_name, last_name: form.last_name,
+        email: form.email.toLowerCase().trim(), phone: form.phone || null, role: form.role,
+        sia_licence_number: form.sia_licence_number || null, sia_licence_type: form.sia_licence_type || null,
+        sia_expiry_date: form.sia_expiry_date || null,
+        sia_licence_type_2: form.sia_licence_type_2 || null, sia_licence_number_2: form.sia_licence_number_2 || null,
+        sia_expiry_date_2: form.sia_expiry_date_2 || null,
+        bs7858_clearance_date: form.bs7858_clearance_date || null, bs7858_expiry_date: form.bs7858_expiry_date || null,
       };
-      if (user) {
-        await api.users.update(user.id, payload);
-        onSaved();
-      } else {
-        const res = await api.invite.send(payload);
-        onSaved(res.message);
-      }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSaving(false);
-    }
+      if (user) { await api.users.update(user.id, payload); onSaved(); }
+      else { const res = await api.invite.send(payload); onSaved(res.message); }
+    } catch (err) { setError(err.message); }
+    finally { setSaving(false); }
   }
 
   const f = (k, v) => setForm(p => ({...p, [k]: v}));
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
+      <div className="modal" style={{maxWidth:'640px',maxHeight:'90vh',overflowY:'auto'}} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title">{user ? 'Edit Team Member' : 'Invite Team Member'}</div>
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
-          <div className="field">
-            <label className="label">First Name</label>
-            <input className="input" value={form.first_name} onChange={e=>f('first_name',e.target.value)} />
-          </div>
-          <div className="field">
-            <label className="label">Last Name</label>
-            <input className="input" value={form.last_name} onChange={e=>f('last_name',e.target.value)} />
-          </div>
-          <div className="field" style={{gridColumn:'1/-1'}}>
-            <label className="label">Email</label>
-            <input type="email" className="input" value={form.email} onChange={e=>f('email',e.target.value)} disabled={!!user} />
-            {!user && <div style={{fontSize:'0.75rem',color:'var(--text-2)',marginTop:'0.25rem'}}>An invitation email will be sent to this address</div>}
-          </div>
-          <div className="field">
-            <label className="label">Phone</label>
-            <input className="input" value={form.phone} onChange={e=>f('phone',e.target.value)} />
-          </div>
-          <div className="field">
-            <label className="label">Role</label>
-            <select className="input" value={form.role} onChange={e=>f('role',e.target.value)}>
-              <option value="OFFICER">Officer</option>
-              <option value="OPS_MANAGER">Ops Manager</option>
-              <option value="FD">Field Director</option>
-              <option value="COMPANY">Admin</option>
-            </select>
-          </div>
-          <div className="field">
-            <label className="label">SIA Licence No.</label>
-            <input className="input" value={form.sia_licence_number} onChange={e=>f('sia_licence_number',e.target.value)} placeholder="16-digit number" />
-          </div>
-          <div className="field">
-            <label className="label">SIA Licence Type</label>
-            <select className="input" value={form.sia_licence_type||''} onChange={e=>f('sia_licence_type',e.target.value)}>
-              <option value="">Select...</option>
-              <option value="DS">Door Supervisor (DS)</option>
-              <option value="SG">Security Guard (SG)</option>
-              <option value="CCTV">CCTV Operator</option>
-              <option value="CV">Close Protection (CV)</option>
-              <option value="CG">Cash &amp; Valuables (CG)</option>
-              <option value="KH">Key Holding (KH)</option>
-              <option value="VR">Vehicle Immobiliser (VR)</option>
-            </select>
-          </div>
-          <div className="field">
-            <label className="label">SIA Expiry</label>
-            <input type="date" className="input" value={form.sia_expiry_date} onChange={e=>f('sia_expiry_date',e.target.value)} />
-          </div>
+          <div className="field"><label className="label">First Name</label><input className="input" value={form.first_name} onChange={e=>f('first_name',e.target.value)} /></div>
+          <div className="field"><label className="label">Last Name</label><input className="input" value={form.last_name} onChange={e=>f('last_name',e.target.value)} /></div>
+          <div className="field" style={{gridColumn:'1/-1'}}><label className="label">Email</label><input type="email" className="input" value={form.email} onChange={e=>f('email',e.target.value)} disabled={!!user} />{!user && <div style={{fontSize:'0.75rem',color:'var(--text-2)',marginTop:'0.25rem'}}>An invitation email will be sent to this address</div>}</div>
+          <div className="field"><label className="label">Phone</label><input className="input" value={form.phone} onChange={e=>f('phone',e.target.value)} /></div>
+          <div className="field"><label className="label">Role</label><select className="input" value={form.role} onChange={e=>f('role',e.target.value)}><option value="OFFICER">Officer</option><option value="OPS_MANAGER">Ops Manager</option><option value="FD">Field Director</option><option value="COMPANY">Admin</option></select></div>
+
+          <div className="field" style={{gridColumn:'1/-1',borderTop:'1px solid var(--border)',paddingTop:'0.75rem',marginTop:'0.25rem'}}><div className="section-title" style={{marginBottom:'0.25rem'}}>SIA Primary Licence</div></div>
+          <div className="field"><label className="label">Licence Type</label><select className="input" value={form.sia_licence_type||''} onChange={e=>f('sia_licence_type',e.target.value)}><option value="">Select...</option>{SIA_TYPES.map(t=><option key={t} value={t}>{t}</option>)}</select></div>
+          <div className="field"><label className="label">Licence No.</label><input className="input" value={form.sia_licence_number} onChange={e=>f('sia_licence_number',e.target.value)} placeholder="16-digit number" /></div>
+          <div className="field"><label className="label">Expiry</label><input type="date" className="input" value={form.sia_expiry_date} onChange={e=>f('sia_expiry_date',e.target.value)} /></div>
+
+          <div className="field" style={{gridColumn:'1/-1',borderTop:'1px solid var(--border)',paddingTop:'0.75rem',marginTop:'0.25rem'}}><div className="section-title" style={{marginBottom:'0.25rem'}}>SIA Second Licence (optional)</div></div>
+          <div className="field"><label className="label">Licence Type</label><select className="input" value={form.sia_licence_type_2||''} onChange={e=>f('sia_licence_type_2',e.target.value)}><option value="">None</option>{SIA_TYPES.map(t=><option key={t} value={t}>{t}</option>)}</select></div>
+          <div className="field"><label className="label">Licence No.</label><input className="input" value={form.sia_licence_number_2} onChange={e=>f('sia_licence_number_2',e.target.value)} placeholder="16-digit number" /></div>
+          <div className="field"><label className="label">Expiry</label><input type="date" className="input" value={form.sia_expiry_date_2} onChange={e=>f('sia_expiry_date_2',e.target.value)} /></div>
+
+          <div className="field" style={{gridColumn:'1/-1',borderTop:'1px solid var(--border)',paddingTop:'0.75rem',marginTop:'0.25rem'}}><div className="section-title" style={{marginBottom:'0.25rem'}}>BS7858 Vetting</div></div>
+          <div className="field"><label className="label">Clearance Date</label><input type="date" className="input" value={form.bs7858_clearance_date} onChange={e=>f('bs7858_clearance_date',e.target.value)} /></div>
+          <div className="field"><label className="label">Expiry Date</label><input type="date" className="input" value={form.bs7858_expiry_date} onChange={e=>f('bs7858_expiry_date',e.target.value)} /></div>
         </div>
         <div className="field">
           <label style={{display:'flex',alignItems:'center',gap:'0.5rem',cursor:'pointer'}}>

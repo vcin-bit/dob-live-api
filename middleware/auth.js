@@ -26,7 +26,7 @@ async function resolveUser(req, res, next) {
 
     let { data: user } = await supabase
       .from('users')
-      .select('id, clerk_id, company_id, role, first_name, last_name, email, active, is_route_planner')
+      .select('id, clerk_id, company_id, role, first_name, last_name, email, phone, active, is_route_planner, sia_licence_number, sia_licence_type, sia_expiry_date, sia_licence_type_2, sia_licence_number_2, sia_expiry_date_2, bs7858_clearance_date, bs7858_expiry_date')
       .eq('clerk_id', clerkId)
       .single();
 
@@ -37,7 +37,7 @@ async function resolveUser(req, res, next) {
         if (clerkEmail) {
           const { data: emailUser } = await supabase
             .from('users')
-            .select('id, clerk_id, company_id, role, first_name, last_name, email, active, is_route_planner')
+            .select('id, clerk_id, company_id, role, first_name, last_name, email, phone, active, is_route_planner, sia_licence_number, sia_licence_type, sia_expiry_date, sia_licence_type_2, sia_licence_number_2, sia_expiry_date_2, bs7858_clearance_date, bs7858_expiry_date')
             .eq('email', clerkEmail.toLowerCase())
             .single();
           if (emailUser) {

@@ -27,11 +27,8 @@ router.get('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER
 // PATCH /api/users/me — update own profile
 router.patch('/me', authenticate, async (req, res, next) => {
   try {
-    const { first_name, last_name, phone } = req.body;
-    const updates = {};
-    if (first_name !== undefined) updates.first_name = first_name;
-    if (last_name  !== undefined) updates.last_name  = last_name;
-    if (phone      !== undefined) updates.phone       = phone;
+    const selfAllowed = ['first_name', 'last_name', 'phone', 'sia_licence_type', 'sia_licence_type_2', 'sia_licence_number_2', 'sia_expiry_date_2', 'bs7858_clearance_date', 'bs7858_expiry_date'];
+    const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => selfAllowed.includes(k)));
 
     const { data, error } = await supabase
       .from('users')
@@ -86,7 +83,7 @@ router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY'), async (req
 // PATCH /api/users/:id
 router.patch('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER'), async (req, res, next) => {
   try {
-    const allowed = ['first_name', 'last_name', 'phone', 'sia_licence_number', 'sia_licence_type', 'sia_expiry_date', 'active', 'role', 'is_route_planner'];
+    const allowed = ['first_name', 'last_name', 'phone', 'sia_licence_number', 'sia_licence_type', 'sia_expiry_date', 'sia_licence_type_2', 'sia_licence_number_2', 'sia_expiry_date_2', 'bs7858_clearance_date', 'bs7858_expiry_date', 'active', 'role', 'is_route_planner'];
     const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
     const { data, error } = await supabase
       .from('users')
