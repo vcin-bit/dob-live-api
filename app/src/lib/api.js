@@ -143,6 +143,7 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+    delete: (id) => request(`/api/shifts/${id}`, { method: 'DELETE' }),
   },
 
   // Logs

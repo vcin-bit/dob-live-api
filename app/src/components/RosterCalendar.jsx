@@ -361,6 +361,7 @@ function ShiftModal({ shift, prefillDate, officers, allOfficers, sites, rates, s
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const f = (k, v) => setForm(p => ({...p, [k]: v}));
@@ -400,9 +401,16 @@ function ShiftModal({ shift, prefillDate, officers, allOfficers, sites, rates, s
     finally { setSaving(false); }
   }
 
-  async function remove() {
+  async function removeOfficer() {
     try {
-      await api.shifts.update(shift.id, { status: 'CANCELLED' });
+      await api.shifts.update(shift.id, { officer_id: null, status: 'SCHEDULED' });
+      onSaved();
+    } catch (err) { setError(err.message); }
+  }
+
+  async function deleteShift() {
+    try {
+      await api.shifts.delete(shift.id);
       onSaved();
     } catch (err) { setError(err.message); }
   }
@@ -465,22 +473,36 @@ function ShiftModal({ shift, prefillDate, officers, allOfficers, sites, rates, s
           </div>
         )}
 
-        <div className="modal-footer" style={{display:'flex',justifyContent: shift ? 'space-between' : 'flex-end'}}>
-          {shift && !confirmDelete && (
-            <button className="btn btn-sm" style={{background:'rgba(220,38,38,0.1)',border:'1px solid rgba(220,38,38,0.25)',color:'var(--danger)'}} onClick={() => setConfirmDelete(true)}>
-              Delete Shift
+        <div className="modal-footer" style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
+          <div style={{display:'flex',justifyContent: shift ? 'space-between' : 'flex-end',gap:'0.5rem'}}>
+            {shift && !confirmRemove && !confirmDelete && (
+              <button className="btn btn-sm" style={{background:'rgba(220,38,38,0.1)',border:'1px solid rgba(220,38,38,0.25)',color:'var(--danger)'}} onClick={() => setConfirmRemove(true)}>
+                Remove Officer
+              </button>
+            )}
+            {shift && confirmRemove && (
+              <div style={{display:'flex',gap:'0.375rem',alignItems:'center'}}>
+                <button className="btn btn-sm" style={{background:'var(--danger)',color:'#fff',border:'none'}} onClick={removeOfficer}>Confirm Remove</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => setConfirmRemove(false)}>Cancel</button>
+              </div>
+            )}
+            {shift && confirmDelete && (
+              <div style={{display:'flex',gap:'0.375rem',alignItems:'center'}}>
+                <button className="btn btn-sm" style={{background:'var(--danger)',color:'#fff',border:'none'}} onClick={deleteShift}>Confirm Delete</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => setConfirmDelete(false)}>Cancel</button>
+              </div>
+            )}
+            <div style={{display:'flex',gap:'0.5rem'}}>
+              <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+              <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
+            </div>
+          </div>
+          {shift && !confirmRemove && !confirmDelete && (
+            <button onClick={() => setConfirmDelete(true)}
+              style={{background:'none',border:'none',color:'rgba(220,38,38,0.5)',fontSize:'0.75rem',cursor:'pointer',padding:0,textAlign:'left'}}>
+              Delete shift entirely
             </button>
           )}
-          {shift && confirmDelete && (
-            <div style={{display:'flex',gap:'0.375rem',alignItems:'center'}}>
-              <button className="btn btn-sm" style={{background:'var(--danger)',color:'#fff',border:'none'}} onClick={remove}>Confirm Delete</button>
-              <button className="btn btn-ghost btn-sm" onClick={() => setConfirmDelete(false)}>Cancel</button>
-            </div>
-          )}
-          <div style={{display:'flex',gap:'0.5rem'}}>
-            <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-            <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
-          </div>
         </div>
       </div>
     </div>
