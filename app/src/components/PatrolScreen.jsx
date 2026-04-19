@@ -2,9 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 
-const SUPABASE_URL = 'https://bxesqjzkuredqzvepomn.supabase.co';
-const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
 export default function PatrolScreen({ user, site, shift }) {
   const navigate = useNavigate();
   const mapRef = useRef(null);
