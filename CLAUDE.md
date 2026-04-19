@@ -59,3 +59,9 @@ Checks for data integrity issues (ghost shifts, bad status casing, orphan logs) 
 ```bash
 SUPABASE_ANON_KEY=your_key npm run test:db
 ```
+
+## Known Safari Issues
+
+- Safari ITP (Intelligent Tracking Prevention) purges third-party cookies after 7 days of inactivity. Clerk's default domain (`clerk.doblive.co.uk`) is a different subdomain from `app.doblive.co.uk`, so Safari may treat its cookies as third-party and purge them.
+- **Solution**: Set up a custom Clerk proxy domain at `clerk.doblive.co.uk` as a first-party domain — this is configured in the Clerk dashboard under Domains, not in code.
+- Officers should add the app to their home screen as a PWA for best session persistence. The app has `apple-mobile-web-app-capable` and a manifest configured for standalone mode.

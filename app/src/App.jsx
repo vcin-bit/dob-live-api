@@ -47,7 +47,11 @@ function App() {
       <Routes>
         <Route path="/portal/*" element={<PortalApp />} />
         <Route path="*" element={
-          <ClerkProvider publishableKey={clerkPubKey}>
+          <ClerkProvider
+            publishableKey={clerkPubKey}
+            signInFallbackRedirectUrl="/"
+            signUpFallbackRedirectUrl="/"
+          >
             <SignedOut><AuthFlow /></SignedOut>
             <SignedIn><AuthenticatedApp /></SignedIn>
           </ClerkProvider>

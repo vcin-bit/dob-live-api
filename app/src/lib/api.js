@@ -36,6 +36,11 @@ async function request(endpoint, options = {}) {
     const response = await fetch(url, config);
     
     if (!response.ok) {
+      // Expired or invalid session — reload so Clerk shows sign-in
+      if (response.status === 401 && typeof window !== 'undefined') {
+        window.location.reload();
+        return;
+      }
       const error = await response.json().catch(() => ({ error: 'Network error' }));
       throw new ApiError(
         error.error || `HTTP ${response.status}`,
