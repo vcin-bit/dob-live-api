@@ -8,7 +8,8 @@ const ALL_FIELDS = ['name','address','city','postcode','active','client_id',
   'escalation_contact_2_name','escalation_contact_2_mobile',
   'geofence_lat','geofence_lng','geofence_radius','notes',
   'client_portal_enabled','client_portal_pin','client_name',
-  'client_contact_name','client_contact_email','client_contact_phone'];
+  'client_contact_name','client_contact_email','client_contact_phone',
+  'contract_start_date','client_company_address'];
 
 router.get('/', authenticate, async (req, res, next) => {
   try {
@@ -58,6 +59,65 @@ router.patch('/:id', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANA
 router.delete('/:id', authenticate, requireRole('SUPER_ADMIN','COMPANY'), async (req, res, next) => {
   try {
     const { error } = await supabase.from('sites').delete().eq('id', req.params.id).eq('company_id', req.user.company_id);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
+// ── Site Codes CRUD ─────────────────────────────────────────
+router.get('/:id/codes', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANAGER','FD'), async (req, res, next) => {
+  try {
+    const { data, error } = await supabase
+      .from('site_codes')
+      .select('*')
+      .eq('site_id', req.params.id)
+      .eq('company_id', req.user.company_id)
+      .order('label');
+    if (error) throw error;
+    res.json({ data });
+  } catch (err) { next(err); }
+});
+
+router.post('/:id/codes', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANAGER'), async (req, res, next) => {
+  try {
+    const { label, code, code_type, notes } = req.body;
+    if (!label || !code) return res.status(400).json({ error: 'Label and code are required' });
+    const { data, error } = await supabase
+      .from('site_codes')
+      .insert({ site_id: req.params.id, company_id: req.user.company_id, label, code, code_type: code_type || 'keypad', notes })
+      .select()
+      .single();
+    if (error) throw error;
+    res.status(201).json({ data });
+  } catch (err) { next(err); }
+});
+
+router.patch('/:id/codes/:codeId', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANAGER'), async (req, res, next) => {
+  try {
+    const allowed = ['label', 'code', 'code_type', 'notes'];
+    const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
+    updates.updated_at = new Date().toISOString();
+    const { data, error } = await supabase
+      .from('site_codes')
+      .update(updates)
+      .eq('id', req.params.codeId)
+      .eq('site_id', req.params.id)
+      .eq('company_id', req.user.company_id)
+      .select()
+      .single();
+    if (error) throw error;
+    res.json({ data });
+  } catch (err) { next(err); }
+});
+
+router.delete('/:id/codes/:codeId', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANAGER'), async (req, res, next) => {
+  try {
+    const { error } = await supabase
+      .from('site_codes')
+      .delete()
+      .eq('id', req.params.codeId)
+      .eq('site_id', req.params.id)
+      .eq('company_id', req.user.company_id);
     if (error) throw error;
     res.json({ success: true });
   } catch (err) { next(err); }

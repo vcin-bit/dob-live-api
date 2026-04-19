@@ -101,6 +101,12 @@ export const api = {
       body: JSON.stringify(data),
     }),
     delete: (id) => request(`/api/sites/${id}`, { method: 'DELETE' }),
+    codes: {
+      list: (siteId) => request(`/api/sites/${siteId}/codes`),
+      create: (siteId, data) => request(`/api/sites/${siteId}/codes`, { method: 'POST', body: JSON.stringify(data) }),
+      update: (siteId, codeId, data) => request(`/api/sites/${siteId}/codes/${codeId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+      delete: (siteId, codeId) => request(`/api/sites/${siteId}/codes/${codeId}`, { method: 'DELETE' }),
+    },
   },
 
   // Officer-site assignments

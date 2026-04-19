@@ -335,6 +335,8 @@ function SiteFormModal({ site, onClose, onSaved }) {
     geofence_radius:         site?.geofence_radius || 500,
     notes:                   site?.notes || '',
     active:                  site?.active !== false,
+    contract_start_date:     site?.contract_start_date || '',
+    client_company_address:  site?.client_company_address || '',
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -418,6 +420,18 @@ function SiteFormModal({ site, onClose, onSaved }) {
           <div className="field">
             <label className="label">Escalation 2 Mobile</label>
             <input className="input" value={form.escalation_contact_2_mobile} onChange={e=>f('escalation_contact_2_mobile',e.target.value)} />
+          </div>
+
+          <div className="field" style={{gridColumn:'1/-1',borderTop:'1px solid var(--border)',paddingTop:'0.75rem',marginTop:'0.25rem'}}>
+            <div className="section-title" style={{marginBottom:'0.5rem'}}>Client</div>
+          </div>
+          <div className="field">
+            <label className="label">Contract Start Date</label>
+            <input type="date" className="input" value={form.contract_start_date} onChange={e=>f('contract_start_date',e.target.value)} />
+          </div>
+          <div className="field" style={{gridColumn:'1/-1'}}>
+            <label className="label">Client Company Address</label>
+            <input className="input" value={form.client_company_address} onChange={e=>f('client_company_address',e.target.value)} placeholder="Client's registered address" />
           </div>
 
           <div className="field" style={{gridColumn:'1/-1',borderTop:'1px solid var(--border)',paddingTop:'0.75rem',marginTop:'0.25rem'}}>
@@ -863,7 +877,7 @@ function SiteDetail({ user }) {
       </div>
       {/* Tab bar */}
       <div style={{display:'flex',gap:0,borderBottom:'1px solid var(--border)',padding:'0 1.5rem',background:'var(--surface)'}}>
-        {[{key:'info',label:'Site Info'},{key:'logs',label:'Recent Logs'},{key:'roster',label:'Roster'},{key:'officers',label:'Officers'},{key:'playbook',label:'Virtual Supervisor'}].map(t => (
+        {[{key:'info',label:'Site Info'},{key:'logs',label:'Recent Logs'},{key:'roster',label:'Roster'},{key:'officers',label:'Officers'},{key:'codes',label:'Codes'},{key:'playbook',label:'Virtual Supervisor'}].map(t => (
           <button key={t.key} onClick={() => setActiveTab(t.key)}
             style={{padding:'0.75rem 1rem',background:'none',border:'none',borderBottom:`2px solid ${activeTab===t.key?'var(--blue)':'transparent'}`,color:activeTab===t.key?'var(--blue)':'var(--text-2)',fontSize:'0.875rem',fontWeight:600,cursor:'pointer',marginBottom:'-1px',whiteSpace:'nowrap'}}>
             {t.label}
@@ -954,6 +968,7 @@ function SiteDetail({ user }) {
             )}
           </div>
         )}
+        {activeTab === 'codes' && <SiteCodesTab siteId={id} />}
         {activeTab === 'info' && <div>
         <div className="card" style={{marginBottom:'1rem'}}>
           <div className="section-title" style={{marginBottom:'0.875rem'}}>Site Details</div>
@@ -987,6 +1002,8 @@ function SiteDetail({ user }) {
           <div className="section-title" style={{marginBottom:'0.875rem'}}>Client</div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
             <InfoField label="Client Name" value={site.client_name} />
+            <InfoField label="Contract Start Date" value={site.contract_start_date ? new Date(site.contract_start_date).toLocaleDateString('en-GB') : null} />
+            <InfoField label="Client Company Address" value={site.client_company_address} span />
             <InfoField label="Contact Name" value={site.client_contact_name} />
             <InfoField label="Contact Email" value={site.client_contact_email} />
             <InfoField label="Contact Phone" value={site.client_contact_phone} />
@@ -1513,6 +1530,147 @@ function OnDutyScreen({ user }) {
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+function SiteCodesTab({ siteId }) {
+  const [codes, setCodes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editCode, setEditCode] = useState(null);
+  const [form, setForm] = useState({ label: '', code: '', code_type: 'keypad', notes: '' });
+  const [saving, setSaving] = useState(false);
+  const [visibleCodes, setVisibleCodes] = useState(new Set());
+
+  async function load() {
+    try {
+      const res = await api.sites.codes.list(siteId);
+      setCodes(res.data || []);
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, [siteId]);
+
+  function openForm(c) {
+    if (c) {
+      setEditCode(c);
+      setForm({ label: c.label, code: c.code, code_type: c.code_type, notes: c.notes || '' });
+    } else {
+      setEditCode(null);
+      setForm({ label: '', code: '', code_type: 'keypad', notes: '' });
+    }
+    setShowForm(true);
+  }
+
+  async function save() {
+    if (!form.label.trim() || !form.code.trim()) return;
+    setSaving(true);
+    try {
+      if (editCode) {
+        await api.sites.codes.update(siteId, editCode.id, form);
+      } else {
+        await api.sites.codes.create(siteId, form);
+      }
+      setShowForm(false);
+      load();
+    } catch (err) { alert(err.message); }
+    finally { setSaving(false); }
+  }
+
+  async function remove(codeId) {
+    if (!window.confirm('Delete this code?')) return;
+    await api.sites.codes.delete(siteId, codeId);
+    load();
+  }
+
+  function toggleVisible(id) {
+    setVisibleCodes(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  const codeTypeLabels = { keypad: 'Keypad', padlock: 'Padlock', key_safe: 'Key Safe', door: 'Door Code', gate: 'Gate', alarm: 'Alarm', other: 'Other' };
+
+  if (loading) return <div style={{display:'flex',justifyContent:'center',padding:'2rem'}}><div className="spinner" /></div>;
+
+  return (
+    <div className="card">
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.875rem'}}>
+        <div className="section-title">Site Codes</div>
+        <button className="btn btn-primary btn-sm" onClick={() => openForm(null)}>
+          <PlusIcon style={{width:'0.875rem',height:'0.875rem'}} /> Add Code
+        </button>
+      </div>
+      {codes.length === 0 ? (
+        <div className="empty-state"><p>No codes stored for this site. Add keypad, padlock, key safe or door codes.</p></div>
+      ) : (
+        <table className="table">
+          <thead>
+            <tr><th>Label</th><th>Type</th><th>Code</th><th>Notes</th><th></th></tr>
+          </thead>
+          <tbody>
+            {codes.map(c => (
+              <tr key={c.id}>
+                <td style={{fontWeight:500}}>{c.label}</td>
+                <td style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>{codeTypeLabels[c.code_type] || c.code_type}</td>
+                <td style={{fontFamily:'monospace',fontSize:'0.875rem'}}>
+                  <span style={{display:'inline-flex',alignItems:'center',gap:'0.5rem'}}>
+                    {visibleCodes.has(c.id) ? c.code : '••••••'}
+                    <button onClick={() => toggleVisible(c.id)}
+                      style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-3)',fontSize:'0.8125rem',padding:0}}>
+                      {visibleCodes.has(c.id) ? 'Hide' : 'Show'}
+                    </button>
+                  </span>
+                </td>
+                <td style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>{c.notes || '—'}</td>
+                <td style={{textAlign:'right',display:'flex',gap:'0.375rem',justifyContent:'flex-end'}}>
+                  <button className="btn btn-ghost btn-sm" onClick={() => openForm(c)}>Edit</button>
+                  <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={() => remove(c.id)}>Delete</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {showForm && (
+        <div className="modal-overlay" onClick={() => setShowForm(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title">{editCode ? 'Edit Code' : 'Add Code'}</div>
+              <button className="modal-close" onClick={() => setShowForm(false)}>×</button>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
+              <div className="field">
+                <label className="label">Label *</label>
+                <input className="input" value={form.label} onChange={e => setForm(f=>({...f,label:e.target.value}))} placeholder="e.g. Main entrance keypad" />
+              </div>
+              <div className="field">
+                <label className="label">Type</label>
+                <select className="input" value={form.code_type} onChange={e => setForm(f=>({...f,code_type:e.target.value}))}>
+                  {Object.entries(codeTypeLabels).map(([k,v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+              </div>
+              <div className="field">
+                <label className="label">Code *</label>
+                <input className="input" value={form.code} onChange={e => setForm(f=>({...f,code:e.target.value}))} placeholder="e.g. 1234#" />
+              </div>
+              <div className="field">
+                <label className="label">Notes</label>
+                <input className="input" value={form.notes} onChange={e => setForm(f=>({...f,notes:e.target.value}))} placeholder="Optional notes" />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={save} disabled={saving || !form.label.trim() || !form.code.trim()}>
+                {saving ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
