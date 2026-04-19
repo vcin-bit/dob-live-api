@@ -105,6 +105,14 @@ function AuthFlow() {
       const result = await signIn.create({ identifier: email, password });
       if (result.status === 'complete') {
         await setSignInActive({ session: result.createdSessionId });
+      } else if (result.status === 'needs_first_factor') {
+        const result2 = await signIn.attemptFirstFactor({ strategy: 'password', password });
+        if (result2.status === 'complete') {
+          await setSignInActive({ session: result2.createdSessionId });
+        } else {
+          setError(`Sign in status: ${result2.status}`);
+          console.log('Sign in result2:', JSON.stringify(result2));
+        }
       } else {
         setError(`Sign in status: ${result.status}. Please try again or contact support.`);
         console.log('Sign in result:', JSON.stringify(result));
