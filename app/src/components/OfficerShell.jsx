@@ -114,7 +114,7 @@ function OfficerApp({ user }) {
         <Route path="/sites" element={
           <SitePickerScreen 
             sites={sites}
-            onSiteSelect={setSelectedSite}
+            onSiteSelect={(site) => { setSelectedSite(site); if (!activeShift) setShowShiftModal(true); }}
             user={user}
           />
         } />
