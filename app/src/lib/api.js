@@ -27,14 +27,10 @@ async function request(endpoint, options = {}) {
       const token = await window.__clerkGetToken();
       if (token) config.headers.Authorization = `Bearer ${token}`;
     } else if (typeof window !== 'undefined') {
-      // Fallback: try window.Clerk directly
-      for (let i = 0; i < 10; i++) {
-        try {
-          const token = await window.Clerk?.session?.getToken?.();
-          if (token) { config.headers.Authorization = `Bearer ${token}`; break; }
-        } catch {}
-        await new Promise(r => setTimeout(r, 500));
-      }
+      try {
+        const token = await window.Clerk?.session?.getToken?.();
+        if (token) config.headers.Authorization = `Bearer ${token}`;
+      } catch {}
     }
 
     const response = await fetch(url, config);

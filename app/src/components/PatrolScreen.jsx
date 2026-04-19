@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 
 const SUPABASE_URL = 'https://bxesqjzkuredqzvepomn.supabase.co';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ4ZXNxanprdXJlZHF6dmVwb21uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM1OTI1NzMsImV4cCI6MjA1OTE2ODU3M30.cOTbJpb3GDpCTClCBbOTCmNxaSJiQIupAiCVEoLsEjM';
+const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export default function PatrolScreen({ user, site, shift }) {
   const navigate = useNavigate();

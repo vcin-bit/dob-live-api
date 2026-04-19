@@ -92,7 +92,7 @@ function LogEntryScreen({ user, site, shift }) {
   // Media upload
   async function uploadMedia(files) {
     setUploadingMedia(true);
-    const token = window.Clerk?.session ? await window.Clerk.session.getToken() : '';
+    const token = await window.__clerkGetToken?.() || '';
     const uploads = [];
     for (const file of Array.from(files)) {
       const fd = new FormData(); fd.append('file', file);
