@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import { PlusIcon } from '@heroicons/react/24/outline';
 
-// Consistent colour per officer based on id hash
 const OFFICER_COLOURS = [
   '#3b82f6','#8b5cf6','#ef4444','#f59e0b','#10b981','#ec4899','#06b6d4','#f97316',
   '#6366f1','#14b8a6','#e11d48','#84cc16','#0ea5e9','#a855f7','#22c55e','#d946ef',
@@ -32,7 +31,6 @@ function shiftTimeLabel(s) {
   return isOvernight(s) ? `${start}–${end} ↗` : `${start}–${end}`;
 }
 
-// Status badge config
 function statusBadge(status) {
   switch (status) {
     case 'ACTIVE': return { cls: 'badge-success', label: 'Active', pulse: true };
@@ -56,21 +54,20 @@ export default function RosterCalendar({ siteId, user }) {
   const [editShift, setEditShift] = useState(null);
   const [addDate, setAddDate] = useState(null);
 
-  // Compute visible date range
+  // Bulk select
+  const [bulkMode, setBulkMode] = useState(false);
+  const [selected, setSelected] = useState(new Set());
+  const [bulkAction, setBulkAction] = useState(null); // 'officer' | 'times' | 'delete'
+  const [bulkProcessing, setBulkProcessing] = useState(false);
+
   function getRange() {
     const today = new Date(anchor);
     today.setHours(0,0,0,0);
     let from, to;
-    if (view === 'day') {
-      from = new Date(today);
-      to = addDays(today, 1);
-    } else if (view === 'week') {
-      from = startOfWeek(today);
-      to = addDays(from, 7);
-    } else if (view === '2week') {
-      from = startOfWeek(today);
-      to = addDays(from, 14);
-    } else {
+    if (view === 'day') { from = new Date(today); to = addDays(today, 1); }
+    else if (view === 'week') { from = startOfWeek(today); to = addDays(from, 7); }
+    else if (view === '2week') { from = startOfWeek(today); to = addDays(from, 14); }
+    else {
       from = startOfWeek(startOfMonth(today));
       const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 1);
       const endDay = (monthEnd.getDay() + 6) % 7;
@@ -86,15 +83,12 @@ export default function RosterCalendar({ siteId, user }) {
   async function load() {
     setLoading(true);
     try {
-      // Fetch from -1 day to +1 day to catch overnight shifts
       const fetchFrom = addDays(from, -1);
       const fetchTo = addDays(to, 1);
       const params = { from: fetchFrom.toISOString(), to: fetchTo.toISOString(), limit: 500 };
       if (siteId) params.site_id = siteId;
       const [shiftsRes, usersRes, sitesRes, ratesRes] = await Promise.all([
-        api.shifts.list(params),
-        api.users.list(),
-        api.sites.list(),
+        api.shifts.list(params), api.users.list(), api.sites.list(),
         api.rates.list().catch(() => ({ data: [] })),
       ]);
       setShifts(shiftsRes.data || []);
@@ -102,8 +96,6 @@ export default function RosterCalendar({ siteId, user }) {
       setOfficers(allOfficers);
       setSites(sitesRes.data || []);
       setRates(ratesRes.data || []);
-
-      // Load site-specific officer assignments if we have a siteId
       if (siteId) {
         const assigned = await Promise.all(allOfficers.map(async o => {
           try {
@@ -112,9 +104,7 @@ export default function RosterCalendar({ siteId, user }) {
           } catch { return null; }
         }));
         setSiteOfficerIds(new Set(assigned.filter(Boolean)));
-      } else {
-        setSiteOfficerIds(null);
-      }
+      } else { setSiteOfficerIds(null); }
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   }
@@ -130,7 +120,6 @@ export default function RosterCalendar({ siteId, user }) {
     setAnchor(d);
   }
 
-  // Show shifts on their start date only
   function shiftsForDay(d) {
     const ds = isoDate(d);
     return shifts.filter(s => isoDate(new Date(s.start_time)) === ds);
@@ -147,11 +136,62 @@ export default function RosterCalendar({ siteId, user }) {
 
   const isManager = ['COMPANY','OPS_MANAGER','SUPER_ADMIN','FD'].includes(user?.role);
   const isToday = d => isoDate(d) === isoDate(new Date());
+  const modalOfficers = siteOfficerIds ? officers.filter(o => siteOfficerIds.has(o.id)) : officers;
 
-  // Officers filtered for the modal
-  const modalOfficers = siteOfficerIds
-    ? officers.filter(o => siteOfficerIds.has(o.id))
-    : officers;
+  // Bulk helpers
+  function toggleSelect(id) {
+    setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  }
+  function selectAll() {
+    const visible = days.flatMap(d => shiftsForDay(d));
+    setSelected(new Set(visible.map(s => s.id)));
+  }
+  function selectDay(d) {
+    const dayIds = shiftsForDay(d).map(s => s.id);
+    setSelected(prev => { const n = new Set(prev); dayIds.forEach(id => n.add(id)); return n; });
+  }
+  function exitBulk() { setBulkMode(false); setSelected(new Set()); setBulkAction(null); }
+
+  async function bulkChangeOfficer(officerId) {
+    setBulkProcessing(true);
+    try {
+      await Promise.all([...selected].map(id => api.shifts.update(id, { officer_id: officerId })));
+      exitBulk(); load();
+    } catch (err) { alert(err.message); }
+    finally { setBulkProcessing(false); }
+  }
+
+  async function bulkChangeTimes(startTime, endTime) {
+    setBulkProcessing(true);
+    try {
+      const selectedShifts = shifts.filter(s => selected.has(s.id));
+      await Promise.all(selectedShifts.map(s => {
+        const date = isoDate(new Date(s.start_time));
+        const startDt = new Date(`${date}T${startTime}:00`).toISOString();
+        let endDt = new Date(`${date}T${endTime}:00`).toISOString();
+        if (new Date(endDt) <= new Date(startDt)) {
+          endDt = new Date(`${isoDate(addDays(new Date(date), 1))}T${endTime}:00`).toISOString();
+        }
+        return api.shifts.update(s.id, { start_time: startDt, end_time: endDt });
+      }));
+      exitBulk(); load();
+    } catch (err) { alert(err.message); }
+    finally { setBulkProcessing(false); }
+  }
+
+  async function bulkDelete() {
+    setBulkProcessing(true);
+    try {
+      await Promise.all([...selected].map(id => api.shifts.delete(id)));
+      exitBulk(); load();
+    } catch (err) { alert(err.message); }
+    finally { setBulkProcessing(false); }
+  }
+
+  function handleShiftClick(s) {
+    if (bulkMode) { toggleSelect(s.id); return; }
+    if (isManager) setEditShift(s);
+  }
 
   return (
     <div>
@@ -163,27 +203,36 @@ export default function RosterCalendar({ siteId, user }) {
           <button className="btn btn-ghost btn-sm" onClick={() => navigate(1)}>→</button>
           <span style={{fontSize:'0.875rem',fontWeight:600,marginLeft:'0.5rem'}}>{rangeLabel()}</span>
         </div>
-        <div style={{display:'flex',gap:'2px',background:'var(--surface-2)',borderRadius:'6px',padding:'2px'}}>
-          {[['day','Day'],['week','Week'],['2week','2 Weeks'],['month','Month']].map(([k,l]) => (
-            <button key={k} onClick={() => setView(k)}
-              style={{padding:'0.375rem 0.75rem',borderRadius:'4px',border:'none',cursor:'pointer',fontSize:'0.8125rem',fontWeight:600,
-                background: view===k ? 'var(--blue)' : 'transparent',
-                color: view===k ? '#fff' : 'var(--text-2)',
-              }}>
-              {l}
+        <div style={{display:'flex',alignItems:'center',gap:'0.5rem'}}>
+          {isManager && (
+            <button className={`btn btn-sm ${bulkMode ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => bulkMode ? exitBulk() : setBulkMode(true)}>
+              {bulkMode ? 'Exit Select' : 'Select'}
             </button>
-          ))}
+          )}
+          {bulkMode && <button className="btn btn-ghost btn-sm" onClick={selectAll}>Select All</button>}
+          <div style={{display:'flex',gap:'2px',background:'var(--surface-2)',borderRadius:'6px',padding:'2px'}}>
+            {[['day','Day'],['week','Week'],['2week','2 Weeks'],['month','Month']].map(([k,l]) => (
+              <button key={k} onClick={() => setView(k)}
+                style={{padding:'0.375rem 0.75rem',borderRadius:'4px',border:'none',cursor:'pointer',fontSize:'0.8125rem',fontWeight:600,
+                  background: view===k ? 'var(--blue)' : 'transparent', color: view===k ? '#fff' : 'var(--text-2)'}}>
+                {l}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       {loading ? (
         <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>
       ) : view === 'day' ? (
-        /* ── DAY VIEW ──────────────────────────────────────── */
         <div className="card">
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.75rem'}}>
             <div className="section-title">{from.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' })}</div>
-            {isManager && <button className="btn btn-primary btn-sm" onClick={() => setAddDate(from)}><PlusIcon style={{width:'0.875rem',height:'0.875rem'}} /> Add Shift</button>}
+            <div style={{display:'flex',gap:'0.5rem'}}>
+              {bulkMode && <button className="btn btn-ghost btn-sm" onClick={() => selectDay(from)}>Select All</button>}
+              {isManager && !bulkMode && <button className="btn btn-primary btn-sm" onClick={() => setAddDate(from)}><PlusIcon style={{width:'0.875rem',height:'0.875rem'}} /> Add Shift</button>}
+            </div>
           </div>
           {shiftsForDay(from).length === 0 ? (
             <div style={{textAlign:'center',padding:'1.5rem',color:'#ef4444',fontSize:'0.8125rem',fontWeight:600}}>Uncovered</div>
@@ -191,15 +240,17 @@ export default function RosterCalendar({ siteId, user }) {
             <div style={{display:'flex',flexDirection:'column',gap:'0.5rem'}}>
               {shiftsForDay(from).sort((a,b) => new Date(a.start_time) - new Date(b.start_time)).map(s => {
                 const sb = statusBadge(s.status);
+                const sel = selected.has(s.id);
                 return (
-                  <div key={s.id} onClick={() => isManager && setEditShift(s)}
-                    style={{display:'flex',alignItems:'center',gap:'0.875rem',padding:'0.75rem 1rem',borderRadius:'8px',background:'var(--surface)',border:'1px solid var(--border)',cursor:isManager?'pointer':'default',borderLeft:`4px solid ${officerColour(s.officer_id)}`}}>
+                  <div key={s.id} onClick={() => handleShiftClick(s)}
+                    style={{display:'flex',alignItems:'center',gap:'0.875rem',padding:'0.75rem 1rem',borderRadius:'8px',background:'var(--surface)',
+                      border: sel ? '2px solid var(--blue)' : '1px solid var(--border)',
+                      cursor: bulkMode || isManager ? 'pointer' : 'default', borderLeft:`4px solid ${officerColour(s.officer_id)}`}}>
+                    {bulkMode && <input type="checkbox" checked={sel} readOnly style={{width:'1rem',height:'1rem',accentColor:'var(--blue)',flexShrink:0}} />}
                     <div style={{flex:1}}>
                       <div style={{fontWeight:600,fontSize:'0.9375rem'}}>{s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unassigned'}</div>
                       {!siteId && <div style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>{s.site?.name || '—'}</div>}
-                      <div style={{fontSize:'0.8125rem',color:'var(--text-3)',marginTop:'2px'}}>
-                        {shiftTimeLabel(s)}
-                      </div>
+                      <div style={{fontSize:'0.8125rem',color:'var(--text-3)',marginTop:'2px'}}>{shiftTimeLabel(s)}</div>
                     </div>
                     <span className={`badge ${sb.cls}`} style={{display:'inline-flex',alignItems:'center',gap:'4px'}}>
                       {sb.pulse && <span style={{width:6,height:6,borderRadius:'50%',background:'#4ade80',animation:'pulse 2s infinite'}} />}
@@ -212,61 +263,150 @@ export default function RosterCalendar({ siteId, user }) {
           )}
         </div>
       ) : (
-        /* ── GRID VIEW (week / 2week / month) ─────────────── */
         <RotaGrid days={days} view={view} shiftsForDay={shiftsForDay} isToday={isToday} isManager={isManager}
-          onEdit={s => setEditShift(s)} onAdd={d => setAddDate(d)} siteId={siteId} />
+          onShiftClick={handleShiftClick} onAdd={d => setAddDate(d)} siteId={siteId}
+          bulkMode={bulkMode} selected={selected} onSelectDay={selectDay} />
+      )}
+
+      {/* Bulk action bar */}
+      {bulkMode && selected.size > 0 && !bulkAction && (
+        <div style={{position:'sticky',bottom:0,left:0,right:0,background:'var(--navy)',border:'1px solid var(--border)',borderRadius:'10px 10px 0 0',padding:'0.75rem 1rem',display:'flex',alignItems:'center',gap:'0.75rem',flexWrap:'wrap',zIndex:100}}>
+          {bulkProcessing ? (
+            <div style={{display:'flex',alignItems:'center',gap:'0.5rem',color:'#fff',fontSize:'0.875rem'}}><div className="spinner" style={{width:'1rem',height:'1rem'}} /> Processing...</div>
+          ) : (
+            <>
+              <span style={{fontSize:'0.875rem',fontWeight:600,color:'#fff'}}>{selected.size} shift{selected.size!==1?'s':''} selected</span>
+              <div style={{flex:1}} />
+              <button className="btn btn-sm" style={{background:'rgba(59,130,246,0.2)',border:'1px solid rgba(59,130,246,0.4)',color:'#60a5fa'}} onClick={() => setBulkAction('officer')}>Change Officer</button>
+              <button className="btn btn-sm" style={{background:'rgba(251,191,36,0.2)',border:'1px solid rgba(251,191,36,0.4)',color:'#fbbf24'}} onClick={() => setBulkAction('times')}>Change Times</button>
+              <button className="btn btn-sm" style={{background:'rgba(220,38,38,0.15)',border:'1px solid rgba(220,38,38,0.3)',color:'#ef4444'}} onClick={() => setBulkAction('delete')}>Delete Selected</button>
+              <button className="btn btn-ghost btn-sm" style={{color:'rgba(255,255,255,0.5)'}} onClick={exitBulk}>Cancel</button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Bulk change officer */}
+      {bulkAction === 'officer' && (
+        <BulkOfficerModal officers={modalOfficers} allOfficers={officers} siteId={siteId} count={selected.size}
+          onApply={bulkChangeOfficer} onClose={() => setBulkAction(null)} processing={bulkProcessing} />
+      )}
+
+      {/* Bulk change times */}
+      {bulkAction === 'times' && (
+        <BulkTimesModal count={selected.size}
+          onApply={bulkChangeTimes} onClose={() => setBulkAction(null)} processing={bulkProcessing} />
+      )}
+
+      {/* Bulk delete confirm */}
+      {bulkAction === 'delete' && (
+        <div className="modal-overlay" onClick={() => setBulkAction(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{maxWidth:'400px'}}>
+            <div className="modal-header">
+              <div className="modal-title">Delete {selected.size} shift{selected.size!==1?'s':''}?</div>
+              <button className="modal-close" onClick={() => setBulkAction(null)}>×</button>
+            </div>
+            <p style={{fontSize:'0.875rem',color:'var(--text-2)',marginBottom:'1rem'}}>This will permanently delete the selected shifts. This cannot be undone.</p>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setBulkAction(null)}>Cancel</button>
+              <button className="btn btn-sm" style={{background:'var(--danger)',color:'#fff',border:'none'}} onClick={bulkDelete} disabled={bulkProcessing}>
+                {bulkProcessing ? 'Deleting...' : 'Delete All'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Edit modal */}
       {editShift && (
-        <ShiftModal
-          shift={editShift}
-          officers={modalOfficers}
-          allOfficers={officers}
-          sites={sites}
-          rates={rates}
-          siteId={siteId}
-          user={user}
-          onClose={() => setEditShift(null)}
-          onSaved={() => { setEditShift(null); load(); }}
-        />
+        <ShiftModal shift={editShift} officers={modalOfficers} allOfficers={officers} sites={sites} rates={rates}
+          siteId={siteId} user={user} onClose={() => setEditShift(null)} onSaved={() => { setEditShift(null); load(); }} />
       )}
 
       {/* Add modal */}
       {addDate && (
-        <ShiftModal
-          shift={null}
-          prefillDate={isoDate(addDate)}
-          officers={modalOfficers}
-          allOfficers={officers}
-          sites={sites}
-          rates={rates}
-          siteId={siteId}
-          user={user}
-          onClose={() => setAddDate(null)}
-          onSaved={() => { setAddDate(null); load(); }}
-        />
+        <ShiftModal shift={null} prefillDate={isoDate(addDate)} officers={modalOfficers} allOfficers={officers} sites={sites} rates={rates}
+          siteId={siteId} user={user} onClose={() => setAddDate(null)} onSaved={() => { setAddDate(null); load(); }} />
       )}
 
-      {/* Pulse animation */}
       <style>{`@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }`}</style>
     </div>
   );
 }
 
-function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onEdit, onAdd, siteId }) {
-  const weeks = [];
-  for (let i = 0; i < days.length; i += 7) {
-    weeks.push(days.slice(i, i + 7));
-  }
+// ── Bulk modals ──────────────────────────────────────────────────────────────
 
+function BulkOfficerModal({ officers, allOfficers, siteId, count, onApply, onClose, processing }) {
+  const [officerId, setOfficerId] = useState('');
+  const list = siteId ? officers : (allOfficers || officers);
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()} style={{maxWidth:'400px'}}>
+        <div className="modal-header">
+          <div className="modal-title">Change Officer — {count} shift{count!==1?'s':''}</div>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+        <div className="field">
+          <label className="label">Assign to</label>
+          <select className="input" value={officerId} onChange={e => setOfficerId(e.target.value)}>
+            <option value="">Select officer</option>
+            {list.map(o => <option key={o.id} value={o.id}>{o.first_name} {o.last_name}</option>)}
+          </select>
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={() => onApply(officerId)} disabled={!officerId || processing}>
+            {processing ? 'Applying...' : 'Apply'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BulkTimesModal({ count, onApply, onClose, processing }) {
+  const [startTime, setStartTime] = useState('19:00');
+  const [endTime, setEndTime] = useState('07:00');
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()} style={{maxWidth:'400px'}}>
+        <div className="modal-header">
+          <div className="modal-title">Change Times — {count} shift{count!==1?'s':''}</div>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+        <p style={{fontSize:'0.8125rem',color:'var(--text-2)',marginBottom:'0.75rem'}}>New times will be applied to all selected shifts, keeping their original dates.</p>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
+          <div className="field">
+            <label className="label">Start Time</label>
+            <input type="time" className="input" value={startTime} onChange={e => setStartTime(e.target.value)} />
+          </div>
+          <div className="field">
+            <label className="label">End Time</label>
+            <input type="time" className="input" value={endTime} onChange={e => setEndTime(e.target.value)} />
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={() => onApply(startTime, endTime)} disabled={processing}>
+            {processing ? 'Applying...' : 'Apply'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Rota Grid ────────────────────────────────────────────────────────────────
+
+function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, onAdd, siteId, bulkMode, selected, onSelectDay }) {
+  const weeks = [];
+  for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7));
   const isCompact = view === 'month';
   const cellMinH = isCompact ? 70 : 80;
 
   return (
     <div style={{overflowX:'auto'}}>
       <div style={{minWidth:'840px'}}>
-        {/* Column headers */}
         <div style={{display:'grid',gridTemplateColumns:'repeat(7, minmax(120px, 1fr))',gap:'1px',background:'var(--border)',borderRadius:'8px 8px 0 0',overflow:'hidden'}}>
           {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => (
             <div key={d} style={{background:'var(--surface-2)',padding:'0.5rem',textAlign:'center',fontSize:'0.75rem',fontWeight:700,color:'var(--text-2)',textTransform:'uppercase',letterSpacing:'0.05em'}}>
@@ -274,8 +414,6 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onEdit, onAdd,
             </div>
           ))}
         </div>
-
-        {/* Week rows */}
         {weeks.map((week, wi) => (
           <div key={wi} style={{display:'grid',gridTemplateColumns:'repeat(7, minmax(120px, 1fr))',gap:'1px',background:'var(--border)'}}>
             {week.map(d => {
@@ -285,55 +423,54 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onEdit, onAdd,
                 <div key={isoDate(d)} style={{
                   background: today ? 'rgba(59,130,246,0.08)' : 'var(--surface)',
                   padding: isCompact ? '0.25rem' : '0.375rem',
-                  minHeight: `${cellMinH}px`,
-                  display:'flex',
-                  flexDirection:'column',
+                  minHeight: `${cellMinH}px`, display:'flex', flexDirection:'column',
                   borderLeft: today ? '2px solid var(--blue)' : 'none',
                 }}>
-                  {/* Date label */}
-                  <div style={{fontSize: isCompact ? '0.6875rem' : '0.75rem', fontWeight:600, color: today ? 'var(--blue)' : 'var(--text-2)', marginBottom:'0.25rem', textAlign:'center'}}>
-                    {d.toLocaleDateString('en-GB', { day:'numeric', month:'short' })}
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'4px',marginBottom:'0.25rem'}}>
+                    <span style={{fontSize: isCompact ? '0.6875rem' : '0.75rem', fontWeight:600, color: today ? 'var(--blue)' : 'var(--text-2)'}}>
+                      {d.toLocaleDateString('en-GB', { day:'numeric', month:'short' })}
+                    </span>
+                    {bulkMode && dayShifts.length > 0 && (
+                      <button onClick={() => onSelectDay(d)} style={{background:'none',border:'none',color:'var(--blue)',cursor:'pointer',fontSize:'0.625rem',fontWeight:600,padding:0}}>All</button>
+                    )}
                   </div>
-
-                  {/* Shift blocks */}
                   <div style={{flex:1,display:'flex',flexDirection:'column',gap:'3px'}}>
                     {dayShifts.length === 0 && (
-                      <div style={{fontSize: isCompact ? '0.5625rem' : '0.6875rem', color:'#ef4444', textAlign:'center', padding:'0.25rem 0', fontWeight:600, opacity:0.7}}>
-                        Uncovered
-                      </div>
+                      <div style={{fontSize: isCompact ? '0.5625rem' : '0.6875rem', color:'#ef4444', textAlign:'center', padding:'0.25rem 0', fontWeight:600, opacity:0.7}}>Uncovered</div>
                     )}
                     {dayShifts.map(s => {
                       const col = officerColour(s.officer_id);
-                      const sb = statusBadge(s.status);
-                      const overnight = isOvernight(s);
+                      const sel = selected.has(s.id);
                       return (
-                        <div key={s.id} onClick={() => isManager && onEdit(s)}
+                        <div key={s.id} onClick={() => onShiftClick(s)}
                           style={{
-                            padding: isCompact ? '3px 4px' : '4px 6px',
-                            borderRadius:'5px',
+                            padding: isCompact ? '3px 4px' : '4px 6px', borderRadius:'5px',
                             background: col + '20',
-                            border: `1px solid ${col}40`,
-                            cursor: isManager ? 'pointer' : 'default',
+                            border: sel ? '2px solid var(--blue)' : `1px solid ${col}40`,
+                            cursor: bulkMode || isManager ? 'pointer' : 'default',
+                            position:'relative',
                           }}>
-                          <div style={{display:'flex',alignItems:'center',gap:'3px'}}>
+                          {bulkMode && (
+                            <input type="checkbox" checked={sel} readOnly
+                              style={{position:'absolute',top:2,left:2,width:'0.75rem',height:'0.75rem',accentColor:'var(--blue)'}} />
+                          )}
+                          <div style={{display:'flex',alignItems:'center',gap:'3px',marginLeft:bulkMode?'1rem':'0'}}>
                             {s.status === 'ACTIVE' && <span style={{width:5,height:5,borderRadius:'50%',background:'#4ade80',flexShrink:0,animation:'pulse 2s infinite'}} />}
                             <span style={{fontWeight:700,fontSize: isCompact ? '0.625rem' : '0.75rem', color:'var(--text)', overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis'}}>
                               {s.officer ? `${s.officer.first_name} ${s.officer.last_name?.[0] || ''}` : '?'}
                             </span>
                           </div>
-                          <div style={{fontSize: isCompact ? '0.5625rem' : '0.6875rem', color:'var(--text-2)'}}>
+                          <div style={{fontSize: isCompact ? '0.5625rem' : '0.6875rem', color:'var(--text-2)', marginLeft:bulkMode?'1rem':'0'}}>
                             {shiftTimeLabel(s)}
                           </div>
                           {!isCompact && !siteId && s.site?.name && (
-                            <div style={{fontSize:'0.625rem',color:'var(--text-3)',overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis'}}>{s.site.name}</div>
+                            <div style={{fontSize:'0.625rem',color:'var(--text-3)',overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',marginLeft:bulkMode?'1rem':'0'}}>{s.site.name}</div>
                           )}
                         </div>
                       );
                     })}
                   </div>
-
-                  {/* Add button */}
-                  {isManager && (
+                  {isManager && !bulkMode && (
                     <button onClick={() => onAdd(d)}
                       style={{width:'100%',padding:'2px',background:'none',border:'1px dashed var(--border)',borderRadius:'4px',color:'var(--text-3)',cursor:'pointer',fontSize:'0.75rem',marginTop:'3px'}}>
                       +
@@ -350,27 +487,22 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onEdit, onAdd,
   );
 }
 
+// ── Shift Modal ──────────────────────────────────────────────────────────────
+
 function ShiftModal({ shift, prefillDate, officers, allOfficers, sites, rates, siteId, user, onClose, onSaved }) {
   const [form, setForm] = useState({
-    site_id:    shift?.site_id || siteId || '',
-    officer_id: shift?.officer_id || '',
-    date:       shift ? isoDate(new Date(shift.start_time)) : (prefillDate || ''),
+    site_id: shift?.site_id || siteId || '', officer_id: shift?.officer_id || '',
+    date: shift ? isoDate(new Date(shift.start_time)) : (prefillDate || ''),
     start_time: shift ? fmtTime(shift.start_time) : '19:00',
-    end_time:   shift?.end_time ? fmtTime(shift.end_time) : '07:00',
-    notes:      shift?.notes || '',
+    end_time: shift?.end_time ? fmtTime(shift.end_time) : '07:00', notes: shift?.notes || '',
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-
   const f = (k, v) => setForm(p => ({...p, [k]: v}));
   const isManager = ['COMPANY','OPS_MANAGER','SUPER_ADMIN'].includes(user?.role);
-
-  // Use site-filtered officers if siteId provided, otherwise all
   const visibleOfficers = siteId ? officers : (allOfficers || officers);
-
-  // Find pay rate for selected officer + site
   const payRate = rates.find(r => r.officer_id === form.officer_id && r.site_id === form.site_id);
 
   async function save() {
@@ -381,38 +513,14 @@ function ShiftModal({ shift, prefillDate, officers, allOfficers, sites, rates, s
       const endDt = form.end_time ? new Date(`${form.date}T${form.end_time}:00`).toISOString() : null;
       let adjustedEnd = endDt;
       if (endDt && new Date(endDt) <= new Date(startDt)) {
-        const nextDay = addDays(new Date(form.date), 1);
-        adjustedEnd = new Date(`${isoDate(nextDay)}T${form.end_time}:00`).toISOString();
+        adjustedEnd = new Date(`${isoDate(addDays(new Date(form.date), 1))}T${form.end_time}:00`).toISOString();
       }
-      const payload = {
-        site_id: form.site_id,
-        officer_id: form.officer_id,
-        start_time: startDt,
-        end_time: adjustedEnd,
-        notes: form.notes || null,
-      };
-      if (shift) {
-        await api.shifts.update(shift.id, payload);
-      } else {
-        await api.shifts.create(payload);
-      }
+      const payload = { site_id: form.site_id, officer_id: form.officer_id, start_time: startDt, end_time: adjustedEnd, notes: form.notes || null };
+      if (shift) await api.shifts.update(shift.id, payload);
+      else await api.shifts.create(payload);
       onSaved();
     } catch (err) { setError(err.message); }
     finally { setSaving(false); }
-  }
-
-  async function removeOfficer() {
-    try {
-      await api.shifts.update(shift.id, { officer_id: null, status: 'SCHEDULED' });
-      onSaved();
-    } catch (err) { setError(err.message); }
-  }
-
-  async function deleteShift() {
-    try {
-      await api.shifts.delete(shift.id);
-      onSaved();
-    } catch (err) { setError(err.message); }
   }
 
   return (
@@ -424,71 +532,34 @@ function ShiftModal({ shift, prefillDate, officers, allOfficers, sites, rates, s
         </div>
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
-          <div className="field" style={{gridColumn:'1/-1'}}>
-            <label className="label">Date</label>
-            <input type="date" className="input" value={form.date} onChange={e => f('date', e.target.value)} />
-          </div>
-          {!siteId && (
-            <div className="field" style={{gridColumn:'1/-1'}}>
-              <label className="label">Site</label>
-              <select className="input" value={form.site_id} onChange={e => f('site_id', e.target.value)}>
-                <option value="">Select site</option>
-                {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </div>
-          )}
-          <div className="field" style={siteId ? {} : {gridColumn:'1/-1'}}>
-            <label className="label">Officer</label>
-            <select className="input" value={form.officer_id} onChange={e => f('officer_id', e.target.value)}>
-              <option value="">Select officer</option>
-              {visibleOfficers.map(o => <option key={o.id} value={o.id}>{o.first_name} {o.last_name}</option>)}
-            </select>
-          </div>
-          {siteId && (
-            <div className="field">
-              <label className="label">Site</label>
-              <select className="input" value={form.site_id} disabled>
-                {sites.filter(s => s.id === siteId).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </div>
-          )}
-          <div className="field">
-            <label className="label">Start Time</label>
-            <input type="time" className="input" value={form.start_time} onChange={e => f('start_time', e.target.value)} />
-          </div>
-          <div className="field">
-            <label className="label">End Time</label>
-            <input type="time" className="input" value={form.end_time} onChange={e => f('end_time', e.target.value)} />
-          </div>
-          <div className="field" style={{gridColumn:'1/-1'}}>
-            <label className="label">Notes</label>
-            <input className="input" value={form.notes} onChange={e => f('notes', e.target.value)} placeholder="Optional notes" />
-          </div>
+          <div className="field" style={{gridColumn:'1/-1'}}><label className="label">Date</label><input type="date" className="input" value={form.date} onChange={e => f('date', e.target.value)} /></div>
+          {!siteId && <div className="field" style={{gridColumn:'1/-1'}}><label className="label">Site</label><select className="input" value={form.site_id} onChange={e => f('site_id', e.target.value)}><option value="">Select site</option>{sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>}
+          <div className="field" style={siteId ? {} : {gridColumn:'1/-1'}}><label className="label">Officer</label><select className="input" value={form.officer_id} onChange={e => f('officer_id', e.target.value)}><option value="">Select officer</option>{visibleOfficers.map(o => <option key={o.id} value={o.id}>{o.first_name} {o.last_name}</option>)}</select></div>
+          {siteId && <div className="field"><label className="label">Site</label><select className="input" value={form.site_id} disabled>{sites.filter(s => s.id === siteId).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>}
+          <div className="field"><label className="label">Start Time</label><input type="time" className="input" value={form.start_time} onChange={e => f('start_time', e.target.value)} /></div>
+          <div className="field"><label className="label">End Time</label><input type="time" className="input" value={form.end_time} onChange={e => f('end_time', e.target.value)} /></div>
+          <div className="field" style={{gridColumn:'1/-1'}}><label className="label">Notes</label><input className="input" value={form.notes} onChange={e => f('notes', e.target.value)} placeholder="Optional notes" /></div>
         </div>
-
         {isManager && payRate && (
           <div style={{padding:'0.625rem 0.75rem',background:'var(--surface-2)',borderRadius:'6px',marginTop:'0.75rem',fontSize:'0.8125rem',color:'var(--text-2)'}}>
             Pay rate: <strong style={{color:'var(--text)'}}>£{parseFloat(payRate.hourly_rate || payRate.pay_rate || 0).toFixed(2)}/hr</strong>
             {payRate.role_label && <span> — {payRate.role_label}</span>}
           </div>
         )}
-
         <div className="modal-footer" style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
           <div style={{display:'flex',justifyContent: shift ? 'space-between' : 'flex-end',gap:'0.5rem'}}>
             {shift && !confirmRemove && !confirmDelete && (
-              <button className="btn btn-sm" style={{background:'rgba(220,38,38,0.1)',border:'1px solid rgba(220,38,38,0.25)',color:'var(--danger)'}} onClick={() => setConfirmRemove(true)}>
-                Remove Officer
-              </button>
+              <button className="btn btn-sm" style={{background:'rgba(220,38,38,0.1)',border:'1px solid rgba(220,38,38,0.25)',color:'var(--danger)'}} onClick={() => setConfirmRemove(true)}>Remove Officer</button>
             )}
             {shift && confirmRemove && (
               <div style={{display:'flex',gap:'0.375rem',alignItems:'center'}}>
-                <button className="btn btn-sm" style={{background:'var(--danger)',color:'#fff',border:'none'}} onClick={removeOfficer}>Confirm Remove</button>
+                <button className="btn btn-sm" style={{background:'var(--danger)',color:'#fff',border:'none'}} onClick={async () => { await api.shifts.update(shift.id, { officer_id: null, status: 'SCHEDULED' }); onSaved(); }}>Confirm Remove</button>
                 <button className="btn btn-ghost btn-sm" onClick={() => setConfirmRemove(false)}>Cancel</button>
               </div>
             )}
             {shift && confirmDelete && (
               <div style={{display:'flex',gap:'0.375rem',alignItems:'center'}}>
-                <button className="btn btn-sm" style={{background:'var(--danger)',color:'#fff',border:'none'}} onClick={deleteShift}>Confirm Delete</button>
+                <button className="btn btn-sm" style={{background:'var(--danger)',color:'#fff',border:'none'}} onClick={async () => { await api.shifts.delete(shift.id); onSaved(); }}>Confirm Delete</button>
                 <button className="btn btn-ghost btn-sm" onClick={() => setConfirmDelete(false)}>Cancel</button>
               </div>
             )}
@@ -498,10 +569,7 @@ function ShiftModal({ shift, prefillDate, officers, allOfficers, sites, rates, s
             </div>
           </div>
           {shift && !confirmRemove && !confirmDelete && (
-            <button onClick={() => setConfirmDelete(true)}
-              style={{background:'none',border:'none',color:'rgba(220,38,38,0.5)',fontSize:'0.75rem',cursor:'pointer',padding:0,textAlign:'left'}}>
-              Delete shift entirely
-            </button>
+            <button onClick={() => setConfirmDelete(true)} style={{background:'none',border:'none',color:'rgba(220,38,38,0.5)',fontSize:'0.75rem',cursor:'pointer',padding:0,textAlign:'left'}}>Delete shift entirely</button>
           )}
         </div>
       </div>
