@@ -192,8 +192,6 @@ print('OK')
   } catch (err) { next(err); }
 });
 
-module.exports = router;
-
 // POST /api/report/handover — AI generates a full handover brief from shift logs
 router.post('/handover', authenticate, async (req, res, next) => {
   try {

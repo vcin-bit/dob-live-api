@@ -45,20 +45,7 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', version: '2.0.0', timestamp: new Date().toISOString() });
 });
 
-// Health check - keeps Render awake
-app.get('/health', (req, res) => res.json({ ok: true, ts: Date.now() }));
 
-// Debug auth - shows what token arrives
-app.get('/debug-auth', (req, res) => {
-  const auth = req.headers.authorization || 'none';
-  const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
-  res.json({ 
-    hasAuth: !!token,
-    tokenLength: token?.length,
-    tokenStart: token?.substring(0, 20),
-    secretKeyStart: process.env.CLERK_SECRET_KEY?.substring(0, 10)
-  });
-});
 
 // ── Routes ───────────────────────────────────────────────────
 app.use('/api/users',      require('./routes/users'));

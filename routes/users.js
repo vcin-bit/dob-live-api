@@ -102,28 +102,6 @@ router.patch('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MA
 
 module.exports = router;
 
-
-// PATCH /api/users/me — update own profile
-router.patch('/me', authenticate, async (req, res, next) => {
-  try {
-    const { first_name, last_name, phone } = req.body;
-    const updates = {};
-    if (first_name !== undefined) updates.first_name = first_name;
-    if (last_name  !== undefined) updates.last_name  = last_name;
-    if (phone      !== undefined) updates.phone       = phone;
-
-    const { data, error } = await supabase
-      .from('users')
-      .update(updates)
-      .eq('id', req.user.id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    res.json({ data });
-  } catch (err) { next(err); }
-});
-
 // GET /api/users/:id/sites — sites assigned to an officer
 router.get('/:id/sites', authenticate, async (req, res, next) => {
   try {

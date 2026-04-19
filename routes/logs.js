@@ -145,8 +145,6 @@ router.delete('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_M
   } catch (err) { next(err); }
 });
 
-module.exports = router;
-
 // GET /api/logs/export — CSV download
 router.get('/export', authenticate, async (req, res, next) => {
   try {

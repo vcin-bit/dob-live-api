@@ -61,7 +61,7 @@ router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGE
 // PATCH /api/shifts/:id
 router.patch('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER'), async (req, res, next) => {
   try {
-    const allowed = ['site_id', 'officer_id', 'start_time', 'end_time', 'status', 'pay_rate', 'charge_rate', 'notes'];
+    const allowed = ['site_id', 'officer_id', 'start_time', 'end_time', 'status', 'pay_rate', 'charge_rate', 'notes', 'checked_out_at'];
     const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
     const { data, error } = await supabase
       .from('shifts')
@@ -95,8 +95,6 @@ router.post('/expire', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-module.exports = router;
-
 // POST /api/shifts/:id/checkin — officer checks in
 router.post('/:id/checkin', authenticate, async (req, res, next) => {
   try {
@@ -108,7 +106,6 @@ router.post('/:id/checkin', authenticate, async (req, res, next) => {
         checked_in_at: new Date().toISOString(),
         check_in_lat: lat || null,
         check_in_lng: lng || null,
-        end_time: end_time || null,
       })
       .eq('id', req.params.id)
       .eq('officer_id', req.user.id)
@@ -124,7 +121,7 @@ router.post('/:id/checkout', authenticate, async (req, res, next) => {
     const { data, error } = await supabase
       .from('shifts')
       .update({
-        status: 'completed',
+        status: 'COMPLETED',
         checked_out_at: new Date().toISOString(),
       })
       .eq('id', req.params.id)
