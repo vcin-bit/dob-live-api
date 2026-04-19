@@ -229,12 +229,18 @@ async function setupMocks(page, context, { withShift = false, withPatrolSession 
 }
 
 // Navigate past site picker to home screen
-async function selectSite(page) {
+async function selectSite(page, { hasShift = false } = {}) {
   await page.goto('/');
   const siteBtn = page.getByText('E2E Test Site');
   await expect(siteBtn).toBeVisible({ timeout: 15000 });
   await siteBtn.click();
-  await expect(page.getByText('Log Entry')).toBeVisible({ timeout: 5000 });
+  // If no active shift, the shift modal auto-opens — dismiss it
+  if (!hasShift) {
+    const cancelBtn = page.getByRole('button', { name: 'Cancel' });
+    await expect(cancelBtn).toBeVisible({ timeout: 3000 });
+    await cancelBtn.click();
+  }
+  await expect(page.getByText('Log Occurrence')).toBeVisible({ timeout: 5000 });
 }
 
 // ===========================================================================
@@ -243,13 +249,13 @@ async function selectSite(page) {
 test.describe('Start Shift', () => {
   test('officer sees Start Shift, enters finish time, confirms, shift becomes active and Handover appears', async ({ page, context }) => {
     await setupMocks(page, context, { withShift: false });
-    await selectSite(page);
+    // Select site — modal auto-opens, don't dismiss it
+    await page.goto('/');
+    await expect(page.getByText('E2E Test Site')).toBeVisible({ timeout: 15000 });
+    await page.getByText('E2E Test Site').click();
 
-    const startBtn = page.getByText('Start Shift', { exact: false }).first();
-    await expect(startBtn).toBeVisible();
-    await startBtn.click();
-
-    await expect(page.getByText('Planned Finish Time')).toBeVisible({ timeout: 3000 });
+    // Modal should already be visible (auto-opened after site selection)
+    await expect(page.getByText('Planned Finish Time')).toBeVisible({ timeout: 5000 });
 
     const timeInput = page.locator('input[type="time"]');
     await timeInput.fill('06:00');
@@ -276,18 +282,14 @@ test.describe('Start Shift', () => {
 test.describe('Log Entry', () => {
   test('officer with active shift creates a PATROL log entry', async ({ page, context }) => {
     await setupMocks(page, context, { withShift: true });
-    await selectSite(page);
+    await selectSite(page, { hasShift: true });
 
     await expect(page.getByText('Shift Active')).toBeVisible({ timeout: 5000 });
 
-    await page.getByText('Log Entry').click();
-    await expect(page.getByText('New Log Entry')).toBeVisible({ timeout: 5000 });
+    await page.getByText('Log Occurrence').click();
+    // Log Occurrence links to /log?type=GENERAL, skips step 1 — goes straight to step 2
+    await expect(page.getByText('WHAT HAPPENED')).toBeVisible({ timeout: 5000 });
 
-    const patrolBtn = page.getByText('PATROL', { exact: true }).first();
-    await expect(patrolBtn).toBeVisible();
-    await patrolBtn.click();
-
-    await expect(page.getByText('WHAT HAPPENED')).toBeVisible({ timeout: 3000 });
     await page.locator('textarea').first().fill('Routine perimeter check completed, all secure.');
 
     await page.getByText('NEXT STEP').click();
@@ -296,7 +298,7 @@ test.describe('Log Entry', () => {
 
     await page.getByText(/SUBMIT.*REPORT/).click();
 
-    await expect(page.getByText('Log Entry')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Log Occurrence')).toBeVisible({ timeout: 5000 });
   });
 });
 
@@ -306,7 +308,7 @@ test.describe('Log Entry', () => {
 test.describe('Patrol Start and Checkpoint', () => {
   test('officer starts patrol, sees checkpoints, marks one as completed', async ({ page, context }) => {
     await setupMocks(page, context, { withShift: true });
-    await selectSite(page);
+    await selectSite(page, { hasShift: true });
 
     await page.getByText('Start Patrol').click();
 
@@ -336,7 +338,7 @@ test.describe('Patrol Start and Checkpoint', () => {
 test.describe('End Patrol', () => {
   test('officer on active patrol ends it via confirmation modal', async ({ page, context }) => {
     await setupMocks(page, context, { withShift: true, withPatrolSession: true });
-    await selectSite(page);
+    await selectSite(page, { hasShift: true });
 
     await page.getByText('Start Patrol').click();
     await expect(page.getByText('E2E Test Site').first()).toBeVisible({ timeout: 5000 });
@@ -350,7 +352,7 @@ test.describe('End Patrol', () => {
 
     await page.locator('button').filter({ hasText: 'End Patrol' }).last().click();
 
-    await expect(page.getByText('Log Entry')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Log Occurrence')).toBeVisible({ timeout: 5000 });
   });
 });
 
@@ -360,7 +362,7 @@ test.describe('End Patrol', () => {
 test.describe('Handover', () => {
   test('officer with active shift opens handover page without crashing', async ({ page, context }) => {
     await setupMocks(page, context, { withShift: true });
-    await selectSite(page);
+    await selectSite(page, { hasShift: true });
 
     await expect(page.getByText('End Shift / Handover')).toBeVisible({ timeout: 5000 });
     await page.getByText('End Shift / Handover').click();
@@ -393,7 +395,7 @@ test.describe('Sign Out', () => {
 
     // Modal should be gone, home screen still visible
     await expect(page.getByText('Sign Out?')).not.toBeVisible({ timeout: 2000 });
-    await expect(page.getByText('Log Entry')).toBeVisible();
+    await expect(page.getByText('Log Occurrence')).toBeVisible();
   });
 });
 
@@ -419,15 +421,11 @@ test.describe('Log Entry Without Active Shift', () => {
     // No shift active — should see "Start Shift" not "Shift Active"
     await expect(page.getByText('Shift Active')).not.toBeVisible({ timeout: 2000 });
 
-    // Tap Log Entry
-    await page.getByText('Log Entry').click();
-    await expect(page.getByText('New Log Entry')).toBeVisible({ timeout: 5000 });
+    // Tap Log Occurrence — goes to /log?type=GENERAL, skips step 1
+    await page.getByText('Log Occurrence').click();
 
-    // Select GENERAL type
-    await page.getByText('GENERAL', { exact: true }).first().click();
-
-    // Enter description
-    await expect(page.getByText('WHAT HAPPENED')).toBeVisible({ timeout: 3000 });
+    // Should be on step 2 directly (GENERAL pre-selected)
+    await expect(page.getByText('WHAT HAPPENED')).toBeVisible({ timeout: 5000 });
     await page.locator('textarea').first().fill('General observation logged without active shift.');
 
     // Advance and submit
@@ -436,7 +434,7 @@ test.describe('Log Entry Without Active Shift', () => {
     await page.getByText(/SUBMIT.*REPORT/).click();
 
     // Should return to home without crashing
-    await expect(page.getByText('Log Entry')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Log Occurrence')).toBeVisible({ timeout: 5000 });
 
     // Verify shift_id was null in the POST body
     expect(capturedLogBody).toBeTruthy();
@@ -454,7 +452,7 @@ test.describe('Patrol Screen Loads', () => {
     const jsErrors = [];
     page.on('pageerror', err => jsErrors.push(err.message));
 
-    await selectSite(page);
+    await selectSite(page, { hasShift: true });
 
     await page.getByText('Start Patrol').click();
 
@@ -480,15 +478,13 @@ test.describe('Patrol Screen Loads', () => {
 test.describe('Shift Start Modal', () => {
   test('cancel dismisses the modal without starting a shift', async ({ page, context }) => {
     await setupMocks(page, context, { withShift: false });
-    await selectSite(page);
+    // Select site — modal auto-opens
+    await page.goto('/');
+    await expect(page.getByText('E2E Test Site')).toBeVisible({ timeout: 15000 });
+    await page.getByText('E2E Test Site').click();
 
-    // Click Start Shift
-    const startBtn = page.getByText('Start Shift', { exact: false }).first();
-    await expect(startBtn).toBeVisible();
-    await startBtn.click();
-
-    // Modal should appear with time input
-    await expect(page.getByText('Planned Finish Time')).toBeVisible({ timeout: 3000 });
+    // Modal should already be visible (auto-opened)
+    await expect(page.getByText('Planned Finish Time')).toBeVisible({ timeout: 5000 });
     await expect(page.locator('input[type="time"]')).toBeVisible();
 
     // Click Cancel
