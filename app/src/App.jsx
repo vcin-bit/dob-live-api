@@ -109,7 +109,10 @@ function AuthFlow() {
         setError('Sign in incomplete. Please try again.');
       }
     } catch (err) {
-      setError(err.errors?.[0]?.longMessage || err.errors?.[0]?.message || 'Incorrect email or password');
+      const e0 = err.errors?.[0];
+      const parts = [e0?.longMessage || e0?.message || 'Incorrect email or password'];
+      if (e0?.code) parts.push(`(${e0.code})`);
+      setError(parts.join(' '));
     } finally { setLoading(false); }
   }
 
