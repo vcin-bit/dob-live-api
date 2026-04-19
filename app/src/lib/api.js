@@ -225,6 +225,14 @@ export const api = {
     checkpoint:    (sessionId, checkpointId, name, lat, lng) => request(`/api/patrols/sessions/${sessionId}/checkpoint`, { method:'PATCH', body: JSON.stringify({ checkpoint_id: checkpointId, checkpoint_name: name, lat, lng }) }),
     activeSession:  (siteId) => request(`/api/patrols/sessions/active?site_id=${siteId}`),
     endSession:    (sessionId) => request(`/api/patrols/sessions/${sessionId}/end`, { method:'POST' }),
+    uploadCheckpointImage: async (file) => {
+      const fd = new FormData(); fd.append('image', file);
+      const token = await window.__clerkGetToken?.() || '';
+      const API = import.meta.env.VITE_API_URL || 'https://dob-live-api.onrender.com';
+      const res = await fetch(`${API}/api/patrols/checkpoint-image`, { method: 'POST', body: fd, headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error('Upload failed');
+      return res.json();
+    },
   },
   patterns: {
     list: (params = {}) => request(`/api/patterns?${new URLSearchParams(params)}`),

@@ -168,4 +168,17 @@ router.post('/media/upload', authenticate, upload.single('file'), async (req, re
   } catch (err) { next(err); }
 });
 
+// POST /api/patrols/checkpoint-image — upload checkpoint photo
+router.post('/checkpoint-image', authenticate, upload.single('image'), async (req, res, next) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    const ext = req.file.originalname.split('.').pop() || 'jpg';
+    const path = `checkpoints/${req.user.company_id}/${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from('patrol-media').upload(path, req.file.buffer, { contentType: req.file.mimetype, upsert: true });
+    if (error) throw error;
+    const { data: { publicUrl } } = supabase.storage.from('patrol-media').getPublicUrl(path);
+    res.json({ url: publicUrl });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;
