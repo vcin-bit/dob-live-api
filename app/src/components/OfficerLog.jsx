@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { MapPinIcon } from '@heroicons/react/24/outline';
 
@@ -15,10 +15,13 @@ const ROUTINE = [
   { key:'ACCESS_CONTROL',label:'ACCESS',       sub:'Entry · Visitor' },
   { key:'VEHICLE_CHECK', label:'VEHICLE',      sub:'Check · Suspicious' },
   { key:'MAINTENANCE',   label:'MAINTENANCE',  sub:'Fault · Repair' },
-  { key:'VISITOR',       label:'VISITOR',      sub:'Signin · Log' },
-  { key:'HANDOVER',      label:'HANDOVER',     sub:'Shift handover' },
-  { key:'GENERAL',       label:'GENERAL',      sub:'Observation · Note' },
-  { key:'OTHER',         label:'OTHER',        sub:'Anything else' },
+  { key:'VISITOR',          label:'VISITOR / CONTRACTOR', sub:'Name, reg, personnel' },
+  { key:'CCTV_CHECK',      label:'CCTV CHECK',           sub:'Camera review' },
+  { key:'WELFARE_CHECK',   label:'WELFARE CHECK',        sub:'Officer welfare' },
+  { key:'MANAGEMENT_VISIT',label:'MANAGEMENT VISIT',     sub:'Manager on site' },
+  { key:'HANDOVER',        label:'HANDOVER',             sub:'Shift handover' },
+  { key:'GENERAL',         label:'GENERAL',              sub:'Observation · Note' },
+  { key:'OTHER',           label:'OTHER',                sub:'Anything else' },
 ];
 const SUB_TYPES = {
   INCIDENT:    ['THEFT','FIGHT/ASSAULT','TRESPASS','VANDALISM','SUSPICIOUS PERSON','DRUG-RELATED','VERBAL ABUSE','OTHER'],
@@ -59,14 +62,24 @@ function StepDots({ step }) {
 // ── Main component ────────────────────────────────────────────────────────────
 function LogEntryScreen({ user, site, shift }) {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
+  const [searchParams] = useSearchParams();
+  const presetType = searchParams.get('type') || '';
+  const [step, setStep] = useState(presetType ? 2 : 1);
   const [form, setForm] = useState({
-    log_type: '', sub_type: '', description: '', location_detail: '', people_involved: '', actions_taken: '',
+    log_type: presetType, sub_type: '', description: '', location_detail: '', people_involved: '', actions_taken: '',
     occurred_at: new Date().toISOString().slice(0,16),
     latitude: null, longitude: null,
     police_reported: false, police_attended: false,
     police_incident_number: '', police_force: '', police_officer_name: '', police_shoulder_number: '',
     client_reportable: false, media: [],
+    // VISITOR fields
+    visitor_name: '', visitor_company: '', visitor_vehicle_reg: '', visitor_personnel_count: '',
+    // WELFARE_CHECK fields
+    welfare_officer_name: '', welfare_outcome: '', welfare_notes: '',
+    // MANAGEMENT_VISIT fields
+    manager_name: '', visit_purpose: '', visit_duration: '',
+    // CCTV_CHECK fields
+    cameras_checked: '', cctv_issues_found: false, cctv_issue_description: '',
   });
   const [narrative, setNarrative] = useState('');
   const [generatingAI, setGeneratingAI] = useState(false);
@@ -160,6 +173,14 @@ function LogEntryScreen({ user, site, shift }) {
           police_shoulder_number: form.police_shoulder_number,
           media: form.media,
           ai_generated: !!narrative,
+          // VISITOR
+          ...(form.log_type === 'VISITOR' && { visitor_name: form.visitor_name, visitor_company: form.visitor_company, visitor_vehicle_reg: form.visitor_vehicle_reg, visitor_personnel_count: form.visitor_personnel_count }),
+          // WELFARE_CHECK
+          ...(form.log_type === 'WELFARE_CHECK' && { welfare_officer_name: form.welfare_officer_name, welfare_outcome: form.welfare_outcome, welfare_notes: form.welfare_notes }),
+          // MANAGEMENT_VISIT
+          ...(form.log_type === 'MANAGEMENT_VISIT' && { manager_name: form.manager_name, visit_purpose: form.visit_purpose, visit_duration: form.visit_duration }),
+          // CCTV_CHECK
+          ...(form.log_type === 'CCTV_CHECK' && { cameras_checked: form.cameras_checked, cctv_issues_found: form.cctv_issues_found, cctv_issue_description: form.cctv_issue_description }),
         },
       });
       navigate('/', { state: { message: 'Log entry submitted', logId: res.data?.id } });
@@ -254,6 +275,57 @@ function LogEntryScreen({ user, site, shift }) {
           placeholder="e.g. Car park north — male 30s challenged and asked to leave..."
           style={S.input} />
       </div>
+
+      {/* VISITOR extra fields */}
+      {form.log_type === 'VISITOR' && (
+        <div style={{marginBottom:'14px',padding:'12px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'10px',display:'flex',flexDirection:'column',gap:'8px'}}>
+          <div style={S.label}>VISITOR / CONTRACTOR DETAILS</div>
+          <input value={form.visitor_name} onChange={e=>f('visitor_name',e.target.value)} placeholder="Visitor name" style={S.input} />
+          <input value={form.visitor_company} onChange={e=>f('visitor_company',e.target.value)} placeholder="Company" style={S.input} />
+          <input value={form.visitor_vehicle_reg} onChange={e=>f('visitor_vehicle_reg',e.target.value)} placeholder="Vehicle registration" style={S.input} />
+          <input type="number" value={form.visitor_personnel_count} onChange={e=>f('visitor_personnel_count',e.target.value)} placeholder="Number of personnel" style={S.input} min="1" />
+        </div>
+      )}
+
+      {/* WELFARE_CHECK extra fields */}
+      {form.log_type === 'WELFARE_CHECK' && (
+        <div style={{marginBottom:'14px',padding:'12px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'10px',display:'flex',flexDirection:'column',gap:'8px'}}>
+          <div style={S.label}>WELFARE CHECK DETAILS</div>
+          <input value={form.welfare_officer_name} onChange={e=>f('welfare_officer_name',e.target.value)} placeholder="Officer name checked" style={S.input} />
+          <select value={form.welfare_outcome} onChange={e=>f('welfare_outcome',e.target.value)} style={S.input}>
+            <option value="">Select outcome...</option>
+            <option value="All well">All well</option>
+            <option value="Concerns raised">Concerns raised</option>
+            <option value="No response">No response</option>
+          </select>
+          <textarea value={form.welfare_notes} onChange={e=>f('welfare_notes',e.target.value)} rows={2} placeholder="Notes" style={S.input} />
+        </div>
+      )}
+
+      {/* MANAGEMENT_VISIT extra fields */}
+      {form.log_type === 'MANAGEMENT_VISIT' && (
+        <div style={{marginBottom:'14px',padding:'12px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'10px',display:'flex',flexDirection:'column',gap:'8px'}}>
+          <div style={S.label}>MANAGEMENT VISIT DETAILS</div>
+          <input value={form.manager_name} onChange={e=>f('manager_name',e.target.value)} placeholder="Manager name" style={S.input} />
+          <input value={form.visit_purpose} onChange={e=>f('visit_purpose',e.target.value)} placeholder="Purpose of visit" style={S.input} />
+          <input type="number" value={form.visit_duration} onChange={e=>f('visit_duration',e.target.value)} placeholder="Duration (minutes)" style={S.input} min="1" />
+        </div>
+      )}
+
+      {/* CCTV_CHECK extra fields */}
+      {form.log_type === 'CCTV_CHECK' && (
+        <div style={{marginBottom:'14px',padding:'12px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'10px',display:'flex',flexDirection:'column',gap:'8px'}}>
+          <div style={S.label}>CCTV CHECK DETAILS</div>
+          <input type="number" value={form.cameras_checked} onChange={e=>f('cameras_checked',e.target.value)} placeholder="Number of cameras checked" style={S.input} min="1" />
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 0'}}>
+            <span style={{fontSize:'13px',color:'rgba(255,255,255,0.6)'}}>Any issues found?</span>
+            <div onClick={() => f('cctv_issues_found', !form.cctv_issues_found)} style={S.toggle(form.cctv_issues_found)}><div style={S.toggleDot(form.cctv_issues_found)}/></div>
+          </div>
+          {form.cctv_issues_found && (
+            <textarea value={form.cctv_issue_description} onChange={e=>f('cctv_issue_description',e.target.value)} rows={2} placeholder="Describe the issue..." style={S.input} />
+          )}
+        </div>
+      )}
 
       {/* Police - only for serious types */}
       {['INCIDENT','ALARM','FIRE_ALARM','EMERGENCY'].includes(form.log_type) && (

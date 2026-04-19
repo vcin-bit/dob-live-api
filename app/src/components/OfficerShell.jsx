@@ -321,13 +321,25 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
 
       {/* Primary actions */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.625rem',marginBottom:'0.625rem'}}>
-        <Link to="/log" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.9375rem',marginBottom:0}}>
-          <PlusIcon style={{width:'1.125rem',height:'1.125rem'}} />
-          Log Entry
-        </Link>
         <Link to="/patrol" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.9375rem',marginBottom:0,background:shift?'rgba(59,130,246,0.15)':'rgba(255,255,255,0.05)',borderColor:shift?'rgba(59,130,246,0.35)':'rgba(255,255,255,0.1)',color:shift?'#60a5fa':'rgba(255,255,255,0.4)'}}>
           <MapPinIcon style={{width:'1.125rem',height:'1.125rem'}} />
-          {shift ? 'Start Patrol' : 'Patrol'}
+          Start Patrol
+        </Link>
+        <Link to="/log?type=GENERAL" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.9375rem',marginBottom:0}}>
+          <PlusIcon style={{width:'1.125rem',height:'1.125rem'}} />
+          Log Occurrence
+        </Link>
+        <Link to="/log?type=CCTV_CHECK" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.875rem',marginBottom:0}}>
+          CCTV Check
+        </Link>
+        <Link to="/log?type=WELFARE_CHECK" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.875rem',marginBottom:0}}>
+          Welfare Check
+        </Link>
+        <Link to="/log?type=MANAGEMENT_VISIT" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.875rem',marginBottom:0}}>
+          Management Visit
+        </Link>
+        <Link to="/log?type=VISITOR" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.875rem',marginBottom:0}}>
+          Visitor / Contractor
         </Link>
       </div>
 
