@@ -275,7 +275,7 @@ function LogEntryScreen({ user, site, shift }) {
                 placeholder="Crime / Incident reference number" style={S.input} />
               <select value={form.police_force} onChange={e=>f('police_force',e.target.value)} style={S.input}>
                 <option value="">Select police force...</option>
-                {['Avon and Somerset','Bedfordshire','Cambridgeshire','Cheshire','City of London','Cleveland','Cumbria','Derbyshire','Devon and Cornwall','Dorset','Durham','Dyfed-Powys','Essex','Gloucestershire','Greater Manchester','Gwent','Hampshire','Hertfordshire','Humberside','Kent','Lancashire','Leicestershire','Lincolnshire','Merseyside','Metropolitan Police','Norfolk','North Wales','North Yorkshire','Northamptonshire','Northumbria','Nottinghamshire','South Wales','South Yorkshire','Staffordshire','Suffolk','Surrey','Sussex','Thames Valley','Warwickshire','West Mercia','West Midlands','West Yorkshire','Wiltshire'].map(f2=>(<option key={f2} value={f2}>{f2}</option>))}
+                {['Avon and Somerset','Bedfordshire','Cambridgeshire','Cheshire','City of London','Cleveland','Cumbria','Derbyshire','Devon and Cornwall','Dorset','Durham','Dyfed-Powys','Essex','Gloucestershire','Greater Manchester','Gwent','Hampshire','Hertfordshire','Humberside','Kent','Lancashire','Leicestershire','Lincolnshire','Merseyside','Metropolitan Police','Norfolk','North Wales','North Yorkshire','Northamptonshire','Northumbria','Nottinghamshire','South Wales','South Yorkshire','Staffordshire','Suffolk','Surrey','Sussex','Thames Valley','Warwickshire','West Mercia','West Midlands','West Yorkshire','Wiltshire'].map(force=>(<option key={force} value={force}>{force}</option>))}
               </select>
             </div>
           )}

@@ -18,6 +18,7 @@ export default function SitePlaybook({ siteId }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [confirmDeleteTask, setConfirmDeleteTask] = useState(null);
 
   // Patrol config form
   const [patrol, setPatrol] = useState({
@@ -73,9 +74,9 @@ export default function SitePlaybook({ siteId }) {
   }
 
   async function deleteTask(taskId) {
-    if (!window.confirm('Remove this task?')) return;
     await api.playbooks.deleteTask(siteId, taskId);
     setTasks(p => p.filter(t => t.id !== taskId));
+    setConfirmDeleteTask(null);
   }
 
   async function addCheck() {
@@ -229,7 +230,7 @@ export default function SitePlaybook({ siteId }) {
                       Escalates after {t.escalate_after_minutes} mins · {t.days_of_week?.length === 7 ? 'Every day' : t.days_of_week?.map(d => DAYS[d]).join(', ')}
                     </div>
                   </div>
-                  <button onClick={() => deleteTask(t.id)} style={{background:'none',border:'none',color:'var(--text-3)',cursor:'pointer',fontSize:'1rem',padding:'0 4px',flexShrink:0}}>×</button>
+                  <button onClick={() => setConfirmDeleteTask(t.id)} style={{background:'none',border:'none',color:'var(--text-3)',cursor:'pointer',fontSize:'1rem',padding:'0 4px',flexShrink:0}}>×</button>
                 </div>
               );
             })}
@@ -263,6 +264,25 @@ export default function SitePlaybook({ siteId }) {
           </div>
         )}
       </div>
+
+      {confirmDeleteTask && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',zIndex:9999,display:'flex',alignItems:'flex-end',justifyContent:'center',padding:'1rem'}}>
+          <div style={{background:'#0f1929',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'16px',padding:'1.5rem',width:'100%',maxWidth:'360px',textAlign:'center'}}>
+            <div style={{fontSize:'15px',fontWeight:700,color:'#fff',marginBottom:'8px'}}>Remove this task?</div>
+            <div style={{fontSize:'13px',color:'rgba(255,255,255,0.45)',marginBottom:'20px',lineHeight:1.5}}>This task will be permanently removed from the playbook.</div>
+            <div style={{display:'flex',gap:'8px'}}>
+              <button onClick={() => setConfirmDeleteTask(null)}
+                style={{flex:1,padding:'13px',background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'10px',color:'rgba(255,255,255,0.6)',fontSize:'14px',fontWeight:600,cursor:'pointer'}}>
+                Cancel
+              </button>
+              <button onClick={() => deleteTask(confirmDeleteTask)}
+                style={{flex:1,padding:'13px',background:'rgba(220,38,38,0.15)',border:'1.5px solid rgba(220,38,38,0.4)',borderRadius:'10px',color:'#ef4444',fontSize:'14px',fontWeight:700,cursor:'pointer'}}>
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
