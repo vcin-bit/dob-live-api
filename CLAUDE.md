@@ -51,3 +51,11 @@ Smoke tests for the live Render API live in `tests/api.test.js`. They use Node's
 ```bash
 npm run test:api
 ```
+
+### Database health checks
+
+Checks for data integrity issues (ghost shifts, bad status casing, orphan logs) via the Supabase REST API. Requires `SUPABASE_ANON_KEY` env var.
+
+```bash
+SUPABASE_ANON_KEY=your_key npm run test:db
+```

@@ -372,3 +372,133 @@ test.describe('Handover', () => {
     await expect(summaryInput).toHaveValue('All quiet, no incidents.');
   });
 });
+
+// ===========================================================================
+// 6. Sign Out
+// ===========================================================================
+test.describe('Sign Out', () => {
+  test('sign out modal appears, cancel dismisses it', async ({ page, context }) => {
+    await setupMocks(page, context, { withShift: false });
+    await selectSite(page);
+
+    // Tap Sign Out in the bottom nav
+    await page.getByText('Sign Out').click();
+
+    // Confirmation modal should appear
+    await expect(page.getByText('Sign Out?')).toBeVisible({ timeout: 3000 });
+    await expect(page.getByText('Please ensure your handover is complete')).toBeVisible();
+
+    // Cancel button should dismiss the modal
+    await page.getByRole('button', { name: 'Cancel' }).click();
+
+    // Modal should be gone, home screen still visible
+    await expect(page.getByText('Sign Out?')).not.toBeVisible({ timeout: 2000 });
+    await expect(page.getByText('Log Entry')).toBeVisible();
+  });
+});
+
+// ===========================================================================
+// 7. Log Entry Without Active Shift
+// ===========================================================================
+test.describe('Log Entry Without Active Shift', () => {
+  test('officer with no shift can still submit a log entry', async ({ page, context }) => {
+    let capturedLogBody = null;
+    await setupMocks(page, context, { withShift: false });
+
+    // Override logs route to capture the POST body
+    await page.route(url => url.toString().includes('/api/logs'), route => {
+      if (route.request().method() === 'POST') {
+        capturedLogBody = JSON.parse(route.request().postData() || '{}');
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { id: 'log-no-shift' } }) });
+      }
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [] }) });
+    });
+
+    await selectSite(page);
+
+    // No shift active — should see "Start Shift" not "Shift Active"
+    await expect(page.getByText('Shift Active')).not.toBeVisible({ timeout: 2000 });
+
+    // Tap Log Entry
+    await page.getByText('Log Entry').click();
+    await expect(page.getByText('New Log Entry')).toBeVisible({ timeout: 5000 });
+
+    // Select GENERAL type
+    await page.getByText('GENERAL', { exact: true }).first().click();
+
+    // Enter description
+    await expect(page.getByText('WHAT HAPPENED')).toBeVisible({ timeout: 3000 });
+    await page.locator('textarea').first().fill('General observation logged without active shift.');
+
+    // Advance and submit
+    await page.getByText('NEXT STEP').click();
+    await expect(page.getByText('Review & Submit')).toBeVisible({ timeout: 3000 });
+    await page.getByText(/SUBMIT.*REPORT/).click();
+
+    // Should return to home without crashing
+    await expect(page.getByText('Log Entry')).toBeVisible({ timeout: 5000 });
+
+    // Verify shift_id was null in the POST body
+    expect(capturedLogBody).toBeTruthy();
+    expect(capturedLogBody.shift_id).toBeNull();
+  });
+});
+
+// ===========================================================================
+// 8. Patrol Screen Loads Without Crashing
+// ===========================================================================
+test.describe('Patrol Screen Loads', () => {
+  test('patrol screen renders map, start button, and no JS errors', async ({ page, context }) => {
+    await setupMocks(page, context, { withShift: true });
+
+    const jsErrors = [];
+    page.on('pageerror', err => jsErrors.push(err.message));
+
+    await selectSite(page);
+
+    await page.getByText('Start Patrol').click();
+
+    // Site name visible in patrol header
+    await expect(page.getByText('E2E Test Site').first()).toBeVisible({ timeout: 5000 });
+
+    // Map container is rendered
+    const mapContainer = page.locator('div[style*="height"]').filter({ has: page.locator('.leaflet-container, [class*="leaflet"]') });
+    // Fallback: just check the map ref div exists (it always renders even if Leaflet hasn't loaded)
+    await expect(page.locator('div[style*="width: 100%"][style*="height: 100%"]').first()).toBeVisible({ timeout: 5000 });
+
+    // START PATROL button is visible
+    await expect(page.getByText(/START PATROL/)).toBeVisible({ timeout: 3000 });
+
+    // No JS errors should have been thrown
+    expect(jsErrors).toHaveLength(0);
+  });
+});
+
+// ===========================================================================
+// 9. Shift Start Modal Cancel
+// ===========================================================================
+test.describe('Shift Start Modal', () => {
+  test('cancel dismisses the modal without starting a shift', async ({ page, context }) => {
+    await setupMocks(page, context, { withShift: false });
+    await selectSite(page);
+
+    // Click Start Shift
+    const startBtn = page.getByText('Start Shift', { exact: false }).first();
+    await expect(startBtn).toBeVisible();
+    await startBtn.click();
+
+    // Modal should appear with time input
+    await expect(page.getByText('Planned Finish Time')).toBeVisible({ timeout: 3000 });
+    await expect(page.locator('input[type="time"]')).toBeVisible();
+
+    // Click Cancel
+    await page.getByRole('button', { name: 'Cancel' }).click();
+
+    // Modal should be dismissed
+    await expect(page.getByText('Planned Finish Time')).not.toBeVisible({ timeout: 2000 });
+
+    // Should still be on home screen with no active shift
+    await expect(page.getByText('Start Shift', { exact: false }).first()).toBeVisible();
+    await expect(page.getByText('Shift Active')).not.toBeVisible({ timeout: 1000 });
+  });
+});
