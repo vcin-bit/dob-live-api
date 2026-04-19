@@ -795,6 +795,8 @@ function SiteDetail({ user }) {
   const navigate = useNavigate();
   const [site, setSite] = useState(null);
   const [recentLogs, setRecentLogs] = useState([]);
+  const [shifts, setShifts] = useState([]);
+  const [assignedOfficers, setAssignedOfficers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('info');
@@ -804,12 +806,25 @@ function SiteDetail({ user }) {
     async function fetchSite() {
       try {
         setLoading(true);
-        const [siteRes, logsRes] = await Promise.all([
+        const [siteRes, logsRes, shiftsRes, usersRes] = await Promise.all([
           api.sites.get(id),
           api.logs.list({ site_id: id, limit: 10 }),
+          api.shifts.list({ site_id: id, limit: 50 }),
+          api.users.list(),
         ]);
         setSite(siteRes.data);
         setRecentLogs(logsRes.data || []);
+        setShifts(shiftsRes.data || []);
+        // Load site assignments for each officer to find who's assigned here
+        const officers = (usersRes.data || []).filter(u => u.role === 'OFFICER');
+        const withSites = await Promise.all(officers.map(async o => {
+          try {
+            const res = await api.officerSites.list(o.id);
+            const siteIds = (res.data || []).map(s => s.id);
+            return siteIds.includes(id) ? o : null;
+          } catch { return null; }
+        }));
+        setAssignedOfficers(withSites.filter(Boolean));
       } catch (err) {
         setError(err.message);
       } finally {
@@ -848,7 +863,7 @@ function SiteDetail({ user }) {
       </div>
       {/* Tab bar */}
       <div style={{display:'flex',gap:0,borderBottom:'1px solid var(--border)',padding:'0 1.5rem',background:'var(--surface)'}}>
-        {[{key:'info',label:'Site Info'},{key:'logs',label:'Recent Logs'},{key:'playbook',label:'Virtual Supervisor'}].map(t => (
+        {[{key:'info',label:'Site Info'},{key:'logs',label:'Recent Logs'},{key:'roster',label:'Roster'},{key:'officers',label:'Officers'},{key:'playbook',label:'Virtual Supervisor'}].map(t => (
           <button key={t.key} onClick={() => setActiveTab(t.key)}
             style={{padding:'0.75rem 1rem',background:'none',border:'none',borderBottom:`2px solid ${activeTab===t.key?'var(--blue)':'transparent'}`,color:activeTab===t.key?'var(--blue)':'var(--text-2)',fontSize:'0.875rem',fontWeight:600,cursor:'pointer',marginBottom:'-1px',whiteSpace:'nowrap'}}>
             {t.label}
@@ -870,31 +885,121 @@ function SiteDetail({ user }) {
             )}
           </div>
         )}
-        {activeTab === 'info' && <div>
-        <div className="card" style={{marginBottom:'1.25rem'}}>
-          <div className="section-title" style={{marginBottom:'0.875rem'}}>Site Information</div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.875rem'}}>
-            {site.address && (
-              <div>
-                <div style={{fontSize:'0.75rem',color:'var(--text-2)',fontWeight:500,marginBottom:'0.25rem'}}>Address</div>
-                <div style={{fontSize:'0.875rem'}}>{site.address}</div>
-              </div>
-            )}
-            {site.geofence_lat && (
-              <div>
-                <div style={{fontSize:'0.75rem',color:'var(--text-2)',fontWeight:500,marginBottom:'0.25rem'}}>Geofence</div>
-                <div style={{fontSize:'0.8125rem',fontFamily:'monospace'}}>{site.geofence_lat?.toFixed(4)}, {site.geofence_lng?.toFixed(4)}</div>
-              </div>
-            )}
-            {site.client_portal_enabled && (
-              <div>
-                <div style={{fontSize:'0.75rem',color:'var(--text-2)',fontWeight:500,marginBottom:'0.25rem'}}>Client Portal</div>
-                <span className="badge badge-success">Enabled</span>
-              </div>
+        {activeTab === 'roster' && (
+          <div className="card">
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.875rem'}}>
+              <div className="section-title">Site Roster</div>
+              <span style={{fontSize:'0.75rem',color:'var(--text-3)'}}>{shifts.length} shift{shifts.length!==1?'s':''}</span>
+            </div>
+            {shifts.length === 0 ? (
+              <div className="empty-state"><p>No shifts recorded for this site</p></div>
+            ) : (
+              <table className="table">
+                <thead>
+                  <tr><th>Officer</th><th>Date</th><th>Start</th><th>End</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                  {shifts.map(s => (
+                    <tr key={s.id}>
+                      <td style={{fontWeight:500}}>{s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : '—'}</td>
+                      <td style={{color:'var(--text-2)',fontSize:'0.8125rem'}}>{new Date(s.start_time).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'})}</td>
+                      <td style={{color:'var(--text-2)',fontSize:'0.8125rem'}}>{new Date(s.checked_in_at||s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</td>
+                      <td style={{color:'var(--text-2)',fontSize:'0.8125rem'}}>{s.checked_out_at ? new Date(s.checked_out_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : '—'}</td>
+                      <td><span className={`badge ${s.status==='ACTIVE'?'badge-success':s.status==='COMPLETED'?'badge-neutral':'badge-warning'}`}>{s.status||'—'}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
           </div>
+        )}
+        {activeTab === 'officers' && (
+          <div className="card">
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.875rem'}}>
+              <div className="section-title">Assigned Officers</div>
+              <span style={{fontSize:'0.75rem',color:'var(--text-3)'}}>{assignedOfficers.length} officer{assignedOfficers.length!==1?'s':''}</span>
+            </div>
+            {assignedOfficers.length === 0 ? (
+              <div className="empty-state"><p>No officers assigned to this site</p></div>
+            ) : (
+              <table className="table">
+                <thead>
+                  <tr><th>Name</th><th>SIA Licence</th><th>SIA Expiry</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                  {assignedOfficers.map(o => {
+                    const expiry = o.sia_expiry_date ? new Date(o.sia_expiry_date) : null;
+                    const now = new Date();
+                    const daysLeft = expiry ? (expiry - now) / 86400000 : null;
+                    const siaColor = !expiry ? 'var(--text-3)' : daysLeft < 0 ? '#ef4444' : daysLeft < 90 ? '#f59e0b' : '#22c55e';
+                    const siaLabel = !expiry ? '—' : daysLeft < 0 ? 'Expired' : daysLeft < 90 ? 'Expiring' : 'Valid';
+                    return (
+                      <tr key={o.id}>
+                        <td style={{fontWeight:500}}>{o.first_name} {o.last_name}</td>
+                        <td style={{fontFamily:'monospace',fontSize:'0.8125rem',color:'var(--text-2)'}}>{o.sia_licence_number||'—'}</td>
+                        <td style={{fontSize:'0.8125rem'}}>
+                          {expiry ? new Date(o.sia_expiry_date).toLocaleDateString('en-GB') : '—'}
+                        </td>
+                        <td>
+                          <span style={{display:'inline-flex',alignItems:'center',gap:'0.375rem',fontSize:'0.8125rem',color:siaColor,fontWeight:600}}>
+                            <span style={{width:8,height:8,borderRadius:'50%',background:siaColor,display:'inline-block'}} />
+                            {siaLabel}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+        {activeTab === 'info' && <div>
+        <div className="card" style={{marginBottom:'1rem'}}>
+          <div className="section-title" style={{marginBottom:'0.875rem'}}>Site Details</div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
+            <InfoField label="Name" value={site.name} />
+            <InfoField label="Status" value={site.active !== false ? 'Active' : 'Inactive'} />
+            <InfoField label="Address" value={site.address} span />
+            <InfoField label="City" value={site.city} />
+            <InfoField label="Postcode" value={site.postcode} />
+            <InfoField label="Notes" value={site.notes} span />
+          </div>
         </div>
-
+        <div className="card" style={{marginBottom:'1rem'}}>
+          <div className="section-title" style={{marginBottom:'0.875rem'}}>Site Contact</div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
+            <InfoField label="Contact Name" value={site.contact_name} />
+            <InfoField label="Phone" value={site.contact_phone} />
+            <InfoField label="Email" value={site.contact_email} span />
+          </div>
+        </div>
+        <div className="card" style={{marginBottom:'1rem'}}>
+          <div className="section-title" style={{marginBottom:'0.875rem'}}>Escalation Contacts</div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
+            <InfoField label="Escalation 1 Name" value={site.escalation_contact_1_name} />
+            <InfoField label="Escalation 1 Mobile" value={site.escalation_contact_1_mobile} />
+            <InfoField label="Escalation 2 Name" value={site.escalation_contact_2_name} />
+            <InfoField label="Escalation 2 Mobile" value={site.escalation_contact_2_mobile} />
+          </div>
+        </div>
+        <div className="card" style={{marginBottom:'1rem'}}>
+          <div className="section-title" style={{marginBottom:'0.875rem'}}>Client</div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
+            <InfoField label="Client Name" value={site.client_name} />
+            <InfoField label="Contact Name" value={site.client_contact_name} />
+            <InfoField label="Contact Email" value={site.client_contact_email} />
+            <InfoField label="Contact Phone" value={site.client_contact_phone} />
+          </div>
+        </div>
+        <div className="card">
+          <div className="section-title" style={{marginBottom:'0.875rem'}}>Geofence</div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'0.75rem'}}>
+            <InfoField label="Latitude" value={site.geofence_lat} />
+            <InfoField label="Longitude" value={site.geofence_lng} />
+            <InfoField label="Radius (m)" value={site.geofence_radius} />
+          </div>
+        </div>
         </div>}
       </div>
     </div>
@@ -1408,6 +1513,15 @@ function OnDutyScreen({ user }) {
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+function InfoField({ label, value, span }) {
+  return (
+    <div style={span ? {gridColumn:'1/-1'} : {}}>
+      <div style={{fontSize:'0.75rem',color:'var(--text-2)',fontWeight:500,marginBottom:'0.25rem'}}>{label}</div>
+      <div style={{fontSize:'0.875rem',color:value ? 'var(--text)' : 'var(--text-3)'}}>{value || 'Not set'}</div>
     </div>
   );
 }
