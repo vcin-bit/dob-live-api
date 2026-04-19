@@ -615,7 +615,6 @@ function ReportModal({ user, site, session, onClose }) {
 function OccurrenceModal({ site, shift, onClose }) {
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
-  const [clientReportable, setClientReportable] = useState(false);
   const [media, setMedia] = useState([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -652,14 +651,14 @@ function OccurrenceModal({ site, shift, onClose }) {
         log_type: 'GENERAL',
         title: category || 'Other',
         description,
-        client_reportable: clientReportable,
+        client_reportable: false,
         site_id: site?.id,
         shift_id: shift?.id || null,
         occurred_at: new Date().toISOString(),
         type_data: media.length ? { media } : undefined,
       });
       setSaved(true);
-      setTimeout(() => onClose(), 1200);
+      setTimeout(() => onClose(), 1500);
     } catch (e) { alert('Error: ' + e.message); }
     finally { setSaving(false); }
   }
@@ -718,19 +717,6 @@ function OccurrenceModal({ site, shift, onClose }) {
               <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)'}}>Photo/Video</div>
               <input type="file" accept="image/*,video/*" multiple style={{display:'none'}} onChange={handleMedia} />
             </label>
-          </div>
-
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'11px 13px',background:clientReportable?'rgba(59,130,246,0.07)':'rgba(255,255,255,0.03)',border:`1px solid ${clientReportable?'rgba(59,130,246,0.25)':'rgba(255,255,255,0.07)'}`,borderRadius:'10px',marginBottom:'14px',cursor:'pointer'}}
-            onClick={() => setClientReportable(p => !p)}>
-            <div>
-              <div style={{fontSize:'13px',fontWeight:600,color:'#fff'}}>Notify client</div>
-              <div style={{fontSize:'11px',color:'rgba(255,255,255,0.35)',marginTop:'1px'}}>
-                {clientReportable ? 'Visible in client portal + ops' : 'Ops only'}
-              </div>
-            </div>
-            <div style={{width:'38px',height:'22px',background:clientReportable?'#3b82f6':'rgba(255,255,255,0.1)',borderRadius:'999px',position:'relative',transition:'background 0.2s',flexShrink:0}}>
-              <div style={{position:'absolute',top:3,left:clientReportable?'auto':'3px',right:clientReportable?'3px':'auto',width:16,height:16,background:'#fff',borderRadius:'50%',transition:'all 0.2s'}} />
-            </div>
           </div>
 
           <div style={{display:'flex',gap:'8px'}}>
