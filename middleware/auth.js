@@ -53,6 +53,12 @@ async function resolveUser(req, res, next) {
     if (!user) return res.status(401).json({ error: 'User not found' });
     if (!user.active) return res.status(403).json({ error: 'Account disabled' });
 
+    // Attach company logo_url
+    try {
+      const { data: company } = await supabase.from('companies').select('logo_url').eq('id', user.company_id).single();
+      if (company?.logo_url) user.logo_url = company.logo_url;
+    } catch {}
+
     req.user = user;
     next();
   } catch (err) { next(err); }

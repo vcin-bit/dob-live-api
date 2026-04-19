@@ -87,6 +87,15 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+    uploadLogo: async (file) => {
+      const fd = new FormData();
+      fd.append('logo', file);
+      const token = await window.__clerkGetToken?.() || '';
+      const API = import.meta.env.VITE_API_URL || 'https://dob-live-api.onrender.com';
+      const res = await fetch(`${API}/api/companies/logo`, { method: 'POST', body: fd, headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error('Upload failed');
+      return res.json();
+    },
   },
 
   // Sites

@@ -194,7 +194,11 @@ function OfficerApp({ user }) {
 function OfficerHeader({ user, selectedSite, activeShift, onSignOut }) {
   return (
     <div className="officer-header">
-      <div className="logo" style={{flexShrink:0}}><span className="dob">DOB</span><span className="live"> Live</span></div>
+      {user.logo_url ? (
+        <img src={user.logo_url} alt="Logo" style={{maxHeight:'32px',maxWidth:'120px',objectFit:'contain',flexShrink:0}} />
+      ) : (
+        <div className="logo" style={{flexShrink:0}}><span className="dob">DOB</span><span className="live"> Live</span></div>
+      )}
       <div style={{textAlign:'right',minWidth:0,overflow:'hidden'}}>
         {selectedSite && <div style={{fontSize:'0.8125rem',fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:'160px'}}>{selectedSite.name}</div>}
         <div style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.5)'}}>{user.first_name} {user.last_name}</div>

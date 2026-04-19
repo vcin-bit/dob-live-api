@@ -101,8 +101,25 @@ function ManagerSidebar({ user }) {
   return (
     <div className="sidebar">
       <div className="sidebar-logo">
-        <div className="wordmark"><span className="dob">DOB</span><span className="live"> Live</span></div>
+        {user.logo_url ? (
+          <img src={user.logo_url} alt="Company logo" style={{maxHeight:'48px',maxWidth:'100%',objectFit:'contain'}} />
+        ) : (
+          <div className="wordmark"><span className="dob">DOB</span><span className="live"> Live</span></div>
+        )}
         <div className="sub">Operations</div>
+        {['COMPANY','SUPER_ADMIN'].includes(user.role) && (
+          <label style={{fontSize:'0.6875rem',color:'rgba(255,255,255,0.3)',cursor:'pointer',marginTop:'0.25rem'}}>
+            Change logo
+            <input type="file" accept="image/*" style={{display:'none'}} onChange={async e => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              try {
+                const res = await api.companies.uploadLogo(file);
+                if (res.logo_url) window.location.reload();
+              } catch (err) { alert('Upload failed: ' + err.message); }
+            }} />
+          </label>
+        )}
       </div>
       <nav className="sidebar-nav">
         {navGroups.map((group, gi) => (
