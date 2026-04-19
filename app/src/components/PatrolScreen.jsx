@@ -18,6 +18,7 @@ export default function PatrolScreen({ user, site, shift }) {
   const [mapType, setMapType] = useState('satellite');
   const [showReport, setShowReport] = useState(false);
   const [showOccurrence, setShowOccurrence] = useState(false);
+  const [markingLocation, setMarkingLocation] = useState(false);
   const [loading, setLoading] = useState(true);
   const [patrolStarted, setPatrolStarted] = useState(false);
   const [isRoutePlanner, setIsRoutePlanner] = useState(false);
@@ -407,13 +408,16 @@ export default function PatrolScreen({ user, site, shift }) {
               </button>
             )}
             <div style={{display:'flex',gap:'8px',marginBottom:'8px'}}>
-              <button onClick={async () => {
+              <button disabled={markingLocation} onClick={async () => {
+                if (markingLocation) return;
+                setMarkingLocation(true);
                 const name = `Location ${new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}`;
                 try {
                   await api.logs.create({ site_id: site.id, shift_id: null, log_type:'PATROL', title: name, description:`Officer location marked at ${name}`, occurred_at:new Date().toISOString(), latitude:currentPos?.lat, longitude:currentPos?.lng });
                 } catch(e) { console.error('Mark location failed:', e.message); }
-              }} style={{flex:1,padding:'13px',background:'rgba(59,130,246,0.12)',border:'1.5px solid rgba(59,130,246,0.35)',borderRadius:'10px',color:'#60a5fa',fontSize:'12px',fontWeight:700,cursor:'pointer'}}>
-                📍 MARK LOCATION
+                setTimeout(() => setMarkingLocation(false), 3000);
+              }} style={{flex:1,padding:'13px',background:markingLocation?'rgba(74,222,128,0.12)':'rgba(59,130,246,0.12)',border:`1.5px solid ${markingLocation?'rgba(74,222,128,0.35)':'rgba(59,130,246,0.35)'}`,borderRadius:'10px',color:markingLocation?'#4ade80':'#60a5fa',fontSize:'12px',fontWeight:700,cursor:markingLocation?'default':'pointer',opacity:markingLocation?0.8:1}}>
+                {markingLocation ? '✓ Marked' : '📍 MARK LOCATION'}
               </button>
               <button onClick={() => setShowReport(true)}
                 style={{flex:1,padding:'13px',background:'rgba(239,68,68,0.12)',border:'1.5px solid rgba(239,68,68,0.4)',borderRadius:'10px',color:'#ef4444',fontSize:'12px',fontWeight:700,cursor:'pointer'}}>

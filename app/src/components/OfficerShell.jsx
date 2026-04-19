@@ -336,9 +336,6 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
         <Link to="/log?type=CCTV_CHECK" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.875rem',marginBottom:0}}>
           CCTV Check
         </Link>
-        <Link to="/log?type=WELFARE_CHECK" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.875rem',marginBottom:0}}>
-          Welfare Check
-        </Link>
         <Link to="/log?type=MANAGEMENT_VISIT" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.875rem',marginBottom:0}}>
           Management Visit
         </Link>
