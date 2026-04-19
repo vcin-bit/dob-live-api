@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation, useParams, Routes, Route, Navigate } fr
 import { useAuth } from '@clerk/clerk-react';
 import { api, ApiError } from '../lib/api';
 import SitePlaybook from './SitePlaybook';
+import RosterCalendar from './RosterCalendar';
 import { PortalSettingsModal } from './Portal';
 import { LOG_TYPES, LOG_TYPE_CONFIG, formatDateTime, getRelativeTime } from '../lib/constants';
 import {
@@ -900,32 +901,7 @@ function SiteDetail({ user }) {
           </div>
         )}
         {activeTab === 'roster' && (
-          <div className="card">
-            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.875rem'}}>
-              <div className="section-title">Site Roster</div>
-              <span style={{fontSize:'0.75rem',color:'var(--text-3)'}}>{shifts.length} shift{shifts.length!==1?'s':''}</span>
-            </div>
-            {shifts.length === 0 ? (
-              <div className="empty-state"><p>No shifts recorded for this site</p></div>
-            ) : (
-              <table className="table">
-                <thead>
-                  <tr><th>Officer</th><th>Date</th><th>Start</th><th>End</th><th>Status</th></tr>
-                </thead>
-                <tbody>
-                  {shifts.map(s => (
-                    <tr key={s.id}>
-                      <td style={{fontWeight:500}}>{s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : '—'}</td>
-                      <td style={{color:'var(--text-2)',fontSize:'0.8125rem'}}>{new Date(s.start_time).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'})}</td>
-                      <td style={{color:'var(--text-2)',fontSize:'0.8125rem'}}>{new Date(s.checked_in_at||s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</td>
-                      <td style={{color:'var(--text-2)',fontSize:'0.8125rem'}}>{s.checked_out_at ? new Date(s.checked_out_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : '—'}</td>
-                      <td><span className={`badge ${s.status==='ACTIVE'?'badge-success':s.status==='COMPLETED'?'badge-neutral':'badge-warning'}`}>{s.status||'—'}</span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+          <RosterCalendar siteId={id} user={user} />
         )}
         {activeTab === 'officers' && (
           <div className="card">
