@@ -171,11 +171,17 @@ export default function PatrolScreen({ user, site, shift }) {
   }
 
   async function markCheckpoint(cp) {
-    if (!session) return;
-    try {
-      await api.patrols.checkpoint(session.id, cp.id, cp.name, currentPos?.lat, currentPos?.lng);
-      setCompletedCps(prev => [...prev, cp.id]);
-    } catch (e) { console.error(e); }
+    // Mark locally immediately so UI feels responsive
+    setCompletedCps(prev => prev.includes(cp.id) ? prev : [...prev, cp.id]);
+    // Then sync to server if we have a session
+    if (session?.id) {
+      try {
+        await api.patrols.checkpoint(session.id, cp.id, cp.name, currentPos?.lat, currentPos?.lng);
+      } catch (e) {
+        console.error('Checkpoint sync failed:', e.message);
+        // Don't revert — local mark is enough for the officer to continue
+      }
+    }
   }
 
   const [showEndConfirm, setShowEndConfirm] = useState(false);

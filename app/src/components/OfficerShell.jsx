@@ -30,7 +30,7 @@ function OfficerApp({ user }) {
 
   async function startShift() {
     if (!selectedSite) return;
-    if (!plannedEnd) { alert('Please enter your planned finish time.'); return; }
+    if (!plannedEnd) { setShowShiftModal(true); return; }
     try {
       let lat, lng;
       try {
@@ -305,13 +305,18 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
             </div>
           </div>
           <Link to="/handover" style={{padding:'0.5rem 0.875rem',background:'rgba(220,38,38,0.2)',border:'1px solid rgba(220,38,38,0.3)',borderRadius:'6px',color:'#fca5a5',fontSize:'0.8125rem',fontWeight:600,cursor:'pointer',textDecoration:'none',display:'inline-flex',alignItems:'center'}}>
-            Handover
+            End Shift / Handover
           </Link>
         </div>
       ) : (
-        <button onClick={() => setShowShiftModal(true)} style={{width:'100%',padding:'0.875rem',background:'rgba(74,222,128,0.12)',border:'1px solid rgba(74,222,128,0.2)',borderRadius:'10px',color:'#4ade80',fontSize:'0.9375rem',fontWeight:700,cursor:'pointer',marginBottom:'0.75rem'}}>
-          Start Shift
-        </button>
+        <div style={{display:'flex',gap:'0.5rem',marginBottom:'0.75rem'}}>
+          <button onClick={onStartShift} style={{flex:2,padding:'0.875rem',background:'rgba(74,222,128,0.12)',border:'1px solid rgba(74,222,128,0.2)',borderRadius:'10px',color:'#4ade80',fontSize:'0.9375rem',fontWeight:700,cursor:'pointer'}}>
+            Start Shift
+          </button>
+          <Link to="/handover" style={{flex:1,padding:'0.875rem',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'10px',color:'rgba(255,255,255,0.5)',fontSize:'0.8125rem',fontWeight:600,cursor:'pointer',textDecoration:'none',display:'inline-flex',alignItems:'center',justifyContent:'center'}}>
+            Handover
+          </Link>
+        </div>
       )}
 
       {/* Primary actions */}
