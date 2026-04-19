@@ -130,7 +130,7 @@ export default function PatrolScreen({ user, site, shift }) {
 
         {/* Progress bar */}
         {patrolStarted && checkpoints.length > 0 && (
-          <div style={{padding:'10px 14px',borderBottom:'1px solid rgba(255,255,255,0.06)',flexShrink:0}}>
+          <div style={{padding:'10px 14px',borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
             <div style={{display:'flex',justifyContent:'space-between',marginBottom:'5px'}}>
               <span style={{fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>Progress</span>
               <span style={{fontSize:'11px',color:'#fff',fontWeight:500}}>{completedCps.length} / {checkpoints.length}</span>
@@ -138,6 +138,36 @@ export default function PatrolScreen({ user, site, shift }) {
             <div style={{height:'3px',background:'rgba(255,255,255,0.07)',borderRadius:'999px'}}>
               <div style={{height:'100%',width:`${checkpoints.length?completedCps.length/checkpoints.length*100:0}%`,background:'#3b82f6',borderRadius:'999px',transition:'width 0.4s'}} />
             </div>
+          </div>
+        )}
+
+        {/* Active patrol action buttons — directly after progress bar */}
+        {patrolStarted && (
+          <div style={{padding:'10px 14px',borderBottom:'1px solid rgba(255,255,255,0.08)',background:'#0b1222'}}>
+            {nextCp && (
+              <button onClick={() => markCheckpoint(nextCp)}
+                style={{width:'100%',padding:'14px',background:'rgba(251,191,36,0.15)',border:'2px solid rgba(251,191,36,0.5)',borderRadius:'10px',color:'#fbbf24',fontSize:'15px',fontWeight:700,cursor:'pointer',marginBottom:'8px',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px'}}>
+                ✓ REACHED: {nextCp.name}
+              </button>
+            )}
+            <div style={{display:'flex',gap:'8px',marginBottom:'8px'}}>
+              <button disabled={checkpointSaving} onClick={() => setShowCheckpointModal(true)}
+                style={{flex:1,padding:'13px',background:checkpointSaving?'rgba(74,222,128,0.12)':'rgba(59,130,246,0.12)',border:`1.5px solid ${checkpointSaving?'rgba(74,222,128,0.35)':'rgba(59,130,246,0.35)'}`,borderRadius:'10px',color:checkpointSaving?'#4ade80':'#60a5fa',fontSize:'12px',fontWeight:700,cursor:checkpointSaving?'default':'pointer'}}>
+                {checkpointSaving ? '✓ Saved' : '📍 CHECKPOINT'}
+              </button>
+              <button onClick={() => setShowReport(true)}
+                style={{flex:1,padding:'13px',background:'rgba(239,68,68,0.12)',border:'1.5px solid rgba(239,68,68,0.4)',borderRadius:'10px',color:'#ef4444',fontSize:'12px',fontWeight:700,cursor:'pointer'}}>
+                ⚠ INCIDENT
+              </button>
+            </div>
+            <button onClick={() => setShowOccurrence(true)}
+              style={{width:'100%',padding:'13px',background:'rgba(74,222,128,0.1)',border:'1.5px solid rgba(74,222,128,0.3)',borderRadius:'10px',color:'#4ade80',fontSize:'12px',fontWeight:700,cursor:'pointer',marginBottom:'8px'}}>
+              📋 LOG OCCURRENCE
+            </button>
+            <button onClick={() => setShowEndConfirm(true)}
+              style={{width:'100%',padding:'12px',background:'rgba(255,255,255,0.05)',border:'1.5px solid rgba(255,255,255,0.12)',borderRadius:'10px',color:'rgba(255,255,255,0.6)',fontSize:'12px',fontWeight:700,cursor:'pointer'}}>
+              END PATROL
+            </button>
           </div>
         )}
 
@@ -179,41 +209,11 @@ export default function PatrolScreen({ user, site, shift }) {
             </>
           ) : !loading && (
             <div style={{textAlign:'center',padding:'2rem',color:'rgba(255,255,255,0.25)',fontSize:'13px'}}>
-              No fixed route — use the Checkpoint button below to log locations as you patrol
+              No fixed route — use the Checkpoint button above to log locations as you patrol
             </div>
           )}
         </div>
       </div>
-
-      {/* Active patrol action buttons — pinned to bottom */}
-      {patrolStarted && (
-        <div style={{padding:'10px 14px',flexShrink:0,borderTop:'1px solid rgba(255,255,255,0.08)',background:'#0b1222'}}>
-          {nextCp && (
-            <button onClick={() => markCheckpoint(nextCp)}
-              style={{width:'100%',padding:'14px',background:'rgba(251,191,36,0.15)',border:'2px solid rgba(251,191,36,0.5)',borderRadius:'10px',color:'#fbbf24',fontSize:'15px',fontWeight:700,cursor:'pointer',marginBottom:'8px',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px'}}>
-              ✓ REACHED: {nextCp.name}
-            </button>
-          )}
-          <div style={{display:'flex',gap:'8px',marginBottom:'8px'}}>
-            <button disabled={checkpointSaving} onClick={() => setShowCheckpointModal(true)}
-              style={{flex:1,padding:'13px',background:checkpointSaving?'rgba(74,222,128,0.12)':'rgba(59,130,246,0.12)',border:`1.5px solid ${checkpointSaving?'rgba(74,222,128,0.35)':'rgba(59,130,246,0.35)'}`,borderRadius:'10px',color:checkpointSaving?'#4ade80':'#60a5fa',fontSize:'12px',fontWeight:700,cursor:checkpointSaving?'default':'pointer'}}>
-              {checkpointSaving ? '✓ Saved' : '📍 CHECKPOINT'}
-            </button>
-            <button onClick={() => setShowReport(true)}
-              style={{flex:1,padding:'13px',background:'rgba(239,68,68,0.12)',border:'1.5px solid rgba(239,68,68,0.4)',borderRadius:'10px',color:'#ef4444',fontSize:'12px',fontWeight:700,cursor:'pointer'}}>
-              ⚠ INCIDENT
-            </button>
-          </div>
-          <button onClick={() => setShowOccurrence(true)}
-            style={{width:'100%',padding:'13px',background:'rgba(74,222,128,0.1)',border:'1.5px solid rgba(74,222,128,0.3)',borderRadius:'10px',color:'#4ade80',fontSize:'12px',fontWeight:700,cursor:'pointer',marginBottom:'8px'}}>
-            📋 LOG OCCURRENCE
-          </button>
-          <button onClick={() => setShowEndConfirm(true)}
-            style={{width:'100%',padding:'12px',background:'rgba(255,255,255,0.05)',border:'1.5px solid rgba(255,255,255,0.12)',borderRadius:'10px',color:'rgba(255,255,255,0.6)',fontSize:'12px',fontWeight:700,cursor:'pointer'}}>
-            END PATROL
-          </button>
-        </div>
-      )}
 
       {/* End patrol confirm */}
       {showEndConfirm && (

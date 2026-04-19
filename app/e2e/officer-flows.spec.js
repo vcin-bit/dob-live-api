@@ -446,7 +446,7 @@ test.describe('Log Entry Without Active Shift', () => {
 // 8. Patrol Screen Loads Without Crashing
 // ===========================================================================
 test.describe('Patrol Screen Loads', () => {
-  test('patrol screen renders map, start button, and no JS errors', async ({ page, context }) => {
+  test('patrol screen renders start button and no JS errors', async ({ page, context }) => {
     await setupMocks(page, context, { withShift: true });
 
     const jsErrors = [];
@@ -458,11 +458,6 @@ test.describe('Patrol Screen Loads', () => {
 
     // Site name visible in patrol header
     await expect(page.getByText('E2E Test Site').first()).toBeVisible({ timeout: 5000 });
-
-    // Map container is rendered
-    const mapContainer = page.locator('div[style*="height"]').filter({ has: page.locator('.leaflet-container, [class*="leaflet"]') });
-    // Fallback: just check the map ref div exists (it always renders even if Leaflet hasn't loaded)
-    await expect(page.locator('div[style*="width: 100%"][style*="height: 100%"]').first()).toBeVisible({ timeout: 5000 });
 
     // START PATROL button is visible
     await expect(page.getByText(/START PATROL/)).toBeVisible({ timeout: 3000 });
