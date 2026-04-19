@@ -92,7 +92,8 @@ export default function RosterCalendar({ siteId, user }) {
         api.rates.list().catch(() => ({ data: [] })),
       ]);
       setShifts(shiftsRes.data || []);
-      const allOfficers = (usersRes.data || []).filter(u => u.role === 'OFFICER');
+      const allOfficers = (usersRes.data || []).filter(u => u.role === 'OFFICER')
+        .sort((a, b) => (a.last_name || '').localeCompare(b.last_name || '') || (a.first_name || '').localeCompare(b.first_name || ''));
       setOfficers(allOfficers);
       setSites(sitesRes.data || []);
       setRates(ratesRes.data || []);

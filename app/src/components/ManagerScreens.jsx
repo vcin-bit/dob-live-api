@@ -1162,11 +1162,16 @@ function TeamManagement({ user }) {
   const [siteAssignOfficer, setSiteAssignOfficer] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
   const [resendingId, setResendingId] = useState(null);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('active');
 
   async function load() {
     try {
       const res = await api.users.list();
-      setOfficers(res.data || []);
+      const sorted = (res.data || []).sort((a, b) =>
+        (a.last_name || '').localeCompare(b.last_name || '') || (a.first_name || '').localeCompare(b.first_name || '')
+      );
+      setOfficers(sorted);
     } catch (err) { setError(err.message); }
     finally { setLoading(false); }
   }
@@ -1176,6 +1181,19 @@ function TeamManagement({ user }) {
   const roleBadge  = { OFFICER:'badge-neutral', OPS_MANAGER:'badge-blue', FD:'badge-navy', COMPANY:'badge-navy', SUPER_ADMIN:'badge-danger' };
   const isSiaExpired      = d => d && new Date(d) < new Date();
   const isSiaExpiringSoon = d => { if (!d) return false; const days=(new Date(d)-new Date())/86400000; return days>0&&days<90; };
+
+  const filtered = officers.filter(o => {
+    if (statusFilter === 'active' && o.active === false) return false;
+    if (statusFilter === 'inactive' && o.active !== false) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      return (o.first_name || '').toLowerCase().includes(q) ||
+             (o.last_name || '').toLowerCase().includes(q) ||
+             (o.email || '').toLowerCase().includes(q) ||
+             (o.sia_licence_number || '').toLowerCase().includes(q);
+    }
+    return true;
+  });
 
   return (
     <div>
@@ -1188,15 +1206,36 @@ function TeamManagement({ user }) {
       <div className="page-content">
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
         {successMsg && <div className="alert alert-success" style={{marginBottom:'1rem'}}>{successMsg}</div>}
+
+        {/* Search + filter bar */}
+        {!loading && (
+          <div style={{display:'flex',alignItems:'center',gap:'0.75rem',marginBottom:'1rem',flexWrap:'wrap'}}>
+            <input className="input" style={{width:'220px'}} placeholder="Search name, email, SIA..." value={search} onChange={e => setSearch(e.target.value)} />
+            <div style={{display:'flex',gap:'2px',background:'var(--surface-2)',borderRadius:'6px',padding:'2px'}}>
+              {[['all','All'],['active','Active'],['inactive','Inactive']].map(([k,l]) => (
+                <button key={k} onClick={() => setStatusFilter(k)}
+                  style={{padding:'0.375rem 0.75rem',borderRadius:'4px',border:'none',cursor:'pointer',fontSize:'0.8125rem',fontWeight:600,
+                    background: statusFilter===k ? 'var(--blue)' : 'transparent',
+                    color: statusFilter===k ? '#fff' : 'var(--text-2)'}}>
+                  {l}
+                </button>
+              ))}
+            </div>
+            <span style={{fontSize:'0.8125rem',color:'var(--text-3)'}}>{filtered.length} officer{filtered.length!==1?'s':''}</span>
+          </div>
+        )}
+
         {loading ? (
           <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>
+        ) : filtered.length === 0 ? (
+          <div className="empty-state"><p>{search || statusFilter !== 'all' ? 'No officers match your search' : 'No team members yet'}</p></div>
         ) : (
           <table className="table">
             <thead>
               <tr><th>Name</th><th>Email</th><th>Role</th><th>SIA Licence</th><th>SIA Expiry</th><th>Status</th><th></th></tr>
             </thead>
             <tbody>
-              {officers.map(o => (
+              {filtered.map(o => (
                 <tr key={o.id}>
                   <td style={{fontWeight:500}}>{o.first_name} {o.last_name}</td>
                   <td style={{color:'var(--text-2)',fontSize:'0.8125rem'}}>{o.email}</td>
