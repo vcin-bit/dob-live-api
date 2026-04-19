@@ -411,7 +411,7 @@ export default function PatrolScreen({ user, site, shift }) {
                 const name = `Location ${new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}`;
                 try {
                   await api.logs.create({ site_id: site.id, shift_id: null, log_type:'PATROL', title: name, description:`Officer location marked at ${name}`, occurred_at:new Date().toISOString(), latitude:currentPos?.lat, longitude:currentPos?.lng });
-                } catch(e) {}
+                } catch(e) { console.error('Mark location failed:', e.message); }
               }} style={{flex:1,padding:'13px',background:'rgba(59,130,246,0.12)',border:'1.5px solid rgba(59,130,246,0.35)',borderRadius:'10px',color:'#60a5fa',fontSize:'12px',fontWeight:700,cursor:'pointer'}}>
                 📍 MARK LOCATION
               </button>
