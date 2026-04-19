@@ -304,3 +304,5 @@ router.get('/handover/pending', authenticate, async (req, res, next) => {
     res.json({ data });
   } catch (err) { next(err); }
 });
+
+module.exports = router;
