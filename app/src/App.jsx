@@ -67,6 +67,7 @@ function AuthFlow() {
   const [step, setStep] = useState('email'); // email | password | verify | sent | code
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
@@ -245,9 +246,15 @@ function AuthFlow() {
                       Forgot password?
                     </button>
                   </div>
-                  <input type="password" value={password} onChange={e=>setPassword(e.target.value)} style={inputStyle}
-                    placeholder="Your password" required autoComplete="current-password" autoFocus
-                    onFocus={e=>e.target.style.borderColor='#1a52a8'} onBlur={e=>e.target.style.borderColor='#e2e8f0'} />
+                  <div style={{position:'relative'}}>
+                    <input type={showPassword ? 'text' : 'password'} value={password} onChange={e=>setPassword(e.target.value)} style={{...inputStyle, paddingRight:'3rem'}}
+                      placeholder="Your password" required autoComplete="current-password" autoFocus
+                      onFocus={e=>e.target.style.borderColor='#1a52a8'} onBlur={e=>e.target.style.borderColor='#e2e8f0'} />
+                    <button type="button" onClick={() => setShowPassword(p => !p)}
+                      style={{position:'absolute',right:'0.5rem',top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',fontSize:'0.8125rem',color:'#64748b',fontWeight:500,padding:'0.25rem'}}>
+                      {showPassword ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
                 </div>
               )}
               <button type="submit" style={btnStyle} disabled={loading}>
@@ -268,9 +275,15 @@ function AuthFlow() {
               {step === 'password' && (
                 <div style={fieldStyle}>
                   <label style={labelStyle}>Choose a password</label>
-                  <input type="password" value={password} onChange={e=>setPassword(e.target.value)} style={inputStyle}
-                    placeholder="At least 8 characters" required autoFocus
-                    onFocus={e=>e.target.style.borderColor='#1a52a8'} onBlur={e=>e.target.style.borderColor='#e2e8f0'} />
+                  <div style={{position:'relative'}}>
+                    <input type={showPassword ? 'text' : 'password'} value={password} onChange={e=>setPassword(e.target.value)} style={{...inputStyle, paddingRight:'3rem'}}
+                      placeholder="At least 8 characters" required autoFocus
+                      onFocus={e=>e.target.style.borderColor='#1a52a8'} onBlur={e=>e.target.style.borderColor='#e2e8f0'} />
+                    <button type="button" onClick={() => setShowPassword(p => !p)}
+                      style={{position:'absolute',right:'0.5rem',top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',fontSize:'0.8125rem',color:'#64748b',fontWeight:500,padding:'0.25rem'}}>
+                      {showPassword ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
                 </div>
               )}
               <button type="submit" style={btnStyle} disabled={loading}>
@@ -322,9 +335,15 @@ function AuthFlow() {
               </div>
               <div style={fieldStyle}>
                 <label style={labelStyle}>New password</label>
-                <input type="password" value={password} onChange={e=>setPassword(e.target.value)} style={inputStyle}
-                  placeholder="At least 8 characters" required
-                  onFocus={e=>e.target.style.borderColor='#1a52a8'} onBlur={e=>e.target.style.borderColor='#e2e8f0'} />
+                <div style={{position:'relative'}}>
+                  <input type={showPassword ? 'text' : 'password'} value={password} onChange={e=>setPassword(e.target.value)} style={{...inputStyle, paddingRight:'3rem'}}
+                    placeholder="At least 8 characters" required
+                    onFocus={e=>e.target.style.borderColor='#1a52a8'} onBlur={e=>e.target.style.borderColor='#e2e8f0'} />
+                  <button type="button" onClick={() => setShowPassword(p => !p)}
+                    style={{position:'absolute',right:'0.5rem',top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',fontSize:'0.8125rem',color:'#64748b',fontWeight:500,padding:'0.25rem'}}>
+                    {showPassword ? 'Hide' : 'Show'}
+                  </button>
+                </div>
               </div>
               <button type="submit" style={btnStyle} disabled={loading}>{loading ? 'Resetting...' : 'Reset password'}</button>
             </form>
