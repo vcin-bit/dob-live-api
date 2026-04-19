@@ -20,6 +20,7 @@ export default function PatrolScreen({ user, site, shift }) {
   const [currentPos, setCurrentPos] = useState(null);
   const [mapType, setMapType] = useState('satellite');
   const [showReport, setShowReport] = useState(false);
+  const [showOccurrence, setShowOccurrence] = useState(false);
   const [loading, setLoading] = useState(true);
   const [patrolStarted, setPatrolStarted] = useState(false);
   const [isRoutePlanner, setIsRoutePlanner] = useState(false);
@@ -422,6 +423,10 @@ export default function PatrolScreen({ user, site, shift }) {
                 ⚠ INCIDENT
               </button>
             </div>
+            <button onClick={() => setShowOccurrence(true)}
+              style={{width:'100%',padding:'13px',background:'rgba(74,222,128,0.1)',border:'1.5px solid rgba(74,222,128,0.3)',borderRadius:'10px',color:'#4ade80',fontSize:'12px',fontWeight:700,cursor:'pointer',marginBottom:'8px'}}>
+              📋 LOG OCCURRENCE
+            </button>
             <button onClick={() => setShowEndConfirm(true)}
               style={{width:'100%',padding:'12px',background:'rgba(255,255,255,0.05)',border:'1.5px solid rgba(255,255,255,0.12)',borderRadius:'10px',color:'rgba(255,255,255,0.6)',fontSize:'12px',fontWeight:700,cursor:'pointer'}}>
               END PATROL
@@ -455,6 +460,11 @@ export default function PatrolScreen({ user, site, shift }) {
       {/* Report issue modal */}
       {showReport && (
         <ReportModal user={user} site={site} session={session} onClose={() => setShowReport(false)} />
+      )}
+
+      {/* Log occurrence modal */}
+      {showOccurrence && (
+        <OccurrenceModal site={site} shift={shift} onClose={() => setShowOccurrence(false)} />
       )}
     </div>
   );
@@ -596,6 +606,143 @@ function ReportModal({ user, site, session, onClose }) {
             style={{width:'100%',padding:'14px',background:'#1a52a8',border:'none',borderRadius:'10px',color:'#fff',fontSize:'14px',fontWeight:700,cursor:'pointer',opacity:saving?0.7:1}}>
             {saving ? 'Submitting...' : 'Submit Report'}
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OccurrenceModal({ site, shift, onClose }) {
+  const [category, setCategory] = useState('');
+  const [description, setDescription] = useState('');
+  const [clientReportable, setClientReportable] = useState(false);
+  const [media, setMedia] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const categories = [
+    'Abandoned Vehicle','Fly Tipping','H&S Hazard','Unsecured Building/Door',
+    'Suspicious Person','Criminal Damage','Trespass','Theft','Other',
+  ];
+
+  async function handleMedia(e) {
+    const files = Array.from(e.target.files);
+    const uploads = await Promise.all(files.map(async file => {
+      const form = new FormData();
+      form.append('file', file);
+      try {
+        const API = import.meta.env.VITE_API_URL || 'https://dob-live-api.onrender.com';
+        const token = await window.__clerkGetToken?.() || '';
+        const res = await fetch(`${API}/api/patrols/media/upload`, {
+          method: 'POST', body: form,
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        return { url: data.url, name: file.name, type: file.type };
+      } catch { return null; }
+    }));
+    setMedia(prev => [...prev, ...uploads.filter(Boolean)]);
+  }
+
+  async function submit() {
+    if (!description.trim()) return;
+    setSaving(true);
+    try {
+      await api.logs.create({
+        log_type: 'GENERAL',
+        title: category || 'Other',
+        description,
+        client_reportable: clientReportable,
+        site_id: site?.id,
+        shift_id: shift?.id || null,
+        occurred_at: new Date().toISOString(),
+        type_data: media.length ? { media } : undefined,
+      });
+      setSaved(true);
+      setTimeout(() => onClose(), 1200);
+    } catch (e) { alert('Error: ' + e.message); }
+    finally { setSaving(false); }
+  }
+
+  if (saved) {
+    return (
+      <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center'}}>
+        <div style={{background:'#0f1929',borderRadius:'16px',padding:'2rem 3rem',textAlign:'center'}}>
+          <div style={{fontSize:'2rem',marginBottom:'0.5rem'}}>✓</div>
+          <div style={{fontSize:'15px',fontWeight:700,color:'#4ade80'}}>Logged</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',zIndex:9999,display:'flex',alignItems:'flex-end'}}>
+      <div style={{background:'#0f1929',borderRadius:'16px 16px 0 0',padding:'0 0 20px',width:'100%',maxHeight:'90vh',overflowY:'auto',border:'1px solid rgba(255,255,255,0.08)'}}>
+        <div style={{width:'40px',height:'4px',background:'rgba(255,255,255,0.15)',borderRadius:'2px',margin:'10px auto 0'}} />
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 16px',borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
+          <div>
+            <div style={{fontSize:'14px',fontWeight:700,color:'#fff'}}>Log Occurrence</div>
+            <div style={{fontSize:'11px',color:'rgba(255,255,255,0.35)',marginTop:'1px'}}>{site?.name}</div>
+          </div>
+          <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,0.4)',fontSize:'20px',cursor:'pointer'}}>×</button>
+        </div>
+
+        <div style={{padding:'14px 16px'}}>
+          <div style={{fontSize:'10px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'6px'}}>Category</div>
+          <select value={category} onChange={e => setCategory(e.target.value)}
+            style={{width:'100%',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',padding:'10px 11px',fontSize:'13px',color:'#fff',boxSizing:'border-box',marginBottom:'14px',fontFamily:'inherit'}}>
+            <option value="">Select category...</option>
+            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+
+          <div style={{fontSize:'10px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'6px'}}>Description</div>
+          <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3}
+            placeholder="Describe what you found..."
+            style={{width:'100%',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',padding:'9px 11px',fontSize:'13px',color:'#fff',resize:'none',boxSizing:'border-box',marginBottom:'14px',fontFamily:'inherit'}} />
+
+          <div style={{fontSize:'10px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'8px'}}>Photos / Video</div>
+          <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'14px'}}>
+            {media.map((m, i) => (
+              <div key={i} style={{width:64,height:64,borderRadius:'8px',background:'#1a2535',border:'1px solid rgba(255,255,255,0.1)',overflow:'hidden',position:'relative'}}>
+                {m.type?.startsWith('image') ? (
+                  <img src={m.url} style={{width:'100%',height:'100%',objectFit:'cover'}} />
+                ) : (
+                  <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>video</div>
+                )}
+                <button onClick={() => setMedia(p => p.filter((_,j)=>j!==i))}
+                  style={{position:'absolute',top:2,right:2,width:16,height:16,background:'rgba(239,68,68,0.8)',borderRadius:'50%',border:'none',color:'#fff',fontSize:10,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
+              </div>
+            ))}
+            <label style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>
+              <div style={{fontSize:'18px',color:'rgba(59,130,246,0.5)',lineHeight:1}}>+</div>
+              <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)'}}>Photo/Video</div>
+              <input type="file" accept="image/*,video/*" multiple style={{display:'none'}} onChange={handleMedia} />
+            </label>
+          </div>
+
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'11px 13px',background:clientReportable?'rgba(59,130,246,0.07)':'rgba(255,255,255,0.03)',border:`1px solid ${clientReportable?'rgba(59,130,246,0.25)':'rgba(255,255,255,0.07)'}`,borderRadius:'10px',marginBottom:'14px',cursor:'pointer'}}
+            onClick={() => setClientReportable(p => !p)}>
+            <div>
+              <div style={{fontSize:'13px',fontWeight:600,color:'#fff'}}>Notify client</div>
+              <div style={{fontSize:'11px',color:'rgba(255,255,255,0.35)',marginTop:'1px'}}>
+                {clientReportable ? 'Visible in client portal + ops' : 'Ops only'}
+              </div>
+            </div>
+            <div style={{width:'38px',height:'22px',background:clientReportable?'#3b82f6':'rgba(255,255,255,0.1)',borderRadius:'999px',position:'relative',transition:'background 0.2s',flexShrink:0}}>
+              <div style={{position:'absolute',top:3,left:clientReportable?'auto':'3px',right:clientReportable?'3px':'auto',width:16,height:16,background:'#fff',borderRadius:'50%',transition:'all 0.2s'}} />
+            </div>
+          </div>
+
+          <div style={{display:'flex',gap:'8px'}}>
+            <button onClick={onClose}
+              style={{flex:1,padding:'14px',background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'10px',color:'rgba(255,255,255,0.6)',fontSize:'14px',fontWeight:600,cursor:'pointer'}}>
+              Cancel
+            </button>
+            <button onClick={submit} disabled={saving || !description.trim()}
+              style={{flex:2,padding:'14px',background:'#1a52a8',border:'none',borderRadius:'10px',color:'#fff',fontSize:'14px',fontWeight:700,cursor:'pointer',opacity:saving||!description.trim()?0.5:1}}>
+              {saving ? 'Submitting...' : 'Submit'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
