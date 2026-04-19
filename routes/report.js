@@ -297,7 +297,7 @@ router.get('/handover/pending', authenticate, async (req, res, next) => {
       .eq('site_id', site_id)
       .eq('status', 'PENDING')
       .neq('authored_by', req.user.id)
-      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
       .limit(1)
       .maybeSingle();
 

@@ -72,7 +72,7 @@ export default function PlaybookAlerts({ user, site, shift, lastPatrolTime, onTa
       await api.logs.create({
         site_id: site.id,
         shift_id: shift.id,
-        log_type: task.task_type === 'WELFARE_CALL' ? 'GENERAL' : 'GENERAL',
+        log_type: task.task_type,
         title: `✓ ${task.name}`,
         description: task.description || `Scheduled task completed: ${task.name}`,
         occurred_at: new Date().toISOString(),

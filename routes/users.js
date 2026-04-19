@@ -100,8 +100,6 @@ router.patch('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MA
   } catch (err) { next(err); }
 });
 
-module.exports = router;
-
 // GET /api/users/:id/sites — sites assigned to an officer
 router.get('/:id/sites', authenticate, async (req, res, next) => {
   try {
@@ -130,8 +128,6 @@ router.put('/:id/sites', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OP
   } catch (err) { next(err); }
 });
 
-module.exports = router;
-
 // DELETE /api/users/:id
 router.delete('/:id', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANAGER'), async (req, res, next) => {
   try {
@@ -142,3 +138,5 @@ router.delete('/:id', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MAN
     res.json({ success: true });
   } catch (err) { next(err); }
 });
+
+module.exports = router;
