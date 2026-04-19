@@ -160,7 +160,7 @@ function OfficerApp({ user }) {
       {/* Shift start modal */}
       {showShiftModal && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',zIndex:9998,display:'flex',alignItems:'flex-end',justifyContent:'center',padding:'1rem'}}>
-          <div style={{background:'#0f1929',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'16px',padding:'1.5rem',width:'100%',maxWidth:'360px'}}>
+          <div style={{background:'#0f1929',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'16px',padding:'1.5rem',width:'100%',maxWidth:'360px',boxSizing:'border-box'}}>
             <div style={{fontSize:'16px',fontWeight:700,color:'#fff',marginBottom:'4px'}}>Start Shift</div>
             <div style={{fontSize:'13px',color:'rgba(255,255,255,0.4)',marginBottom:'20px'}}>{selectedSite?.name}</div>
             <div style={{marginBottom:'16px'}}>
@@ -168,7 +168,7 @@ function OfficerApp({ user }) {
                 Planned Finish Time
               </label>
               <input type="time" value={plannedEnd} onChange={e => setPlannedEnd(e.target.value)}
-                style={{width:'100%',background:'rgba(255,255,255,0.07)',border:'1.5px solid rgba(74,222,128,0.3)',borderRadius:'10px',padding:'14px',fontSize:'24px',color:'#fff',textAlign:'center',boxSizing:'border-box',fontFamily:'monospace'}} />
+                style={{width:'100%',background:'rgba(255,255,255,0.07)',border:'1.5px solid rgba(74,222,128,0.3)',borderRadius:'10px',padding:'14px',fontSize:'24px',color:'#fff',textAlign:'center',boxSizing:'border-box',fontFamily:'monospace',WebkitAppearance:'none'}} />
               <div style={{fontSize:'11px',color:'rgba(255,255,255,0.3)',marginTop:'6px',textAlign:'center'}}>
                 You will be automatically signed out at this time
               </div>
