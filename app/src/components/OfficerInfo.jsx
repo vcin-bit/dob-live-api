@@ -81,7 +81,6 @@ function OfficerNavigation({ onSignOut }) {
     { to: '/',        icon: HomeIcon,                   label: 'Home' },
     { to: '/logs',    icon: ClipboardDocumentListIcon,  label: 'History' },
     { to: '/tasks',   icon: ClipboardDocumentListIcon,  label: 'Tasks' },
-    { to: '/patrol',  icon: MapPinIcon,                 label: 'Patrol' },
     { to: '/profile', icon: UserGroupIcon,              label: 'Profile' },
   ];
 
