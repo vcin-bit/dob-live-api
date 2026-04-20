@@ -73,7 +73,7 @@ function LogEntryScreen({ user, site, shift }) {
     police_incident_number: '', police_force: '', police_officer_name: '', police_shoulder_number: '',
     client_reportable: false, media: [],
     // VISITOR fields
-    visitor_name: '', visitor_company: '', visitor_vehicle_reg: '', visitor_personnel_count: '', visitor_time_in: new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'}),
+    visitor_name: '', visitor_who_visiting: '', visitor_pass_number: '', visitor_vehicle_reg: '', visitor_personnel_count: '1', visitor_time_in: new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'}),
     // WELFARE_CHECK fields
     welfare_officer_name: '', welfare_outcome: '', welfare_notes: '',
     // MANAGEMENT_VISIT fields
@@ -174,7 +174,7 @@ function LogEntryScreen({ user, site, shift }) {
           media: form.media,
           ai_generated: !!narrative,
           // VISITOR
-          ...(form.log_type === 'VISITOR' && { visitor_name: form.visitor_name, visitor_company: form.visitor_company, visitor_vehicle_reg: form.visitor_vehicle_reg, visitor_personnel_count: form.visitor_personnel_count, visitor_time_in: form.visitor_time_in }),
+          ...(form.log_type === 'VISITOR' && { visitor_name: form.visitor_name, visitor_who_visiting: form.visitor_who_visiting, visitor_pass_number: form.visitor_pass_number, visitor_vehicle_reg: form.visitor_vehicle_reg, visitor_personnel_count: form.visitor_personnel_count, visitor_time_in: form.visitor_time_in }),
           // WELFARE_CHECK
           ...(form.log_type === 'WELFARE_CHECK' && { welfare_officer_name: form.welfare_officer_name, welfare_outcome: form.welfare_outcome, welfare_notes: form.welfare_notes }),
           // MANAGEMENT_VISIT
@@ -259,6 +259,70 @@ function LogEntryScreen({ user, site, shift }) {
       }} disabled={submitting || !form.cameras_checked}
         style={S.btn(!form.cameras_checked ? '#333' : '#1a52a8')}>
         {submitting ? 'SUBMITTING...' : 'SUBMIT CCTV PATROL'}
+      </button>
+    </div>
+  );
+
+  // ── VISITOR: single page form, no steps ──────────────────────────────────────
+  if (form.log_type === 'VISITOR') return (
+    <div style={{padding:'1rem 1rem 5rem'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'1.25rem'}}>
+        <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
+          <div style={{width:'3px',height:'24px',background:'#0891b2',borderRadius:'2px'}} />
+          <div>
+            <div style={{fontSize:'14px',fontWeight:700,color:'#0891b2',letterSpacing:'0.02em'}}>VISITOR / CONTRACTOR</div>
+            <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)',marginTop:'1px'}}>{site?.name}</div>
+          </div>
+        </div>
+        <button onClick={() => navigate('/')} style={{background:'none',border:'none',color:'rgba(255,255,255,0.4)',fontSize:'0.8125rem',cursor:'pointer'}}>Cancel</button>
+      </div>
+
+      {error && <div style={{background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:'8px',padding:'10px',fontSize:'13px',color:'#ef4444',marginBottom:'12px'}}>{error}</div>}
+
+      <div style={{marginBottom:'12px'}}>
+        <div style={S.label}>VISITOR / COMPANY NAME *</div>
+        <input type="text" value={form.visitor_name} onChange={e=>f('visitor_name',e.target.value)} placeholder="Name and company" style={S.input} />
+      </div>
+      <div style={{marginBottom:'12px'}}>
+        <div style={S.label}>WHO VISITING / WHERE WORKING *</div>
+        <input type="text" value={form.visitor_who_visiting} onChange={e=>f('visitor_who_visiting',e.target.value)} placeholder="e.g. Unit 12, John Smith - Facilities" style={S.input} />
+      </div>
+      <div style={{marginBottom:'12px'}}>
+        <div style={S.label}>PASS NUMBER</div>
+        <input type="text" value={form.visitor_pass_number} onChange={e=>f('visitor_pass_number',e.target.value)} placeholder="Badge/pass number issued" style={S.input} />
+      </div>
+      <div style={{marginBottom:'12px'}}>
+        <div style={S.label}>VEHICLE REGISTRATION</div>
+        <input type="text" value={form.visitor_vehicle_reg} onChange={e=>f('visitor_vehicle_reg',e.target.value)} placeholder="Vehicle reg if applicable" style={S.input} />
+      </div>
+      <div style={{display:'flex',gap:'8px',marginBottom:'12px'}}>
+        <div style={{flex:1}}>
+          <div style={S.label}>PERSONNEL</div>
+          <input type="number" value={form.visitor_personnel_count} onChange={e=>f('visitor_personnel_count',e.target.value)} style={S.input} min="1" />
+        </div>
+        <div style={{flex:1}}>
+          <div style={S.label}>TIME ON SITE</div>
+          <input type="time" value={form.visitor_time_in} onChange={e=>f('visitor_time_in',e.target.value)} style={S.input} />
+        </div>
+      </div>
+
+      <button onClick={async () => {
+        if (!form.visitor_name.trim() || !form.visitor_who_visiting.trim()) { setError('Name and who visiting are required'); return; }
+        setSubmitting(true); setError('');
+        try {
+          await api.logs.create({
+            site_id: site?.id, shift_id: shift?.id || null, log_type: 'VISITOR',
+            title: `VISITOR — ${form.visitor_name.trim()}`,
+            description: `${form.visitor_name.trim()} visiting ${form.visitor_who_visiting.trim()}. ${form.visitor_personnel_count || 1} person(s). Time: ${form.visitor_time_in}.${form.visitor_vehicle_reg ? ' Vehicle: ' + form.visitor_vehicle_reg : ''}${form.visitor_pass_number ? ' Pass: ' + form.visitor_pass_number : ''}`,
+            occurred_at: new Date().toISOString(),
+            type_data: { visitor_name: form.visitor_name, visitor_who_visiting: form.visitor_who_visiting, visitor_pass_number: form.visitor_pass_number, visitor_vehicle_reg: form.visitor_vehicle_reg, visitor_personnel_count: form.visitor_personnel_count, visitor_time_in: form.visitor_time_in },
+          });
+          navigate('/', { state: { message: 'Visitor logged' } });
+        } catch (e) { setError(e.message); }
+        finally { setSubmitting(false); }
+      }} disabled={submitting || !form.visitor_name.trim() || !form.visitor_who_visiting.trim()}
+        style={S.btn((!form.visitor_name.trim() || !form.visitor_who_visiting.trim()) ? '#333' : '#1a52a8')}>
+        {submitting ? 'SUBMITTING...' : 'LOG VISITOR'}
       </button>
     </div>
   );
@@ -350,17 +414,6 @@ function LogEntryScreen({ user, site, shift }) {
           placeholder="e.g. Car park north — male 30s challenged and asked to leave..."
           style={S.input} />
       </div>
-
-      {/* VISITOR extra fields */}
-      {form.log_type === 'VISITOR' && (
-        <div style={{marginBottom:'14px',padding:'12px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'10px',display:'flex',flexDirection:'column',gap:'8px'}}>
-          <div style={S.label}>VISITOR / CONTRACTOR</div>
-          <input value={form.visitor_name} onChange={e=>f('visitor_name',e.target.value)} placeholder="Visitor / Company name" style={S.input} />
-          <input value={form.visitor_vehicle_reg} onChange={e=>f('visitor_vehicle_reg',e.target.value)} placeholder="Vehicle registration" style={S.input} />
-          <input type="number" value={form.visitor_personnel_count} onChange={e=>f('visitor_personnel_count',e.target.value)} placeholder="Number of personnel" style={S.input} min="1" />
-          <input type="time" value={form.visitor_time_in} onChange={e=>f('visitor_time_in',e.target.value)} style={S.input} />
-        </div>
-      )}
 
       {/* WELFARE_CHECK extra fields */}
       {form.log_type === 'WELFARE_CHECK' && (
