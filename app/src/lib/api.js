@@ -172,6 +172,7 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+    delete: (id) => request(`/api/tasks/${id}`, { method: 'DELETE' }),
   },
 
   // Messages

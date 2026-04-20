@@ -732,9 +732,17 @@ function TaskAssignment({ user }) {
     COMPLETE: tasks.filter(t => t.status === 'COMPLETED').length,
   };
 
+  const [editTask, setEditTask] = useState(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+
   async function updateStatus(taskId, status) {
     await api.tasks.update(taskId, { status });
     load();
+  }
+
+  async function deleteTask(id) {
+    try { await api.tasks.delete(id); setDeleteConfirmId(null); load(); }
+    catch (e) { alert(e.message); }
   }
 
   return (
@@ -782,11 +790,20 @@ function TaskAssignment({ user }) {
                       {task.status || 'Pending'}
                     </span>
                   </td>
-                  <td style={{textAlign:'right'}}>
+                  <td style={{textAlign:'right',display:'flex',gap:'0.375rem',justifyContent:'flex-end'}}>
                     {task.status !== 'COMPLETED' && (
                       <button className="btn btn-ghost btn-sm" onClick={() => updateStatus(task.id, task.status === 'IN_PROGRESS' ? 'COMPLETED' : 'IN_PROGRESS')}>
                         {task.status === 'IN_PROGRESS' ? 'Complete' : 'Start'}
                       </button>
+                    )}
+                    <button className="btn btn-ghost btn-sm" onClick={() => setEditTask(task)}>Edit</button>
+                    {deleteConfirmId === task.id ? (
+                      <>
+                        <button className="btn btn-sm" style={{background:'var(--danger)',color:'#fff',border:'none'}} onClick={() => deleteTask(task.id)}>Yes</button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => setDeleteConfirmId(null)}>No</button>
+                      </>
+                    ) : (
+                      <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={() => setDeleteConfirmId(task.id)}>Delete</button>
                     )}
                   </td>
                 </tr>
@@ -803,10 +820,77 @@ function TaskAssignment({ user }) {
           onSuccess={() => { setShowForm(false); load(); }}
         />
       )}
+      {editTask && (
+        <TaskEditModal
+          task={editTask}
+          officers={officers}
+          sites={sites}
+          onClose={() => setEditTask(null)}
+          onSaved={() => { setEditTask(null); load(); }}
+        />
+      )}
     </div>
   );
 }
 
+
+function TaskEditModal({ task, officers, sites, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    title: task.title || '', description: task.description || '',
+    assigned_to: task.assigned_to || '', site_id: task.site_id || '',
+    due_date: task.due_date ? task.due_date.split('T')[0] : '', urgency: task.urgency || 'normal',
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function save() {
+    if (!form.title.trim()) { setError('Title is required'); return; }
+    setSaving(true);
+    try {
+      await api.tasks.update(task.id, {
+        title: form.title, description: form.description || null,
+        assigned_to: form.assigned_to || null, site_id: form.site_id || null,
+        due_date: form.due_date || null, urgency: form.urgency || 'normal',
+      });
+      onSaved();
+    } catch (err) { setError(err.message); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-title">Edit Assignment</div>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+        {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
+        <div className="field"><label className="label">Title</label><input className="input" value={form.title} onChange={e => setForm(f=>({...f,title:e.target.value}))} /></div>
+        <div className="field"><label className="label">Description</label><textarea className="input" rows={3} value={form.description} onChange={e => setForm(f=>({...f,description:e.target.value}))} /></div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
+          <div className="field"><label className="label">Assign To</label><select className="input" value={form.assigned_to} onChange={e => setForm(f=>({...f,assigned_to:e.target.value}))}><option value="">Unassigned</option>{officers.map(o => <option key={o.id} value={o.id}>{o.first_name} {o.last_name}</option>)}</select></div>
+          <div className="field"><label className="label">Site</label><select className="input" value={form.site_id} onChange={e => setForm(f=>({...f,site_id:e.target.value}))}><option value="">No site</option>{sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
+        </div>
+        <div className="field">
+          <label className="label">Urgency</label>
+          <div style={{display:'flex',gap:'6px'}}>
+            {[{k:'now',l:'NOW',c:'#ef4444',bg:'rgba(239,68,68,0.12)',b:'rgba(239,68,68,0.4)'},{k:'today',l:'TODAY',c:'#f59e0b',bg:'rgba(245,158,11,0.1)',b:'rgba(245,158,11,0.35)'},{k:'normal',l:'ROUTINE',c:'#60a5fa',bg:'rgba(59,130,246,0.1)',b:'rgba(59,130,246,0.3)'}].map(u => (
+              <button key={u.k} type="button" onClick={() => setForm(f=>({...f,urgency:u.k}))}
+                style={{flex:1,padding:'10px',background:form.urgency===u.k?u.bg:'transparent',border:`1.5px solid ${form.urgency===u.k?u.b:'var(--border)'}`,borderRadius:'8px',color:form.urgency===u.k?u.c:'var(--text-3)',fontSize:'0.8125rem',fontWeight:700,cursor:'pointer'}}>
+                {u.l}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="field"><label className="label">Due Date</label><input type="date" className="input" value={form.due_date} onChange={e => setForm(f=>({...f,due_date:e.target.value}))} /></div>
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function TaskCreateForm({ officers, sites, onClose, onSuccess }) {
   const [form, setForm] = useState({ title: '', description: '', assigned_to: '', site_id: '', due_date: '', urgency: 'normal' });

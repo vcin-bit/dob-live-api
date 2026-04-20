@@ -35,7 +35,7 @@ router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGE
 
 router.patch('/:id', authenticate, async (req, res, next) => {
   try {
-    const allowed = ['title', 'description', 'status', 'due_date', 'assigned_to', 'urgency', 'comments'];
+    const allowed = ['title', 'description', 'status', 'due_date', 'assigned_to', 'urgency', 'site_id', 'comments'];
     const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
     const { data, error } = await supabase.from('tasks').update(updates).eq('id', req.params.id).eq('company_id', req.user.company_id).select().single();
     if (error) throw error;
@@ -52,6 +52,14 @@ router.post('/:id/comments', authenticate, async (req, res, next) => {
       .select().single();
     if (error) throw error;
     res.status(201).json({ data });
+  } catch (err) { next(err); }
+});
+
+router.delete('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER'), async (req, res, next) => {
+  try {
+    const { error } = await supabase.from('tasks').delete().eq('id', req.params.id).eq('company_id', req.user.company_id);
+    if (error) throw error;
+    res.json({ success: true });
   } catch (err) { next(err); }
 });
 
