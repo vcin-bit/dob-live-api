@@ -620,17 +620,24 @@ function ReportModal({ user, site, session, onClose }) {
 }
 
 // ── Occurrence Modal ─────────────────────────────────────────────────────────
+const SERIOUS_CATEGORIES = [
+  { key:'INCIDENT', label:'INCIDENT', sub:'Crime · Disturbance · Threat', color:'#ef4444', bg:'rgba(239,68,68,0.12)', border:'rgba(239,68,68,0.4)' },
+  { key:'FIRE_ALARM', label:'FIRE / EVACUATION', sub:'Fire alarm · Evacuation', color:'#ef4444', bg:'rgba(239,68,68,0.08)', border:'rgba(239,68,68,0.3)' },
+  { key:'ALARM', label:'ALARM ACTIVATION', sub:'Intruder · Technical', color:'#f59e0b', bg:'rgba(245,158,11,0.1)', border:'rgba(245,158,11,0.35)' },
+  { key:'SUSPICIOUS_PERSON', label:'SUSPICIOUS PERSON', sub:'Person of interest', color:'#f59e0b', bg:'rgba(245,158,11,0.08)', border:'rgba(245,158,11,0.3)' },
+];
+const STANDARD_CATEGORIES = ['Abandoned Vehicle','Fly Tipping','H&S Hazard','Unsecured Building/Door','Criminal Damage','Trespass','Theft','Other'];
+
 function OccurrenceModal({ site, shift, currentPos, onClose }) {
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
   const [media, setMedia] = useState([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [w3w, setW3w] = useState(null);
-  const [w3wLoading, setW3wLoading] = useState(false);
-  const categories = ['Abandoned Vehicle','Fly Tipping','H&S Hazard','Unsecured Building/Door','Suspicious Person','Criminal Damage','Trespass','Theft','Other'];
+
   async function handleMedia(e) {
-    const files = Array.from(e.target.files);
+    if (media.length >= 5) return;
+    const files = Array.from(e.target.files).slice(0, 5 - media.length);
     const uploads = await Promise.all(files.map(async file => {
       const form = new FormData(); form.append('file', file);
       try {
@@ -640,18 +647,35 @@ function OccurrenceModal({ site, shift, currentPos, onClose }) {
         const data = await res.json(); return { url: data.url, name: file.name, type: file.type };
       } catch { return null; }
     }));
-    setMedia(prev => [...prev, ...uploads.filter(Boolean)]);
+    setMedia(prev => [...prev, ...uploads.filter(Boolean)].slice(0, 5));
   }
+
   async function submit() {
     if (!description.trim()) return;
     setSaving(true);
     try {
-      await api.logs.create({ log_type: 'GENERAL', title: category || 'Other', description, client_reportable: false, site_id: site?.id, shift_id: shift?.id || null, occurred_at: new Date().toISOString(), latitude: currentPos?.lat, longitude: currentPos?.lng, type_data: { ...(media.length ? { media } : {}), ...(w3w ? { what3words: w3w } : {}) } });
+      await api.logs.create({
+        log_type: SERIOUS_CATEGORIES.find(c => c.key === category) ? category : 'GENERAL',
+        title: category || 'Other',
+        description,
+        client_reportable: false,
+        site_id: site?.id,
+        shift_id: shift?.id || null,
+        occurred_at: new Date().toISOString(),
+        latitude: currentPos?.lat,
+        longitude: currentPos?.lng,
+        type_data: {
+          category,
+          ...(media.length ? { media } : {}),
+        },
+      });
       setSaved(true); setTimeout(() => onClose(), 1500);
     } catch (e) { alert('Error: ' + e.message); }
     finally { setSaving(false); }
   }
+
   if (saved) return (<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center'}}><div style={{background:'#0f1929',borderRadius:'16px',padding:'2rem 3rem',textAlign:'center'}}><div style={{fontSize:'2rem',marginBottom:'0.5rem'}}>✓</div><div style={{fontSize:'15px',fontWeight:700,color:'#4ade80'}}>Logged</div></div></div>);
+
   return (
     <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',zIndex:9999,display:'flex',alignItems:'flex-end'}}>
       <div style={{background:'#0f1929',borderRadius:'16px 16px 0 0',padding:'0 0 20px',width:'100%',maxHeight:'90vh',overflowY:'auto',border:'1px solid rgba(255,255,255,0.08)'}}>
@@ -661,31 +685,68 @@ function OccurrenceModal({ site, shift, currentPos, onClose }) {
           <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,0.4)',fontSize:'20px',cursor:'pointer'}}>×</button>
         </div>
         <div style={{padding:'14px 16px'}}>
+
+          {/* Category — serious at top */}
+          <div style={{fontSize:'10px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'8px'}}>Category</div>
+          <div style={{display:'flex',flexDirection:'column',gap:'6px',marginBottom:'10px'}}>
+            {SERIOUS_CATEGORIES.map(c => (
+              <button key={c.key} onClick={() => setCategory(c.key)}
+                style={{width:'100%',padding:'10px 12px',background:category===c.key?c.bg:'transparent',border:`1.5px solid ${category===c.key?c.border:'rgba(255,255,255,0.08)'}`,borderRadius:'8px',cursor:'pointer',textAlign:'left',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                <div>
+                  <div style={{fontSize:'13px',fontWeight:700,color:category===c.key?c.color:'rgba(255,255,255,0.6)'}}>{c.label}</div>
+                  <div style={{fontSize:'10px',color:category===c.key?c.color:'rgba(255,255,255,0.3)',opacity:0.7,marginTop:'1px'}}>{c.sub}</div>
+                </div>
+                {category===c.key && <span style={{color:c.color,fontSize:'14px'}}>✓</span>}
+              </button>
+            ))}
+          </div>
+          <div style={{display:'flex',flexWrap:'wrap',gap:'6px',marginBottom:'14px'}}>
+            {STANDARD_CATEGORIES.map(c => (
+              <button key={c} onClick={() => setCategory(c)}
+                style={{padding:'7px 12px',background:category===c?'rgba(59,130,246,0.15)':'rgba(255,255,255,0.04)',border:`1px solid ${category===c?'rgba(59,130,246,0.4)':'rgba(255,255,255,0.08)'}`,borderRadius:'6px',fontSize:'12px',color:category===c?'#60a5fa':'rgba(255,255,255,0.5)',fontWeight:category===c?600:400,cursor:'pointer'}}>
+                {c}
+              </button>
+            ))}
+          </div>
+
+          {/* Description */}
+          <div style={{fontSize:'10px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'6px'}}>Description *</div>
+          <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} placeholder="Describe what you found..."
+            style={{width:'100%',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',padding:'9px 11px',fontSize:'13px',color:'#fff',resize:'none',boxSizing:'border-box',marginBottom:'14px',fontFamily:'inherit'}} />
+
+          {/* Location */}
           {currentPos && (
-            <div style={{marginBottom:'12px'}}>
-              <div style={{fontSize:'10px',color:'rgba(255,255,255,0.3)',marginBottom:'4px'}}>GPS: {currentPos.lat.toFixed(5)}, {currentPos.lng.toFixed(5)}</div>
-              {w3w ? (
-                <div style={{fontSize:'11px',color:'#4ade80',fontWeight:600}}>///{w3w}</div>
-              ) : (
-                <button onClick={async () => { setW3wLoading(true); const r = await fetchW3W(currentPos.lat, currentPos.lng); setW3w(r); setW3wLoading(false); }} disabled={w3wLoading}
-                  style={{padding:'6px 12px',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'6px',color:'rgba(255,255,255,0.5)',fontSize:'11px',cursor:'pointer'}}>
-                  {w3wLoading ? 'Loading...' : '📍 Get What3Words'}
-                </button>
-              )}
+            <div style={{marginBottom:'14px',padding:'8px 10px',background:'rgba(255,255,255,0.03)',borderRadius:'6px',border:'1px solid rgba(255,255,255,0.06)'}}>
+              <div style={{fontSize:'10px',color:'rgba(255,255,255,0.3)'}}>GPS: {currentPos.lat.toFixed(5)}, {currentPos.lng.toFixed(5)}</div>
+              <div style={{fontSize:'10px',color:'rgba(255,255,255,0.2)',marginTop:'2px'}}>///what3words</div>
             </div>
           )}
-          <div style={{fontSize:'10px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'6px'}}>Category</div>
-          <select value={category} onChange={e => setCategory(e.target.value)} style={{width:'100%',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',padding:'10px 11px',fontSize:'13px',color:'#fff',boxSizing:'border-box',marginBottom:'14px',fontFamily:'inherit'}}><option value="">Select category...</option>{categories.map(c => <option key={c} value={c}>{c}</option>)}</select>
-          <div style={{fontSize:'10px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'6px'}}>Description</div>
-          <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} placeholder="Describe what you found..." style={{width:'100%',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',padding:'9px 11px',fontSize:'13px',color:'#fff',resize:'none',boxSizing:'border-box',marginBottom:'14px',fontFamily:'inherit'}} />
-          <div style={{fontSize:'10px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'8px'}}>Photos / Video</div>
+
+          {/* Photos / Video */}
+          <div style={{fontSize:'10px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'8px'}}>Photos / Video (optional) — max 5</div>
           <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'14px'}}>
-            {media.map((m, i) => (<div key={i} style={{width:64,height:64,borderRadius:'8px',background:'#1a2535',border:'1px solid rgba(255,255,255,0.1)',overflow:'hidden',position:'relative'}}>{m.type?.startsWith('image') ? <img src={m.url} style={{width:'100%',height:'100%',objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>video</div>}<button onClick={() => setMedia(p => p.filter((_,j)=>j!==i))} style={{position:'absolute',top:2,right:2,width:16,height:16,background:'rgba(239,68,68,0.8)',borderRadius:'50%',border:'none',color:'#fff',fontSize:10,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>×</button></div>))}
-            <label style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}><div style={{fontSize:'18px',color:'rgba(59,130,246,0.5)',lineHeight:1}}>+</div><div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)'}}>Photo/Video</div><input type="file" accept="image/*,video/*" multiple style={{display:'none'}} onChange={handleMedia} /></label>
+            {media.map((m, i) => (
+              <div key={i} style={{width:64,height:64,borderRadius:'8px',background:'#1a2535',border:'1px solid rgba(255,255,255,0.1)',overflow:'hidden',position:'relative'}}>
+                {m.type?.startsWith('image') ? <img src={m.url} style={{width:'100%',height:'100%',objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>video</div>}
+                <button onClick={() => setMedia(p => p.filter((_,j)=>j!==i))} style={{position:'absolute',top:2,right:2,width:16,height:16,background:'rgba(239,68,68,0.8)',borderRadius:'50%',border:'none',color:'#fff',fontSize:10,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
+              </div>
+            ))}
+            {media.length < 5 && (
+              <label style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>
+                <div style={{fontSize:'18px',color:'rgba(59,130,246,0.5)',lineHeight:1}}>+</div>
+                <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)'}}>Photo</div>
+                <input type="file" accept="image/*,video/*" multiple capture="environment" style={{display:'none'}} onChange={handleMedia} />
+              </label>
+            )}
           </div>
+
+          {/* Submit */}
           <div style={{display:'flex',gap:'8px'}}>
             <button onClick={onClose} style={{flex:1,padding:'14px',background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'10px',color:'rgba(255,255,255,0.6)',fontSize:'14px',fontWeight:600,cursor:'pointer'}}>Cancel</button>
-            <button onClick={submit} disabled={saving || !description.trim()} style={{flex:2,padding:'14px',background:'#1a52a8',border:'none',borderRadius:'10px',color:'#fff',fontSize:'14px',fontWeight:700,cursor:'pointer',opacity:saving||!description.trim()?0.5:1}}>{saving ? 'Submitting...' : 'Submit'}</button>
+            <button onClick={submit} disabled={saving || !description.trim()}
+              style={{flex:2,padding:'14px',background:'#1a52a8',border:'none',borderRadius:'10px',color:'#fff',fontSize:'14px',fontWeight:700,cursor:'pointer',opacity:saving||!description.trim()?0.5:1}}>
+              {saving ? 'LOGGING...' : 'LOG OCCURRENCE'}
+            </button>
           </div>
         </div>
       </div>
