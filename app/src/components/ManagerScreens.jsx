@@ -729,7 +729,7 @@ function TaskAssignment({ user }) {
   const counts = {
     PENDING: tasks.filter(t => !t.status || t.status === 'PENDING').length,
     IN_PROGRESS: tasks.filter(t => t.status === 'IN_PROGRESS').length,
-    COMPLETE: tasks.filter(t => t.status === 'COMPLETE').length,
+    COMPLETE: tasks.filter(t => t.status === 'COMPLETED').length,
   };
 
   async function updateStatus(taskId, status) {
@@ -747,7 +747,7 @@ function TaskAssignment({ user }) {
       </div>
       <div className="page-content">
         <div className="tabs">
-          {[['PENDING','Pending'],['IN_PROGRESS','In Progress'],['COMPLETE','Complete'],['ALL','All']].map(([val,label]) => (
+          {[['PENDING','Pending'],['IN_PROGRESS','In Progress'],['COMPLETED','Complete'],['ALL','All']].map(([val,label]) => (
             <button key={val} className={`tab${tab===val?' active':''}`} onClick={() => setTab(val)}>
               {label} {val !== 'ALL' && <span style={{fontSize:'0.75rem',color:'inherit',opacity:0.7}}>({counts[val]||0})</span>}
             </button>
@@ -778,13 +778,13 @@ function TaskAssignment({ user }) {
                     {task.due_date ? new Date(task.due_date).toLocaleDateString('en-GB') : '—'}
                   </td>
                   <td>
-                    <span className={`badge ${task.status==='COMPLETE'?'badge-success':task.status==='IN_PROGRESS'?'badge-blue':'badge-neutral'}`}>
+                    <span className={`badge ${task.status==='COMPLETED'?'badge-success':task.status==='IN_PROGRESS'?'badge-blue':'badge-neutral'}`}>
                       {task.status || 'Pending'}
                     </span>
                   </td>
                   <td style={{textAlign:'right'}}>
-                    {task.status !== 'COMPLETE' && (
-                      <button className="btn btn-ghost btn-sm" onClick={() => updateStatus(task.id, task.status === 'IN_PROGRESS' ? 'COMPLETE' : 'IN_PROGRESS')}>
+                    {task.status !== 'COMPLETED' && (
+                      <button className="btn btn-ghost btn-sm" onClick={() => updateStatus(task.id, task.status === 'IN_PROGRESS' ? 'COMPLETED' : 'IN_PROGRESS')}>
                         {task.status === 'IN_PROGRESS' ? 'Complete' : 'Start'}
                       </button>
                     )}
