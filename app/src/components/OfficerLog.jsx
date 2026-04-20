@@ -206,7 +206,7 @@ function LogEntryScreen({ user, site, shift }) {
 
       <div style={{marginBottom:'14px'}}>
         <div style={S.label}>CAMERAS CHECKED</div>
-        <input type="number" value={form.cameras_checked} onChange={e=>f('cameras_checked',e.target.value)} placeholder="Number of cameras" style={S.input} min="1" />
+        <input type="text" inputMode="text" value={form.cameras_checked} onChange={e=>f('cameras_checked',e.target.value)} placeholder="Number of cameras" style={S.input} />
       </div>
 
       <div style={{marginBottom:'14px'}}>
