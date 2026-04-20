@@ -17,44 +17,30 @@ function TasksScreen({ user, site, shift }) {
   const [filter, setFilter] = useState('all'); // all, pending, in_progress, completed
 
   // Fetch tasks
-  useEffect(() => {
-    async function fetchTasks() {
-      try {
-        setLoading(true);
-        const params = { site_id: site?.id };
-        
-        if (filter !== 'all') {
-          params.status = filter.toUpperCase();
-        }
-
-        const response = await api.tasks.list(params);
-        const urgencyOrder = { now: 0, today: 1, normal: 2 };
-        const sorted = (response.data || []).sort((a, b) => (urgencyOrder[a.urgency] ?? 2) - (urgencyOrder[b.urgency] ?? 2));
-        setTasks(sorted);
-        setError(null);
-      } catch (err) {
-        console.error('Failed to fetch tasks:', err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
+  async function fetchTasks() {
+    try {
+      setLoading(true);
+      const params = { site_id: site?.id };
+      if (filter !== 'all') params.status = filter.toUpperCase();
+      const response = await api.tasks.list(params);
+      const urgencyOrder = { now: 0, today: 1, normal: 2 };
+      const sorted = (response.data || []).sort((a, b) => (urgencyOrder[a.urgency] ?? 2) - (urgencyOrder[b.urgency] ?? 2));
+      setTasks(sorted);
+      setError(null);
+    } catch (err) {
+      console.error('Failed to fetch tasks:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
+  }
 
-    if (site) {
-      fetchTasks();
-    }
-  }, [site, filter]);
+  useEffect(() => { if (site) fetchTasks(); }, [site, filter]);
 
   const updateTaskStatus = async (taskId, newStatus) => {
     try {
       await api.tasks.update(taskId, { status: newStatus });
-      
-      // Update local state
-      setTasks(prev => prev.map(task => 
-        task.id === taskId 
-          ? { ...task, status: newStatus }
-          : task
-      ));
+      fetchTasks();
     } catch (err) {
       console.error('Failed to update task:', err);
       setError('Failed to update task status');
