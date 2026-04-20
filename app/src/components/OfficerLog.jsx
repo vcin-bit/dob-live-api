@@ -19,7 +19,6 @@ const ROUTINE = [
   { key:'VISITOR',          label:'VISITOR / CONTRACTOR', sub:'Name, reg, personnel' },
   { key:'CCTV_CHECK',      label:'CCTV CHECK',           sub:'Camera review' },
   { key:'WELFARE_CHECK',   label:'WELFARE CHECK',        sub:'Officer welfare' },
-  { key:'MANAGEMENT_VISIT',label:'MANAGEMENT VISIT',     sub:'Manager on site' },
   { key:'HANDOVER',        label:'HANDOVER',             sub:'Shift handover' },
   { key:'GENERAL',         label:'GENERAL',              sub:'Observation · Note' },
   { key:'OTHER',           label:'OTHER',                sub:'Anything else' },
@@ -74,7 +73,7 @@ function LogEntryScreen({ user, site, shift }) {
     police_incident_number: '', police_force: '', police_officer_name: '', police_shoulder_number: '',
     client_reportable: false, media: [],
     // VISITOR fields
-    visitor_name: '', visitor_company: '', visitor_vehicle_reg: '', visitor_personnel_count: '',
+    visitor_name: '', visitor_company: '', visitor_vehicle_reg: '', visitor_personnel_count: '', visitor_time_in: new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'}),
     // WELFARE_CHECK fields
     welfare_officer_name: '', welfare_outcome: '', welfare_notes: '',
     // MANAGEMENT_VISIT fields
@@ -175,7 +174,7 @@ function LogEntryScreen({ user, site, shift }) {
           media: form.media,
           ai_generated: !!narrative,
           // VISITOR
-          ...(form.log_type === 'VISITOR' && { visitor_name: form.visitor_name, visitor_company: form.visitor_company, visitor_vehicle_reg: form.visitor_vehicle_reg, visitor_personnel_count: form.visitor_personnel_count }),
+          ...(form.log_type === 'VISITOR' && { visitor_name: form.visitor_name, visitor_company: form.visitor_company, visitor_vehicle_reg: form.visitor_vehicle_reg, visitor_personnel_count: form.visitor_personnel_count, visitor_time_in: form.visitor_time_in }),
           // WELFARE_CHECK
           ...(form.log_type === 'WELFARE_CHECK' && { welfare_officer_name: form.welfare_officer_name, welfare_outcome: form.welfare_outcome, welfare_notes: form.welfare_notes }),
           // MANAGEMENT_VISIT
@@ -284,6 +283,7 @@ function LogEntryScreen({ user, site, shift }) {
           <input value={form.visitor_name} onChange={e=>f('visitor_name',e.target.value)} placeholder="Visitor / Company name" style={S.input} />
           <input value={form.visitor_vehicle_reg} onChange={e=>f('visitor_vehicle_reg',e.target.value)} placeholder="Vehicle registration" style={S.input} />
           <input type="number" value={form.visitor_personnel_count} onChange={e=>f('visitor_personnel_count',e.target.value)} placeholder="Number of personnel" style={S.input} min="1" />
+          <input type="time" value={form.visitor_time_in} onChange={e=>f('visitor_time_in',e.target.value)} style={S.input} />
         </div>
       )}
 
