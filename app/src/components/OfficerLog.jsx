@@ -80,7 +80,7 @@ function LogEntryScreen({ user, site, shift }) {
     // MANAGEMENT_VISIT fields
     manager_name: '', visit_purpose: '', visit_duration: '',
     // CCTV_CHECK fields
-    cameras_checked: '', cctv_issues_found: false, cctv_issue_description: '',
+    cameras_checked: '', cctv_issues_found: false, cctv_issue_description: '', cctv_action_taken: '',
   });
   const [narrative, setNarrative] = useState('');
   const [generatingAI, setGeneratingAI] = useState(false);
@@ -181,7 +181,7 @@ function LogEntryScreen({ user, site, shift }) {
           // MANAGEMENT_VISIT
           ...(form.log_type === 'MANAGEMENT_VISIT' && { manager_name: form.manager_name, visit_purpose: form.visit_purpose, visit_duration: form.visit_duration }),
           // CCTV_CHECK
-          ...(form.log_type === 'CCTV_CHECK' && { cameras_checked: form.cameras_checked, cctv_issues_found: form.cctv_issues_found, cctv_issue_description: form.cctv_issue_description }),
+          ...(form.log_type === 'CCTV_CHECK' && { cameras_checked: form.cameras_checked, cctv_issues_found: form.cctv_issues_found, cctv_issue_description: form.cctv_issue_description, cctv_action_taken: form.cctv_action_taken }),
         },
       });
       navigate('/', { state: { message: 'Log entry submitted', logId: res.data?.id } });
@@ -280,9 +280,8 @@ function LogEntryScreen({ user, site, shift }) {
       {/* VISITOR extra fields */}
       {form.log_type === 'VISITOR' && (
         <div style={{marginBottom:'14px',padding:'12px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'10px',display:'flex',flexDirection:'column',gap:'8px'}}>
-          <div style={S.label}>VISITOR / CONTRACTOR DETAILS</div>
-          <input value={form.visitor_name} onChange={e=>f('visitor_name',e.target.value)} placeholder="Visitor name" style={S.input} />
-          <input value={form.visitor_company} onChange={e=>f('visitor_company',e.target.value)} placeholder="Company" style={S.input} />
+          <div style={S.label}>VISITOR / CONTRACTOR</div>
+          <input value={form.visitor_name} onChange={e=>f('visitor_name',e.target.value)} placeholder="Visitor / Company name" style={S.input} />
           <input value={form.visitor_vehicle_reg} onChange={e=>f('visitor_vehicle_reg',e.target.value)} placeholder="Vehicle registration" style={S.input} />
           <input type="number" value={form.visitor_personnel_count} onChange={e=>f('visitor_personnel_count',e.target.value)} placeholder="Number of personnel" style={S.input} min="1" />
         </div>
@@ -316,15 +315,30 @@ function LogEntryScreen({ user, site, shift }) {
       {/* CCTV_CHECK extra fields */}
       {form.log_type === 'CCTV_CHECK' && (
         <div style={{marginBottom:'14px',padding:'12px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'10px',display:'flex',flexDirection:'column',gap:'8px'}}>
-          <div style={S.label}>CCTV CHECK DETAILS</div>
-          <input type="number" value={form.cameras_checked} onChange={e=>f('cameras_checked',e.target.value)} placeholder="Number of cameras checked" style={S.input} min="1" />
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 0'}}>
-            <span style={{fontSize:'13px',color:'rgba(255,255,255,0.6)'}}>Any issues found?</span>
-            <div onClick={() => f('cctv_issues_found', !form.cctv_issues_found)} style={S.toggle(form.cctv_issues_found)}><div style={S.toggleDot(form.cctv_issues_found)}/></div>
+          <div style={S.label}>CCTV CHECK</div>
+          <input type="number" value={form.cameras_checked} onChange={e=>f('cameras_checked',e.target.value)} placeholder="Cameras checked" style={S.input} min="1" />
+          <div style={S.label}>ALL IN ORDER?</div>
+          <div style={{display:'flex',gap:'8px'}}>
+            <button type="button" onClick={() => f('cctv_issues_found', false)}
+              style={{flex:1,padding:'14px',background:!form.cctv_issues_found?'rgba(74,222,128,0.15)':'rgba(255,255,255,0.03)',border:`2px solid ${!form.cctv_issues_found?'rgba(74,222,128,0.5)':'rgba(255,255,255,0.08)'}`,borderRadius:'10px',color:!form.cctv_issues_found?'#4ade80':'rgba(255,255,255,0.4)',fontSize:'13px',fontWeight:700,cursor:'pointer'}}>
+              ✓ AIO — All In Order
+            </button>
+            <button type="button" onClick={() => f('cctv_issues_found', true)}
+              style={{flex:1,padding:'14px',background:form.cctv_issues_found?'rgba(239,68,68,0.15)':'rgba(255,255,255,0.03)',border:`2px solid ${form.cctv_issues_found?'rgba(239,68,68,0.5)':'rgba(255,255,255,0.08)'}`,borderRadius:'10px',color:form.cctv_issues_found?'#ef4444':'rgba(255,255,255,0.4)',fontSize:'13px',fontWeight:700,cursor:'pointer'}}>
+              ⚠ Issues Found
+            </button>
           </div>
           {form.cctv_issues_found && (
-            <textarea value={form.cctv_issue_description} onChange={e=>f('cctv_issue_description',e.target.value)} rows={2} placeholder="Describe the issue..." style={S.input} />
+            <textarea value={form.cctv_issue_description} onChange={e=>f('cctv_issue_description',e.target.value)} rows={2} placeholder="Describe issues..." style={S.input} />
           )}
+          <div style={S.label}>ACTIONS TAKEN</div>
+          <select value={form.cctv_action_taken} onChange={e=>f('cctv_action_taken',e.target.value)} style={S.input}>
+            <option value="">Select action...</option>
+            <option value="All In Order">All In Order</option>
+            <option value="Escalated to Incident Report">Escalated to Incident Report</option>
+            <option value="Reported to Manager">Reported to Manager</option>
+            <option value="Other">Other</option>
+          </select>
         </div>
       )}
 
