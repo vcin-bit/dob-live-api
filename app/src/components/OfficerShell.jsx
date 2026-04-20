@@ -334,7 +334,7 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
           Log Occurrence
         </Link>
         <Link to="/log?type=CCTV_CHECK" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.875rem',marginBottom:0}}>
-          CCTV Check
+          CCTV Patrol
         </Link>
         <Link to="/log?type=VISITOR" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.875rem',marginBottom:0}}>
           Visitor / Contractor
