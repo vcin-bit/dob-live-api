@@ -336,6 +336,112 @@ function LogEntryScreen({ user, site, shift }) {
     </div>
   );
 
+  // ── LOG OCCURRENCE (GENERAL): single page form, no steps ────────────────────
+  if (form.log_type === 'GENERAL') {
+    const SERIOUS = [
+      { key:'INCIDENT', label:'INCIDENT', sub:'Crime · Disturbance · Threat', color:'#ef4444', bg:'rgba(239,68,68,0.12)', border:'rgba(239,68,68,0.4)' },
+      { key:'FIRE_ALARM', label:'FIRE / EVACUATION', sub:'Fire alarm · Evacuation', color:'#ef4444', bg:'rgba(239,68,68,0.08)', border:'rgba(239,68,68,0.3)' },
+      { key:'ALARM', label:'ALARM ACTIVATION', sub:'Intruder · Technical', color:'#f59e0b', bg:'rgba(245,158,11,0.1)', border:'rgba(245,158,11,0.35)' },
+      { key:'SUSPICIOUS_PERSON', label:'SUSPICIOUS PERSON', sub:'Person of interest', color:'#f59e0b', bg:'rgba(245,158,11,0.08)', border:'rgba(245,158,11,0.3)' },
+    ];
+    const STANDARD = ['Abandoned Vehicle','Fly Tipping','H&S Hazard','Unsecured Building/Door','Criminal Damage','Trespass','Theft','Other'];
+    const occCategory = form.sub_type;
+    const setOccCategory = v => f('sub_type', v);
+
+    return (
+      <div style={{padding:'1rem 1rem 5rem'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'1.25rem'}}>
+          <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
+            <div style={{width:'3px',height:'24px',background:'#3b82f6',borderRadius:'2px'}} />
+            <div>
+              <div style={{fontSize:'14px',fontWeight:700,color:'#3b82f6',letterSpacing:'0.02em'}}>LOG OCCURRENCE</div>
+              <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)',marginTop:'1px'}}>{site?.name}</div>
+            </div>
+          </div>
+          <button onClick={() => navigate('/')} style={{background:'none',border:'none',color:'rgba(255,255,255,0.4)',fontSize:'0.8125rem',cursor:'pointer'}}>Cancel</button>
+        </div>
+
+        {error && <div style={{background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:'8px',padding:'10px',fontSize:'13px',color:'#ef4444',marginBottom:'12px'}}>{error}</div>}
+
+        {/* Category — serious at top */}
+        <div style={{fontSize:'10px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'8px'}}>Category</div>
+        <div style={{display:'flex',flexDirection:'column',gap:'6px',marginBottom:'10px'}}>
+          {SERIOUS.map(c => (
+            <button key={c.key} type="button" onClick={() => setOccCategory(c.key)}
+              style={{width:'100%',padding:'10px 12px',background:occCategory===c.key?c.bg:'transparent',border:`1.5px solid ${occCategory===c.key?c.border:'rgba(255,255,255,0.08)'}`,borderRadius:'8px',cursor:'pointer',textAlign:'left',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <div>
+                <div style={{fontSize:'13px',fontWeight:700,color:occCategory===c.key?c.color:'rgba(255,255,255,0.6)'}}>{c.label}</div>
+                <div style={{fontSize:'10px',color:occCategory===c.key?c.color:'rgba(255,255,255,0.3)',opacity:0.7,marginTop:'1px'}}>{c.sub}</div>
+              </div>
+              {occCategory===c.key && <span style={{color:c.color,fontSize:'14px'}}>✓</span>}
+            </button>
+          ))}
+        </div>
+        <div style={{display:'flex',flexWrap:'wrap',gap:'6px',marginBottom:'14px'}}>
+          {STANDARD.map(c => (
+            <button key={c} type="button" onClick={() => setOccCategory(c)}
+              style={{padding:'7px 12px',background:occCategory===c?'rgba(59,130,246,0.15)':'rgba(255,255,255,0.04)',border:`1px solid ${occCategory===c?'rgba(59,130,246,0.4)':'rgba(255,255,255,0.08)'}`,borderRadius:'6px',fontSize:'12px',color:occCategory===c?'#60a5fa':'rgba(255,255,255,0.5)',fontWeight:occCategory===c?600:400,cursor:'pointer'}}>
+              {c}
+            </button>
+          ))}
+        </div>
+
+        {/* Description */}
+        <div style={{fontSize:'10px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'6px'}}>Description *</div>
+        <textarea value={form.description} onChange={e=>f('description',e.target.value)} rows={3} placeholder="Describe what you found..."
+          style={S.input} />
+
+        {/* Location */}
+        <div style={{margin:'14px 0',padding:'8px 10px',background:'rgba(255,255,255,0.03)',borderRadius:'6px',border:'1px solid rgba(255,255,255,0.06)'}}>
+          <div style={{fontSize:'10px',color:'rgba(255,255,255,0.3)'}}>
+            {form.latitude ? `GPS: ${form.latitude.toFixed(5)}, ${form.longitude.toFixed(5)}` : 'GPS: acquiring...'}
+          </div>
+          <div style={{fontSize:'10px',color:'rgba(255,255,255,0.2)',marginTop:'2px'}}>///what3words</div>
+        </div>
+
+        {/* Photos */}
+        <div style={{fontSize:'10px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'8px'}}>Photos / Video (optional) — max 5</div>
+        <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'20px'}}>
+          {form.media.map((m, i) => (
+            <div key={i} style={{width:64,height:64,borderRadius:'8px',background:'#1a2535',border:'1px solid rgba(255,255,255,0.1)',overflow:'hidden',position:'relative'}}>
+              {m.type?.startsWith('image') ? <img src={m.url} style={{width:'100%',height:'100%',objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>video</div>}
+              <button onClick={() => f('media', form.media.filter((_,j)=>j!==i))} style={{position:'absolute',top:2,right:2,width:16,height:16,background:'rgba(239,68,68,0.8)',borderRadius:'50%',border:'none',color:'#fff',fontSize:10,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
+            </div>
+          ))}
+          {form.media.length < 5 && (
+            <label style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>
+              <div style={{fontSize:'18px',color:'rgba(59,130,246,0.5)',lineHeight:1}}>+</div>
+              <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)'}}>Photo</div>
+              <input type="file" accept="image/*,video/*" multiple capture="environment" style={{display:'none'}} onChange={e=>uploadMedia(e.target.files)} />
+            </label>
+          )}
+        </div>
+
+        {/* Submit */}
+        <button onClick={async () => {
+          if (!form.description.trim()) { setError('Description is required'); return; }
+          setSubmitting(true); setError('');
+          try {
+            const logType = SERIOUS.find(c => c.key === occCategory) ? occCategory : 'GENERAL';
+            await api.logs.create({
+              site_id: site?.id, shift_id: shift?.id || null, log_type: logType,
+              title: occCategory || 'General Observation',
+              description: form.description,
+              occurred_at: new Date().toISOString(),
+              latitude: form.latitude, longitude: form.longitude,
+              type_data: { category: occCategory, ...(form.media.length ? { media: form.media } : {}) },
+            });
+            navigate('/', { state: { message: 'Occurrence logged' } });
+          } catch (e) { setError(e.message); }
+          finally { setSubmitting(false); }
+        }} disabled={submitting || !form.description.trim()}
+          style={S.btn(!form.description.trim() ? '#333' : '#1a52a8')}>
+          {submitting ? 'LOGGING...' : 'LOG OCCURRENCE'}
+        </button>
+      </div>
+    );
+  }
+
   // ── STEP 1: Select type ─────────────────────────────────────────────────────
   if (step === 1) return (
     <div style={{padding:'1rem 1rem 5rem'}}>
