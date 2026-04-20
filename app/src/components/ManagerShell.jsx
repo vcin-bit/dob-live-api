@@ -27,7 +27,7 @@ function ManagerApp({ user }) {
           <Route path="/sites/:id" element={<SiteDetail user={user} />} />
           <Route path="/team"      element={<TeamManagement user={user} />} />
           <Route path="/logs"      element={<LogReview user={user} />} />
-          <Route path="/tasks"     element={<TaskAssignment user={user} />} />
+          <Route path="/assignments" element={<TaskAssignment user={user} />} />
           <Route path="/reports"   element={<Reporting user={user} />} />
           {/* Roster is now site-specific via SiteDetail tab */}
           <Route path="/pnl"       element={<ProfitLoss user={user} />} />
@@ -66,7 +66,7 @@ function ManagerSidebar({ user }) {
       label: 'Operations',
       items: [
         { to: '/logs',      icon: ClipboardDocumentListIcon, label: 'Log Review' },
-        { to: '/tasks',     icon: ClipboardDocumentListIcon, label: 'Tasks' },
+        { to: '/assignments', icon: ClipboardDocumentListIcon, label: 'Assignments' },
         { to: '/sites',     icon: BuildingOfficeIcon,        label: 'Sites' },
         { to: '/team',      icon: UsersIcon,                 label: 'Team' },
       ]

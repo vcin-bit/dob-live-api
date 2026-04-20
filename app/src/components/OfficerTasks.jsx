@@ -37,9 +37,17 @@ function TasksScreen({ user, site, shift }) {
 
   useEffect(() => { if (site) fetchTasks(); }, [site, filter]);
 
-  const updateTaskStatus = async (taskId, newStatus) => {
+  const updateTaskStatus = async (taskId, newStatus, comment) => {
     try {
       await api.tasks.update(taskId, { status: newStatus });
+      if (comment?.trim()) {
+        try { await api.tasks.create; /* comment via task_comments endpoint */
+          await fetch(`${import.meta.env.VITE_API_URL || 'https://dob-live-api.onrender.com'}/api/tasks/${taskId}/comments`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await window.__clerkGetToken?.() || ''}` },
+            body: JSON.stringify({ body: `[${newStatus}] ${comment.trim()}` }),
+          });
+        } catch {}
+      }
       fetchTasks();
     } catch (err) {
       console.error('Failed to update task:', err);
@@ -60,7 +68,7 @@ function TasksScreen({ user, site, shift }) {
   return (
     <div style={{padding:'1rem',paddingBottom:'5rem'}}>
       <div style={{marginBottom:'1rem'}}>
-        <h2 style={{fontSize:'1.125rem',fontWeight:700,color:'#fff',marginBottom:'0.125rem'}}>Tasks</h2>
+        <h2 style={{fontSize:'1.125rem',fontWeight:700,color:'#fff',marginBottom:'0.125rem'}}>Assignments</h2>
         <p style={{fontSize:'0.8125rem',color:'rgba(255,255,255,0.4)'}}>Your assigned tasks</p>
       </div>
 
@@ -103,8 +111,9 @@ function TasksScreen({ user, site, shift }) {
 
 function TaskCard({ task, onUpdateStatus }) {
   const [expanded, setExpanded] = useState(false);
+  const [comment, setComment] = useState('');
   const urgencyColor = { now:'#ef4444', today:'#f59e0b', normal:'rgba(255,255,255,0.15)' };
-  const statusColor = { PENDING:'rgba(255,255,255,0.5)', IN_PROGRESS:'#60a5fa', COMPLETED:'#4ade80' };
+  const statusColor = { PENDING:'rgba(255,255,255,0.5)', IN_PROGRESS:'#60a5fa', COMPLETED:'#4ade80', RETURNED:'#f59e0b' };
 
   return (
     <div style={{background:'#1a2235',border:'1px solid rgba(255,255,255,0.07)',borderRadius:'8px',overflow:'hidden'}}>
@@ -121,7 +130,7 @@ function TaskCard({ task, onUpdateStatus }) {
           </div>
           <div style={{display:'flex',gap:'0.75rem',flexWrap:'wrap',alignItems:'center'}}>
             <span style={{fontSize:'0.75rem',color:statusColor[task.status]||statusColor.PENDING,fontWeight:500}}>
-              {task.status?.replace('_',' ') || 'Pending'}
+              {task.status === 'RETURNED' ? 'RETURNED TO OPS' : task.status?.replace('_',' ') || 'Pending'}
             </span>
             {task.due_date && (
               <span style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.35)'}}>
@@ -141,26 +150,38 @@ function TaskCard({ task, onUpdateStatus }) {
               {task.description}
             </p>
           )}
-          {task.status !== 'COMPLETED' && (
-            <div style={{display:'flex',gap:'0.5rem'}}>
+          {task.status === 'COMPLETED' && (
+            <div style={{fontSize:'0.8125rem',color:'#4ade80',fontWeight:500}}>✓ Completed</div>
+          )}
+          {task.status === 'RETURNED' && (
+            <div style={{fontSize:'0.8125rem',color:'#f59e0b',fontWeight:500}}>↩ Returned to ops</div>
+          )}
+          {task.status !== 'COMPLETED' && task.status !== 'RETURNED' && (
+            <>
               {task.status !== 'IN_PROGRESS' && (
-                <button
-                  onClick={() => onUpdateStatus(task.id, 'IN_PROGRESS')}
-                  style={{flex:1,padding:'0.625rem',background:'rgba(26,82,168,0.3)',border:'1px solid rgba(26,82,168,0.5)',borderRadius:'6px',color:'#60a5fa',fontSize:'0.8125rem',fontWeight:600,cursor:'pointer'}}
-                >
+                <button onClick={() => onUpdateStatus(task.id, 'IN_PROGRESS')}
+                  style={{width:'100%',padding:'0.625rem',background:'rgba(26,82,168,0.3)',border:'1px solid rgba(26,82,168,0.5)',borderRadius:'6px',color:'#60a5fa',fontSize:'0.8125rem',fontWeight:600,cursor:'pointer',marginBottom:'0.75rem'}}>
                   Start
                 </button>
               )}
-              <button
-                onClick={() => onUpdateStatus(task.id, 'COMPLETED')}
-                style={{flex:1,padding:'0.625rem',background:'rgba(74,222,128,0.15)',border:'1px solid rgba(74,222,128,0.3)',borderRadius:'6px',color:'#4ade80',fontSize:'0.8125rem',fontWeight:600,cursor:'pointer'}}
-              >
-                Complete
-              </button>
-            </div>
-          )}
-          {task.status === 'COMPLETED' && (
-            <div style={{fontSize:'0.8125rem',color:'#4ade80',fontWeight:500}}>Completed</div>
+              <textarea value={comment} onChange={e => setComment(e.target.value)} rows={2}
+                placeholder="Add notes, feedback or reason..."
+                style={{width:'100%',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'6px',padding:'8px 10px',fontSize:'0.8125rem',color:'#fff',resize:'none',boxSizing:'border-box',marginBottom:'0.5rem',fontFamily:'inherit'}} />
+              <div style={{display:'flex',gap:'0.5rem'}}>
+                <button onClick={() => onUpdateStatus(task.id, 'COMPLETED', comment)}
+                  style={{flex:1,padding:'0.625rem',background:'rgba(74,222,128,0.15)',border:'1px solid rgba(74,222,128,0.3)',borderRadius:'6px',color:'#4ade80',fontSize:'0.8125rem',fontWeight:600,cursor:'pointer'}}>
+                  ✓ Completed
+                </button>
+                <button onClick={() => onUpdateStatus(task.id, 'RETURNED', comment)}
+                  style={{flex:1,padding:'0.625rem',background:'rgba(245,158,11,0.12)',border:'1px solid rgba(245,158,11,0.3)',borderRadius:'6px',color:'#f59e0b',fontSize:'0.8125rem',fontWeight:600,cursor:'pointer'}}>
+                  ↩ Send Back
+                </button>
+                <button onClick={() => setExpanded(false)}
+                  style={{padding:'0.625rem 0.75rem',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'6px',color:'rgba(255,255,255,0.4)',fontSize:'0.8125rem',cursor:'pointer'}}>
+                  Cancel
+                </button>
+              </div>
+            </>
           )}
         </div>
       )}

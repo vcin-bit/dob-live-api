@@ -141,7 +141,7 @@ function OfficerApp({ user }) {
             site={selectedSite}
           />
         } />
-        <Route path="/tasks" element={
+        <Route path="/assignments" element={
           <TasksScreen 
             user={user}
             site={selectedSite}
@@ -350,7 +350,7 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
 
       {/* Task badge */}
       {tasks.length > 0 && (
-        <Link to="/tasks" className="officer-action-btn secondary" style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'1.25rem'}}>
+        <Link to="/assignments" className="officer-action-btn secondary" style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'1.25rem'}}>
           <span>Tasks</span>
           <span style={{background:'var(--blue)',color:'#fff',borderRadius:'999px',padding:'2px 8px',fontSize:'0.8125rem',fontWeight:700}}>{tasks.length}</span>
         </Link>

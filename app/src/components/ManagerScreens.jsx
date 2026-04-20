@@ -740,7 +740,7 @@ function TaskAssignment({ user }) {
   return (
     <div>
       <div className="topbar">
-        <div className="topbar-title">Tasks</div>
+        <div className="topbar-title">Assignments</div>
         <button className="btn btn-primary btn-sm" onClick={() => setShowForm(true)}>
           <PlusIcon style={{width:'0.875rem',height:'0.875rem'}} /> Assign Task
         </button>

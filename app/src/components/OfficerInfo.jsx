@@ -76,11 +76,24 @@ function OfficerPoliciesScreen({ user }) {
 function OfficerNavigation({ onSignOut }) {
   const location = useLocation();
   const [confirmingSignOut, setConfirmingSignOut] = React.useState(false);
+  const [pendingCount, setPendingCount] = React.useState(0);
+
+  React.useEffect(() => {
+    async function poll() {
+      try {
+        const res = await api.tasks.list({ status: 'PENDING' });
+        setPendingCount((res.data || []).length);
+      } catch {}
+    }
+    poll();
+    const t = setInterval(poll, 30000);
+    return () => clearInterval(t);
+  }, []);
 
   const nav = [
     { to: '/',        icon: HomeIcon,                   label: 'Home' },
     { to: '/logs',    icon: ClipboardDocumentListIcon,  label: 'History' },
-    { to: '/tasks',   icon: ClipboardDocumentListIcon,  label: 'Tasks' },
+    { to: '/assignments', icon: ClipboardDocumentListIcon, label: 'Assignments', badge: pendingCount },
     { to: '/profile', icon: UserGroupIcon,              label: 'Profile' },
   ];
 
@@ -106,14 +119,16 @@ function OfficerNavigation({ onSignOut }) {
         </div>
       )}
       <nav className="officer-nav">
-        {nav.map(({ to, icon: Icon, label }) => (
+        {nav.map(({ to, icon: Icon, label, badge }) => (
           <Link
             key={to}
             to={to}
             className={`officer-nav-item${location.pathname === to ? ' active' : ''}`}
+            style={{position:'relative'}}
           >
             <Icon style={{width:'1.25rem',height:'1.25rem'}} />
             {label}
+            {badge > 0 && <span style={{position:'absolute',top:2,right:2,width:16,height:16,borderRadius:'50%',background:'#ef4444',color:'#fff',fontSize:'9px',fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center'}}>{badge}</span>}
           </Link>
         ))}
         <button
