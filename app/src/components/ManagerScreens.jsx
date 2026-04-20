@@ -14,7 +14,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 function ManagerDashboard({ user }) {
-  const [data, setData] = useState({ shifts:[], incidents:[], recentLogs:[], pendingTasks:0, totalOfficers:0 });
+  const [data, setData] = useState({ shifts:[], incidents:[], recentLogs:[], pendingTasks:0, totalOfficers:0, logsToday:0 });
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(null);
   const [refreshPulse, setRefreshPulse] = useState(false);
@@ -24,20 +24,23 @@ function ManagerDashboard({ user }) {
 
   async function load() {
     try {
-      const [shiftsRes, logsRes, tasksRes, usersRes] = await Promise.all([
+      const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+      const [shiftsRes, recentLogsRes, todayLogsRes, tasksRes, usersRes] = await Promise.all([
         api.shifts.list({ status: 'ACTIVE', limit: 50 }),
-        api.logs.list({ limit: 20 }),
+        api.logs.list({ limit: 8 }),
+        api.logs.list({ limit: 500, from: todayStart.toISOString() }),
         api.tasks.list({ status: 'PENDING' }),
         api.users.list({ role: 'OFFICER' }),
       ]);
-      const logs = logsRes.data || [];
-      const incidents = logs.filter(l => ['INCIDENT','ALARM','FIRE_ALARM','EMERGENCY'].includes(l.log_type));
+      const todayLogs = todayLogsRes.data || [];
+      const incidents = todayLogs.filter(l => ['INCIDENT','ALARM','FIRE_ALARM','EMERGENCY'].includes(l.log_type));
       setData({
         shifts: shiftsRes.data || [],
         incidents,
-        recentLogs: logs.slice(0, 8),
+        recentLogs: recentLogsRes.data || [],
         pendingTasks: tasksRes.data?.length || 0,
         totalOfficers: usersRes.data?.length || 0,
+        logsToday: todayLogs.length,
       });
       setLastRefresh(new Date());
       setRefreshPulse(true);
@@ -224,7 +227,8 @@ function ManagerDashboard({ user }) {
         {/* Stats row */}
         <div className="stats-grid" style={{marginBottom:'1.25rem'}}>
           <div className="stat-card"><div className="stat-value">{data.shifts.length}</div><div className="stat-label">On Duty</div></div>
-          <div className="stat-card"><div className="stat-value" style={{color:data.incidents.length>0?'var(--danger)':'var(--text)'}}>{data.incidents.length}</div><div className="stat-label">Incidents</div></div>
+          <div className="stat-card"><div className="stat-value" style={{color:data.incidents.length>0?'var(--danger)':'var(--text)'}}>{data.incidents.length}</div><div className="stat-label">Incidents Today</div></div>
+          <div className="stat-card"><div className="stat-value">{data.logsToday||0}</div><div className="stat-label">Logs Today</div></div>
           <div className="stat-card"><div className="stat-value" style={{color:data.pendingTasks>0?'var(--warning)':'var(--text)'}}>{data.pendingTasks}</div><div className="stat-label">Tasks Due</div></div>
           <div className="stat-card"><div className="stat-value">{data.totalOfficers}</div><div className="stat-label">Officers</div></div>
         </div>
