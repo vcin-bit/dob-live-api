@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { MapPinIcon, ClipboardDocumentListIcon } from '@heroicons/react/24/outline';
+import { LOG_TYPE_CONFIG } from '../lib/constants';
 
 // ── Types config ─────────────────────────────────────────────────────────────
 const HIGH_PRIORITY = [
@@ -413,7 +414,7 @@ function LogEntryScreen({ user, site, shift }) {
           <div style={{width:'3px',height:'32px',background:type?.color||'#3b82f6',borderRadius:'2px',flexShrink:0}} />
           <div>
             <div style={{fontSize:'13px',fontWeight:700,color:type?.color||'#fff',letterSpacing:'0.03em'}}>{type?.label}{form.sub_type ? ` — ${form.sub_type}` : ''}</div>
-            <div style={{fontSize:'10px',color:'rgba(255,255,255,0.3)',marginTop:'1px'}}>{site?.name} · {new Date(form.occurred_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})} today</div>
+            <div style={{fontSize:'10px',color:'rgba(255,255,255,0.3)',marginTop:'1px'}}>{site?.name} · {new Date(form.occurred_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})} today</div>
           </div>
         </div>
         <div style={{paddingLeft:'11px',fontSize:'12px',color:'rgba(255,255,255,0.5)',lineHeight:1.5}}>{form.description}</div>
@@ -617,7 +618,7 @@ function LogHistoryCard({ log }) {
         <div style={{flex:1,minWidth:0}}>
           <div className="officer-log-title">{log.title || config.label}</div>
           <div className="officer-log-meta">
-            {new Date(log.occurred_at).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'})}
+            {new Date(log.occurred_at).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}
           </div>
         </div>
         <div style={{color:'rgba(255,255,255,0.3)',fontSize:'0.75rem',flexShrink:0,marginTop:'2px'}}>{expanded ? '▲' : '▼'}</div>

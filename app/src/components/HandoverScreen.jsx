@@ -72,7 +72,7 @@ function HandoverScreen({ user, site, shift, onShiftEnded }) {
     <div style={{padding:'1rem',paddingBottom:'5rem'}}>
       <h2 style={{fontSize:'1.125rem',fontWeight:700,color:'#fff',marginBottom:'0.25rem'}}>Shift Handover</h2>
       <p style={{fontSize:'0.8125rem',color:'rgba(255,255,255,0.4)',marginBottom:'1.25rem'}}>
-        {site?.name} · {new Date().toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short'})}
+        {site?.name} · {new Date().toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short',timeZone:'Europe/London'})}
       </p>
 
       {/* Shift stats */}
@@ -137,7 +137,7 @@ function HandoverScreen({ user, site, shift, onShiftEnded }) {
               <div style={{fontSize:'13px',fontWeight:600,color:'#ef4444'}}>{log.title || log.log_type}</div>
               {log.description && <div style={{fontSize:'12px',color:'rgba(255,255,255,0.55)',marginTop:'2px',lineHeight:1.4}}>{log.description}</div>}
               <div style={{fontSize:'11px',color:'rgba(255,255,255,0.3)',marginTop:'2px'}}>
-                {new Date(log.occurred_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}
+                {new Date(log.occurred_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}
               </div>
             </div>
           ))}
@@ -161,7 +161,7 @@ function HandoverScreen({ user, site, shift, onShiftEnded }) {
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:'0.8125rem',color:isIncident?'rgba(255,150,150,0.9)':'rgba(255,255,255,0.7)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{log.title||log.log_type}</div>
                     <div style={{fontSize:'0.6875rem',color:'rgba(255,255,255,0.3)'}}>
-                      {new Date(log.occurred_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}
+                      {new Date(log.occurred_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}
                     </div>
                   </div>
                 </div>
@@ -179,8 +179,8 @@ function HandoverScreen({ user, site, shift, onShiftEnded }) {
           onClick={() => {
             const incidents = recentLogs.filter(l => ['INCIDENT','ALARM','FIRE_ALARM','EMERGENCY'].includes(l.log_type));
             const text = `DOB Live — ${site?.name || 'Site'} Incident Summary\n` +
-              `${new Date().toLocaleDateString('en-GB')}\n\n` +
-              incidents.map(l => `• ${l.title || l.log_type} — ${new Date(l.occurred_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}\n  ${l.description||''}`).join('\n\n');
+              `${new Date().toLocaleDateString('en-GB',{timeZone:'Europe/London'})}\n\n` +
+              incidents.map(l => `• ${l.title || l.log_type} — ${new Date(l.occurred_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}\n  ${l.description||''}`).join('\n\n');
             if (navigator.share) {
               navigator.share({ title: 'Incident Summary', text });
             } else {

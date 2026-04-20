@@ -305,7 +305,7 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
           <div>
             <div style={{fontSize:'0.6875rem',fontWeight:600,color:'#4ade80',textTransform:'uppercase',letterSpacing:'0.06em'}}>Shift Active</div>
             <div style={{fontSize:'0.8125rem',color:'rgba(255,255,255,0.5)',marginTop:'0.125rem'}}>
-              Since {new Date(shift.checked_in_at||shift.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}
+              Since {new Date(shift.checked_in_at||shift.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}
             </div>
           </div>
           <Link to="/handover" style={{padding:'0.5rem 0.875rem',background:'rgba(220,38,38,0.2)',border:'1px solid rgba(220,38,38,0.3)',borderRadius:'6px',color:'#fca5a5',fontSize:'0.8125rem',fontWeight:600,cursor:'pointer',textDecoration:'none',display:'inline-flex',alignItems:'center'}}>
@@ -356,7 +356,7 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
       {lastUpdated && (
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.75rem'}}>
           <span style={{fontSize:'0.6875rem',color:'rgba(255,255,255,0.3)'}}>
-            Updated {lastUpdated.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}
+            Updated {lastUpdated.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}
           </span>
           <button
             onClick={() => { setLoading(true); /* trigger re-fetch via state change */ setLastUpdated(null); }}
@@ -423,7 +423,7 @@ function LogPreviewCard({ log }) {
         <div className="officer-log-title">{log.title || log.log_type || 'Log Entry'}</div>
         <div className="officer-log-meta">
           {log.site?.name && `${log.site.name} · `}
-          {log.occurred_at ? new Date(log.occurred_at).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : ''}
+          {log.occurred_at ? new Date(log.occurred_at).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'}) : ''}
         </div>
       </div>
     </div>

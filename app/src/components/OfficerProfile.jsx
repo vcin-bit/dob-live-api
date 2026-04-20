@@ -96,7 +96,7 @@ export default function OfficerProfile({ user }) {
         <div>
           <label style={lbl}>Expiry Date</label>
           <div style={{fontSize:'13px',color: user?.sia_expiry_date && new Date(user.sia_expiry_date) < new Date() ? '#ef4444' : 'rgba(255,255,255,0.5)',padding:'11px 12px',background:'rgba(255,255,255,0.03)',borderRadius:'8px',border:'1px solid rgba(255,255,255,0.06)'}}>
-            {user?.sia_expiry_date ? new Date(user.sia_expiry_date).toLocaleDateString('en-GB') : 'Not set'}
+            {user?.sia_expiry_date ? new Date(user.sia_expiry_date).toLocaleDateString('en-GB',{timeZone:'Europe/London'}) : 'Not set'}
             {user?.sia_expiry_date && new Date(user.sia_expiry_date) < new Date() && ' (EXPIRED)'}
           </div>
         </div>

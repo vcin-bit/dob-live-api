@@ -88,7 +88,8 @@ export default function PatrolScreen({ user, site, shift }) {
   }
 
   async function endPatrol() {
-    try { if (session?.id) await api.patrols.endSession(session.id); } catch {}
+    try { if (session?.id) await api.patrols.endSession(session.id); }
+    catch (e) { console.error('End patrol failed:', e.message); }
     setPatrolStarted(false); setSession(null); setShowEndConfirm(false); setCompletedCps([]); navigate('/');
   }
 

@@ -133,7 +133,7 @@ function TaskCard({ task, onUpdateStatus }) {
             </span>
             {task.due_date && (
               <span style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.35)'}}>
-                Due {new Date(task.due_date).toLocaleDateString('en-GB')}
+                Due {new Date(task.due_date).toLocaleDateString('en-GB',{timeZone:'Europe/London'})}
               </span>
             )}
             {task.site && <span style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.35)'}}>{task.site.name}</span>}
