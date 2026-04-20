@@ -267,7 +267,7 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
         // Get recent logs for this officer at this site
         const logsResponse = await api.logs.list({
           site_id: site?.id,
-          limit: 5,
+          limit: 20,
           officer_id: user.id
         });
         setRecentLogs(logsResponse.data || []);
@@ -384,7 +384,10 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
       </div>
 
       {/* Recent logs */}
-      <div style={{fontSize:'0.6875rem',fontWeight:600,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.625rem'}}>Recent Activity</div>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.625rem'}}>
+        <div style={{fontSize:'0.6875rem',fontWeight:600,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.08em'}}>Recent Activity</div>
+        <Link to="/logs" style={{fontSize:'0.75rem',color:'#60a5fa',textDecoration:'none',fontWeight:500}}>View All →</Link>
+      </div>
       {loading ? (
         <div style={{display:'flex',justifyContent:'center',padding:'2rem'}}><div className="spinner" style={{borderTopColor:'#fff',borderColor:'rgba(255,255,255,0.15)'}} /></div>
       ) : recentLogs.length === 0 ? (
