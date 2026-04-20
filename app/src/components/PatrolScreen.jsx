@@ -454,12 +454,29 @@ function CheckpointModal({ site, session, currentPos, route, isRoutePlanner, onC
   const [description, setDescription] = useState('');
   const [savePermanent, setSavePermanent] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState('');
+  const [uploading, setUploading] = useState(false);
+
+  async function uploadPhoto(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData(); fd.append('file', file);
+      const API = import.meta.env.VITE_API_URL || 'https://dob-live-api.onrender.com';
+      const token = await window.__clerkGetToken?.() || '';
+      const res = await fetch(`${API}/api/patrols/media/upload`, { method: 'POST', body: fd, headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (data.url) setPhotoUrl(data.url);
+    } catch (err) { console.error('Photo upload failed:', err.message); }
+    finally { setUploading(false); }
+  }
 
   async function save() {
     if (!name.trim()) return;
     setSaving(true);
     try {
-      await api.logs.create({ site_id: site?.id, log_type: 'PATROL', title: name.trim(), description: description.trim() || `Checkpoint: ${name.trim()}`, occurred_at: new Date().toISOString(), latitude: currentPos?.lat, longitude: currentPos?.lng, type_data: { checkpoint: true, patrol_session_id: session?.id } });
+      await api.logs.create({ site_id: site?.id, log_type: 'PATROL', title: name.trim(), description: description.trim() || `Checkpoint: ${name.trim()}`, occurred_at: new Date().toISOString(), latitude: currentPos?.lat, longitude: currentPos?.lng, type_data: { checkpoint: true, patrol_session_id: session?.id, ...(photoUrl ? { photo_url: photoUrl } : {}) } });
       if (savePermanent && route?.id && currentPos) {
         try {
           const existing = route.checkpoints || [];
@@ -488,6 +505,19 @@ function CheckpointModal({ site, session, currentPos, route, isRoutePlanner, onC
           <div style={{marginBottom:'14px'}}>
             <div style={{fontSize:'10px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'6px'}}>Description (optional)</div>
             <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="What was checked or found..." style={{width:'100%',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',padding:'9px 11px',fontSize:'13px',color:'#fff',resize:'none',boxSizing:'border-box',fontFamily:'inherit'}} />
+          </div>
+          <div style={{marginBottom:'14px'}}>
+            {photoUrl ? (
+              <div style={{position:'relative',display:'inline-block'}}>
+                <img src={photoUrl} style={{width:80,height:80,borderRadius:'8px',objectFit:'cover',border:'1px solid rgba(255,255,255,0.1)'}} />
+                <button onClick={() => setPhotoUrl('')} style={{position:'absolute',top:-6,right:-6,width:20,height:20,background:'rgba(239,68,68,0.9)',borderRadius:'50%',border:'none',color:'#fff',fontSize:'12px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
+              </div>
+            ) : (
+              <label style={{display:'inline-flex',alignItems:'center',gap:'6px',padding:'8px 14px',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',cursor:'pointer',fontSize:'12px',color:'rgba(255,255,255,0.5)'}}>
+                {uploading ? 'Uploading...' : '📷 Add Photo (optional)'}
+                <input type="file" accept="image/*" capture="environment" style={{display:'none'}} onChange={uploadPhoto} disabled={uploading} />
+              </label>
+            )}
           </div>
           {isRoutePlanner && route?.id && currentPos && (
             <div onClick={() => setSavePermanent(p => !p)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'11px 13px',background:savePermanent?'rgba(167,139,250,0.08)':'rgba(255,255,255,0.03)',border:`1px solid ${savePermanent?'rgba(167,139,250,0.3)':'rgba(255,255,255,0.07)'}`,borderRadius:'10px',marginBottom:'14px',cursor:'pointer'}}>
