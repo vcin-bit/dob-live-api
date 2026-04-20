@@ -226,6 +226,7 @@ export const api = {
     checkpoint:    (sessionId, checkpointId, name, lat, lng) => request(`/api/patrols/sessions/${sessionId}/checkpoint`, { method:'PATCH', body: JSON.stringify({ checkpoint_id: checkpointId, checkpoint_name: name, lat, lng }) }),
     activeSession:  (siteId) => request(`/api/patrols/sessions/active?site_id=${siteId}`),
     endSession:    (sessionId) => request(`/api/patrols/sessions/${sessionId}/end`, { method:'POST' }),
+    getSession:    (sessionId) => request(`/api/patrols/sessions/${sessionId}`),
     uploadCheckpointImage: async (file) => {
       const fd = new FormData(); fd.append('image', file);
       const token = await window.__clerkGetToken?.() || '';

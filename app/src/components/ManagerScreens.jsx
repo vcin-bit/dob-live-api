@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation, useParams, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import { api, ApiError } from '../lib/api';
@@ -664,6 +664,37 @@ function LogReview({ user }) {
 
 function ManagerLogCard({ log }) {
   const [expanded, setExpanded] = useState(false);
+  const [sessionData, setSessionData] = useState(null);
+  const [sessionLoading, setSessionLoading] = useState(false);
+  const trailMapRef = useRef(null);
+  const trailMapInstance = useRef(null);
+
+  // Fetch session when expanded and is a patrol log
+  useEffect(() => {
+    if (!expanded || !log.type_data?.patrol_session_id || sessionData) return;
+    setSessionLoading(true);
+    api.patrols.getSession(log.type_data.patrol_session_id)
+      .then(res => setSessionData(res.data))
+      .catch(() => {})
+      .finally(() => setSessionLoading(false));
+  }, [expanded]);
+
+  // Render trail map
+  useEffect(() => {
+    if (!sessionData?.gps_trail?.length || !trailMapRef.current || trailMapInstance.current) return;
+    if (!window.L) return;
+    const L = window.L;
+    const map = L.map(trailMapRef.current, { zoomControl: false, attributionControl: false });
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(map);
+    const trail = sessionData.gps_trail.filter(p => p.lat && p.lng).map(p => [p.lat, p.lng]);
+    if (trail.length > 0) {
+      L.polyline(trail, { color: '#3b82f6', weight: 3 }).addTo(map);
+      map.fitBounds(trail, { padding: [20, 20] });
+    }
+    trailMapInstance.current = map;
+    return () => { if (trailMapInstance.current) { trailMapInstance.current.remove(); trailMapInstance.current = null; } };
+  }, [sessionData]);
+
   const typeMap = {
     PATROL:'PAT',INCIDENT:'INC',ALARM:'ALM',ACCESS:'ACC',VISITOR:'VIS',
     HANDOVER:'HND',MAINTENANCE:'MNT',VEHICLE:'VEH',KEYHOLDING:'KEY',GENERAL:'GEN',
@@ -696,19 +727,32 @@ function ManagerLogCard({ log }) {
             </button>
           )}
           {/* Patrol summary detail */}
-          {log.log_type === 'PATROL' && log.type_data?.patrol_session_id && (
+          {log.log_type === 'PATROL' && log.type_data?.patrol_session_id && expanded && (
             <div style={{marginTop:'0.5rem',padding:'0.5rem 0.625rem',background:'var(--surface-2)',borderRadius:'6px',fontSize:'0.8125rem'}}>
               <div style={{display:'flex',gap:'1rem',flexWrap:'wrap',color:'var(--text-2)',marginBottom:'0.25rem'}}>
                 {log.type_data.started_at && <span>Start: {new Date(log.type_data.started_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}</span>}
                 {log.type_data.ended_at && <span>End: {new Date(log.type_data.ended_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}</span>}
-                {log.type_data.duration_minutes != null && <span>Duration: {log.type_data.duration_minutes}m</span>}
+                {log.type_data.duration_minutes != null && (
+                  <span>Duration: {log.type_data.duration_minutes >= 60 ? `${Math.floor(log.type_data.duration_minutes/60)}h ${log.type_data.duration_minutes%60}m` : `${log.type_data.duration_minutes}m`}</span>
+                )}
               </div>
               {log.type_data.checkpoints_completed?.length > 0 && (
-                <div style={{fontSize:'0.75rem',color:'var(--text-3)'}}>
+                <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginBottom:'0.25rem'}}>
                   Checkpoints: {log.type_data.checkpoints_completed.map((cp, i) => (
                     <span key={i}>{typeof cp === 'string' ? cp : cp.name || `#${i+1}`}{i < log.type_data.checkpoints_completed.length - 1 ? ', ' : ''}</span>
                   ))}
                 </div>
+              )}
+              {sessionLoading && <div style={{fontSize:'0.75rem',color:'var(--text-3)'}}>Loading session detail...</div>}
+              {sessionData?.checkpoints_completed?.length > 0 && !log.type_data.checkpoints_completed?.length && (
+                <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginBottom:'0.25rem'}}>
+                  Checkpoints: {sessionData.checkpoints_completed.map((cp, i) => (
+                    <span key={i}>{typeof cp === 'object' ? (cp.name || `#${i+1}`) + (cp.timestamp ? ` (${new Date(cp.timestamp).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})})` : '') : cp}{i < sessionData.checkpoints_completed.length - 1 ? ', ' : ''}</span>
+                  ))}
+                </div>
+              )}
+              {sessionData?.gps_trail?.length > 0 && (
+                <div ref={trailMapRef} style={{width:'100%',height:'200px',borderRadius:'6px',marginTop:'0.5rem',border:'1px solid var(--border)'}} />
               )}
             </div>
           )}

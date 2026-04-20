@@ -99,6 +99,20 @@ router.get('/sessions/active', authenticate, async (req, res, next) => {
   }
 });
 
+// GET /api/patrols/sessions/:id — get full session detail
+router.get('/sessions/:id', authenticate, async (req, res, next) => {
+  try {
+    const { data, error } = await supabase
+      .from('patrol_sessions')
+      .select('*')
+      .eq('id', req.params.id)
+      .eq('company_id', req.user.company_id)
+      .single();
+    if (error || !data) return res.status(404).json({ error: 'Session not found' });
+    res.json({ data });
+  } catch (err) { next(err); }
+});
+
 router.post('/sessions/start', authenticate, async (req, res, next) => {
   try {
     const { site_id, route_id } = req.body;
