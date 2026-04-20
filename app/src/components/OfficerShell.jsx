@@ -345,7 +345,7 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
 
       {/* On Site Now */}
       <Link to="/visitors" className="officer-action-btn secondary" style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.625rem'}}>
-        <span>👥 On Site Now</span>
+        <span>👥 Visitors / Contractors On Site Now</span>
       </Link>
 
       {/* Task badge */}
