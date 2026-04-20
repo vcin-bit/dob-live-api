@@ -2,6 +2,16 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 
+async function fetchW3W(lat, lng) {
+  const key = import.meta.env.VITE_W3W_API_KEY;
+  if (!key || !lat || !lng) return null;
+  try {
+    const res = await fetch(`https://api.what3words.com/v3/convert-to-3wa?coordinates=${lat}%2C${lng}&language=en&format=json&key=${key}`);
+    const data = await res.json();
+    return data.words || null;
+  } catch { return null; }
+}
+
 export default function PatrolScreen({ user, site, shift }) {
   const navigate = useNavigate();
   const watchRef = useRef(null);
@@ -251,7 +261,7 @@ export default function PatrolScreen({ user, site, shift }) {
       )}
       {showCheckpointModal && <CheckpointModal site={site} session={session} currentPos={currentPos} route={route} isRoutePlanner={isRoutePlanner} onClose={() => setShowCheckpointModal(false)} onSaved={() => { setShowCheckpointModal(false); setCheckpointSaving(true); setTimeout(() => setCheckpointSaving(false), 3000); }} />}
       {showReport && <ReportModal user={user} site={site} session={session} onClose={() => setShowReport(false)} />}
-      {showOccurrence && <OccurrenceModal site={site} shift={shift} onClose={() => setShowOccurrence(false)} />}
+      {showOccurrence && <OccurrenceModal site={site} shift={shift} currentPos={currentPos} onClose={() => setShowOccurrence(false)} />}
     </div>
   );
 }
@@ -456,6 +466,11 @@ function CheckpointModal({ site, session, currentPos, route, isRoutePlanner, onC
   const [saving, setSaving] = useState(false);
   const [photoUrl, setPhotoUrl] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [w3w, setW3w] = useState(null);
+
+  useEffect(() => {
+    if (currentPos?.lat) fetchW3W(currentPos.lat, currentPos.lng).then(setW3w);
+  }, [currentPos?.lat, currentPos?.lng]);
 
   async function uploadPhoto(e) {
     const file = e.target.files?.[0];
@@ -476,7 +491,7 @@ function CheckpointModal({ site, session, currentPos, route, isRoutePlanner, onC
     if (!name.trim()) return;
     setSaving(true);
     try {
-      await api.logs.create({ site_id: site?.id, log_type: 'PATROL', title: name.trim(), description: description.trim() || `Checkpoint: ${name.trim()}`, occurred_at: new Date().toISOString(), latitude: currentPos?.lat, longitude: currentPos?.lng, type_data: { checkpoint: true, patrol_session_id: session?.id, ...(photoUrl ? { photo_url: photoUrl } : {}) } });
+      await api.logs.create({ site_id: site?.id, log_type: 'PATROL', title: name.trim(), description: description.trim() || `Checkpoint: ${name.trim()}`, occurred_at: new Date().toISOString(), latitude: currentPos?.lat, longitude: currentPos?.lng, type_data: { checkpoint: true, patrol_session_id: session?.id, ...(photoUrl ? { photo_url: photoUrl } : {}), ...(w3w ? { what3words: w3w } : {}) } });
       if (savePermanent && route?.id && currentPos) {
         try {
           const existing = route.checkpoints || [];
@@ -497,7 +512,8 @@ function CheckpointModal({ site, session, currentPos, route, isRoutePlanner, onC
           <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,0.4)',fontSize:'20px',cursor:'pointer'}}>×</button>
         </div>
         <div style={{padding:'14px 16px'}}>
-          {currentPos && <div style={{fontSize:'10px',color:'rgba(255,255,255,0.3)',marginBottom:'10px'}}>GPS: {currentPos.lat.toFixed(5)}, {currentPos.lng.toFixed(5)} (±{Math.round(currentPos.accuracy)}m)</div>}
+          {currentPos && <div style={{fontSize:'10px',color:'rgba(255,255,255,0.3)',marginBottom:'4px'}}>GPS: {currentPos.lat.toFixed(5)}, {currentPos.lng.toFixed(5)} (±{Math.round(currentPos.accuracy)}m)</div>}
+          {w3w && <div style={{fontSize:'11px',color:'#4ade80',marginBottom:'10px',fontWeight:600}}>///{w3w}</div>}
           <div style={{marginBottom:'12px'}}>
             <div style={{fontSize:'10px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'6px'}}>Checkpoint Name *</div>
             <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Rear Gate, Car Park North" style={{width:'100%',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',padding:'10px 11px',fontSize:'13px',color:'#fff',boxSizing:'border-box',fontFamily:'inherit'}} />
@@ -604,12 +620,14 @@ function ReportModal({ user, site, session, onClose }) {
 }
 
 // ── Occurrence Modal ─────────────────────────────────────────────────────────
-function OccurrenceModal({ site, shift, onClose }) {
+function OccurrenceModal({ site, shift, currentPos, onClose }) {
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
   const [media, setMedia] = useState([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [w3w, setW3w] = useState(null);
+  const [w3wLoading, setW3wLoading] = useState(false);
   const categories = ['Abandoned Vehicle','Fly Tipping','H&S Hazard','Unsecured Building/Door','Suspicious Person','Criminal Damage','Trespass','Theft','Other'];
   async function handleMedia(e) {
     const files = Array.from(e.target.files);
@@ -628,7 +646,7 @@ function OccurrenceModal({ site, shift, onClose }) {
     if (!description.trim()) return;
     setSaving(true);
     try {
-      await api.logs.create({ log_type: 'GENERAL', title: category || 'Other', description, client_reportable: false, site_id: site?.id, shift_id: shift?.id || null, occurred_at: new Date().toISOString(), type_data: media.length ? { media } : undefined });
+      await api.logs.create({ log_type: 'GENERAL', title: category || 'Other', description, client_reportable: false, site_id: site?.id, shift_id: shift?.id || null, occurred_at: new Date().toISOString(), latitude: currentPos?.lat, longitude: currentPos?.lng, type_data: { ...(media.length ? { media } : {}), ...(w3w ? { what3words: w3w } : {}) } });
       setSaved(true); setTimeout(() => onClose(), 1500);
     } catch (e) { alert('Error: ' + e.message); }
     finally { setSaving(false); }
@@ -643,6 +661,19 @@ function OccurrenceModal({ site, shift, onClose }) {
           <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,0.4)',fontSize:'20px',cursor:'pointer'}}>×</button>
         </div>
         <div style={{padding:'14px 16px'}}>
+          {currentPos && (
+            <div style={{marginBottom:'12px'}}>
+              <div style={{fontSize:'10px',color:'rgba(255,255,255,0.3)',marginBottom:'4px'}}>GPS: {currentPos.lat.toFixed(5)}, {currentPos.lng.toFixed(5)}</div>
+              {w3w ? (
+                <div style={{fontSize:'11px',color:'#4ade80',fontWeight:600}}>///{w3w}</div>
+              ) : (
+                <button onClick={async () => { setW3wLoading(true); const r = await fetchW3W(currentPos.lat, currentPos.lng); setW3w(r); setW3wLoading(false); }} disabled={w3wLoading}
+                  style={{padding:'6px 12px',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'6px',color:'rgba(255,255,255,0.5)',fontSize:'11px',cursor:'pointer'}}>
+                  {w3wLoading ? 'Loading...' : '📍 Get What3Words'}
+                </button>
+              )}
+            </div>
+          )}
           <div style={{fontSize:'10px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'6px'}}>Category</div>
           <select value={category} onChange={e => setCategory(e.target.value)} style={{width:'100%',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',padding:'10px 11px',fontSize:'13px',color:'#fff',boxSizing:'border-box',marginBottom:'14px',fontFamily:'inherit'}}><option value="">Select category...</option>{categories.map(c => <option key={c} value={c}>{c}</option>)}</select>
           <div style={{fontSize:'10px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'6px'}}>Description</div>
