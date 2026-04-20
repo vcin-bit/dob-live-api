@@ -317,6 +317,15 @@ function LogEntryScreen({ user, site, shift }) {
             occurred_at: new Date().toISOString(),
             type_data: { visitor_name: form.visitor_name, visitor_who_visiting: form.visitor_who_visiting, visitor_pass_number: form.visitor_pass_number, visitor_vehicle_reg: form.visitor_vehicle_reg, visitor_personnel_count: form.visitor_personnel_count, visitor_time_in: form.visitor_time_in },
           });
+          // Also create visitor record for on-site tracking
+          try {
+            await api.visitors.create({
+              site_id: site?.id, shift_id: shift?.id || null,
+              visitor_name: form.visitor_name.trim(), company_name: form.visitor_who_visiting.trim(),
+              who_visiting: form.visitor_who_visiting.trim(), pass_number: form.visitor_pass_number || null,
+              vehicle_reg: form.visitor_vehicle_reg || null, personnel_count: form.visitor_personnel_count || 1,
+            });
+          } catch {}
           navigate('/', { state: { message: 'Visitor logged' } });
         } catch (e) { setError(e.message); }
         finally { setSubmitting(false); }

@@ -295,6 +295,11 @@ export const api = {
     documents: (token) => request('/api/portal/documents', { headers: { Authorization: `Bearer ${token}` } }),
     saveSettings: (siteId, data) => request(`/api/portal/settings/${siteId}`, { method: 'PUT', body: JSON.stringify(data) }),
   },
+  visitors: {
+    list: (params = {}) => request(`/api/visitors?${new URLSearchParams(params)}`),
+    create: (data) => request('/api/visitors', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id, data) => request(`/api/visitors/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  },
 };
 
 export { ApiError };

@@ -70,6 +70,7 @@ app.use('/api/invite',       require('./routes/invite'));
 app.use('/api/report',       require('./routes/report'));
 app.use('/api/playbooks',    require('./routes/playbooks'));
 app.use('/api/contracts',    require('./routes/contracts'));
+app.use('/api/visitors',     require('./routes/visitors'));
 
 // ── 404 handler ──────────────────────────────────────────────
 app.use((req, res) => {

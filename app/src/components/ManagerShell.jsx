@@ -7,6 +7,7 @@ import { ManagerDashboard, SiteManagement, LogReview, TaskAssignment, SiteDetail
 import { ProfitLoss } from './RosterPnL';
 import { DocumentsScreen, PatrolRoutesScreen, ShiftPatternsScreen, RatesScreen, AlertsScreen, PoliciesScreen, SiteInstructionsScreen, MessagesScreen } from './ManagerFeatures';
 import { PortalSettingsModal } from './Portal';
+import VisitorManagementScreen from './VisitorManagement';
 import { ContractsScreen } from './ContractsScreen';
 import {
   HomeIcon, ClipboardDocumentListIcon, MapPinIcon, ClockIcon,
@@ -26,6 +27,7 @@ function ManagerApp({ user }) {
           <Route path="/sites"     element={<SiteManagement user={user} />} />
           <Route path="/sites/:id" element={<SiteDetail user={user} />} />
           <Route path="/team"      element={<TeamManagement user={user} />} />
+          <Route path="/visitors"  element={<VisitorManagementScreen user={user} />} />
           <Route path="/logs"      element={<LogReview user={user} />} />
           <Route path="/tasks"     element={<TaskAssignment user={user} />} />
           <Route path="/reports"   element={<Reporting user={user} />} />
@@ -68,6 +70,7 @@ function ManagerSidebar({ user }) {
         { to: '/logs',      icon: ClipboardDocumentListIcon, label: 'Log Review' },
         { to: '/tasks',     icon: ClipboardDocumentListIcon, label: 'Tasks' },
         { to: '/sites',     icon: BuildingOfficeIcon,        label: 'Sites' },
+        { to: '/visitors',  icon: UsersIcon,                 label: 'Visitors' },
         { to: '/team',      icon: UsersIcon,                 label: 'Team' },
       ]
     },

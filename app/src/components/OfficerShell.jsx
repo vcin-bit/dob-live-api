@@ -10,6 +10,7 @@ import OfficerProfile from './OfficerProfile';
 import PlaybookAlerts from './PlaybookAlerts';
 import PatrolScreen from './PatrolScreen';
 import { HandoverScreen } from './HandoverScreen';
+import OfficerVisitorsScreen from './OfficerVisitors';
 import {
   HomeIcon, ClipboardDocumentListIcon, MapPinIcon, ClockIcon,
   UserGroupIcon, Cog6ToothIcon, PlusIcon, ArrowRightOnRectangleIcon,
@@ -150,6 +151,7 @@ function OfficerApp({ user }) {
         <Route path="/instructions" element={<OfficerInstructionsScreen user={user} site={selectedSite} />} />
         <Route path="/patrol"   element={<PatrolScreen user={user} site={selectedSite} shift={activeShift} />} />
         <Route path="/handover" element={<HandoverScreen user={user} site={selectedSite} shift={activeShift} onShiftEnded={() => { setActiveShift(null); }} />} />
+        <Route path="/visitors" element={<OfficerVisitorsScreen site={selectedSite} />} />
           <Route path="/profile" element={<OfficerProfile user={user} />} />
         <Route path="/policies" element={<OfficerPoliciesScreen user={user} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -340,6 +342,11 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
           Visitor / Contractor
         </Link>
       </div>
+
+      {/* On Site Now */}
+      <Link to="/visitors" className="officer-action-btn secondary" style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.625rem'}}>
+        <span>👥 On Site Now</span>
+      </Link>
 
       {/* Task badge */}
       {tasks.length > 0 && (
