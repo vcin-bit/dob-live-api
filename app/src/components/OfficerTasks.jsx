@@ -28,7 +28,9 @@ function TasksScreen({ user, site, shift }) {
         }
 
         const response = await api.tasks.list(params);
-        setTasks(response.data || []);
+        const urgencyOrder = { now: 0, today: 1, normal: 2 };
+        const sorted = (response.data || []).sort((a, b) => (urgencyOrder[a.urgency] ?? 2) - (urgencyOrder[b.urgency] ?? 2));
+        setTasks(sorted);
         setError(null);
       } catch (err) {
         console.error('Failed to fetch tasks:', err);
@@ -115,7 +117,7 @@ function TasksScreen({ user, site, shift }) {
 
 function TaskCard({ task, onUpdateStatus }) {
   const [expanded, setExpanded] = useState(false);
-  const priorityColor = { URGENT:'#ef4444', HIGH:'#f97316', NORMAL:'rgba(255,255,255,0.4)', LOW:'rgba(255,255,255,0.25)' };
+  const urgencyColor = { now:'#ef4444', today:'#f59e0b', normal:'rgba(255,255,255,0.15)' };
   const statusColor = { PENDING:'rgba(255,255,255,0.5)', IN_PROGRESS:'#60a5fa', COMPLETED:'#4ade80' };
 
   return (
@@ -124,9 +126,13 @@ function TaskCard({ task, onUpdateStatus }) {
         onClick={() => setExpanded(!expanded)}
         style={{padding:'0.875rem',cursor:'pointer',display:'flex',alignItems:'flex-start',gap:'0.75rem'}}
       >
-        <div style={{width:'3px',alignSelf:'stretch',borderRadius:'2px',background:priorityColor[task.priority]||priorityColor.NORMAL,flexShrink:0,marginTop:'2px'}} />
+        <div style={{width:'3px',alignSelf:'stretch',borderRadius:'2px',background:urgencyColor[task.urgency]||urgencyColor.normal,flexShrink:0,marginTop:'2px'}} />
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontSize:'0.9375rem',fontWeight:600,color:'#fff',marginBottom:'0.25rem'}}>{task.title}</div>
+          <div style={{display:'flex',alignItems:'center',gap:'6px',marginBottom:'0.25rem'}}>
+            {task.urgency === 'now' && <span style={{padding:'1px 6px',borderRadius:'4px',background:'rgba(239,68,68,0.15)',color:'#ef4444',fontSize:'0.625rem',fontWeight:700}}>NOW</span>}
+            {task.urgency === 'today' && <span style={{padding:'1px 6px',borderRadius:'4px',background:'rgba(245,158,11,0.15)',color:'#f59e0b',fontSize:'0.625rem',fontWeight:700}}>TODAY</span>}
+            <span style={{fontSize:'0.9375rem',fontWeight:600,color:'#fff'}}>{task.title}</span>
+          </div>
           <div style={{display:'flex',gap:'0.75rem',flexWrap:'wrap',alignItems:'center'}}>
             <span style={{fontSize:'0.75rem',color:statusColor[task.status]||statusColor.PENDING,fontWeight:500}}>
               {task.status?.replace('_',' ') || 'Pending'}

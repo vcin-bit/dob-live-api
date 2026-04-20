@@ -760,7 +760,7 @@ function TaskAssignment({ user }) {
         ) : (
           <table className="table">
             <thead>
-              <tr><th>Task</th><th>Assigned To</th><th>Site</th><th>Due</th><th>Status</th><th></th></tr>
+              <tr><th>Task</th><th>Urgency</th><th>Assigned To</th><th>Site</th><th>Due</th><th>Status</th><th></th></tr>
             </thead>
             <tbody>
               {filtered.map(task => (
@@ -769,6 +769,7 @@ function TaskAssignment({ user }) {
                     <div style={{fontWeight:500}}>{task.title}</div>
                     {task.description && <div style={{fontSize:'0.75rem',color:'var(--text-2)'}}>{task.description}</div>}
                   </td>
+                  <td><span className="badge" style={{background:task.urgency==='now'?'rgba(239,68,68,0.15)':task.urgency==='today'?'rgba(245,158,11,0.15)':'rgba(59,130,246,0.1)',color:task.urgency==='now'?'#ef4444':task.urgency==='today'?'#f59e0b':'#60a5fa',fontWeight:700,fontSize:'0.6875rem'}}>{task.urgency==='now'?'NOW':task.urgency==='today'?'TODAY':'ROUTINE'}</span></td>
                   <td style={{color:'var(--text-2)',fontSize:'0.8125rem'}}>
                     {task.assigned_to_user ? `${task.assigned_to_user.first_name} ${task.assigned_to_user.last_name}` : '—'}
                   </td>
@@ -808,7 +809,7 @@ function TaskAssignment({ user }) {
 
 
 function TaskCreateForm({ officers, sites, onClose, onSuccess }) {
-  const [form, setForm] = useState({ title: '', description: '', assigned_to: '', site_id: '', due_date: '' });
+  const [form, setForm] = useState({ title: '', description: '', assigned_to: '', site_id: '', due_date: '', urgency: 'normal' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -822,6 +823,7 @@ function TaskCreateForm({ officers, sites, onClose, onSuccess }) {
         assigned_to: form.assigned_to || null,
         site_id: form.site_id || null,
         due_date: form.due_date || null,
+        urgency: form.urgency || 'normal',
       });
       onSuccess();
     } catch (err) {
@@ -861,6 +863,17 @@ function TaskCreateForm({ officers, sites, onClose, onSuccess }) {
               <option value="">No site</option>
               {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
+          </div>
+        </div>
+        <div className="field">
+          <label className="label">Urgency</label>
+          <div style={{display:'flex',gap:'6px'}}>
+            {[{k:'now',l:'NOW',c:'#ef4444',bg:'rgba(239,68,68,0.12)',b:'rgba(239,68,68,0.4)'},{k:'today',l:'TODAY',c:'#f59e0b',bg:'rgba(245,158,11,0.1)',b:'rgba(245,158,11,0.35)'},{k:'normal',l:'ROUTINE',c:'#60a5fa',bg:'rgba(59,130,246,0.1)',b:'rgba(59,130,246,0.3)'}].map(u => (
+              <button key={u.k} type="button" onClick={() => setForm(f=>({...f,urgency:u.k}))}
+                style={{flex:1,padding:'10px',background:form.urgency===u.k?u.bg:'transparent',border:`1.5px solid ${form.urgency===u.k?u.b:'var(--border)'}`,borderRadius:'8px',color:form.urgency===u.k?u.c:'var(--text-3)',fontSize:'0.8125rem',fontWeight:700,cursor:'pointer'}}>
+                {u.l}
+              </button>
+            ))}
           </div>
         </div>
         <div className="field">

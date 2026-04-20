@@ -23,10 +23,10 @@ router.get('/', authenticate, async (req, res, next) => {
 
 router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER'), async (req, res, next) => {
   try {
-    const { site_id, assigned_to, title, description, due_date } = req.body;
+    const { site_id, assigned_to, title, description, due_date, urgency } = req.body;
     const { data, error } = await supabase
       .from('tasks')
-      .insert({ company_id: req.user.company_id, assigned_by: req.user.id, site_id, assigned_to, title, description, due_date })
+      .insert({ company_id: req.user.company_id, assigned_by: req.user.id, site_id, assigned_to, title, description, due_date, urgency: urgency || 'normal' })
       .select().single();
     if (error) throw error;
     res.status(201).json({ data });
@@ -35,7 +35,7 @@ router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGE
 
 router.patch('/:id', authenticate, async (req, res, next) => {
   try {
-    const allowed = ['title', 'description', 'status', 'due_date', 'assigned_to'];
+    const allowed = ['title', 'description', 'status', 'due_date', 'assigned_to', 'urgency'];
     const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
     const { data, error } = await supabase.from('tasks').update(updates).eq('id', req.params.id).eq('company_id', req.user.company_id).select().single();
     if (error) throw error;
