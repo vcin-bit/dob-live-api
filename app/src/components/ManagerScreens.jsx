@@ -947,7 +947,7 @@ function SiteDetail({ user }) {
       </div>
       {/* Tab bar */}
       <div style={{display:'flex',gap:0,borderBottom:'1px solid var(--border)',padding:'0 1.5rem',background:'var(--surface)'}}>
-        {[{key:'info',label:'Site Info'},{key:'logs',label:'Recent Logs'},{key:'roster',label:'Roster'},{key:'officers',label:'Officers'},{key:'codes',label:'Codes'},{key:'playbook',label:'Virtual Supervisor'}].map(t => (
+        {[{key:'info',label:'Site Info'},{key:'logs',label:'Recent Logs'},{key:'roster',label:'Roster'},{key:'officers',label:'Officers'},{key:'visitors',label:'Visitors'},{key:'codes',label:'Codes'},{key:'playbook',label:'Virtual Supervisor'}].map(t => (
           <button key={t.key} onClick={() => setActiveTab(t.key)}
             style={{padding:'0.75rem 1rem',background:'none',border:'none',borderBottom:`2px solid ${activeTab===t.key?'var(--blue)':'transparent'}`,color:activeTab===t.key?'var(--blue)':'var(--text-2)',fontSize:'0.875rem',fontWeight:600,cursor:'pointer',marginBottom:'-1px',whiteSpace:'nowrap'}}>
             {t.label}
@@ -1017,6 +1017,7 @@ function SiteDetail({ user }) {
             )}
           </div>
         )}
+        {activeTab === 'visitors' && <SiteVisitorsTab siteId={id} />}
         {activeTab === 'codes' && <SiteCodesTab siteId={id} />}
         {activeTab === 'info' && <div>
         <div className="card" style={{marginBottom:'1rem'}}>
@@ -1392,6 +1393,7 @@ function Reporting({ user }) {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('30');
+  const [reportTab, setReportTab] = useState('logs');
 
   useEffect(() => {
     async function load() {
@@ -1450,10 +1452,19 @@ function Reporting({ user }) {
           </select>
         </div>
       </div>
+      <div style={{display:'flex',gap:0,borderBottom:'1px solid var(--border)',padding:'0 1.5rem',background:'var(--surface)'}}>
+        {[{key:'logs',label:'Reports'},{key:'visitors',label:'Visitors & Contractors'}].map(t => (
+          <button key={t.key} onClick={() => setReportTab(t.key)}
+            style={{padding:'0.75rem 1rem',background:'none',border:'none',borderBottom:`2px solid ${reportTab===t.key?'var(--blue)':'transparent'}`,color:reportTab===t.key?'var(--blue)':'var(--text-2)',fontSize:'0.875rem',fontWeight:600,cursor:'pointer',marginBottom:'-1px',whiteSpace:'nowrap'}}>
+            {t.label}
+          </button>
+        ))}
+      </div>
       <div className="page-content">
-        {loading ? (
+        {reportTab === 'visitors' && <VisitorReportTab />}
+        {reportTab === 'logs' && loading ? (
           <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>
-        ) : (
+        ) : reportTab === 'logs' ? (
           <>
             <div className="stats-grid" style={{marginBottom:'1.5rem'}}>
               <div className="stat-card"><div className="stat-value">{logs.length}</div><div className="stat-label">Total Logs</div></div>
@@ -1499,12 +1510,102 @@ function Reporting({ user }) {
               </div>
             </div>
           </>
-        )}
+        ) : null}
       </div>
     </div>
   );
 }
 
+function VisitorReportTab() {
+  const [visitors, setVisitors] = useState([]);
+  const [sites, setSites] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [siteFilter, setSiteFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+
+  async function load() {
+    setLoading(true);
+    try {
+      const params = { limit: 300 };
+      if (siteFilter) params.site_id = siteFilter;
+      if (statusFilter) params.status = statusFilter;
+      if (search) params.search = search;
+      const [vRes, sRes] = await Promise.all([api.visitors.list(params), api.sites.list()]);
+      setVisitors(vRes.data || []);
+      setSites(sRes.data || []);
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, [siteFilter, statusFilter]);
+
+  const filtered = search
+    ? visitors.filter(v => { const q = search.toLowerCase(); return (v.visitor_name||'').toLowerCase().includes(q) || (v.company_name||'').toLowerCase().includes(q) || (v.vehicle_reg||'').toLowerCase().includes(q); })
+    : visitors;
+
+  function exportCSV() {
+    const headers = ['Name','Company','Site','Pass','Vehicle','Time In','Time Out','Status','Officer'];
+    const rows = filtered.map(v => [v.visitor_name, v.company_name||'', v.site?.name||'', v.pass_number||'', v.vehicle_reg||'',
+      v.time_in ? new Date(v.time_in).toLocaleString('en-GB',{timeZone:'Europe/London'}) : '',
+      v.time_out ? new Date(v.time_out).toLocaleString('en-GB',{timeZone:'Europe/London'}) : '',
+      v.status, v.officer ? `${v.officer.first_name} ${v.officer.last_name}` : '']);
+    const csv = [headers,...rows].map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv],{type:'text/csv'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `visitors-all-${new Date().toISOString().split('T')[0]}.csv`; a.click();
+  }
+
+  const fmtTime = t => t ? new Date(t).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'}) : '—';
+  const fmtDate = t => t ? new Date(t).toLocaleDateString('en-GB',{day:'2-digit',month:'short',timeZone:'Europe/London'}) : '';
+
+  if (loading) return <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>;
+
+  return (
+    <div>
+      <div style={{display:'flex',alignItems:'center',gap:'0.5rem',marginBottom:'1rem',flexWrap:'wrap'}}>
+        <input className="input" style={{width:'200px'}} placeholder="Search name, company, reg..." value={search} onChange={e => setSearch(e.target.value)} />
+        <select className="input" style={{width:'150px'}} value={siteFilter} onChange={e => setSiteFilter(e.target.value)}>
+          <option value="">All Sites</option>
+          {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+        <div style={{display:'flex',gap:'2px',background:'var(--surface-2)',borderRadius:'6px',padding:'2px'}}>
+          {[['','All'],['on_site','On Site']].map(([k,l]) => (
+            <button key={k} onClick={() => setStatusFilter(k)}
+              style={{padding:'0.375rem 0.75rem',borderRadius:'4px',border:'none',cursor:'pointer',fontSize:'0.8125rem',fontWeight:600,
+                background:statusFilter===k?'var(--blue)':'transparent',color:statusFilter===k?'#fff':'var(--text-2)'}}>
+              {l}
+            </button>
+          ))}
+        </div>
+        <span style={{fontSize:'0.8125rem',color:'var(--text-3)'}}>{filtered.length} visitor{filtered.length!==1?'s':''}</span>
+        <div style={{flex:1}} />
+        <button className="btn btn-secondary btn-sm" onClick={exportCSV} disabled={filtered.length===0}>Export CSV</button>
+      </div>
+      {filtered.length === 0 ? (
+        <div className="empty-state"><p>No visitors found</p></div>
+      ) : (
+        <table className="table">
+          <thead><tr><th>Name</th><th>Company</th><th>Site</th><th>Pass</th><th>Vehicle</th><th>Time In</th><th>Time Out</th><th>Status</th><th>Officer</th></tr></thead>
+          <tbody>
+            {filtered.map(v => (
+              <tr key={v.id}>
+                <td style={{fontWeight:500}}>{v.visitor_name}</td>
+                <td style={{color:'var(--text-2)',fontSize:'0.8125rem'}}>{v.company_name||v.who_visiting||'—'}</td>
+                <td style={{color:'var(--text-2)',fontSize:'0.8125rem'}}>{v.site?.name||'—'}</td>
+                <td style={{fontFamily:'monospace',fontSize:'0.8125rem',color:'var(--text-2)'}}>{v.pass_number||'—'}</td>
+                <td style={{fontFamily:'monospace',fontSize:'0.8125rem',color:'var(--text-2)'}}>{v.vehicle_reg||'—'}</td>
+                <td style={{fontSize:'0.8125rem',color:'var(--text-2)',whiteSpace:'nowrap'}}>{fmtDate(v.time_in)} {fmtTime(v.time_in)}</td>
+                <td style={{fontSize:'0.8125rem',color:'var(--text-2)',whiteSpace:'nowrap'}}>{v.time_out ? `${fmtDate(v.time_out)} ${fmtTime(v.time_out)}` : '—'}</td>
+                <td><span className={`badge ${v.status==='on_site'?'badge-success':'badge-neutral'}`}>{v.status==='on_site'?'ON SITE':'OFF SITE'}</span></td>
+                <td style={{color:'var(--text-2)',fontSize:'0.8125rem'}}>{v.officer?`${v.officer.first_name} ${v.officer.last_name}`:'—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
 
 function OnDutyScreen({ user }) {
   const [shifts, setShifts] = useState([]);
@@ -1587,6 +1688,96 @@ function OnDutyScreen({ user }) {
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+function SiteVisitorsTab({ siteId }) {
+  const [visitors, setVisitors] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState('on_site');
+
+  async function load() {
+    setLoading(true);
+    try {
+      const params = { site_id: siteId, limit: 200 };
+      if (filter === 'on_site') params.status = 'on_site';
+      if (filter === 'today') {
+        const today = new Date(); today.setHours(0,0,0,0);
+        params.from = today.toISOString();
+      }
+      const res = await api.visitors.list(params);
+      setVisitors(res.data || []);
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, [siteId, filter]);
+
+  const filtered = search
+    ? visitors.filter(v => {
+        const q = search.toLowerCase();
+        return (v.visitor_name||'').toLowerCase().includes(q) || (v.company_name||'').toLowerCase().includes(q);
+      })
+    : visitors;
+
+  function exportCSV() {
+    const headers = ['Name','Company','Pass','Vehicle','Personnel','Time In','Time Out','Status','Officer'];
+    const rows = filtered.map(v => [
+      v.visitor_name, v.company_name||'', v.pass_number||'', v.vehicle_reg||'', v.personnel_count,
+      v.time_in ? new Date(v.time_in).toLocaleString('en-GB',{timeZone:'Europe/London'}) : '',
+      v.time_out ? new Date(v.time_out).toLocaleString('en-GB',{timeZone:'Europe/London'}) : '',
+      v.status, v.officer ? `${v.officer.first_name} ${v.officer.last_name}` : '',
+    ]);
+    const csv = [headers,...rows].map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv],{type:'text/csv'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `visitors-${new Date().toISOString().split('T')[0]}.csv`; a.click();
+  }
+
+  const fmtTime = t => t ? new Date(t).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'}) : '—';
+  const fmtDate = t => t ? new Date(t).toLocaleDateString('en-GB',{day:'2-digit',month:'short',timeZone:'Europe/London'}) : '';
+
+  if (loading) return <div style={{display:'flex',justifyContent:'center',padding:'2rem'}}><div className="spinner" /></div>;
+
+  return (
+    <div className="card">
+      <div style={{display:'flex',alignItems:'center',gap:'0.5rem',marginBottom:'0.75rem',flexWrap:'wrap'}}>
+        <input className="input" style={{width:'180px'}} placeholder="Search name, company..." value={search} onChange={e => setSearch(e.target.value)} />
+        <div style={{display:'flex',gap:'2px',background:'var(--surface-2)',borderRadius:'6px',padding:'2px'}}>
+          {[['','All'],['on_site','On Site'],['today','Today']].map(([k,l]) => (
+            <button key={k} onClick={() => setFilter(k)}
+              style={{padding:'0.375rem 0.75rem',borderRadius:'4px',border:'none',cursor:'pointer',fontSize:'0.8125rem',fontWeight:600,
+                background:filter===k?'var(--blue)':'transparent',color:filter===k?'#fff':'var(--text-2)'}}>
+              {l}
+            </button>
+          ))}
+        </div>
+        <span style={{fontSize:'0.75rem',color:'var(--text-3)'}}>{filtered.length} visitor{filtered.length!==1?'s':''}</span>
+        <div style={{flex:1}} />
+        <button className="btn btn-secondary btn-sm" onClick={exportCSV} disabled={filtered.length===0}>Export CSV</button>
+      </div>
+      {filtered.length === 0 ? (
+        <div className="empty-state"><p>No visitors found</p></div>
+      ) : (
+        <table className="table">
+          <thead><tr><th>Name</th><th>Company</th><th>Pass</th><th>Vehicle</th><th>In</th><th>Out</th><th>Status</th><th>Officer</th></tr></thead>
+          <tbody>
+            {filtered.map(v => (
+              <tr key={v.id}>
+                <td style={{fontWeight:500}}>{v.visitor_name}</td>
+                <td style={{color:'var(--text-2)',fontSize:'0.8125rem'}}>{v.company_name||v.who_visiting||'—'}</td>
+                <td style={{fontFamily:'monospace',fontSize:'0.8125rem',color:'var(--text-2)'}}>{v.pass_number||'—'}</td>
+                <td style={{fontFamily:'monospace',fontSize:'0.8125rem',color:'var(--text-2)'}}>{v.vehicle_reg||'—'}</td>
+                <td style={{fontSize:'0.8125rem',color:'var(--text-2)',whiteSpace:'nowrap'}}>{fmtDate(v.time_in)} {fmtTime(v.time_in)}</td>
+                <td style={{fontSize:'0.8125rem',color:'var(--text-2)',whiteSpace:'nowrap'}}>{v.time_out ? `${fmtDate(v.time_out)} ${fmtTime(v.time_out)}` : '—'}</td>
+                <td><span className={`badge ${v.status==='on_site'?'badge-success':'badge-neutral'}`}>{v.status==='on_site'?'ON SITE':'OFF SITE'}</span></td>
+                <td style={{color:'var(--text-2)',fontSize:'0.8125rem'}}>{v.officer?`${v.officer.first_name} ${v.officer.last_name}`:'—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }
