@@ -327,7 +327,7 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
 
       {/* Primary actions */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.625rem',marginBottom:'0.625rem'}}>
-        <Link to="/patrol" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.9375rem',marginBottom:0,background:shift?'rgba(59,130,246,0.15)':'rgba(255,255,255,0.05)',borderColor:shift?'rgba(59,130,246,0.35)':'rgba(255,255,255,0.1)',color:shift?'#60a5fa':'rgba(255,255,255,0.4)'}}>
+        <Link to="/patrol" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.9375rem',marginBottom:0,background:'rgba(74,222,128,0.12)',borderColor:'rgba(74,222,128,0.3)',color:'#4ade80'}}>
           <MapPinIcon style={{width:'1.125rem',height:'1.125rem'}} />
           Start Patrol
         </Link>
