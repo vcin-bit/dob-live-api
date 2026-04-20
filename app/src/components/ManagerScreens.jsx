@@ -679,19 +679,32 @@ function ManagerLogCard({ log }) {
       .finally(() => setSessionLoading(false));
   }, [expanded]);
 
-  // Render trail map
+  // Render trail map — load Leaflet if needed
   useEffect(() => {
     if (!sessionData?.gps_trail?.length || !trailMapRef.current || trailMapInstance.current) return;
-    if (!window.L) return;
-    const L = window.L;
-    const map = L.map(trailMapRef.current, { zoomControl: false, attributionControl: false });
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(map);
-    const trail = sessionData.gps_trail.filter(p => p.lat && p.lng).map(p => [p.lat, p.lng]);
-    if (trail.length > 0) {
-      L.polyline(trail, { color: '#3b82f6', weight: 3 }).addTo(map);
-      map.fitBounds(trail, { padding: [20, 20] });
+    function renderMap() {
+      if (!window.L || !trailMapRef.current) return;
+      const L = window.L;
+      const map = L.map(trailMapRef.current, { zoomControl: false, attributionControl: false });
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(map);
+      const trail = sessionData.gps_trail.filter(p => p.lat && p.lng).map(p => [p.lat, p.lng]);
+      if (trail.length > 0) {
+        L.polyline(trail, { color: '#3b82f6', weight: 3 }).addTo(map);
+        map.fitBounds(trail, { padding: [20, 20] });
+      }
+      trailMapInstance.current = map;
     }
-    trailMapInstance.current = map;
+    if (window.L) { renderMap(); }
+    else {
+      if (!document.getElementById('leaflet-css')) {
+        const link = document.createElement('link'); link.id = 'leaflet-css'; link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; document.head.appendChild(link);
+      }
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      script.onload = renderMap;
+      document.head.appendChild(script);
+    }
     return () => { if (trailMapInstance.current) { trailMapInstance.current.remove(); trailMapInstance.current = null; } };
   }, [sessionData]);
 
