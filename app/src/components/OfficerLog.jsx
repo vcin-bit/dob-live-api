@@ -188,6 +188,79 @@ function LogEntryScreen({ user, site, shift }) {
     finally { setSubmitting(false); }
   }
 
+  // ── CCTV CHECK: single page form, no steps ──────────────────────────────────
+  if (form.log_type === 'CCTV_CHECK') return (
+    <div style={{padding:'1rem 1rem 5rem'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'1.25rem'}}>
+        <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
+          <div style={{width:'3px',height:'24px',background:'#3b82f6',borderRadius:'2px'}} />
+          <div>
+            <div style={{fontSize:'14px',fontWeight:700,color:'#3b82f6',letterSpacing:'0.02em'}}>CCTV CHECK</div>
+            <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)',marginTop:'1px'}}>{site?.name}</div>
+          </div>
+        </div>
+        <button onClick={() => navigate('/')} style={{background:'none',border:'none',color:'rgba(255,255,255,0.4)',fontSize:'0.8125rem',cursor:'pointer'}}>Cancel</button>
+      </div>
+
+      {error && <div style={{background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:'8px',padding:'10px',fontSize:'13px',color:'#ef4444',marginBottom:'12px'}}>{error}</div>}
+
+      <div style={{marginBottom:'14px'}}>
+        <div style={S.label}>CAMERAS CHECKED</div>
+        <input type="number" value={form.cameras_checked} onChange={e=>f('cameras_checked',e.target.value)} placeholder="Number of cameras" style={S.input} min="1" />
+      </div>
+
+      <div style={{marginBottom:'14px'}}>
+        <div style={S.label}>ALL IN ORDER?</div>
+        <div style={{display:'flex',gap:'8px'}}>
+          <button type="button" onClick={() => f('cctv_issues_found', false)}
+            style={{flex:1,padding:'16px',background:!form.cctv_issues_found?'rgba(74,222,128,0.15)':'rgba(255,255,255,0.03)',border:`2px solid ${!form.cctv_issues_found?'rgba(74,222,128,0.5)':'rgba(255,255,255,0.08)'}`,borderRadius:'10px',color:!form.cctv_issues_found?'#4ade80':'rgba(255,255,255,0.4)',fontSize:'14px',fontWeight:700,cursor:'pointer'}}>
+            ✓ AIO — All In Order
+          </button>
+          <button type="button" onClick={() => f('cctv_issues_found', true)}
+            style={{flex:1,padding:'16px',background:form.cctv_issues_found?'rgba(239,68,68,0.15)':'rgba(255,255,255,0.03)',border:`2px solid ${form.cctv_issues_found?'rgba(239,68,68,0.5)':'rgba(255,255,255,0.08)'}`,borderRadius:'10px',color:form.cctv_issues_found?'#ef4444':'rgba(255,255,255,0.4)',fontSize:'14px',fontWeight:700,cursor:'pointer'}}>
+            ⚠ Issues Found
+          </button>
+        </div>
+      </div>
+
+      {form.cctv_issues_found && (
+        <div style={{marginBottom:'14px'}}>
+          <div style={S.label}>DESCRIBE ISSUES</div>
+          <textarea value={form.cctv_issue_description} onChange={e=>f('cctv_issue_description',e.target.value)} rows={3} placeholder="What issues were found..." style={S.input} />
+        </div>
+      )}
+
+      <div style={{marginBottom:'20px'}}>
+        <div style={S.label}>ACTIONS TAKEN</div>
+        <select value={form.cctv_action_taken} onChange={e=>f('cctv_action_taken',e.target.value)} style={S.input}>
+          <option value="">Select action...</option>
+          <option value="All In Order">All In Order</option>
+          <option value="Escalated to Incident Report">Escalated to Incident Report</option>
+          <option value="Reported to Manager">Reported to Manager</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+
+      <button onClick={async () => {
+        setSubmitting(true); setError('');
+        try {
+          await api.logs.create({
+            site_id: site?.id, shift_id: shift?.id || null, log_type: 'CCTV_CHECK',
+            title: `CCTV CHECK${form.cctv_issues_found ? ' — Issues Found' : ' — AIO'}`,
+            description: form.cctv_issues_found ? form.cctv_issue_description : 'All cameras checked, all in order.',
+            occurred_at: new Date().toISOString(),
+            type_data: { cameras_checked: form.cameras_checked, cctv_issues_found: form.cctv_issues_found, cctv_issue_description: form.cctv_issue_description, cctv_action_taken: form.cctv_action_taken },
+          });
+          navigate('/', { state: { message: 'CCTV check submitted' } });
+        } catch (e) { setError(e.message); }
+        finally { setSubmitting(false); }
+      }} disabled={submitting || !form.cameras_checked}
+        style={S.btn(!form.cameras_checked ? '#333' : '#1a52a8')}>
+        {submitting ? 'SUBMITTING...' : 'SUBMIT CCTV CHECK'}
+      </button>
+    </div>
+  );
+
   // ── STEP 1: Select type ─────────────────────────────────────────────────────
   if (step === 1) return (
     <div style={{padding:'1rem 1rem 5rem'}}>
