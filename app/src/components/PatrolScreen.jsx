@@ -29,8 +29,55 @@ export default function PatrolScreen({ user, site, shift }) {
   const [isRoutePlanner, setIsRoutePlanner] = useState(false);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [plannerMode, setPlannerMode] = useState(false);
+  const [mapType, setMapType] = useState('satellite');
+  const mapRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const markerRef = useRef(null);
 
-  // GPS
+  // Load Leaflet + GPS
+  useEffect(() => {
+    if (!document.getElementById('leaflet-css')) {
+      const link = document.createElement('link');
+      link.id = 'leaflet-css'; link.rel = 'stylesheet';
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(link);
+    }
+    if (!window.L) {
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      script.onload = () => initMap();
+      document.head.appendChild(script);
+    } else {
+      setTimeout(() => initMap(), 100);
+    }
+    return () => {
+      if (mapInstanceRef.current) { mapInstanceRef.current.remove(); mapInstanceRef.current = null; }
+    };
+  }, []);
+
+  function initMap() {
+    if (!mapRef.current || mapInstanceRef.current) return;
+    const L = window.L;
+    const map = L.map(mapRef.current, { zoomControl: false, attributionControl: false });
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(map);
+    map.setView([52.48, -1.89], 16);
+    L.control.zoom({ position: 'topright' }).addTo(map);
+    mapInstanceRef.current = map;
+  }
+
+  function switchMapType(type) {
+    setMapType(type);
+    const map = mapInstanceRef.current;
+    if (!map || !window.L) return;
+    map.eachLayer(l => { if (l._url) map.removeLayer(l); });
+    if (type === 'satellite') {
+      window.L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(map);
+    } else {
+      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+    }
+  }
+
+  // GPS watch
   useEffect(() => {
     if (!navigator.geolocation) return;
     watchRef.current = navigator.geolocation.watchPosition(pos => {
@@ -38,6 +85,20 @@ export default function PatrolScreen({ user, site, shift }) {
     }, err => console.log('GPS error:', err.message), { enableHighAccuracy: true, maximumAge: 5000 });
     return () => { if (watchRef.current) navigator.geolocation.clearWatch(watchRef.current); };
   }, []);
+
+  // Update map marker when GPS changes
+  useEffect(() => {
+    if (!currentPos || !mapInstanceRef.current || !window.L) return;
+    const L = window.L;
+    const map = mapInstanceRef.current;
+    if (!markerRef.current) {
+      const icon = L.divIcon({ html: '<div style="width:14px;height:14px;background:#3b82f6;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 4px rgba(59,130,246,0.3)"></div>', iconSize:[14,14], iconAnchor:[7,7] });
+      markerRef.current = L.marker([currentPos.lat, currentPos.lng], { icon }).addTo(map);
+      map.setView([currentPos.lat, currentPos.lng], 18);
+    } else {
+      markerRef.current.setLatLng([currentPos.lat, currentPos.lng]);
+    }
+  }, [currentPos]);
 
   // GPS pings during patrol
   const gpsCountRef = useRef(0);
@@ -103,6 +164,23 @@ export default function PatrolScreen({ user, site, shift }) {
     setPatrolStarted(false); setSession(null); setShowEndConfirm(false); setCompletedCps([]); navigate('/');
   }
 
+  // Draw route on map when route loads
+  useEffect(() => {
+    if (!route?.checkpoints?.length || !mapInstanceRef.current || !window.L) return;
+    const L = window.L;
+    const map = mapInstanceRef.current;
+    const sorted = [...route.checkpoints].sort((a,b) => a.order_index - b.order_index);
+    const coords = sorted.filter(cp => cp.lat && cp.lng).map(cp => [cp.lat, cp.lng]);
+    if (!coords.length) return;
+    L.polyline(coords, { color: '#a78bfa', weight: 2, dashArray: '6,3', opacity: 0.7 }).addTo(map);
+    sorted.forEach((cp, i) => {
+      if (!cp.lat || !cp.lng) return;
+      const icon = L.divIcon({ html: `<div style="width:22px;height:22px;background:#a78bfa;border:2px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#0b1222">${i+1}</div>`, iconSize:[22,22], iconAnchor:[11,11] });
+      L.marker([cp.lat, cp.lng], { icon }).addTo(map).bindPopup(cp.name || `Checkpoint ${i+1}`);
+    });
+    if (!currentPos) map.fitBounds(coords, { padding: [30,30] });
+  }, [route]);
+
   const checkpoints = route?.checkpoints ? [...route.checkpoints].sort((a,b) => a.order_index - b.order_index) : [];
   const nextCp = checkpoints.find(cp => !completedCps.includes(cp.id));
 
@@ -144,6 +222,24 @@ export default function PatrolScreen({ user, site, shift }) {
           )}
         </div>
       )}
+
+      {/* Map */}
+      <div style={{position:'relative',height:'35vh',flexShrink:0}}>
+        <div ref={mapRef} style={{width:'100%',height:'100%'}} />
+        <div style={{position:'absolute',top:'8px',left:'8px',zIndex:1000,display:'flex',background:'rgba(0,0,0,0.7)',borderRadius:'6px',overflow:'hidden',border:'1px solid rgba(255,255,255,0.1)'}}>
+          {['satellite','map'].map(t => (
+            <button key={t} onClick={() => switchMapType(t)}
+              style={{padding:'5px 12px',fontSize:'11px',color:mapType===t?'#fff':'rgba(255,255,255,0.4)',background:mapType===t?'rgba(59,130,246,0.6)':'transparent',border:'none',cursor:'pointer',fontWeight:700,textTransform:'uppercase'}}>
+              {t==='satellite'?'SAT':'MAP'}
+            </button>
+          ))}
+        </div>
+        {currentPos && (
+          <div style={{position:'absolute',bottom:'8px',left:'8px',zIndex:1000,background:'rgba(0,0,0,0.6)',borderRadius:'5px',padding:'3px 7px',fontSize:'10px',color:'rgba(255,255,255,0.6)'}}>
+            GPS ±{Math.round(currentPos.accuracy)}m
+          </div>
+        )}
+      </div>
 
       {/* Main scrollable content */}
       <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',minHeight:0}}>
