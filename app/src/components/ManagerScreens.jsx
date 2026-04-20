@@ -1237,14 +1237,15 @@ function TeamManagement({ user }) {
         ) : (
           <table className="table">
             <thead>
-              <tr><th>Name</th><th>Email</th><th>Role</th><th>SIA Licence</th><th>SIA Expiry</th><th>Status</th><th></th></tr>
+              <tr><th>Name</th><th>Phone</th><th>Role</th><th>SIA Type</th><th>SIA No.</th><th>SIA Expiry</th><th>2nd SIA</th><th>BS7858</th><th>Status</th><th></th></tr>
             </thead>
             <tbody>
               {filtered.map(o => (
                 <tr key={o.id}>
-                  <td style={{fontWeight:500}}>{o.first_name} {o.last_name}</td>
-                  <td style={{color:'var(--text-2)',fontSize:'0.8125rem'}}>{o.email}</td>
+                  <td style={{fontWeight:500}}>{o.first_name} {o.last_name}<div style={{fontSize:'0.75rem',color:'var(--text-3)'}}>{o.email}</div></td>
+                  <td style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>{o.phone||'—'}</td>
                   <td><span className={`badge ${roleBadge[o.role]||'badge-neutral'}`}>{roleLabels[o.role]||o.role}</span></td>
+                  <td style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>{o.sia_licence_type||'—'}</td>
                   <td style={{fontFamily:'monospace',fontSize:'0.8125rem',color:'var(--text-2)'}}>{o.sia_licence_number||'—'}</td>
                   <td style={{fontSize:'0.8125rem'}}>
                     {o.sia_expiry_date ? (
@@ -1254,6 +1255,12 @@ function TeamManagement({ user }) {
                         {isSiaExpiringSoon(o.sia_expiry_date)&&' (Soon)'}
                       </span>
                     ):'—'}
+                  </td>
+                  <td style={{fontSize:'0.75rem',color:'var(--text-2)'}}>
+                    {o.sia_licence_type_2 ? <div>{o.sia_licence_type_2}<div style={{fontFamily:'monospace',fontSize:'0.6875rem'}}>{o.sia_licence_number_2||''}</div>{o.sia_expiry_date_2 && <div style={{color:isSiaExpired(o.sia_expiry_date_2)?'var(--danger)':isSiaExpiringSoon(o.sia_expiry_date_2)?'var(--warning)':'var(--text-3)'}}>{new Date(o.sia_expiry_date_2).toLocaleDateString('en-GB')}</div>}</div> : '—'}
+                  </td>
+                  <td style={{fontSize:'0.75rem',color:'var(--text-2)'}}>
+                    {o.bs7858_expiry_date ? <span style={{color:isSiaExpired(o.bs7858_expiry_date)?'var(--danger)':isSiaExpiringSoon(o.bs7858_expiry_date)?'var(--warning)':'var(--text-2)'}}>{new Date(o.bs7858_expiry_date).toLocaleDateString('en-GB')}</span> : '—'}
                   </td>
                   <td><span className={`badge ${o.active!==false?'badge-success':'badge-neutral'}`}>{o.active!==false?'Active':'Inactive'}</span></td>
                   <td style={{textAlign:'right',display:'flex',gap:'0.375rem',justifyContent:'flex-end',flexWrap:'wrap'}}>
