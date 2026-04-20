@@ -211,7 +211,7 @@ export default function PatrolScreen({ user, site, shift }) {
       {!patrolStarted && (
         <div style={{padding:'10px 14px',flexShrink:0,display:'flex',flexDirection:'column',gap:'8px',borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
           <button onClick={startPatrol}
-            style={{width:'100%',padding:'15px',background:'#1a52a8',border:'none',borderRadius:'10px',color:'#fff',fontSize:'16px',fontWeight:700,cursor:'pointer'}}>
+            style={{width:'100%',padding:'15px',background:'rgba(74,222,128,0.15)',border:'2px solid rgba(74,222,128,0.4)',borderRadius:'10px',color:'#4ade80',fontSize:'16px',fontWeight:700,cursor:'pointer'}}>
             ▶ START PATROL
           </button>
           {isRoutePlanner && (
