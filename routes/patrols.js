@@ -142,10 +142,36 @@ router.patch('/sessions/:id/checkpoint', authenticate, async (req, res, next) =>
 // POST /api/patrols/sessions/:id/end
 router.post('/sessions/:id/end', authenticate, async (req, res, next) => {
   try {
+    const endedAt = new Date().toISOString();
     const { data, error } = await supabase.from('patrol_sessions')
-      .update({ status: 'completed', ended_at: new Date().toISOString() })
+      .update({ status: 'completed', ended_at: endedAt })
       .eq('id', req.params.id).eq('officer_id', req.user.id).select().single();
     if (error) throw error;
+
+    // Create summary log entry
+    try {
+      const completedCount = data.checkpoints_completed?.length || 0;
+      const startedAt = data.started_at || data.created_at;
+      const durationMins = startedAt ? Math.round((new Date(endedAt) - new Date(startedAt)) / 60000) : 0;
+      await supabase.from('occurrence_logs').insert({
+        company_id: req.user.company_id,
+        officer_id: req.user.id,
+        site_id: data.site_id,
+        log_type: 'PATROL',
+        title: 'Patrol Completed',
+        description: `Patrol completed in ${durationMins} minutes. ${completedCount} checkpoint(s) reached.`,
+        occurred_at: endedAt,
+        type_data: {
+          patrol_session_id: data.id,
+          started_at: startedAt,
+          ended_at: endedAt,
+          duration_minutes: durationMins,
+          checkpoints_completed: data.checkpoints_completed || [],
+          route_id: data.route_id,
+        },
+      });
+    } catch (logErr) { console.error('Failed to create patrol summary log:', logErr.message); }
+
     res.json({ data });
   } catch (err) { next(err); }
 });

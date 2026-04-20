@@ -695,6 +695,23 @@ function ManagerLogCard({ log }) {
               {expanded ? 'Show less' : 'Show more'}
             </button>
           )}
+          {/* Patrol summary detail */}
+          {log.log_type === 'PATROL' && log.type_data?.patrol_session_id && (
+            <div style={{marginTop:'0.5rem',padding:'0.5rem 0.625rem',background:'var(--surface-2)',borderRadius:'6px',fontSize:'0.8125rem'}}>
+              <div style={{display:'flex',gap:'1rem',flexWrap:'wrap',color:'var(--text-2)',marginBottom:'0.25rem'}}>
+                {log.type_data.started_at && <span>Start: {new Date(log.type_data.started_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}</span>}
+                {log.type_data.ended_at && <span>End: {new Date(log.type_data.ended_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}</span>}
+                {log.type_data.duration_minutes != null && <span>Duration: {log.type_data.duration_minutes}m</span>}
+              </div>
+              {log.type_data.checkpoints_completed?.length > 0 && (
+                <div style={{fontSize:'0.75rem',color:'var(--text-3)'}}>
+                  Checkpoints: {log.type_data.checkpoints_completed.map((cp, i) => (
+                    <span key={i}>{typeof cp === 'string' ? cp : cp.name || `#${i+1}`}{i < log.type_data.checkpoints_completed.length - 1 ? ', ' : ''}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
