@@ -544,16 +544,10 @@ function AddCheckpointModal({ currentPos, onSave, onClose }) {
                 </div>
               )}
               {!imageUrl && (
-                <>
-                  <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>
-                    {uploading ? 'Uploading...' : 'Take Photo'}
-                    <input type="file" accept="image/*" style={{display:'none'}} onChange={uploadImage} disabled={uploading} />
-                  </label>
-                  <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>
-                    From Gallery
-                    <input type="file" accept="image/*" style={{display:'none'}} onChange={uploadImage} disabled={uploading} />
-                  </label>
-                </>
+                <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>
+                  {uploading ? 'Uploading...' : 'Add Photo'}
+                  <input type="file" style={{display:'none'}} onChange={uploadImage} disabled={uploading} />
+                </label>
               )}
             </div>
           </div>
@@ -642,16 +636,10 @@ function CheckpointModal({ site, session, currentPos, route, isRoutePlanner, onC
                 </div>
               )}
               {!photoUrl && (
-                <>
-                  <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>
-                    {uploading ? 'Uploading...' : 'Take Photo'}
-                    <input type="file" accept="image/*" style={{display:'none'}} onChange={uploadPhoto} disabled={uploading} />
-                  </label>
-                  <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>
-                    From Gallery
-                    <input type="file" accept="image/*" style={{display:'none'}} onChange={uploadPhoto} disabled={uploading} />
-                  </label>
-                </>
+                <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>
+                  {uploading ? 'Uploading...' : 'Add Photo'}
+                  <input type="file" style={{display:'none'}} onChange={uploadPhoto} disabled={uploading} />
+                </label>
               )}
             </div>
           </div>
@@ -729,8 +717,7 @@ function ReportModal({ user, site, session, onClose }) {
             {media.map((m, i) => (<div key={i} style={{width:56,height:56,borderRadius:'8px',background:'#1a2535',border:'1px solid rgba(255,255,255,0.1)',overflow:'hidden',position:'relative'}}>{m.type?.startsWith('image') ? <img src={m.url} style={{width:'100%',height:'100%',objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'10px',color:'rgba(255,255,255,0.4)'}}>video</div>}<button onClick={() => setMedia(p => p.filter((_,j)=>j!==i))} style={{position:'absolute',top:1,right:1,width:16,height:16,background:'rgba(239,68,68,0.9)',borderRadius:'50%',border:'none',color:'#fff',fontSize:10,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>x</button></div>))}
           </div>
           <div style={{display:'flex',gap:'6px',marginBottom:'14px'}}>
-            <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Take Photo<input type="file" accept="image/*" style={{display:'none'}} onChange={handleMedia} /></label>
-            <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>From Gallery<input type="file" accept="image/*" multiple style={{display:'none'}} onChange={handleMedia} /></label>
+            <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Add Photo<input type="file" style={{display:'none'}} onChange={handleMedia} /></label>
             <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Add Video<input type="file" accept="video/*" style={{display:'none'}} onChange={handleMedia} /></label>
           </div>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'11px 13px',background:clientReportable?'rgba(59,130,246,0.07)':'rgba(255,255,255,0.03)',border:`1px solid ${clientReportable?'rgba(59,130,246,0.25)':'rgba(255,255,255,0.07)'}`,borderRadius:'10px',marginBottom:'14px',cursor:'pointer'}} onClick={() => setClientReportable(p => !p)}>
@@ -860,8 +847,7 @@ function OccurrenceModal({ site, shift, currentPos, onClose }) {
           </div>
           {media.length < 5 && (
             <div style={{display:'flex',gap:'6px',marginBottom:'14px'}}>
-              <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Take Photo<input type="file" accept="image/*" style={{display:'none'}} onChange={handleMedia} /></label>
-              <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>From Gallery<input type="file" accept="image/*" multiple style={{display:'none'}} onChange={handleMedia} /></label>
+              <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Add Photo<input type="file" style={{display:'none'}} onChange={handleMedia} /></label>
               <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Add Video<input type="file" accept="video/*" style={{display:'none'}} onChange={handleMedia} /></label>
             </div>
           )}

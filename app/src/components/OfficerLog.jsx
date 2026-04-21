@@ -413,8 +413,7 @@ function LogEntryScreen({ user, site, shift }) {
         </div>
         {form.media.length < 5 && (
           <div style={{display:'flex',gap:'6px',marginBottom:'20px'}}>
-            <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Take Photo<input type="file" accept="image/*" style={{display:'none'}} onChange={e=>uploadMedia(e.target.files)} /></label>
-            <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>From Gallery<input type="file" accept="image/*" multiple style={{display:'none'}} onChange={e=>uploadMedia(e.target.files)} /></label>
+            <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Add Photo<input type="file" style={{display:'none'}} onChange={e=>uploadMedia(e.target.files)} /></label>
             <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Add Video<input type="file" accept="video/*" style={{display:'none'}} onChange={e=>uploadMedia(e.target.files)} /></label>
           </div>
         )}
