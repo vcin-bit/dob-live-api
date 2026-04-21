@@ -150,7 +150,7 @@ function ManagerSidebar({ user }) {
         >
           Sign out
         </button>
-        <div style={{marginTop:'0.5rem',fontSize:'10px',color:'rgba(255,255,255,0.15)'}}>v {typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '?'}</div>
+        <div style={{marginTop:'0.5rem',fontSize:'10px',color:'rgba(255,255,255,0.35)'}}>v {typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '?'}</div>
       </div>
     </div>
   );
