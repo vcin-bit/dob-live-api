@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
+import { compressImage } from '../lib/imageUtils';
 
 async function fetchW3W(lat, lng) {
   const key = import.meta.env.VITE_W3W_API_KEY;
@@ -569,10 +570,11 @@ function CheckpointModal({ site, session, currentPos, route, isRoutePlanner, onC
   }, [currentPos?.lat, currentPos?.lng]);
 
   async function uploadPhoto(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const rawFile = e.target.files?.[0];
+    if (!rawFile) return;
     setUploading(true);
     try {
+      const file = await compressImage(rawFile);
       const fd = new FormData(); fd.append('file', file);
       const API = import.meta.env.VITE_API_URL || 'https://dob-live-api.onrender.com';
       const token = await window.__clerkGetToken?.() || '';
@@ -664,13 +666,14 @@ function ReportModal({ user, site, session, onClose }) {
   ];
   async function handleMedia(e) {
     const files = Array.from(e.target.files);
-    const uploads = await Promise.all(files.map(async file => {
-      const form = new FormData(); form.append('file', file);
+    const uploads = await Promise.all(files.map(async rawFile => {
       try {
+        const file = await compressImage(rawFile);
+        const form = new FormData(); form.append('file', file);
         const API = import.meta.env.VITE_API_URL || 'https://dob-live-api.onrender.com';
         const token = await window.__clerkGetToken?.() || '';
         const res = await fetch(`${API}/api/patrols/media/upload`, { method: 'POST', body: form, headers: { Authorization: `Bearer ${token}` } });
-        const data = await res.json(); return { url: data.url, name: file.name, type: file.type };
+        const data = await res.json(); return { url: data.url, name: rawFile.name, type: rawFile.type };
       } catch { return null; }
     }));
     setMedia(prev => [...prev, ...uploads.filter(Boolean)]);
@@ -733,14 +736,15 @@ function OccurrenceModal({ site, shift, currentPos, onClose }) {
 
   async function handleMedia(e) {
     if (media.length >= 5) return;
-    const files = Array.from(e.target.files).slice(0, 5 - media.length);
-    const uploads = await Promise.all(files.map(async file => {
-      const form = new FormData(); form.append('file', file);
+    const rawFiles = Array.from(e.target.files).slice(0, 5 - media.length);
+    const uploads = await Promise.all(rawFiles.map(async rawFile => {
       try {
+        const file = await compressImage(rawFile);
+        const form = new FormData(); form.append('file', file);
         const API = import.meta.env.VITE_API_URL || 'https://dob-live-api.onrender.com';
         const token = await window.__clerkGetToken?.() || '';
         const res = await fetch(`${API}/api/patrols/media/upload`, { method: 'POST', body: form, headers: { Authorization: `Bearer ${token}` } });
-        const data = await res.json(); return { url: data.url, name: file.name, type: file.type };
+        const data = await res.json(); return { url: data.url, name: rawFile.name, type: rawFile.type };
       } catch { return null; }
     }));
     setMedia(prev => [...prev, ...uploads.filter(Boolean)].slice(0, 5));

@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { MapPinIcon, ClipboardDocumentListIcon } from '@heroicons/react/24/outline';
 import { LOG_TYPE_CONFIG } from '../lib/constants';
+import { compressImage } from '../lib/imageUtils';
 
 // ── Types config ─────────────────────────────────────────────────────────────
 const HIGH_PRIORITY = [
@@ -107,12 +108,13 @@ function LogEntryScreen({ user, site, shift }) {
     setUploadingMedia(true);
     const token = await window.__clerkGetToken?.() || '';
     const uploads = [];
-    for (const file of Array.from(files)) {
-      const fd = new FormData(); fd.append('file', file);
+    for (const rawFile of Array.from(files)) {
       try {
+        const file = await compressImage(rawFile);
+        const fd = new FormData(); fd.append('file', file);
         const r = await fetch(`${API}/api/patrols/media/upload`, { method:'POST', body:fd, headers:{ Authorization:`Bearer ${token}` } });
         const d = await r.json();
-        if (d.url) uploads.push({ url:d.url, name:file.name, type:file.type });
+        if (d.url) uploads.push({ url:d.url, name:rawFile.name, type:rawFile.type });
       } catch {}
     }
     f('media', [...form.media, ...uploads]);
