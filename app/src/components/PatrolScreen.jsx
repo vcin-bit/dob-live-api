@@ -499,7 +499,7 @@ function AddCheckpointModal({ currentPos, onSave, onClose }) {
   }
 
   function save() {
-    if (!name.trim() || !whatToLookFor.trim()) return;
+    if (!name.trim()) return;
     onSave({
       name: name.trim(),
       what_to_look_for: whatToLookFor.trim(),
@@ -527,7 +527,7 @@ function AddCheckpointModal({ currentPos, onSave, onClose }) {
           </div>
 
           <div style={{marginBottom:'10px'}}>
-            <div style={{fontSize:'10px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'5px'}}>What to look for *</div>
+            <div style={{fontSize:'10px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'5px'}}>What to look for</div>
             <textarea value={whatToLookFor} onChange={e => setWhatToLookFor(e.target.value)} rows={3}
               placeholder='e.g. "Check gate is padlocked, no signs of forced entry, no vehicles parked against fence"'
               style={{width:'100%',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',padding:'9px 11px',fontSize:'13px',color:'#fff',resize:'none',boxSizing:'border-box',fontFamily:'inherit'}} />
@@ -544,8 +544,8 @@ function AddCheckpointModal({ currentPos, onSave, onClose }) {
             </div>
           </div>
 
-          <button onClick={save} disabled={!name.trim() || !whatToLookFor.trim()}
-            style={{width:'100%',padding:'14px',background:'#a78bfa',border:'none',borderRadius:'10px',color:'#0b1222',fontSize:'14px',fontWeight:700,cursor:'pointer',opacity:(!name.trim()||!whatToLookFor.trim())?0.5:1}}>
+          <button onClick={save} disabled={!name.trim()}
+            style={{width:'100%',padding:'14px',background:'#a78bfa',border:'none',borderRadius:'10px',color:'#0b1222',fontSize:'14px',fontWeight:700,cursor:'pointer',opacity:!name.trim()?0.5:1}}>
             Save Checkpoint
           </button>
         </div>

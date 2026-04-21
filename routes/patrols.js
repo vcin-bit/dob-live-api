@@ -35,7 +35,8 @@ router.post('/routes', authenticate, async (req, res, next) => {
     if (checkpoints?.length) {
       const rows = checkpoints.map((cp, i) => ({
         route_id: route.id, name: cp.name, instructions: cp.instructions || '',
-        order_index: i, lat: cp.lat || null, lng: cp.lng || null,
+        order_index: cp.order_index ?? i, lat: cp.lat || null, lng: cp.lng || null,
+        image_url: cp.image_url || null, what_to_look_for: cp.what_to_look_for || null,
       }));
       await supabase.from('named_patrol_checkpoints').insert(rows);
     }
@@ -58,7 +59,8 @@ router.put('/routes/:id', authenticate, async (req, res, next) => {
     if (checkpoints?.length) {
       const rows = checkpoints.map((cp, i) => ({
         route_id: req.params.id, name: cp.name, instructions: cp.instructions || '',
-        order_index: i, lat: cp.lat || null, lng: cp.lng || null,
+        order_index: cp.order_index ?? i, lat: cp.lat || null, lng: cp.lng || null,
+        image_url: cp.image_url || null, what_to_look_for: cp.what_to_look_for || null,
       }));
       await supabase.from('named_patrol_checkpoints').insert(rows);
     }
