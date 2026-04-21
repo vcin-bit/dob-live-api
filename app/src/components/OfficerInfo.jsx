@@ -139,6 +139,7 @@ function OfficerNavigation({ onSignOut }) {
           Sign Out
         </button>
       </nav>
+      <div style={{textAlign:'center',padding:'2px 0',fontSize:'9px',color:'rgba(255,255,255,0.12)'}}>{typeof __APP_VERSION__ !== 'undefined' ? `v ${__APP_VERSION__}` : ''}</div>
     </>
   );
 }
