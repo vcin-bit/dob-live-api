@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { MapPinIcon, ClipboardDocumentListIcon } from '@heroicons/react/24/outline';
 import { LOG_TYPE_CONFIG } from '../lib/constants';
 import { compressImage, isImage } from '../lib/imageUtils';
+import PhotoPickerModal from './PhotoPickerModal';
 
 // ── Types config ─────────────────────────────────────────────────────────────
 const HIGH_PRIORITY = [
@@ -104,12 +105,10 @@ function LogEntryScreen({ user, site, shift }) {
   }
 
   // Media upload
-  const olPhotoRef = useRef(null);
-  const olGalleryRef = useRef(null);
-  const olUploadCb = useRef(null);
+  const [showPhotoPicker, setShowPhotoPicker] = useState(false);
 
   async function uploadMedia(filesInput) {
-    const files = filesInput instanceof FileList ? Array.from(filesInput) : Array.from(filesInput || []);
+    const files = Array.isArray(filesInput) ? filesInput : Array.from(filesInput || []);
     if (!files.length) return;
     setUploadingMedia(true);
     const token = await window.__clerkGetToken?.() || '';
@@ -418,15 +417,12 @@ function LogEntryScreen({ user, site, shift }) {
             </div>
           ))}
         </div>
-        {/* Root-level file inputs outside any modal */}
-        <input type="file" accept="image/*" capture="environment" style={{position:'absolute',top:'-9999px'}} ref={olPhotoRef} onChange={e => { uploadMedia(e.target.files); e.target.value = ''; }} />
-        <input type="file" accept="image/*" multiple style={{position:'absolute',top:'-9999px'}} ref={olGalleryRef} onChange={e => { uploadMedia(e.target.files); e.target.value = ''; }} />
         {form.media.length < 5 && (
           <div style={{display:'flex',gap:'6px',marginBottom:'20px'}}>
-            <button onClick={() => olPhotoRef.current?.click()} style={{cursor:'pointer',padding:'8px 14px',background:'rgba(255,255,255,0.06)',border:'0.5px solid rgba(255,255,255,0.12)',borderRadius:'8px',fontSize:'11px',color:'rgba(255,255,255,0.7)'}}>Take Photo</button>
-            <button onClick={() => olGalleryRef.current?.click()} style={{cursor:'pointer',padding:'8px 14px',background:'rgba(255,255,255,0.06)',border:'0.5px solid rgba(255,255,255,0.12)',borderRadius:'8px',fontSize:'11px',color:'rgba(255,255,255,0.7)'}}>From Gallery</button>
+            <button onClick={() => setShowPhotoPicker(true)} style={{cursor:'pointer',padding:'8px 14px',background:'rgba(255,255,255,0.06)',border:'0.5px solid rgba(255,255,255,0.12)',borderRadius:'8px',fontSize:'11px',color:'rgba(255,255,255,0.7)'}}>Add Photo</button>
           </div>
         )}
+        <PhotoPickerModal open={showPhotoPicker} onClose={() => setShowPhotoPicker(false)} onFilesSelected={uploadMedia} />
 
         {/* Submit */}
         <button onClick={async () => {

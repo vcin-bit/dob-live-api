@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { compressImage, isImage } from '../lib/imageUtils';
+import PhotoPickerModal from './PhotoPickerModal';
 
 async function fetchW3W(lat, lng) {
   const key = import.meta.env.VITE_W3W_API_KEY;
@@ -13,14 +14,9 @@ async function fetchW3W(lat, lng) {
   } catch { return null; }
 }
 
-// Shared photo picker — rendered outside all modals at root level
-const photoCallback = { current: null };
-
 export default function PatrolScreen({ user, site, shift }) {
   const navigate = useNavigate();
   const watchRef = useRef(null);
-  const rootPhotoRef = useRef(null);
-  const rootGalleryRef = useRef(null);
 
   const [route, setRoute] = useState(null);
   const [session, setSession] = useState(null);
@@ -196,25 +192,8 @@ export default function PatrolScreen({ user, site, shift }) {
       onClose={() => { setPlannerMode(false); reloadRoute(); }} />;
   }
 
-  function triggerPhoto(mode, cb) {
-    photoCallback.current = cb;
-    if (mode === 'camera') rootPhotoRef.current?.click();
-    else rootGalleryRef.current?.click();
-  }
-
-  function onRootFileChange(e) {
-    if (photoCallback.current && e.target.files?.length) {
-      photoCallback.current(e.target.files);
-    }
-    photoCallback.current = null;
-    e.target.value = '';
-  }
-
   return (
-    <div style={{display:'flex',flexDirection:'column',height:'100vh',background:'#0b1222',overflow:'hidden'}}>
-      {/* Root-level file inputs — outside all position:fixed modals */}
-      <input type="file" accept="image/*" capture="environment" style={{position:'absolute',top:'-9999px'}} ref={rootPhotoRef} onChange={onRootFileChange} />
-      <input type="file" accept="image/*" multiple style={{position:'absolute',top:'-9999px'}} ref={rootGalleryRef} onChange={onRootFileChange} />
+    <div style={{display:'flex',flexDirection:'column',height:'100vh',background:'#0b1222',overflow:'hidden',position:'relative'}}>
       {/* Header */}
       <div style={{background:'#0f1929',padding:'10px 14px',display:'flex',alignItems:'center',justifyContent:'space-between',borderBottom:'1px solid rgba(255,255,255,0.06)',flexShrink:0}}>
         <div>
@@ -378,9 +357,9 @@ export default function PatrolScreen({ user, site, shift }) {
           </div>
         </div>
       )}
-      {showCheckpointModal && <CheckpointModal site={site} session={session} currentPos={currentPos} route={route} isRoutePlanner={isRoutePlanner} triggerPhoto={triggerPhoto} onClose={() => setShowCheckpointModal(false)} onSaved={() => { setShowCheckpointModal(false); setCheckpointSaving(true); setTimeout(() => setCheckpointSaving(false), 3000); }} />}
-      {showReport && <ReportModal user={user} site={site} session={session} triggerPhoto={triggerPhoto} onClose={() => setShowReport(false)} />}
-      {showOccurrence && <OccurrenceModal site={site} shift={shift} currentPos={currentPos} triggerPhoto={triggerPhoto} onClose={() => setShowOccurrence(false)} />}
+      {showCheckpointModal && <CheckpointModal site={site} session={session} currentPos={currentPos} route={route} isRoutePlanner={isRoutePlanner} onClose={() => setShowCheckpointModal(false)} onSaved={() => { setShowCheckpointModal(false); setCheckpointSaving(true); setTimeout(() => setCheckpointSaving(false), 3000); }} />}
+      {showReport && <ReportModal user={user} site={site} session={session} onClose={() => setShowReport(false)} />}
+      {showOccurrence && <OccurrenceModal site={site} shift={shift} currentPos={currentPos} onClose={() => setShowOccurrence(false)} />}
     </div>
   );
 }
@@ -509,9 +488,10 @@ function AddCheckpointModal({ currentPos, onSave, onClose }) {
   const [whatToLookFor, setWhatToLookFor] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [showPhotoPicker, setShowPhotoPicker] = useState(false);
 
-  async function handlePhoto(e) {
-    const rawFile = e.target.files?.[0];
+  async function handlePhoto(files) {
+    const rawFile = files?.[0];
     if (!rawFile) return;
     setUploading(true);
     try {
@@ -567,12 +547,10 @@ function AddCheckpointModal({ currentPos, onSave, onClose }) {
                 </div>
               )}
               {!imageUrl && !uploading && (
-                <div style={{display:'flex',gap:'6px'}}>
-                  <label style={{cursor:'pointer',padding:'8px 14px',background:'rgba(255,255,255,0.06)',border:'0.5px solid rgba(255,255,255,0.12)',borderRadius:'8px',fontSize:'11px',color:'rgba(255,255,255,0.7)'}}>Take Photo<input type="file" accept="image/*" capture="environment" multiple style={{display:'none'}} onChange={handlePhoto} /></label>
-                  <label style={{cursor:'pointer',padding:'8px 14px',background:'rgba(255,255,255,0.06)',border:'0.5px solid rgba(255,255,255,0.12)',borderRadius:'8px',fontSize:'11px',color:'rgba(255,255,255,0.7)'}}>From Gallery<input type="file" accept="image/*" multiple style={{display:'none'}} onChange={handlePhoto} /></label>
-                </div>
+                <button onClick={() => setShowPhotoPicker(true)} style={{cursor:'pointer',padding:'8px 14px',background:'rgba(255,255,255,0.06)',border:'0.5px solid rgba(255,255,255,0.12)',borderRadius:'8px',fontSize:'11px',color:'rgba(255,255,255,0.7)'}}>Add Photo</button>
               )}
               {uploading && <span style={{fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>Uploading...</span>}
+              <PhotoPickerModal open={showPhotoPicker} onClose={() => setShowPhotoPicker(false)} onFilesSelected={handlePhoto} />
             </div>
           </div>
 
@@ -587,7 +565,8 @@ function AddCheckpointModal({ currentPos, onSave, onClose }) {
 }
 
 // ── Checkpoint Log Modal ─────────────────────────────────────────────────────
-function CheckpointModal({ site, session, currentPos, route, isRoutePlanner, triggerPhoto, onClose, onSaved }) {
+function CheckpointModal({ site, session, currentPos, route, isRoutePlanner, onClose, onSaved }) {
+  const [showPhotoPicker, setShowPhotoPicker] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [savePermanent, setSavePermanent] = useState(false);
@@ -602,7 +581,7 @@ function CheckpointModal({ site, session, currentPos, route, isRoutePlanner, tri
 
   const [uploadError, setUploadError] = useState('');
   async function uploadPhoto(files) {
-    const rawFile = files instanceof FileList ? files[0] : files?.[0];
+    const rawFile = Array.isArray(files) ? files[0] : files?.[0];
     if (!rawFile) return;
     setUploadError('');
     setUploading(true);
@@ -661,14 +640,12 @@ function CheckpointModal({ site, session, currentPos, route, isRoutePlanner, tri
                   <button onClick={() => setPhotoUrl('')} style={{position:'absolute',top:-6,right:-6,width:18,height:18,background:'rgba(239,68,68,0.9)',borderRadius:'50%',border:'none',color:'#fff',fontSize:'11px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>x</button>
                 </div>
               )}
-              {!photoUrl && !uploading && triggerPhoto && (
-                <div style={{display:'flex',gap:'6px'}}>
-                  <button onClick={() => triggerPhoto('camera', uploadPhoto)} style={{cursor:'pointer',padding:'8px 14px',background:'rgba(255,255,255,0.06)',border:'0.5px solid rgba(255,255,255,0.12)',borderRadius:'8px',fontSize:'11px',color:'rgba(255,255,255,0.7)'}}>Take Photo</button>
-                  <button onClick={() => triggerPhoto('gallery', uploadPhoto)} style={{cursor:'pointer',padding:'8px 14px',background:'rgba(255,255,255,0.06)',border:'0.5px solid rgba(255,255,255,0.12)',borderRadius:'8px',fontSize:'11px',color:'rgba(255,255,255,0.7)'}}>From Gallery</button>
-                </div>
+              {!photoUrl && !uploading && (
+                <button onClick={() => setShowPhotoPicker(true)} style={{cursor:'pointer',padding:'8px 14px',background:'rgba(255,255,255,0.06)',border:'0.5px solid rgba(255,255,255,0.12)',borderRadius:'8px',fontSize:'11px',color:'rgba(255,255,255,0.7)'}}>Add Photo</button>
               )}
               {uploading && <span style={{fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>Uploading...</span>}
               {uploadError && <span style={{fontSize:'11px',color:'#ef4444'}}>{uploadError}</span>}
+              <PhotoPickerModal open={showPhotoPicker} onClose={() => setShowPhotoPicker(false)} onFilesSelected={uploadPhoto} />
             </div>
           </div>
           {isRoutePlanner && route?.id && currentPos && (
@@ -687,7 +664,8 @@ function CheckpointModal({ site, session, currentPos, route, isRoutePlanner, tri
 }
 
 // ── Report Modal ─────────────────────────────────────────────────────────────
-function ReportModal({ user, site, session, triggerPhoto, onClose }) {
+function ReportModal({ user, site, session, onClose }) {
+  const [showPhotoPicker, setShowPhotoPicker] = useState(false);
   const [type, setType] = useState('INCIDENT');
   const [notes, setNotes] = useState('');
   const [clientReportable, setClientReportable] = useState(false);
@@ -746,9 +724,9 @@ function ReportModal({ user, site, session, triggerPhoto, onClose }) {
             {media.map((m, i) => (<div key={i} style={{width:56,height:56,borderRadius:'8px',background:'#1a2535',border:'1px solid rgba(255,255,255,0.1)',overflow:'hidden',position:'relative'}}>{m.type?.startsWith('image') ? <img src={m.url} style={{width:'100%',height:'100%',objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'10px',color:'rgba(255,255,255,0.4)'}}>video</div>}<button onClick={() => setMedia(p => p.filter((_,j)=>j!==i))} style={{position:'absolute',top:1,right:1,width:16,height:16,background:'rgba(239,68,68,0.9)',borderRadius:'50%',border:'none',color:'#fff',fontSize:10,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>x</button></div>))}
           </div>
           <div style={{display:'flex',gap:'6px',marginBottom:'14px'}}>
-            <button onClick={() => triggerPhoto('camera', handleMedia)} style={{cursor:'pointer',padding:'8px 14px',background:'rgba(255,255,255,0.06)',border:'0.5px solid rgba(255,255,255,0.12)',borderRadius:'8px',fontSize:'11px',color:'rgba(255,255,255,0.7)'}}>Take Photo</button>
-            <button onClick={() => triggerPhoto('gallery', handleMedia)} style={{cursor:'pointer',padding:'8px 14px',background:'rgba(255,255,255,0.06)',border:'0.5px solid rgba(255,255,255,0.12)',borderRadius:'8px',fontSize:'11px',color:'rgba(255,255,255,0.7)'}}>From Gallery</button>
+            <button onClick={() => setShowPhotoPicker(true)} style={{cursor:'pointer',padding:'8px 14px',background:'rgba(255,255,255,0.06)',border:'0.5px solid rgba(255,255,255,0.12)',borderRadius:'8px',fontSize:'11px',color:'rgba(255,255,255,0.7)'}}>Add Photo</button>
           </div>
+          <PhotoPickerModal open={showPhotoPicker} onClose={() => setShowPhotoPicker(false)} onFilesSelected={handleMedia} />
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'11px 13px',background:clientReportable?'rgba(59,130,246,0.07)':'rgba(255,255,255,0.03)',border:`1px solid ${clientReportable?'rgba(59,130,246,0.25)':'rgba(255,255,255,0.07)'}`,borderRadius:'10px',marginBottom:'14px',cursor:'pointer'}} onClick={() => setClientReportable(p => !p)}>
             <div><div style={{fontSize:'13px',fontWeight:600,color:'#fff'}}>Report to client</div><div style={{fontSize:'11px',color:'rgba(255,255,255,0.35)',marginTop:'1px'}}>{clientReportable ? 'Visible in client portal + ops' : 'Ops only'}</div></div>
             <div style={{width:'38px',height:'22px',background:clientReportable?'#3b82f6':'rgba(255,255,255,0.1)',borderRadius:'999px',position:'relative',transition:'background 0.2s',flexShrink:0}}><div style={{position:'absolute',top:3,left:clientReportable?'auto':'3px',right:clientReportable?'3px':'auto',width:16,height:16,background:'#fff',borderRadius:'50%',transition:'all 0.2s'}} /></div>
@@ -769,7 +747,8 @@ const SERIOUS_CATEGORIES = [
 ];
 const STANDARD_CATEGORIES = ['Abandoned Vehicle','Fly Tipping','H&S Hazard','Unsecured Building/Door','Criminal Damage','Trespass','Theft','Other'];
 
-function OccurrenceModal({ site, shift, currentPos, triggerPhoto, onClose }) {
+function OccurrenceModal({ site, shift, currentPos, onClose }) {
+  const [showPhotoPicker, setShowPhotoPicker] = useState(false);
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
   const [media, setMedia] = useState([]);
@@ -879,10 +858,10 @@ function OccurrenceModal({ site, shift, currentPos, triggerPhoto, onClose }) {
           </div>
           {media.length < 5 && (
             <div style={{display:'flex',gap:'6px',marginBottom:'14px'}}>
-              <button onClick={() => triggerPhoto('camera', handleMedia)} style={{cursor:'pointer',padding:'8px 14px',background:'rgba(255,255,255,0.06)',border:'0.5px solid rgba(255,255,255,0.12)',borderRadius:'8px',fontSize:'11px',color:'rgba(255,255,255,0.7)'}}>Take Photo</button>
-              <button onClick={() => triggerPhoto('gallery', handleMedia)} style={{cursor:'pointer',padding:'8px 14px',background:'rgba(255,255,255,0.06)',border:'0.5px solid rgba(255,255,255,0.12)',borderRadius:'8px',fontSize:'11px',color:'rgba(255,255,255,0.7)'}}>From Gallery</button>
+              <button onClick={() => setShowPhotoPicker(true)} style={{cursor:'pointer',padding:'8px 14px',background:'rgba(255,255,255,0.06)',border:'0.5px solid rgba(255,255,255,0.12)',borderRadius:'8px',fontSize:'11px',color:'rgba(255,255,255,0.7)'}}>Add Photo</button>
             </div>
           )}
+          <PhotoPickerModal open={showPhotoPicker} onClose={() => setShowPhotoPicker(false)} onFilesSelected={handleMedia} />
 
           {/* Submit */}
           <div style={{display:'flex',gap:'8px'}}>
