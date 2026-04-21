@@ -13,24 +13,6 @@ async function fetchW3W(lat, lng) {
   } catch { return null; }
 }
 
-// Global file picker — lives outside modals to avoid iOS Chrome camera bug
-const globalFileInput = { resolve: null };
-function pickFile() {
-  return new Promise(resolve => {
-    let input = document.getElementById('dob-global-file-input');
-    if (!input) {
-      input = document.createElement('input');
-      input.id = 'dob-global-file-input';
-      input.type = 'file';
-      input.style.display = 'none';
-      document.body.appendChild(input);
-    }
-    input.value = '';
-    input.onchange = () => resolve(input.files?.[0] || null);
-    input.click();
-  });
-}
-
 export default function PatrolScreen({ user, site, shift }) {
   const navigate = useNavigate();
   const watchRef = useRef(null);
@@ -505,13 +487,15 @@ function AddCheckpointModal({ currentPos, onSave, onClose }) {
   const [whatToLookFor, setWhatToLookFor] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [uploading, setUploading] = useState(false);
+  const photoRef = useRef(null);
+  const galleryRef = useRef(null);
 
-  async function uploadImage() {
-    const rawFile = await pickFile();
+  async function handlePhoto(e) {
+    const rawFile = e.target.files?.[0];
     if (!rawFile) return;
     setUploading(true);
     try {
-      const file = await compressImage(rawFile);
+      const file = isImage(rawFile) ? await compressImage(rawFile) : rawFile;
       const res = await api.patrols.uploadCheckpointImage(file);
       setImageUrl(res.url);
     } catch (err) { console.error('Image upload failed:', err.message); }
@@ -562,12 +546,15 @@ function AddCheckpointModal({ currentPos, onSave, onClose }) {
                   <button onClick={() => setImageUrl('')} style={{position:'absolute',top:-6,right:-6,width:18,height:18,background:'rgba(239,68,68,0.9)',borderRadius:'50%',border:'none',color:'#fff',fontSize:'11px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>x</button>
                 </div>
               )}
-              {!imageUrl && (
-                <button onClick={uploadImage} disabled={uploading}
-                  style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>
-                  {uploading ? 'Uploading...' : 'Add Photo'}
-                </button>
+              {!imageUrl && !uploading && (
+                <div style={{display:'flex',gap:'6px'}}>
+                  <input type="file" accept="image/*" capture="environment" style={{display:'none'}} ref={photoRef} onChange={handlePhoto} />
+                  <button onClick={() => photoRef.current.click()} style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Take Photo</button>
+                  <input type="file" accept="image/*" style={{display:'none'}} ref={galleryRef} onChange={handlePhoto} />
+                  <button onClick={() => galleryRef.current.click()} style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>From Gallery</button>
+                </div>
               )}
+              {uploading && <span style={{fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>Uploading...</span>}
             </div>
           </div>
 
@@ -583,6 +570,8 @@ function AddCheckpointModal({ currentPos, onSave, onClose }) {
 
 // ── Checkpoint Log Modal ─────────────────────────────────────────────────────
 function CheckpointModal({ site, session, currentPos, route, isRoutePlanner, onClose, onSaved }) {
+  const cpPhotoRef = useRef(null);
+  const cpGalleryRef = useRef(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [savePermanent, setSavePermanent] = useState(false);
@@ -595,12 +584,12 @@ function CheckpointModal({ site, session, currentPos, route, isRoutePlanner, onC
     if (currentPos?.lat) fetchW3W(currentPos.lat, currentPos.lng).then(setW3w);
   }, [currentPos?.lat, currentPos?.lng]);
 
-  async function uploadPhoto() {
-    const rawFile = await pickFile();
+  async function uploadPhoto(e) {
+    const rawFile = e.target.files?.[0];
     if (!rawFile) return;
     setUploading(true);
     try {
-      const file = await compressImage(rawFile);
+      const file = isImage(rawFile) ? await compressImage(rawFile) : rawFile;
       const fd = new FormData(); fd.append('file', file);
       const API = import.meta.env.VITE_API_URL || 'https://dob-live-api.onrender.com';
       const token = await window.__clerkGetToken?.() || '';
@@ -654,12 +643,15 @@ function CheckpointModal({ site, session, currentPos, route, isRoutePlanner, onC
                   <button onClick={() => setPhotoUrl('')} style={{position:'absolute',top:-6,right:-6,width:18,height:18,background:'rgba(239,68,68,0.9)',borderRadius:'50%',border:'none',color:'#fff',fontSize:'11px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>x</button>
                 </div>
               )}
-              {!photoUrl && (
-                <button onClick={uploadPhoto} disabled={uploading}
-                  style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>
-                  {uploading ? 'Uploading...' : 'Add Photo'}
-                </button>
+              {!photoUrl && !uploading && (
+                <div style={{display:'flex',gap:'6px'}}>
+                  <input type="file" accept="image/*" capture="environment" style={{display:'none'}} ref={cpPhotoRef} onChange={uploadPhoto} />
+                  <button onClick={() => cpPhotoRef.current.click()} style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Take Photo</button>
+                  <input type="file" accept="image/*" style={{display:'none'}} ref={cpGalleryRef} onChange={uploadPhoto} />
+                  <button onClick={() => cpGalleryRef.current.click()} style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>From Gallery</button>
+                </div>
               )}
+              {uploading && <span style={{fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>Uploading...</span>}
             </div>
           </div>
           {isRoutePlanner && route?.id && currentPos && (
@@ -679,6 +671,8 @@ function CheckpointModal({ site, session, currentPos, route, isRoutePlanner, onC
 
 // ── Report Modal ─────────────────────────────────────────────────────────────
 function ReportModal({ user, site, session, onClose }) {
+  const rmPhotoRef = useRef(null);
+  const rmGalleryRef = useRef(null);
   const [type, setType] = useState('INCIDENT');
   const [notes, setNotes] = useState('');
   const [clientReportable, setClientReportable] = useState(false);
@@ -706,19 +700,6 @@ function ReportModal({ user, site, session, onClose }) {
       } catch { return null; }
     }));
     setMedia(prev => [...prev, ...uploads.filter(Boolean)]);
-  }
-  async function addPhoto() {
-    const rawFile = await pickFile();
-    if (!rawFile) return;
-    try {
-      const file = isImage(rawFile) ? await compressImage(rawFile) : rawFile;
-      const form = new FormData(); form.append('file', file);
-      const API = import.meta.env.VITE_API_URL || 'https://dob-live-api.onrender.com';
-      const token = await window.__clerkGetToken?.() || '';
-      const res = await fetch(`${API}/api/patrols/media/upload`, { method: 'POST', body: form, headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      if (data.url) setMedia(prev => [...prev, { url: data.url, name: rawFile.name, type: rawFile.type }]);
-    } catch {}
   }
   async function submit() {
     if (!notes.trim()) { alert('Please add a description'); return; }
@@ -749,8 +730,10 @@ function ReportModal({ user, site, session, onClose }) {
             {media.map((m, i) => (<div key={i} style={{width:56,height:56,borderRadius:'8px',background:'#1a2535',border:'1px solid rgba(255,255,255,0.1)',overflow:'hidden',position:'relative'}}>{m.type?.startsWith('image') ? <img src={m.url} style={{width:'100%',height:'100%',objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'10px',color:'rgba(255,255,255,0.4)'}}>video</div>}<button onClick={() => setMedia(p => p.filter((_,j)=>j!==i))} style={{position:'absolute',top:1,right:1,width:16,height:16,background:'rgba(239,68,68,0.9)',borderRadius:'50%',border:'none',color:'#fff',fontSize:10,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>x</button></div>))}
           </div>
           <div style={{display:'flex',gap:'6px',marginBottom:'14px'}}>
-            <button onClick={addPhoto} style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Add Photo</button>
-            <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Add Video<input type="file" accept="video/*" style={{display:'none'}} onChange={handleMedia} /></label>
+            <input type="file" accept="image/*" capture="environment" style={{display:'none'}} ref={rmPhotoRef} onChange={handleMedia} />
+            <button onClick={() => rmPhotoRef.current.click()} style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Take Photo</button>
+            <input type="file" accept="image/*" style={{display:'none'}} ref={rmGalleryRef} onChange={handleMedia} />
+            <button onClick={() => rmGalleryRef.current.click()} style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>From Gallery</button>
           </div>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'11px 13px',background:clientReportable?'rgba(59,130,246,0.07)':'rgba(255,255,255,0.03)',border:`1px solid ${clientReportable?'rgba(59,130,246,0.25)':'rgba(255,255,255,0.07)'}`,borderRadius:'10px',marginBottom:'14px',cursor:'pointer'}} onClick={() => setClientReportable(p => !p)}>
             <div><div style={{fontSize:'13px',fontWeight:600,color:'#fff'}}>Report to client</div><div style={{fontSize:'11px',color:'rgba(255,255,255,0.35)',marginTop:'1px'}}>{clientReportable ? 'Visible in client portal + ops' : 'Ops only'}</div></div>
@@ -773,6 +756,8 @@ const SERIOUS_CATEGORIES = [
 const STANDARD_CATEGORIES = ['Abandoned Vehicle','Fly Tipping','H&S Hazard','Unsecured Building/Door','Criminal Damage','Trespass','Theft','Other'];
 
 function OccurrenceModal({ site, shift, currentPos, onClose }) {
+  const ocPhotoRef = useRef(null);
+  const ocGalleryRef = useRef(null);
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
   const [media, setMedia] = useState([]);
@@ -794,20 +779,7 @@ function OccurrenceModal({ site, shift, currentPos, onClose }) {
     }));
     setMedia(prev => [...prev, ...uploads.filter(Boolean)].slice(0, 5));
   }
-  async function addPhoto() {
-    if (media.length >= 5) return;
-    const rawFile = await pickFile();
-    if (!rawFile) return;
-    try {
-      const file = isImage(rawFile) ? await compressImage(rawFile) : rawFile;
-      const form = new FormData(); form.append('file', file);
-      const API = import.meta.env.VITE_API_URL || 'https://dob-live-api.onrender.com';
-      const token = await window.__clerkGetToken?.() || '';
-      const res = await fetch(`${API}/api/patrols/media/upload`, { method: 'POST', body: form, headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      if (data.url) setMedia(prev => [...prev, { url: data.url, name: rawFile.name, type: rawFile.type }].slice(0, 5));
-    } catch {}
-  }
+
 
   async function submit() {
     if (!description.trim()) return;
@@ -893,8 +865,10 @@ function OccurrenceModal({ site, shift, currentPos, onClose }) {
           </div>
           {media.length < 5 && (
             <div style={{display:'flex',gap:'6px',marginBottom:'14px'}}>
-              <button onClick={addPhoto} style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Add Photo</button>
-              <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Add Video<input type="file" accept="video/*" style={{display:'none'}} onChange={handleMedia} /></label>
+              <input type="file" accept="image/*" capture="environment" style={{display:'none'}} ref={ocPhotoRef} onChange={handleMedia} />
+              <button onClick={() => ocPhotoRef.current.click()} style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Take Photo</button>
+              <input type="file" accept="image/*" style={{display:'none'}} ref={ocGalleryRef} onChange={handleMedia} />
+              <button onClick={() => ocGalleryRef.current.click()} style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>From Gallery</button>
             </div>
           )}
 

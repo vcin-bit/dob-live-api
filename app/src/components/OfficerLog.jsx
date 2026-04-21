@@ -413,14 +413,10 @@ function LogEntryScreen({ user, site, shift }) {
         </div>
         {form.media.length < 5 && (
           <div style={{display:'flex',gap:'6px',marginBottom:'20px'}}>
-            <button onClick={async () => {
-              let input = document.getElementById('dob-global-file-input');
-              if (!input) { input = document.createElement('input'); input.id = 'dob-global-file-input'; input.type = 'file'; input.style.display = 'none'; document.body.appendChild(input); }
-              input.value = '';
-              input.onchange = () => { if (input.files?.length) uploadMedia(input.files); };
-              input.click();
-            }} style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Add Photo</button>
-            <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Add Video<input type="file" accept="video/*" style={{display:'none'}} onChange={e=>uploadMedia(e.target.files)} /></label>
+            <input type="file" accept="image/*" capture="environment" style={{display:'none'}} id="ol-photo" onChange={e=>uploadMedia(e.target.files)} />
+            <button onClick={() => document.getElementById('ol-photo').click()} style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Take Photo</button>
+            <input type="file" accept="image/*" style={{display:'none'}} id="ol-gallery" onChange={e=>uploadMedia(e.target.files)} />
+            <button onClick={() => document.getElementById('ol-gallery').click()} style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>From Gallery</button>
           </div>
         )}
 
