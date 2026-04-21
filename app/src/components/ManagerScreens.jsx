@@ -664,49 +664,7 @@ function LogReview({ user }) {
 
 function ManagerLogCard({ log }) {
   const [expanded, setExpanded] = useState(false);
-  const [sessionData, setSessionData] = useState(null);
-  const [sessionLoading, setSessionLoading] = useState(false);
-  const trailMapRef = useRef(null);
-  const trailMapInstance = useRef(null);
-
-  // Fetch session when expanded and is a patrol log
-  useEffect(() => {
-    if (!expanded || !log.type_data?.patrol_session_id || sessionData) return;
-    setSessionLoading(true);
-    api.patrols.getSession(log.type_data.patrol_session_id)
-      .then(res => setSessionData(res.data))
-      .catch(() => {})
-      .finally(() => setSessionLoading(false));
-  }, [expanded]);
-
-  // Render trail map — load Leaflet if needed
-  useEffect(() => {
-    if (!sessionData?.gps_trail?.length || !trailMapRef.current || trailMapInstance.current) return;
-    function renderMap() {
-      if (!window.L || !trailMapRef.current) return;
-      const L = window.L;
-      const map = L.map(trailMapRef.current, { zoomControl: false, attributionControl: false });
-      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(map);
-      const trail = sessionData.gps_trail.filter(p => p.lat && p.lng).map(p => [p.lat, p.lng]);
-      if (trail.length > 0) {
-        L.polyline(trail, { color: '#3b82f6', weight: 3 }).addTo(map);
-        map.fitBounds(trail, { padding: [20, 20] });
-      }
-      trailMapInstance.current = map;
-    }
-    if (window.L) { renderMap(); }
-    else {
-      if (!document.getElementById('leaflet-css')) {
-        const link = document.createElement('link'); link.id = 'leaflet-css'; link.rel = 'stylesheet';
-        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; document.head.appendChild(link);
-      }
-      const script = document.createElement('script');
-      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-      script.onload = renderMap;
-      document.head.appendChild(script);
-    }
-    return () => { if (trailMapInstance.current) { trailMapInstance.current.remove(); trailMapInstance.current = null; } };
-  }, [sessionData]);
+  const [showPatrolDetail, setShowPatrolDetail] = useState(false);
 
   const typeMap = {
     PATROL:'PAT',INCIDENT:'INC',ALARM:'ALM',ACCESS:'ACC',VISITOR:'VIS',
@@ -715,15 +673,19 @@ function ManagerLogCard({ log }) {
   const code = typeMap[log.log_type] || (log.log_type?.slice(0,3) || 'LOG');
   const typeColors = { INCIDENT:'badge-danger', ALARM:'badge-warning', PATROL:'badge-blue', GENERAL:'badge-neutral' };
 
+  const isPatrolLog = log.log_type === 'PATROL' && log.type_data?.patrol_session_id;
+
   return (
-    <div style={{padding:'0.75rem',border:'1px solid var(--border)',borderRadius:'var(--radius)',marginBottom:'0.5rem'}}>
+    <>
+    <div onClick={() => isPatrolLog ? setShowPatrolDetail(true) : setExpanded(!expanded)}
+      style={{padding:'0.75rem',border:'1px solid var(--border)',borderRadius:'var(--radius)',marginBottom:'0.5rem',cursor:'pointer'}}>
       <div style={{display:'flex',alignItems:'flex-start',gap:'0.75rem'}}>
         <div style={{width:'2.25rem',height:'2.25rem',background:'var(--navy)',color:'#fff',borderRadius:'5px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.5625rem',fontWeight:700,letterSpacing:'0.03em',flexShrink:0}}>{code}</div>
         <div style={{flex:1,minWidth:0}}>
           <div style={{display:'flex',alignItems:'center',gap:'0.5rem',flexWrap:'wrap',marginBottom:'0.25rem'}}>
             <span style={{fontWeight:600,fontSize:'0.875rem'}}>{log.title || 'Log Entry'}</span>
             <span className={`badge ${typeColors[log.log_type]||'badge-neutral'}`}>{log.log_type}</span>
-            <span style={{fontSize:'0.75rem',color:'var(--text-2)'}}>{log.occurred_at ? new Date(log.occurred_at).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : ''}</span>
+            <span style={{fontSize:'0.75rem',color:'var(--text-2)'}}>{log.occurred_at ? new Date(log.occurred_at).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'}) : ''}</span>
           </div>
           <div style={{display:'flex',gap:'1rem',fontSize:'0.8125rem',color:'var(--text-2)',marginBottom:log.description?'0.375rem':0}}>
             {log.site && <span>{log.site.name}</span>}
@@ -734,41 +696,190 @@ function ManagerLogCard({ log }) {
               {expanded ? log.description : (log.description.length > 200 ? log.description.substring(0,200)+'...' : log.description)}
             </p>
           )}
-          {log.description?.length > 200 && (
-            <button onClick={() => setExpanded(!expanded)} style={{fontSize:'0.8125rem',color:'var(--blue)',background:'none',border:'none',cursor:'pointer',padding:'0.25rem 0',fontWeight:500}}>
-              {expanded ? 'Show less' : 'Show more'}
-            </button>
-          )}
-          {/* Patrol summary detail */}
-          {log.log_type === 'PATROL' && log.type_data?.patrol_session_id && expanded && (
-            <div style={{marginTop:'0.5rem',padding:'0.5rem 0.625rem',background:'var(--surface-2)',borderRadius:'6px',fontSize:'0.8125rem'}}>
-              <div style={{display:'flex',gap:'1rem',flexWrap:'wrap',color:'var(--text-2)',marginBottom:'0.25rem'}}>
-                {log.type_data.started_at && <span>Start: {new Date(log.type_data.started_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}</span>}
-                {log.type_data.ended_at && <span>End: {new Date(log.type_data.ended_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}</span>}
-                {log.type_data.duration_minutes != null && (
-                  <span>Duration: {log.type_data.duration_minutes >= 60 ? `${Math.floor(log.type_data.duration_minutes/60)}h ${log.type_data.duration_minutes%60}m` : `${log.type_data.duration_minutes}m`}</span>
-                )}
-              </div>
-              {log.type_data.checkpoints_completed?.length > 0 && (
-                <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginBottom:'0.25rem'}}>
-                  Checkpoints: {log.type_data.checkpoints_completed.map((cp, i) => (
-                    <span key={i}>{typeof cp === 'string' ? cp : cp.name || `#${i+1}`}{i < log.type_data.checkpoints_completed.length - 1 ? ', ' : ''}</span>
-                  ))}
-                </div>
-              )}
-              {sessionLoading && <div style={{fontSize:'0.75rem',color:'var(--text-3)'}}>Loading session detail...</div>}
-              {sessionData?.checkpoints_completed?.length > 0 && !log.type_data.checkpoints_completed?.length && (
-                <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginBottom:'0.25rem'}}>
-                  Checkpoints: {sessionData.checkpoints_completed.map((cp, i) => (
-                    <span key={i}>{typeof cp === 'object' ? (cp.name || `#${i+1}`) + (cp.timestamp ? ` (${new Date(cp.timestamp).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})})` : '') : cp}{i < sessionData.checkpoints_completed.length - 1 ? ', ' : ''}</span>
-                  ))}
-                </div>
-              )}
-              {sessionData?.gps_trail?.length > 0 && (
-                <div ref={trailMapRef} style={{width:'100%',height:'200px',borderRadius:'6px',marginTop:'0.5rem',border:'1px solid var(--border)'}} />
-              )}
+          {isPatrolLog && log.type_data.duration_minutes != null && (
+            <div style={{fontSize:'0.75rem',color:'var(--blue)',marginTop:'0.25rem'}}>
+              {log.type_data.duration_minutes >= 60 ? `${Math.floor(log.type_data.duration_minutes/60)}h ${log.type_data.duration_minutes%60}m` : `${log.type_data.duration_minutes}m`}
+              {' · '}{log.type_data.checkpoints_completed?.length || 0} checkpoints · Click for detail →
             </div>
           )}
+        </div>
+      </div>
+    </div>
+    {showPatrolDetail && <PatrolDetailModal log={log} onClose={() => setShowPatrolDetail(false)} />}
+    </>
+  );
+}
+
+// ── Patrol Detail Modal ──────────────────────────────────────────────────────
+function PatrolDetailModal({ log, onClose }) {
+  const [session, setSession] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const mapRef = useRef(null);
+  const mapInstance = useRef(null);
+
+  useEffect(() => {
+    if (!log.type_data?.patrol_session_id) return;
+    api.patrols.getSession(log.type_data.patrol_session_id)
+      .then(res => setSession(res.data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  // Render map when session loads
+  useEffect(() => {
+    if (!session || !mapRef.current || mapInstance.current) return;
+    function renderMap() {
+      if (!window.L || !mapRef.current) return;
+      const L = window.L;
+      const map = L.map(mapRef.current, { zoomControl: true, attributionControl: false });
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(map);
+      const allPoints = [];
+
+      // GPS trail
+      if (session.gps_trail?.length) {
+        const trail = session.gps_trail.filter(p => p.lat && p.lng).map(p => [p.lat, p.lng]);
+        if (trail.length > 0) {
+          L.polyline(trail, { color: '#3b82f6', weight: 3, opacity: 0.8 }).addTo(map);
+          // Start marker (green)
+          L.circleMarker(trail[0], { radius: 8, fillColor: '#22c55e', fillOpacity: 1, color: '#fff', weight: 2 }).addTo(map).bindPopup('Start');
+          // End marker (red)
+          L.circleMarker(trail[trail.length - 1], { radius: 8, fillColor: '#ef4444', fillOpacity: 1, color: '#fff', weight: 2 }).addTo(map).bindPopup('End');
+          allPoints.push(...trail);
+        }
+      }
+
+      // Checkpoint markers
+      if (session.checkpoints_completed?.length) {
+        session.checkpoints_completed.forEach((cp, i) => {
+          if (!cp.lat || !cp.lng) return;
+          const icon = L.divIcon({ html: `<div style="width:22px;height:22px;background:#a78bfa;border:2px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#0b1222">${i+1}</div>`, iconSize:[22,22], iconAnchor:[11,11] });
+          L.marker([cp.lat, cp.lng], { icon }).addTo(map).bindPopup(cp.name || `Checkpoint ${i+1}`);
+          allPoints.push([cp.lat, cp.lng]);
+        });
+      }
+
+      if (allPoints.length > 0) map.fitBounds(allPoints, { padding: [30, 30] });
+      else map.setView([52.48, -1.89], 14);
+      mapInstance.current = map;
+    }
+
+    if (window.L) { renderMap(); }
+    else {
+      if (!document.getElementById('leaflet-css')) {
+        const link = document.createElement('link'); link.id = 'leaflet-css'; link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; document.head.appendChild(link);
+      }
+      if (!document.getElementById('leaflet-js')) {
+        const script = document.createElement('script'); script.id = 'leaflet-js';
+        script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        script.onload = renderMap; document.head.appendChild(script);
+      } else { setTimeout(renderMap, 200); }
+    }
+    return () => { if (mapInstance.current) { mapInstance.current.remove(); mapInstance.current = null; } };
+  }, [session]);
+
+  // Calculate distance from GPS trail
+  function calcDistance(trail) {
+    if (!trail?.length || trail.length < 2) return null;
+    let total = 0;
+    for (let i = 1; i < trail.length; i++) {
+      const R = 6371000;
+      const dLat = (trail[i].lat - trail[i-1].lat) * Math.PI / 180;
+      const dLng = (trail[i].lng - trail[i-1].lng) * Math.PI / 180;
+      const a = Math.sin(dLat/2)**2 + Math.cos(trail[i-1].lat*Math.PI/180) * Math.cos(trail[i].lat*Math.PI/180) * Math.sin(dLng/2)**2;
+      total += R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+    return total;
+  }
+
+  const td = log.type_data || {};
+  const duration = td.duration_minutes;
+  const distMetres = session?.gps_trail ? calcDistance(session.gps_trail.filter(p => p.lat && p.lng)) : null;
+  const checkpoints = session?.checkpoints_completed || td.checkpoints_completed || [];
+  const fmtTime = t => t ? new Date(t).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', timeZone:'Europe/London' }) : '—';
+  const fmtDate = t => t ? new Date(t).toLocaleDateString('en-GB', { weekday:'short', day:'2-digit', month:'short', year:'numeric', timeZone:'Europe/London' }) : '—';
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{maxWidth:'700px',maxHeight:'90vh',overflowY:'auto'}} onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-title">Patrol Detail</div>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+
+        {/* Header */}
+        <div style={{display:'flex',gap:'1rem',flexWrap:'wrap',marginBottom:'1rem'}}>
+          <div>
+            <div style={{fontSize:'0.75rem',color:'var(--text-3)'}}>Officer</div>
+            <div style={{fontWeight:600}}>{log.officer ? `${log.officer.first_name} ${log.officer.last_name}` : '—'}</div>
+          </div>
+          <div>
+            <div style={{fontSize:'0.75rem',color:'var(--text-3)'}}>Site</div>
+            <div style={{fontWeight:600}}>{log.site?.name || '—'}</div>
+          </div>
+          <div>
+            <div style={{fontSize:'0.75rem',color:'var(--text-3)'}}>Date</div>
+            <div>{fmtDate(td.started_at)}</div>
+          </div>
+          <div>
+            <div style={{fontSize:'0.75rem',color:'var(--text-3)'}}>Time</div>
+            <div>{fmtTime(td.started_at)} → {fmtTime(td.ended_at)}</div>
+          </div>
+          <div>
+            <div style={{fontSize:'0.75rem',color:'var(--text-3)'}}>Duration</div>
+            <div style={{fontWeight:600}}>{duration != null ? (duration >= 60 ? `${Math.floor(duration/60)}h ${duration%60}m` : `${duration}m`) : '—'}</div>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div style={{display:'flex',gap:'0.75rem',marginBottom:'1rem'}}>
+          <div style={{flex:1,padding:'0.625rem',background:'var(--surface-2)',borderRadius:'6px',textAlign:'center'}}>
+            <div style={{fontSize:'1.25rem',fontWeight:700}}>{checkpoints.length}</div>
+            <div style={{fontSize:'0.6875rem',color:'var(--text-3)',textTransform:'uppercase'}}>Checkpoints</div>
+          </div>
+          {distMetres != null && (
+            <div style={{flex:1,padding:'0.625rem',background:'var(--surface-2)',borderRadius:'6px',textAlign:'center'}}>
+              <div style={{fontSize:'1.25rem',fontWeight:700}}>{distMetres >= 1000 ? `${(distMetres/1000).toFixed(1)}km` : `${Math.round(distMetres)}m`}</div>
+              <div style={{fontSize:'0.6875rem',color:'var(--text-3)',textTransform:'uppercase'}}>Distance</div>
+            </div>
+          )}
+          {session?.gps_trail?.length > 0 && (
+            <div style={{flex:1,padding:'0.625rem',background:'var(--surface-2)',borderRadius:'6px',textAlign:'center'}}>
+              <div style={{fontSize:'1.25rem',fontWeight:700}}>{session.gps_trail.length}</div>
+              <div style={{fontSize:'0.6875rem',color:'var(--text-3)',textTransform:'uppercase'}}>GPS Points</div>
+            </div>
+          )}
+        </div>
+
+        {/* Map */}
+        {loading ? (
+          <div style={{display:'flex',justifyContent:'center',padding:'2rem'}}><div className="spinner" /></div>
+        ) : (
+          <div ref={mapRef} style={{width:'100%',height:'350px',borderRadius:'8px',border:'1px solid var(--border)',marginBottom:'1rem'}} />
+        )}
+
+        {/* Checkpoints */}
+        {checkpoints.length > 0 && (
+          <div>
+            <div style={{fontSize:'0.75rem',fontWeight:700,color:'var(--text-3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.5rem'}}>Checkpoints Completed</div>
+            <div style={{display:'flex',flexDirection:'column',gap:'0.375rem'}}>
+              {checkpoints.map((cp, i) => (
+                <div key={i} style={{display:'flex',alignItems:'center',gap:'0.625rem',padding:'0.5rem 0.625rem',background:'var(--surface-2)',borderRadius:'6px'}}>
+                  <div style={{width:22,height:22,borderRadius:'50%',background:'#a78bfa',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'10px',fontWeight:700,color:'#0b1222',flexShrink:0}}>{i+1}</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:'0.8125rem',fontWeight:500}}>{typeof cp === 'object' ? cp.name || `Checkpoint ${i+1}` : cp}</div>
+                  </div>
+                  {typeof cp === 'object' && cp.timestamp && (
+                    <div style={{fontSize:'0.75rem',color:'var(--text-3)',flexShrink:0}}>{fmtTime(cp.timestamp)}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>Close</button>
         </div>
       </div>
     </div>
