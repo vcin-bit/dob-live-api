@@ -138,8 +138,8 @@ function OfficerNavigation({ onSignOut }) {
           <ArrowRightOnRectangleIcon style={{width:'1.25rem',height:'1.25rem'}} />
           Sign Out
         </button>
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',padding:'0.25rem 0',fontSize:'9px',color:'rgba(255,255,255,0.25)',minWidth:0,flex:'0 0 auto'}}>{typeof __APP_VERSION__ !== 'undefined' ? `v${__APP_VERSION__}` : ''}</div>
       </nav>
-      <div style={{textAlign:'center',padding:'4px 0',fontSize:'10px',color:'rgba(255,255,255,0.3)'}}>{typeof __APP_VERSION__ !== 'undefined' ? `v ${__APP_VERSION__}` : ''}</div>
     </>
   );
 }

@@ -4,6 +4,7 @@ import { execSync } from 'child_process'
 
 let commitHash = 'unknown';
 try { commitHash = execSync('git rev-parse --short HEAD').toString().trim(); } catch {}
+if (commitHash === 'unknown' && process.env.CF_PAGES_COMMIT_SHA) commitHash = process.env.CF_PAGES_COMMIT_SHA.slice(0, 7);
 
 export default defineConfig({
   plugins: [react()],
