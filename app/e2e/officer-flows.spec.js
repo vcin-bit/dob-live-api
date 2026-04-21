@@ -287,16 +287,12 @@ test.describe('Log Entry', () => {
     await expect(page.getByText('Shift Active')).toBeVisible({ timeout: 5000 });
 
     await page.getByText('Log Occurrence').click();
-    // Log Occurrence links to /log?type=GENERAL, skips step 1 — goes straight to step 2
-    await expect(page.getByText('WHAT HAPPENED')).toBeVisible({ timeout: 5000 });
+    // Log Occurrence links to /log?type=GENERAL — single page form
+    await expect(page.getByText('Description', { exact: false })).toBeVisible({ timeout: 5000 });
 
     await page.locator('textarea').first().fill('Routine perimeter check completed, all secure.');
 
-    await page.getByText('NEXT STEP').click();
-
-    await expect(page.getByText('Review & Submit')).toBeVisible({ timeout: 3000 });
-
-    await page.getByText(/SUBMIT.*REPORT/).click();
+    await page.getByRole('button', { name: 'LOG OCCURRENCE' }).click();
 
     await expect(page.getByText('Log Occurrence')).toBeVisible({ timeout: 5000 });
   });
@@ -424,14 +420,12 @@ test.describe('Log Entry Without Active Shift', () => {
     // Tap Log Occurrence — goes to /log?type=GENERAL, skips step 1
     await page.getByText('Log Occurrence').click();
 
-    // Should be on step 2 directly (GENERAL pre-selected)
-    await expect(page.getByText('WHAT HAPPENED')).toBeVisible({ timeout: 5000 });
+    // Single page GENERAL form
+    await expect(page.getByText('Description', { exact: false })).toBeVisible({ timeout: 5000 });
     await page.locator('textarea').first().fill('General observation logged without active shift.');
 
-    // Advance and submit
-    await page.getByText('NEXT STEP').click();
-    await expect(page.getByText('Review & Submit')).toBeVisible({ timeout: 3000 });
-    await page.getByText(/SUBMIT.*REPORT/).click();
+    // Submit directly
+    await page.getByRole('button', { name: 'LOG OCCURRENCE' }).click();
 
     // Should return to home without crashing
     await expect(page.getByText('Log Occurrence')).toBeVisible({ timeout: 5000 });
