@@ -403,21 +403,21 @@ function LogEntryScreen({ user, site, shift }) {
 
         {/* Photos */}
         <div style={{fontSize:'10px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'8px'}}>Photos / Video (optional) — max 5</div>
-        <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'20px'}}>
+        <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'8px'}}>
           {form.media.map((m, i) => (
-            <div key={i} style={{width:64,height:64,borderRadius:'8px',background:'#1a2535',border:'1px solid rgba(255,255,255,0.1)',overflow:'hidden',position:'relative'}}>
-              {m.type?.startsWith('image') ? <img src={m.url} style={{width:'100%',height:'100%',objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>video</div>}
-              <button onClick={() => f('media', form.media.filter((_,j)=>j!==i))} style={{position:'absolute',top:2,right:2,width:16,height:16,background:'rgba(239,68,68,0.8)',borderRadius:'50%',border:'none',color:'#fff',fontSize:10,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
+            <div key={i} style={{width:56,height:56,borderRadius:'8px',background:'#1a2535',border:'1px solid rgba(255,255,255,0.1)',overflow:'hidden',position:'relative'}}>
+              {m.type?.startsWith('image') ? <img src={m.url} style={{width:'100%',height:'100%',objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'10px',color:'rgba(255,255,255,0.4)'}}>video</div>}
+              <button onClick={() => f('media', form.media.filter((_,j)=>j!==i))} style={{position:'absolute',top:1,right:1,width:16,height:16,background:'rgba(239,68,68,0.9)',borderRadius:'50%',border:'none',color:'#fff',fontSize:10,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>x</button>
             </div>
           ))}
-          {form.media.length < 5 && (
-            <label style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>
-              <div style={{fontSize:'18px',color:'rgba(59,130,246,0.5)',lineHeight:1}}>+</div>
-              <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)'}}>Photo</div>
-              <input type="file" accept="image/*,video/*" multiple capture="environment" style={{display:'none'}} onChange={e=>uploadMedia(e.target.files)} />
-            </label>
-          )}
         </div>
+        {form.media.length < 5 && (
+          <div style={{display:'flex',gap:'6px',marginBottom:'20px'}}>
+            <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Take Photo<input type="file" accept="image/*" capture="environment" style={{display:'none'}} onChange={e=>uploadMedia(e.target.files)} /></label>
+            <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>From Gallery<input type="file" accept="image/*" multiple style={{display:'none'}} onChange={e=>uploadMedia(e.target.files)} /></label>
+            <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Add Video<input type="file" accept="video/*" style={{display:'none'}} onChange={e=>uploadMedia(e.target.files)} /></label>
+          </div>
+        )}
 
         {/* Submit */}
         <button onClick={async () => {

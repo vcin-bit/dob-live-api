@@ -536,12 +536,25 @@ function AddCheckpointModal({ currentPos, onSave, onClose }) {
 
           <div style={{marginBottom:'14px'}}>
             <div style={{fontSize:'10px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'5px'}}>Photo (optional)</div>
-            <div style={{display:'flex',gap:'8px',alignItems:'center'}}>
-              {imageUrl && <img src={imageUrl} style={{width:56,height:56,borderRadius:'8px',objectFit:'cover',border:'1px solid rgba(255,255,255,0.1)'}} />}
-              <label style={{padding:'8px 14px',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',cursor:'pointer',fontSize:'12px',color:'rgba(255,255,255,0.5)'}}>
-                {uploading ? 'Uploading...' : imageUrl ? 'Change photo' : 'Take / upload photo'}
-                <input type="file" accept="image/*" capture="environment" style={{display:'none'}} onChange={uploadImage} disabled={uploading} />
-              </label>
+            <div style={{display:'flex',gap:'8px',alignItems:'center',flexWrap:'wrap'}}>
+              {imageUrl && (
+                <div style={{position:'relative'}}>
+                  <img src={imageUrl} style={{width:56,height:56,borderRadius:'8px',objectFit:'cover',border:'1px solid rgba(255,255,255,0.1)'}} />
+                  <button onClick={() => setImageUrl('')} style={{position:'absolute',top:-6,right:-6,width:18,height:18,background:'rgba(239,68,68,0.9)',borderRadius:'50%',border:'none',color:'#fff',fontSize:'11px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>x</button>
+                </div>
+              )}
+              {!imageUrl && (
+                <>
+                  <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>
+                    {uploading ? 'Uploading...' : 'Take Photo'}
+                    <input type="file" accept="image/*" capture="environment" style={{display:'none'}} onChange={uploadImage} disabled={uploading} />
+                  </label>
+                  <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>
+                    From Gallery
+                    <input type="file" accept="image/*" style={{display:'none'}} onChange={uploadImage} disabled={uploading} />
+                  </label>
+                </>
+              )}
             </div>
           </div>
 
@@ -621,17 +634,26 @@ function CheckpointModal({ site, session, currentPos, route, isRoutePlanner, onC
             <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="What was checked or found..." style={{width:'100%',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',padding:'9px 11px',fontSize:'13px',color:'#fff',resize:'none',boxSizing:'border-box',fontFamily:'inherit'}} />
           </div>
           <div style={{marginBottom:'14px'}}>
-            {photoUrl ? (
-              <div style={{position:'relative',display:'inline-block'}}>
-                <img src={photoUrl} style={{width:80,height:80,borderRadius:'8px',objectFit:'cover',border:'1px solid rgba(255,255,255,0.1)'}} />
-                <button onClick={() => setPhotoUrl('')} style={{position:'absolute',top:-6,right:-6,width:20,height:20,background:'rgba(239,68,68,0.9)',borderRadius:'50%',border:'none',color:'#fff',fontSize:'12px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
-              </div>
-            ) : (
-              <label style={{display:'inline-flex',alignItems:'center',gap:'6px',padding:'8px 14px',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',cursor:'pointer',fontSize:'12px',color:'rgba(255,255,255,0.5)'}}>
-                {uploading ? 'Uploading...' : '📷 Add Photo (optional)'}
-                <input type="file" accept="image/*" capture="environment" style={{display:'none'}} onChange={uploadPhoto} disabled={uploading} />
-              </label>
-            )}
+            <div style={{display:'flex',gap:'8px',alignItems:'center',flexWrap:'wrap'}}>
+              {photoUrl && (
+                <div style={{position:'relative'}}>
+                  <img src={photoUrl} style={{width:56,height:56,borderRadius:'8px',objectFit:'cover',border:'1px solid rgba(255,255,255,0.1)'}} />
+                  <button onClick={() => setPhotoUrl('')} style={{position:'absolute',top:-6,right:-6,width:18,height:18,background:'rgba(239,68,68,0.9)',borderRadius:'50%',border:'none',color:'#fff',fontSize:'11px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>x</button>
+                </div>
+              )}
+              {!photoUrl && (
+                <>
+                  <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>
+                    {uploading ? 'Uploading...' : 'Take Photo'}
+                    <input type="file" accept="image/*" capture="environment" style={{display:'none'}} onChange={uploadPhoto} disabled={uploading} />
+                  </label>
+                  <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>
+                    From Gallery
+                    <input type="file" accept="image/*" style={{display:'none'}} onChange={uploadPhoto} disabled={uploading} />
+                  </label>
+                </>
+              )}
+            </div>
           </div>
           {isRoutePlanner && route?.id && currentPos && (
             <div onClick={() => setSavePermanent(p => !p)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'11px 13px',background:savePermanent?'rgba(167,139,250,0.08)':'rgba(255,255,255,0.03)',border:`1px solid ${savePermanent?'rgba(167,139,250,0.3)':'rgba(255,255,255,0.07)'}`,borderRadius:'10px',marginBottom:'14px',cursor:'pointer'}}>
@@ -703,9 +725,13 @@ function ReportModal({ user, site, session, onClose }) {
           <div style={{fontSize:'10px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'6px'}}>Description</div>
           <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={3} placeholder="Describe what you found..." style={{width:'100%',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',padding:'9px 11px',fontSize:'13px',color:'#fff',resize:'none',boxSizing:'border-box',marginBottom:'14px'}} />
           <div style={{fontSize:'10px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'8px'}}>Photos / Video</div>
-          <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'14px'}}>
-            {media.map((m, i) => (<div key={i} style={{width:64,height:64,borderRadius:'8px',background:'#1a2535',border:'1px solid rgba(255,255,255,0.1)',overflow:'hidden',position:'relative'}}>{m.type?.startsWith('image') ? <img src={m.url} style={{width:'100%',height:'100%',objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>video</div>}<button onClick={() => setMedia(p => p.filter((_,j)=>j!==i))} style={{position:'absolute',top:2,right:2,width:16,height:16,background:'rgba(239,68,68,0.8)',borderRadius:'50%',border:'none',color:'#fff',fontSize:10,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>×</button></div>))}
-            <label style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}><div style={{fontSize:'18px',color:'rgba(59,130,246,0.5)',lineHeight:1}}>+</div><div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)'}}>Photo/Video</div><input type="file" accept="image/*,video/*" multiple style={{display:'none'}} onChange={handleMedia} /></label>
+          <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'8px'}}>
+            {media.map((m, i) => (<div key={i} style={{width:56,height:56,borderRadius:'8px',background:'#1a2535',border:'1px solid rgba(255,255,255,0.1)',overflow:'hidden',position:'relative'}}>{m.type?.startsWith('image') ? <img src={m.url} style={{width:'100%',height:'100%',objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'10px',color:'rgba(255,255,255,0.4)'}}>video</div>}<button onClick={() => setMedia(p => p.filter((_,j)=>j!==i))} style={{position:'absolute',top:1,right:1,width:16,height:16,background:'rgba(239,68,68,0.9)',borderRadius:'50%',border:'none',color:'#fff',fontSize:10,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>x</button></div>))}
+          </div>
+          <div style={{display:'flex',gap:'6px',marginBottom:'14px'}}>
+            <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Take Photo<input type="file" accept="image/*" capture="environment" style={{display:'none'}} onChange={handleMedia} /></label>
+            <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>From Gallery<input type="file" accept="image/*" multiple style={{display:'none'}} onChange={handleMedia} /></label>
+            <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Add Video<input type="file" accept="video/*" style={{display:'none'}} onChange={handleMedia} /></label>
           </div>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'11px 13px',background:clientReportable?'rgba(59,130,246,0.07)':'rgba(255,255,255,0.03)',border:`1px solid ${clientReportable?'rgba(59,130,246,0.25)':'rgba(255,255,255,0.07)'}`,borderRadius:'10px',marginBottom:'14px',cursor:'pointer'}} onClick={() => setClientReportable(p => !p)}>
             <div><div style={{fontSize:'13px',fontWeight:600,color:'#fff'}}>Report to client</div><div style={{fontSize:'11px',color:'rgba(255,255,255,0.35)',marginTop:'1px'}}>{clientReportable ? 'Visible in client portal + ops' : 'Ops only'}</div></div>
@@ -824,21 +850,21 @@ function OccurrenceModal({ site, shift, currentPos, onClose }) {
 
           {/* Photos / Video */}
           <div style={{fontSize:'10px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'8px'}}>Photos / Video (optional) — max 5</div>
-          <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'14px'}}>
+          <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'8px'}}>
             {media.map((m, i) => (
-              <div key={i} style={{width:64,height:64,borderRadius:'8px',background:'#1a2535',border:'1px solid rgba(255,255,255,0.1)',overflow:'hidden',position:'relative'}}>
-                {m.type?.startsWith('image') ? <img src={m.url} style={{width:'100%',height:'100%',objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>video</div>}
-                <button onClick={() => setMedia(p => p.filter((_,j)=>j!==i))} style={{position:'absolute',top:2,right:2,width:16,height:16,background:'rgba(239,68,68,0.8)',borderRadius:'50%',border:'none',color:'#fff',fontSize:10,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
+              <div key={i} style={{width:56,height:56,borderRadius:'8px',background:'#1a2535',border:'1px solid rgba(255,255,255,0.1)',overflow:'hidden',position:'relative'}}>
+                {m.type?.startsWith('image') ? <img src={m.url} style={{width:'100%',height:'100%',objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'10px',color:'rgba(255,255,255,0.4)'}}>video</div>}
+                <button onClick={() => setMedia(p => p.filter((_,j)=>j!==i))} style={{position:'absolute',top:1,right:1,width:16,height:16,background:'rgba(239,68,68,0.9)',borderRadius:'50%',border:'none',color:'#fff',fontSize:10,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>x</button>
               </div>
             ))}
-            {media.length < 5 && (
-              <label style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>
-                <div style={{fontSize:'18px',color:'rgba(59,130,246,0.5)',lineHeight:1}}>+</div>
-                <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)'}}>Photo</div>
-                <input type="file" accept="image/*,video/*" multiple capture="environment" style={{display:'none'}} onChange={handleMedia} />
-              </label>
-            )}
           </div>
+          {media.length < 5 && (
+            <div style={{display:'flex',gap:'6px',marginBottom:'14px'}}>
+              <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Take Photo<input type="file" accept="image/*" capture="environment" style={{display:'none'}} onChange={handleMedia} /></label>
+              <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>From Gallery<input type="file" accept="image/*" multiple style={{display:'none'}} onChange={handleMedia} /></label>
+              <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Add Video<input type="file" accept="video/*" style={{display:'none'}} onChange={handleMedia} /></label>
+            </div>
+          )}
 
           {/* Submit */}
           <div style={{display:'flex',gap:'8px'}}>

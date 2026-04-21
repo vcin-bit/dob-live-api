@@ -1,44 +1,28 @@
-/**
- * Compress an image file before upload.
- * Resizes to max 1200px on longest side, JPEG at 80% quality.
- * Returns a new File object.
- */
-export async function compressImage(file, { maxSize = 1200, quality = 0.8 } = {}) {
-  // Skip non-images and already-small files
-  if (!file.type.startsWith('image/') || file.size < 100000) return file;
-
+export async function compressImage(file, maxWidth = 1200, quality = 0.7) {
   return new Promise((resolve) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
-      URL.revokeObjectURL(url);
-      let { width, height } = img;
-
-      // Scale down if needed
-      if (width > maxSize || height > maxSize) {
-        if (width > height) {
-          height = Math.round(height * (maxSize / width));
-          width = maxSize;
-        } else {
-          width = Math.round(width * (maxSize / height));
-          height = maxSize;
-        }
-      }
-
       const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+      if (width > maxWidth) {
+        height = Math.round(height * maxWidth / width);
+        width = maxWidth;
+      }
       canvas.width = width;
       canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, width, height);
-
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      URL.revokeObjectURL(url);
       canvas.toBlob((blob) => {
-        if (!blob) { resolve(file); return; }
-        const compressed = new File([blob], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' });
-        console.log(`Image compressed: ${(file.size/1024).toFixed(0)}KB → ${(compressed.size/1024).toFixed(0)}KB (${width}x${height})`);
-        resolve(compressed);
+        resolve(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }));
       }, 'image/jpeg', quality);
     };
     img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
     img.src = url;
   });
+}
+
+export function isImage(file) {
+  return file.type.startsWith('image/');
 }
