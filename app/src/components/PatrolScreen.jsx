@@ -487,8 +487,6 @@ function AddCheckpointModal({ currentPos, onSave, onClose }) {
   const [whatToLookFor, setWhatToLookFor] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [uploading, setUploading] = useState(false);
-  const photoRef = useRef(null);
-  const galleryRef = useRef(null);
 
   async function handlePhoto(e) {
     const rawFile = e.target.files?.[0];
@@ -548,10 +546,8 @@ function AddCheckpointModal({ currentPos, onSave, onClose }) {
               )}
               {!imageUrl && !uploading && (
                 <div style={{display:'flex',gap:'6px'}}>
-                  <input type="file" accept="image/*" capture="environment" style={{display:'none'}} ref={photoRef} onChange={handlePhoto} />
-                  <button onClick={() => photoRef.current.click()} style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Take Photo</button>
-                  <input type="file" accept="image/*" style={{display:'none'}} ref={galleryRef} onChange={handlePhoto} />
-                  <button onClick={() => galleryRef.current.click()} style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>From Gallery</button>
+                  <label style={{cursor:'pointer',padding:'8px 14px',background:'rgba(255,255,255,0.06)',border:'0.5px solid rgba(255,255,255,0.12)',borderRadius:'8px',fontSize:'11px',color:'rgba(255,255,255,0.7)'}}>Take Photo<input type="file" accept="image/*" capture="environment" multiple style={{display:'none'}} onChange={handlePhoto} /></label>
+                  <label style={{cursor:'pointer',padding:'8px 14px',background:'rgba(255,255,255,0.06)',border:'0.5px solid rgba(255,255,255,0.12)',borderRadius:'8px',fontSize:'11px',color:'rgba(255,255,255,0.7)'}}>From Gallery<input type="file" accept="image/*" multiple style={{display:'none'}} onChange={handlePhoto} /></label>
                 </div>
               )}
               {uploading && <span style={{fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>Uploading...</span>}
@@ -570,8 +566,6 @@ function AddCheckpointModal({ currentPos, onSave, onClose }) {
 
 // ── Checkpoint Log Modal ─────────────────────────────────────────────────────
 function CheckpointModal({ site, session, currentPos, route, isRoutePlanner, onClose, onSaved }) {
-  const cpPhotoRef = useRef(null);
-  const cpGalleryRef = useRef(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [savePermanent, setSavePermanent] = useState(false);
@@ -645,10 +639,8 @@ function CheckpointModal({ site, session, currentPos, route, isRoutePlanner, onC
               )}
               {!photoUrl && !uploading && (
                 <div style={{display:'flex',gap:'6px'}}>
-                  <input type="file" accept="image/*" capture="environment" style={{display:'none'}} ref={cpPhotoRef} onChange={uploadPhoto} />
-                  <button onClick={() => cpPhotoRef.current.click()} style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Take Photo</button>
-                  <input type="file" accept="image/*" style={{display:'none'}} ref={cpGalleryRef} onChange={uploadPhoto} />
-                  <button onClick={() => cpGalleryRef.current.click()} style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>From Gallery</button>
+                  <label style={{cursor:'pointer',padding:'8px 14px',background:'rgba(255,255,255,0.06)',border:'0.5px solid rgba(255,255,255,0.12)',borderRadius:'8px',fontSize:'11px',color:'rgba(255,255,255,0.7)'}}>Take Photo<input type="file" accept="image/*" capture="environment" multiple style={{display:'none'}} onChange={uploadPhoto} /></label>
+                  <label style={{cursor:'pointer',padding:'8px 14px',background:'rgba(255,255,255,0.06)',border:'0.5px solid rgba(255,255,255,0.12)',borderRadius:'8px',fontSize:'11px',color:'rgba(255,255,255,0.7)'}}>From Gallery<input type="file" accept="image/*" multiple style={{display:'none'}} onChange={uploadPhoto} /></label>
                 </div>
               )}
               {uploading && <span style={{fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>Uploading...</span>}
@@ -671,8 +663,6 @@ function CheckpointModal({ site, session, currentPos, route, isRoutePlanner, onC
 
 // ── Report Modal ─────────────────────────────────────────────────────────────
 function ReportModal({ user, site, session, onClose }) {
-  const rmPhotoRef = useRef(null);
-  const rmGalleryRef = useRef(null);
   const [type, setType] = useState('INCIDENT');
   const [notes, setNotes] = useState('');
   const [clientReportable, setClientReportable] = useState(false);
@@ -730,10 +720,8 @@ function ReportModal({ user, site, session, onClose }) {
             {media.map((m, i) => (<div key={i} style={{width:56,height:56,borderRadius:'8px',background:'#1a2535',border:'1px solid rgba(255,255,255,0.1)',overflow:'hidden',position:'relative'}}>{m.type?.startsWith('image') ? <img src={m.url} style={{width:'100%',height:'100%',objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'10px',color:'rgba(255,255,255,0.4)'}}>video</div>}<button onClick={() => setMedia(p => p.filter((_,j)=>j!==i))} style={{position:'absolute',top:1,right:1,width:16,height:16,background:'rgba(239,68,68,0.9)',borderRadius:'50%',border:'none',color:'#fff',fontSize:10,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>x</button></div>))}
           </div>
           <div style={{display:'flex',gap:'6px',marginBottom:'14px'}}>
-            <input type="file" accept="image/*" capture="environment" style={{display:'none'}} ref={rmPhotoRef} onChange={handleMedia} />
-            <button onClick={() => rmPhotoRef.current.click()} style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Take Photo</button>
-            <input type="file" accept="image/*" style={{display:'none'}} ref={rmGalleryRef} onChange={handleMedia} />
-            <button onClick={() => rmGalleryRef.current.click()} style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>From Gallery</button>
+            <label style={{cursor:'pointer',padding:'8px 14px',background:'rgba(255,255,255,0.06)',border:'0.5px solid rgba(255,255,255,0.12)',borderRadius:'8px',fontSize:'11px',color:'rgba(255,255,255,0.7)'}}>Take Photo<input type="file" accept="image/*" capture="environment" multiple style={{display:'none'}} onChange={handleMedia} /></label>
+            <label style={{cursor:'pointer',padding:'8px 14px',background:'rgba(255,255,255,0.06)',border:'0.5px solid rgba(255,255,255,0.12)',borderRadius:'8px',fontSize:'11px',color:'rgba(255,255,255,0.7)'}}>From Gallery<input type="file" accept="image/*" multiple style={{display:'none'}} onChange={handleMedia} /></label>
           </div>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'11px 13px',background:clientReportable?'rgba(59,130,246,0.07)':'rgba(255,255,255,0.03)',border:`1px solid ${clientReportable?'rgba(59,130,246,0.25)':'rgba(255,255,255,0.07)'}`,borderRadius:'10px',marginBottom:'14px',cursor:'pointer'}} onClick={() => setClientReportable(p => !p)}>
             <div><div style={{fontSize:'13px',fontWeight:600,color:'#fff'}}>Report to client</div><div style={{fontSize:'11px',color:'rgba(255,255,255,0.35)',marginTop:'1px'}}>{clientReportable ? 'Visible in client portal + ops' : 'Ops only'}</div></div>
@@ -756,8 +744,6 @@ const SERIOUS_CATEGORIES = [
 const STANDARD_CATEGORIES = ['Abandoned Vehicle','Fly Tipping','H&S Hazard','Unsecured Building/Door','Criminal Damage','Trespass','Theft','Other'];
 
 function OccurrenceModal({ site, shift, currentPos, onClose }) {
-  const ocPhotoRef = useRef(null);
-  const ocGalleryRef = useRef(null);
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
   const [media, setMedia] = useState([]);
@@ -865,10 +851,8 @@ function OccurrenceModal({ site, shift, currentPos, onClose }) {
           </div>
           {media.length < 5 && (
             <div style={{display:'flex',gap:'6px',marginBottom:'14px'}}>
-              <input type="file" accept="image/*" capture="environment" style={{display:'none'}} ref={ocPhotoRef} onChange={handleMedia} />
-              <button onClick={() => ocPhotoRef.current.click()} style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Take Photo</button>
-              <input type="file" accept="image/*" style={{display:'none'}} ref={ocGalleryRef} onChange={handleMedia} />
-              <button onClick={() => ocGalleryRef.current.click()} style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>From Gallery</button>
+              <label style={{cursor:'pointer',padding:'8px 14px',background:'rgba(255,255,255,0.06)',border:'0.5px solid rgba(255,255,255,0.12)',borderRadius:'8px',fontSize:'11px',color:'rgba(255,255,255,0.7)'}}>Take Photo<input type="file" accept="image/*" capture="environment" multiple style={{display:'none'}} onChange={handleMedia} /></label>
+              <label style={{cursor:'pointer',padding:'8px 14px',background:'rgba(255,255,255,0.06)',border:'0.5px solid rgba(255,255,255,0.12)',borderRadius:'8px',fontSize:'11px',color:'rgba(255,255,255,0.7)'}}>From Gallery<input type="file" accept="image/*" multiple style={{display:'none'}} onChange={handleMedia} /></label>
             </div>
           )}
 

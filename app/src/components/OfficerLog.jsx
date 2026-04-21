@@ -413,10 +413,8 @@ function LogEntryScreen({ user, site, shift }) {
         </div>
         {form.media.length < 5 && (
           <div style={{display:'flex',gap:'6px',marginBottom:'20px'}}>
-            <input type="file" accept="image/*" capture="environment" style={{display:'none'}} id="ol-photo" onChange={e=>uploadMedia(e.target.files)} />
-            <button onClick={() => document.getElementById('ol-photo').click()} style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Take Photo</button>
-            <input type="file" accept="image/*" style={{display:'none'}} id="ol-gallery" onChange={e=>uploadMedia(e.target.files)} />
-            <button onClick={() => document.getElementById('ol-gallery').click()} style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>From Gallery</button>
+            <label style={{cursor:'pointer',padding:'8px 14px',background:'rgba(255,255,255,0.06)',border:'0.5px solid rgba(255,255,255,0.12)',borderRadius:'8px',fontSize:'11px',color:'rgba(255,255,255,0.7)'}}>Take Photo<input type="file" accept="image/*" capture="environment" multiple style={{display:'none'}} onChange={e=>uploadMedia(e.target.files)} /></label>
+            <label style={{cursor:'pointer',padding:'8px 14px',background:'rgba(255,255,255,0.06)',border:'0.5px solid rgba(255,255,255,0.12)',borderRadius:'8px',fontSize:'11px',color:'rgba(255,255,255,0.7)'}}>From Gallery<input type="file" accept="image/*" multiple style={{display:'none'}} onChange={e=>uploadMedia(e.target.files)} /></label>
           </div>
         )}
 
