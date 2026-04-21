@@ -65,3 +65,14 @@ SUPABASE_ANON_KEY=your_key npm run test:db
 - Safari ITP (Intelligent Tracking Prevention) purges third-party cookies after 7 days of inactivity. Clerk's default domain (`clerk.doblive.co.uk`) is a different subdomain from `app.doblive.co.uk`, so Safari may treat its cookies as third-party and purge them.
 - **Solution**: Set up a custom Clerk proxy domain at `clerk.doblive.co.uk` as a first-party domain — this is configured in the Clerk dashboard under Domains, not in code.
 - Officers should add the app to their home screen as a PWA for best session persistence. The app has `apple-mobile-web-app-capable` and a manifest configured for standalone mode.
+
+## Planned Features — Do Not Build Yet
+
+### Roster-driven shift start flow (build last)
+- Officer home screen shows today's scheduled shift from roster: "Good evening [name], Your shift: 18:00–06:00 at Planetary"
+- START SHIFT updates existing SCHEDULED shift to ACTIVE (not create new)
+- Geofence enforcement on shift start — new sites column: geofence_enforced boolean
+- If geofence_enforced=true, GPS must be within radius or shift blocked with message "You must be on site"
+- Welcome screen on start: "Have a safe shift [name] 👮" auto-dismisses after 3 seconds
+- Auto sign-out cron: 15 minute grace period after end_time before closing shift
+- New backend route: POST /api/shifts/:id/start
