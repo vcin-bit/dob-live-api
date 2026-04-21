@@ -413,7 +413,7 @@ function LogEntryScreen({ user, site, shift }) {
         </div>
         {form.media.length < 5 && (
           <div style={{display:'flex',gap:'6px',marginBottom:'20px'}}>
-            <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Take Photo<input type="file" accept="image/*" capture="environment" style={{display:'none'}} onChange={e=>uploadMedia(e.target.files)} /></label>
+            <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Take Photo<input type="file" accept="image/*" style={{display:'none'}} onChange={e=>uploadMedia(e.target.files)} /></label>
             <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>From Gallery<input type="file" accept="image/*" multiple style={{display:'none'}} onChange={e=>uploadMedia(e.target.files)} /></label>
             <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Add Video<input type="file" accept="video/*" style={{display:'none'}} onChange={e=>uploadMedia(e.target.files)} /></label>
           </div>
@@ -604,7 +604,7 @@ function LogEntryScreen({ user, site, shift }) {
           <label style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>
             <div style={{fontSize:'22px',color:'rgba(59,130,246,0.5)',lineHeight:1}}>+</div>
             <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)',fontWeight:600,letterSpacing:'0.05em'}}>ADD PHOTO</div>
-            <input type="file" accept="image/*,video/*" multiple capture="environment" style={{display:'none'}} onChange={e=>uploadMedia(e.target.files)} />
+            <input type="file" accept="image/*,video/*" multiple style={{display:'none'}} onChange={e=>uploadMedia(e.target.files)} />
           </label>
         </div>
       </div>
