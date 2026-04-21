@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
-import { compressImage } from '../lib/imageUtils';
+import { compressImage, isImage } from '../lib/imageUtils';
 
 async function fetchW3W(lat, lng) {
   const key = import.meta.env.VITE_W3W_API_KEY;
@@ -11,6 +11,24 @@ async function fetchW3W(lat, lng) {
     const data = await res.json();
     return data.words || null;
   } catch { return null; }
+}
+
+// Global file picker — lives outside modals to avoid iOS Chrome camera bug
+const globalFileInput = { resolve: null };
+function pickFile() {
+  return new Promise(resolve => {
+    let input = document.getElementById('dob-global-file-input');
+    if (!input) {
+      input = document.createElement('input');
+      input.id = 'dob-global-file-input';
+      input.type = 'file';
+      input.style.display = 'none';
+      document.body.appendChild(input);
+    }
+    input.value = '';
+    input.onchange = () => resolve(input.files?.[0] || null);
+    input.click();
+  });
 }
 
 export default function PatrolScreen({ user, site, shift }) {
@@ -488,11 +506,12 @@ function AddCheckpointModal({ currentPos, onSave, onClose }) {
   const [imageUrl, setImageUrl] = useState('');
   const [uploading, setUploading] = useState(false);
 
-  async function uploadImage(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function uploadImage() {
+    const rawFile = await pickFile();
+    if (!rawFile) return;
     setUploading(true);
     try {
+      const file = await compressImage(rawFile);
       const res = await api.patrols.uploadCheckpointImage(file);
       setImageUrl(res.url);
     } catch (err) { console.error('Image upload failed:', err.message); }
@@ -544,10 +563,10 @@ function AddCheckpointModal({ currentPos, onSave, onClose }) {
                 </div>
               )}
               {!imageUrl && (
-                <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>
+                <button onClick={uploadImage} disabled={uploading}
+                  style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>
                   {uploading ? 'Uploading...' : 'Add Photo'}
-                  <input type="file" style={{display:'none'}} onChange={uploadImage} disabled={uploading} />
-                </label>
+                </button>
               )}
             </div>
           </div>
@@ -576,8 +595,8 @@ function CheckpointModal({ site, session, currentPos, route, isRoutePlanner, onC
     if (currentPos?.lat) fetchW3W(currentPos.lat, currentPos.lng).then(setW3w);
   }, [currentPos?.lat, currentPos?.lng]);
 
-  async function uploadPhoto(e) {
-    const rawFile = e.target.files?.[0];
+  async function uploadPhoto() {
+    const rawFile = await pickFile();
     if (!rawFile) return;
     setUploading(true);
     try {
@@ -636,10 +655,10 @@ function CheckpointModal({ site, session, currentPos, route, isRoutePlanner, onC
                 </div>
               )}
               {!photoUrl && (
-                <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>
+                <button onClick={uploadPhoto} disabled={uploading}
+                  style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>
                   {uploading ? 'Uploading...' : 'Add Photo'}
-                  <input type="file" style={{display:'none'}} onChange={uploadPhoto} disabled={uploading} />
-                </label>
+                </button>
               )}
             </div>
           </div>
@@ -678,7 +697,7 @@ function ReportModal({ user, site, session, onClose }) {
     const files = Array.from(e.target.files);
     const uploads = await Promise.all(files.map(async rawFile => {
       try {
-        const file = await compressImage(rawFile);
+        const file = isImage(rawFile) ? await compressImage(rawFile) : rawFile;
         const form = new FormData(); form.append('file', file);
         const API = import.meta.env.VITE_API_URL || 'https://dob-live-api.onrender.com';
         const token = await window.__clerkGetToken?.() || '';
@@ -687,6 +706,19 @@ function ReportModal({ user, site, session, onClose }) {
       } catch { return null; }
     }));
     setMedia(prev => [...prev, ...uploads.filter(Boolean)]);
+  }
+  async function addPhoto() {
+    const rawFile = await pickFile();
+    if (!rawFile) return;
+    try {
+      const file = isImage(rawFile) ? await compressImage(rawFile) : rawFile;
+      const form = new FormData(); form.append('file', file);
+      const API = import.meta.env.VITE_API_URL || 'https://dob-live-api.onrender.com';
+      const token = await window.__clerkGetToken?.() || '';
+      const res = await fetch(`${API}/api/patrols/media/upload`, { method: 'POST', body: form, headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (data.url) setMedia(prev => [...prev, { url: data.url, name: rawFile.name, type: rawFile.type }]);
+    } catch {}
   }
   async function submit() {
     if (!notes.trim()) { alert('Please add a description'); return; }
@@ -717,7 +749,7 @@ function ReportModal({ user, site, session, onClose }) {
             {media.map((m, i) => (<div key={i} style={{width:56,height:56,borderRadius:'8px',background:'#1a2535',border:'1px solid rgba(255,255,255,0.1)',overflow:'hidden',position:'relative'}}>{m.type?.startsWith('image') ? <img src={m.url} style={{width:'100%',height:'100%',objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'10px',color:'rgba(255,255,255,0.4)'}}>video</div>}<button onClick={() => setMedia(p => p.filter((_,j)=>j!==i))} style={{position:'absolute',top:1,right:1,width:16,height:16,background:'rgba(239,68,68,0.9)',borderRadius:'50%',border:'none',color:'#fff',fontSize:10,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>x</button></div>))}
           </div>
           <div style={{display:'flex',gap:'6px',marginBottom:'14px'}}>
-            <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Add Photo<input type="file" style={{display:'none'}} onChange={handleMedia} /></label>
+            <button onClick={addPhoto} style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Add Photo</button>
             <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Add Video<input type="file" accept="video/*" style={{display:'none'}} onChange={handleMedia} /></label>
           </div>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'11px 13px',background:clientReportable?'rgba(59,130,246,0.07)':'rgba(255,255,255,0.03)',border:`1px solid ${clientReportable?'rgba(59,130,246,0.25)':'rgba(255,255,255,0.07)'}`,borderRadius:'10px',marginBottom:'14px',cursor:'pointer'}} onClick={() => setClientReportable(p => !p)}>
@@ -752,7 +784,7 @@ function OccurrenceModal({ site, shift, currentPos, onClose }) {
     const rawFiles = Array.from(e.target.files).slice(0, 5 - media.length);
     const uploads = await Promise.all(rawFiles.map(async rawFile => {
       try {
-        const file = await compressImage(rawFile);
+        const file = isImage(rawFile) ? await compressImage(rawFile) : rawFile;
         const form = new FormData(); form.append('file', file);
         const API = import.meta.env.VITE_API_URL || 'https://dob-live-api.onrender.com';
         const token = await window.__clerkGetToken?.() || '';
@@ -761,6 +793,20 @@ function OccurrenceModal({ site, shift, currentPos, onClose }) {
       } catch { return null; }
     }));
     setMedia(prev => [...prev, ...uploads.filter(Boolean)].slice(0, 5));
+  }
+  async function addPhoto() {
+    if (media.length >= 5) return;
+    const rawFile = await pickFile();
+    if (!rawFile) return;
+    try {
+      const file = isImage(rawFile) ? await compressImage(rawFile) : rawFile;
+      const form = new FormData(); form.append('file', file);
+      const API = import.meta.env.VITE_API_URL || 'https://dob-live-api.onrender.com';
+      const token = await window.__clerkGetToken?.() || '';
+      const res = await fetch(`${API}/api/patrols/media/upload`, { method: 'POST', body: form, headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (data.url) setMedia(prev => [...prev, { url: data.url, name: rawFile.name, type: rawFile.type }].slice(0, 5));
+    } catch {}
   }
 
   async function submit() {
@@ -847,7 +893,7 @@ function OccurrenceModal({ site, shift, currentPos, onClose }) {
           </div>
           {media.length < 5 && (
             <div style={{display:'flex',gap:'6px',marginBottom:'14px'}}>
-              <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Add Photo<input type="file" style={{display:'none'}} onChange={handleMedia} /></label>
+              <button onClick={addPhoto} style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Add Photo</button>
               <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Add Video<input type="file" accept="video/*" style={{display:'none'}} onChange={handleMedia} /></label>
             </div>
           )}

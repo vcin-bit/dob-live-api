@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { MapPinIcon, ClipboardDocumentListIcon } from '@heroicons/react/24/outline';
 import { LOG_TYPE_CONFIG } from '../lib/constants';
-import { compressImage } from '../lib/imageUtils';
+import { compressImage, isImage } from '../lib/imageUtils';
 
 // ── Types config ─────────────────────────────────────────────────────────────
 const HIGH_PRIORITY = [
@@ -413,7 +413,13 @@ function LogEntryScreen({ user, site, shift }) {
         </div>
         {form.media.length < 5 && (
           <div style={{display:'flex',gap:'6px',marginBottom:'20px'}}>
-            <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Add Photo<input type="file" style={{display:'none'}} onChange={e=>uploadMedia(e.target.files)} /></label>
+            <button onClick={async () => {
+              let input = document.getElementById('dob-global-file-input');
+              if (!input) { input = document.createElement('input'); input.id = 'dob-global-file-input'; input.type = 'file'; input.style.display = 'none'; document.body.appendChild(input); }
+              input.value = '';
+              input.onchange = () => { if (input.files?.length) uploadMedia(input.files); };
+              input.click();
+            }} style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Add Photo</button>
             <label style={{padding:'7px 12px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',cursor:'pointer',fontSize:'11px',color:'#fff'}}>Add Video<input type="file" accept="video/*" style={{display:'none'}} onChange={e=>uploadMedia(e.target.files)} /></label>
           </div>
         )}
