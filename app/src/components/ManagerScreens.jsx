@@ -663,8 +663,8 @@ function LogReview({ user }) {
 
 
 function ManagerLogCard({ log }) {
-  const [expanded, setExpanded] = useState(false);
   const [showPatrolDetail, setShowPatrolDetail] = useState(false);
+  const [showLogDetail, setShowLogDetail] = useState(false);
 
   const typeMap = {
     PATROL:'PAT',INCIDENT:'INC',ALARM:'ALM',ACCESS:'ACC',VISITOR:'VIS',
@@ -674,10 +674,11 @@ function ManagerLogCard({ log }) {
   const typeColors = { INCIDENT:'badge-danger', ALARM:'badge-warning', PATROL:'badge-blue', GENERAL:'badge-neutral' };
 
   const isPatrolLog = log.log_type === 'PATROL' && log.type_data?.patrol_session_id;
+  const media = log.type_data?.media || [];
 
   return (
     <>
-    <div onClick={() => isPatrolLog ? setShowPatrolDetail(true) : setExpanded(!expanded)}
+    <div onClick={() => isPatrolLog ? setShowPatrolDetail(true) : setShowLogDetail(true)}
       style={{padding:'0.75rem',border:'1px solid var(--border)',borderRadius:'var(--radius)',marginBottom:'0.5rem',cursor:'pointer'}}>
       <div style={{display:'flex',alignItems:'flex-start',gap:'0.75rem'}}>
         <div style={{width:'2.25rem',height:'2.25rem',background:'var(--navy)',color:'#fff',borderRadius:'5px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.5625rem',fontWeight:700,letterSpacing:'0.03em',flexShrink:0}}>{code}</div>
@@ -692,9 +693,12 @@ function ManagerLogCard({ log }) {
             {log.officer && <span>{log.officer.first_name} {log.officer.last_name}</span>}
           </div>
           {log.description && (
-            <p style={{fontSize:'0.875rem',color:'var(--text-2)',lineHeight:1.5}}>
-              {expanded ? log.description : (log.description.length > 200 ? log.description.substring(0,200)+'...' : log.description)}
+            <p style={{fontSize:'0.875rem',color:'var(--text-2)',lineHeight:1.5,margin:'0 0 0.25rem'}}>
+              {log.description.length > 120 ? log.description.substring(0,120)+'...' : log.description}
             </p>
+          )}
+          {media.length > 0 && (
+            <div style={{fontSize:'0.75rem',color:'var(--blue)',marginTop:'0.25rem'}}>{media.length} photo{media.length>1?'s':''} attached · Click to view →</div>
           )}
           {isPatrolLog && log.type_data.duration_minutes != null && (
             <div style={{fontSize:'0.75rem',color:'var(--blue)',marginTop:'0.25rem'}}>
@@ -702,11 +706,109 @@ function ManagerLogCard({ log }) {
               {' · '}{log.type_data.checkpoints_completed?.length || 0} checkpoints · Click for detail →
             </div>
           )}
+          {!isPatrolLog && <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginTop:'0.25rem'}}>Click to view full details →</div>}
         </div>
       </div>
     </div>
     {showPatrolDetail && <PatrolDetailModal log={log} onClose={() => setShowPatrolDetail(false)} />}
+    {showLogDetail && <LogDetailModal log={log} onClose={() => setShowLogDetail(false)} />}
     </>
+  );
+}
+
+// ── Log Detail Modal (non-patrol logs) ───────────────────────────────────────
+function LogDetailModal({ log, onClose }) {
+  const typeColors = { INCIDENT:'badge-danger', ALARM:'badge-warning', PATROL:'badge-blue', GENERAL:'badge-neutral' };
+  const td = log.type_data || {};
+  const media = td.media || [];
+  const [lightbox, setLightbox] = useState(null);
+
+  const fmtDateTime = t => t ? new Date(t).toLocaleString('en-GB', { weekday:'short', day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', timeZone:'Europe/London' }) : '—';
+
+  // Collect any extra type_data fields worth showing
+  const skipKeys = ['media','patrol_session_id','checkpoint','photo_url'];
+  const extraFields = Object.entries(td).filter(([k]) => !skipKeys.includes(k) && td[k] != null && td[k] !== '');
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{maxWidth:'600px',maxHeight:'90vh',overflowY:'auto'}} onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <div style={{display:'flex',alignItems:'center',gap:'0.5rem'}}>
+            <div className="modal-title">{log.title || 'Log Entry'}</div>
+            <span className={`badge ${typeColors[log.log_type]||'badge-neutral'}`}>{log.log_type}</span>
+          </div>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+
+        {/* Meta */}
+        <div style={{display:'flex',gap:'1rem',flexWrap:'wrap',marginBottom:'1rem',padding:'0.75rem',background:'var(--surface-2)',borderRadius:'6px'}}>
+          <div><div style={{fontSize:'0.6875rem',color:'var(--text-3)',textTransform:'uppercase',marginBottom:'2px'}}>Officer</div><div style={{fontWeight:600,fontSize:'0.875rem'}}>{log.officer ? `${log.officer.first_name} ${log.officer.last_name}` : '—'}</div></div>
+          <div><div style={{fontSize:'0.6875rem',color:'var(--text-3)',textTransform:'uppercase',marginBottom:'2px'}}>Site</div><div style={{fontWeight:600,fontSize:'0.875rem'}}>{log.site?.name || '—'}</div></div>
+          <div><div style={{fontSize:'0.6875rem',color:'var(--text-3)',textTransform:'uppercase',marginBottom:'2px'}}>Date &amp; Time</div><div style={{fontSize:'0.875rem'}}>{fmtDateTime(log.occurred_at)}</div></div>
+          {log.client_reportable && <div style={{alignSelf:'center'}}><span className="badge badge-blue">Client Reportable</span></div>}
+        </div>
+
+        {/* Description */}
+        {log.description && (
+          <div style={{marginBottom:'1rem'}}>
+            <div style={{fontSize:'0.75rem',fontWeight:700,color:'var(--text-3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.375rem'}}>Description</div>
+            <p style={{fontSize:'0.875rem',lineHeight:1.6,color:'var(--text-1)',whiteSpace:'pre-wrap',margin:0}}>{log.description}</p>
+          </div>
+        )}
+
+        {/* Actions taken */}
+        {td.actions_taken && (
+          <div style={{marginBottom:'1rem'}}>
+            <div style={{fontSize:'0.75rem',fontWeight:700,color:'var(--text-3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.375rem'}}>Actions Taken</div>
+            <p style={{fontSize:'0.875rem',lineHeight:1.6,color:'var(--text-1)',whiteSpace:'pre-wrap',margin:0}}>{td.actions_taken}</p>
+          </div>
+        )}
+
+        {/* Photos */}
+        {media.length > 0 && (
+          <div style={{marginBottom:'1rem'}}>
+            <div style={{fontSize:'0.75rem',fontWeight:700,color:'var(--text-3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.5rem'}}>Photos / Video ({media.length})</div>
+            <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+              {media.map((m, i) => (
+                <div key={i} onClick={() => m.type?.startsWith('image') && setLightbox(m.url)}
+                  style={{width:80,height:80,borderRadius:'8px',overflow:'hidden',border:'1px solid var(--border)',cursor:m.type?.startsWith('image')?'zoom-in':'default',flexShrink:0}}>
+                  {m.type?.startsWith('image')
+                    ? <img src={m.url} style={{width:'100%',height:'100%',objectFit:'cover'}} alt={m.name||'photo'} />
+                    : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--surface-2)',fontSize:'0.75rem',color:'var(--text-3)'}}>video</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Extra type_data fields */}
+        {extraFields.length > 0 && (
+          <div style={{marginBottom:'1rem'}}>
+            <div style={{fontSize:'0.75rem',fontWeight:700,color:'var(--text-3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.5rem'}}>Additional Details</div>
+            <div style={{display:'flex',flexDirection:'column',gap:'0.375rem'}}>
+              {extraFields.map(([k, v]) => (
+                <div key={k} style={{display:'flex',gap:'0.5rem',fontSize:'0.8125rem'}}>
+                  <span style={{color:'var(--text-3)',minWidth:'140px',textTransform:'capitalize'}}>{k.replace(/_/g,' ')}</span>
+                  <span style={{color:'var(--text-1)',fontWeight:500}}>{typeof v === 'object' ? JSON.stringify(v) : String(v)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>Close</button>
+        </div>
+      </div>
+
+      {/* Lightbox */}
+      {lightbox && (
+        <div onClick={() => setLightbox(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.92)',zIndex:10000,display:'flex',alignItems:'center',justifyContent:'center',padding:'1rem'}}>
+          <img src={lightbox} style={{maxWidth:'100%',maxHeight:'90vh',borderRadius:'8px',objectFit:'contain'}} />
+          <button onClick={() => setLightbox(null)} style={{position:'absolute',top:'1rem',right:'1rem',background:'rgba(255,255,255,0.15)',border:'none',color:'#fff',width:36,height:36,borderRadius:'50%',fontSize:'1.25rem',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
+        </div>
+      )}
+    </div>
   );
 }
 
