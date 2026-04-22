@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { MapPinIcon, ClipboardDocumentListIcon } from '@heroicons/react/24/outline';
@@ -62,22 +61,6 @@ function StepDots({ step }) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-// ── Portal file input hook — fixes Chrome Android dark screen ────────────────
-function useFileCapture(onFiles) {
-  const ref = useRef(null);
-  const trigger = useCallback(() => {
-    if (ref.current) { ref.current.value = ''; ref.current.click(); }
-  }, []);
-  const portal = createPortal(
-    <input ref={ref} type="file" accept="image/*,video/*" capture="environment"
-      style={{position:'fixed',top:-9999,left:-9999,opacity:0,width:1,height:1}}
-      onChange={e => { const f = Array.from(e.target.files||[]); if(f.length) onFiles(f); e.target.value=''; }} />,
-    document.body
-  );
-  return { portal, trigger };
-}
-
-
 function LogEntryScreen({ user, site, shift }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -140,11 +123,6 @@ function LogEntryScreen({ user, site, shift }) {
     f('media', [...form.media, ...uploads]);
     setUploadingMedia(false);
   }
-
-  // Portal file input — must be called unconditionally at top level (Rules of Hooks)
-  const { portal: mediaPortal, trigger: triggerMedia } = useFileCapture(async (files) => {
-    await uploadMedia({ target: { files } });
-  });
 
   // AI generate narrative
   async function generateNarrative() {
@@ -436,14 +414,13 @@ function LogEntryScreen({ user, site, shift }) {
             </div>
           ))}
         </div>
-        {mediaPortal}
         {form.media.length < 5 && (
           <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'20px'}}>
-            <button type="button" onClick={triggerMedia}
-              style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>
+            <label style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>
               <div style={{fontSize:'18px',color:'rgba(59,130,246,0.5)',lineHeight:1}}>+</div>
               <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)'}}>Photo/Video</div>
-            </button>
+              <input type="file" accept="image/*,video/*" multiple style={{display:'none'}} onChange={uploadMedia} />
+            </label>
           </div>
         )}
 
@@ -629,11 +606,11 @@ function LogEntryScreen({ user, site, shift }) {
             </div>
           ))}
           {uploadingMedia && <div style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)',display:'flex',alignItems:'center',justifyContent:'center'}}><div style={{width:20,height:20,border:'2px solid rgba(255,255,255,0.1)',borderTop:'2px solid #3b82f6',borderRadius:'50%',animation:'spin 1s linear infinite'}}/></div>}
-          <button type="button" onClick={triggerMedia}
-            style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>
+          <label style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>
             <div style={{fontSize:'22px',color:'rgba(59,130,246,0.5)',lineHeight:1}}>+</div>
             <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)',fontWeight:600,letterSpacing:'0.05em'}}>ADD PHOTO</div>
-          </button>
+            <input type="file" accept="image/*,video/*" multiple style={{display:'none'}} onChange={e=>uploadMedia(e.target.files)} />
+          </label>
         </div>
       </div>
 
