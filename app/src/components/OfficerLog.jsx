@@ -141,6 +141,11 @@ function LogEntryScreen({ user, site, shift }) {
     setUploadingMedia(false);
   }
 
+  // Portal file input — must be called unconditionally at top level (Rules of Hooks)
+  const { portal: mediaPortal, trigger: triggerMedia } = useFileCapture(async (files) => {
+    await uploadMedia({ target: { files } });
+  });
+
   // AI generate narrative
   async function generateNarrative() {
     if (!form.description.trim()) { setError('Please add a description first'); return; }
