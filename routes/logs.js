@@ -90,7 +90,7 @@ router.post('/', authenticate, async (req, res, next) => {
         what3words,
         occurred_at: occurred_at || new Date().toISOString(),
         client_reportable: client_reportable || false,
-        type_data: { ...(type_data||{}), media: media||[], police_attended, police_reported, police_incident_number, police_force, police_officer_name, police_shoulder_number }
+        type_data: { ...(type_data||{}), media: media ?? (type_data?.media || []), police_attended, police_reported, police_incident_number, police_force, police_officer_name, police_shoulder_number }
       })
       .select()
       .single();
