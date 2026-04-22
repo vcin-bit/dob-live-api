@@ -10,6 +10,28 @@ import {
   UsersIcon, EyeIcon, FunnelIcon, ArrowDownTrayIcon
 } from '@heroicons/react/24/outline';
 
+// Compress image to 1200px max / 70% JPEG — matches imageUtils.js standard
+// Named compressImageForLog to avoid conflicts with any other compressImage in scope
+async function compressImageForLog(file, maxSize = 1200, quality = 0.70) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width <= maxSize && height <= maxSize) { resolve(file); return; }
+      const ratio = Math.min(maxSize / width, maxSize / height);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(width * ratio);
+      canvas.height = Math.round(height * ratio);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => resolve(new File([blob], file.name, { type: 'image/jpeg' })), 'image/jpeg', quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+
 function LogEntryScreen({ user, site, shift }) {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -25,6 +47,10 @@ function LogEntryScreen({ user, site, shift }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [locationLoading, setLocationLoading] = useState(false);
+  const [savedLogId, setSavedLogId] = useState(null);
+  const [photos, setPhotos] = useState([]);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoError, setPhotoError] = useState(null);
 
   // Get current location
   const getCurrentLocation = () => {
@@ -83,12 +109,12 @@ function LogEntryScreen({ user, site, shift }) {
         type_data: formData.type_data
       };
 
-      await api.logs.create(logData);
-      
-      // Success - redirect to dashboard
-      navigate('/', { 
-        state: { message: 'Log entry created successfully' }
-      });
+      const result = await api.logs.create(logData);
+      if (result.data?.id) {
+        setSavedLogId(result.data.id);
+      } else {
+        navigate('/', { state: { message: 'Log entry created successfully' } });
+      }
     } catch (err) {
       console.error('Failed to create log entry:', err);
       setError(err.message);
@@ -97,7 +123,102 @@ function LogEntryScreen({ user, site, shift }) {
     }
   };
 
-  const selectedLogConfig = LOG_TYPE_CONFIG[formData.log_type];
+  // ── Photo step (shown after log is saved) ──────────────────────────────
+  // IMPORTANT: file input stays inline here. Do NOT extract into a component —
+  // that causes the camera to open behind a backdrop on mobile Chrome (dark screen).
+  if (savedLogId) {
+    const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://bxesqjzkuredqzvepomn.supabase.co';
+    const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+
+    const handlePhotoFile = async (e) => {
+      const files = Array.from(e.target.files);
+      if (!files.length) return;
+      if (photos.length + files.length > 5) { setPhotoError('Maximum 5 photos per log'); return; }
+      setPhotoUploading(true);
+      setPhotoError(null);
+      for (const file of files) {
+        try {
+          const compressed = await compressImageForLog(file);
+          const path = `${savedLogId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+          const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/log-photos/${path}`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'image/jpeg', 'x-upsert': 'false' },
+            body: compressed,
+          });
+          if (!uploadRes.ok) throw new Error('Upload failed');
+          const token = window.__clerkGetToken ? await window.__clerkGetToken() : null;
+          const apiBase = import.meta.env.VITE_API_URL || '';
+          await fetch(`${apiBase}/api/logs/${savedLogId}/photos`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+            body: JSON.stringify({ storage_path: path, file_name: file.name }),
+          });
+          setPhotos(prev => [...prev, { preview: URL.createObjectURL(compressed), file_name: file.name }]);
+        } catch (err) {
+          setPhotoError(`Upload failed: ${err.message}`);
+        }
+      }
+      setPhotoUploading(false);
+      e.target.value = '';
+    };
+
+    return (
+      <div style={{padding:'1rem',paddingBottom:'5rem'}}>
+        <div style={{marginBottom:'1.25rem'}}>
+          <div style={{display:'flex',alignItems:'center',gap:'0.75rem',marginBottom:'0.5rem'}}>
+            <div style={{width:'2rem',height:'2rem',borderRadius:'50%',background:'rgba(74,222,128,0.15)',border:'1px solid rgba(74,222,128,0.4)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <h2 style={{fontSize:'1.125rem',fontWeight:700,color:'#fff',margin:0}}>Log Saved</h2>
+          </div>
+          <p style={{fontSize:'0.8125rem',color:'rgba(255,255,255,0.4)',margin:0}}>Add photos to this log entry (optional)</p>
+        </div>
+
+        {photos.length > 0 && (
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'0.5rem',marginBottom:'0.75rem'}}>
+            {photos.map((p, i) => (
+              <div key={i} style={{aspectRatio:'1',borderRadius:'8px',overflow:'hidden',background:'#1a2235'}}>
+                <img src={p.preview} alt={p.file_name} style={{width:'100%',height:'100%',objectFit:'cover'}} />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {photoError && (
+          <div style={{background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:'6px',padding:'0.5rem 0.75rem',fontSize:'0.8125rem',color:'#fca5a5',marginBottom:'0.75rem'}}>
+            {photoError}
+          </div>
+        )}
+
+        {photos.length < 5 && (
+          <label style={{display:'block',width:'100%',marginBottom:'0.75rem',cursor:photoUploading?'default':'pointer'}}>
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              multiple
+              style={{display:'none'}}
+              onChange={handlePhotoFile}
+              disabled={photoUploading}
+            />
+            <div style={{padding:'0.75rem',background:'#1a2235',border:'1px dashed rgba(255,255,255,0.2)',borderRadius:'8px',color:photoUploading?'rgba(255,255,255,0.3)':'rgba(255,255,255,0.6)',fontSize:'0.875rem',display:'flex',alignItems:'center',justifyContent:'center',gap:'0.5rem'}}>
+              {photoUploading ? 'Uploading...' : photos.length === 0 ? '+ Add Photo' : '+ Add Another Photo'}
+            </div>
+          </label>
+        )}
+
+        <button
+          type="button"
+          onClick={() => navigate('/', { state: { message: `Log saved${photos.length > 0 ? ` with ${photos.length} photo${photos.length > 1 ? 's' : ''}` : ''}` } })}
+          style={{width:'100%',background:'var(--blue)',color:'#fff',border:'none',borderRadius:'8px',padding:'0.875rem',fontSize:'0.9375rem',fontWeight:700,cursor:'pointer'}}
+        >
+          {photos.length > 0 ? `Done — ${photos.length} photo${photos.length > 1 ? 's' : ''} added` : 'Done, no photos'}
+        </button>
+      </div>
+    );
+  }
+
+    const selectedLogConfig = LOG_TYPE_CONFIG[formData.log_type];
 
   return (
     <div style={{padding:'1rem',paddingBottom:'5rem'}}>

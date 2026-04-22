@@ -75,7 +75,11 @@ router.patch('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MA
   } catch (err) { next(err); }
 });
 
-module.exports = router;
+// POST /api/shifts/start — officer starts an ad-hoc shift
+router.post('/start', authenticate, async (req, res, next) => {
+  try {
+    const { site_id, lat, lng } = req.body;
+    if (!site_id) return res.status(400).json({ error: 'site_id required' });
 
 // POST /api/shifts/:id/checkin — officer checks in
 router.post('/:id/checkin', authenticate, async (req, res, next) => {
@@ -114,12 +118,6 @@ router.post('/:id/checkout', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// POST /api/shifts/start — officer starts an ad-hoc shift
-router.post('/start', authenticate, async (req, res, next) => {
-  try {
-    const { site_id, lat, lng } = req.body;
-    if (!site_id) return res.status(400).json({ error: 'site_id required' });
-
     // Check no active shift already
     const { data: existing } = await supabase
       .from('shifts')
@@ -147,3 +145,5 @@ router.post('/start', authenticate, async (req, res, next) => {
     res.status(201).json({ data });
   } catch (err) { next(err); }
 });
+
+module.exports = router;

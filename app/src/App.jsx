@@ -11,10 +11,30 @@ import {
 } from '@heroicons/react/24/outline';
 
 import { PortalApp } from './components/Portal';
-
-const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_c3BlY2lhbC1ib2JjYXQtNDguY2xlcmsuYWNjb3VudHMuZGV2JA';
 import { OfficerApp } from './components/OfficerShell';
 import { ManagerApp } from './components/ManagerShell';
+
+const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_c3BlY2lhbC1ib2JjYXQtNDguY2xlcmsuYWNjb3VudHMuZGV2JA';
+
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  componentDidCatch(err, info) { console.error('App error:', err, info); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#0f1623',padding:'1.5rem'}}>
+          <div style={{textAlign:'center',maxWidth:'360px'}}>
+            <div style={{fontSize:'1.125rem',fontWeight:700,color:'#fff',marginBottom:'0.75rem'}}>Something went wrong</div>
+            <p style={{color:'rgba(255,255,255,0.5)',fontSize:'0.875rem',marginBottom:'1.5rem'}}>{this.state.error?.message || 'An unexpected error occurred.'}</p>
+            <button onClick={() => window.location.reload()} style={{padding:'0.75rem 1.5rem',background:'var(--blue)',color:'#fff',border:'none',borderRadius:'8px',fontSize:'0.9375rem',fontWeight:600,cursor:'pointer'}}>Reload App</button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 
 function App() {

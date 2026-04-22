@@ -141,8 +141,6 @@ router.delete('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_M
   } catch (err) { next(err); }
 });
 
-module.exports = router;
-
 // GET /api/logs/export — CSV download
 router.get('/export', authenticate, async (req, res, next) => {
   try {
@@ -184,3 +182,30 @@ router.get('/export', authenticate, async (req, res, next) => {
     res.send(csv);
   } catch (err) { next(err); }
 });
+// POST /api/logs/:id/photos — register an uploaded photo for a log entry
+router.post('/:id/photos', authenticate, async (req, res, next) => {
+  try {
+    const { storage_path, file_name } = req.body;
+    if (!storage_path) return res.status(400).json({ error: 'storage_path required' });
+
+    const { data: log, error: logErr } = await supabase
+      .from('occurrence_logs')
+      .select('id')
+      .eq('id', req.params.id)
+      .eq('company_id', req.user.company_id)
+      .single();
+
+    if (logErr || !log) return res.status(404).json({ error: 'Log not found' });
+
+    const { data, error } = await supabase
+      .from('occurrence_log_photos')
+      .insert({ log_id: req.params.id, storage_path, file_name: file_name || null })
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.status(201).json({ data });
+  } catch (err) { next(err); }
+});
+
+module.exports = router;
