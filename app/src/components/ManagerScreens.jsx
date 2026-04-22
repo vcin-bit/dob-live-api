@@ -555,6 +555,7 @@ function LogReview({ user }) {
   const [filter, setFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [siteFilter, setSiteFilter] = useState('');
+  const [selectedLog, setSelectedLog] = useState(null);
 
   useEffect(() => {
     async function load() {
@@ -636,7 +637,7 @@ function LogReview({ user }) {
             </thead>
             <tbody>
               {filtered.map(log => (
-                <tr key={log.id}>
+                <tr key={log.id} onClick={() => setSelectedLog(log)} style={{cursor:'pointer'}}>
                   <td style={{color:'var(--text-2)',whiteSpace:'nowrap',fontSize:'0.8125rem'}}>
                     {new Date(log.occurred_at).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'2-digit'})}
                     {' '}
@@ -646,6 +647,7 @@ function LogReview({ user }) {
                   <td style={{fontWeight:500,maxWidth:'240px'}}>
                     <div style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{log.title || '—'}</div>
                     {log.description && <div style={{fontSize:'0.75rem',color:'var(--text-2)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{log.description}</div>}
+                    {(log.type_data?.media?.length > 0) && <div style={{fontSize:'0.7rem',color:'var(--blue)'}}>{log.type_data.media.length} photo{log.type_data.media.length>1?'s':''} attached</div>}
                   </td>
                   <td style={{color:'var(--text-2)',fontSize:'0.8125rem'}}>
                     {log.officer ? `${log.officer.first_name} ${log.officer.last_name}` : '—'}
@@ -657,6 +659,11 @@ function LogReview({ user }) {
           </table>
         )}
       </div>
+    {selectedLog && (
+      selectedLog.log_type === 'PATROL' && selectedLog.type_data?.patrol_session_id
+        ? <PatrolDetailModal log={selectedLog} onClose={() => setSelectedLog(null)} />
+        : <LogDetailModal log={selectedLog} onClose={() => setSelectedLog(null)} />
+    )}
     </div>
   );
 }
