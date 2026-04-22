@@ -863,8 +863,8 @@ function OccurrenceModal({ site, shift, currentPos, onClose }) {
               </div>
             ))}
           </div>
-          {media.length < 5 && (
           {createPortal(<input ref={mediaInputRef} type="file" accept="image/*,video/*" multiple style={{position:'fixed',top:-9999,left:-9999,width:1,height:1,opacity:0}} onChange={handleMedia} />, document.body)}
+          {media.length < 5 && (
             <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'14px'}}>
               <button type="button" onClick={() => mediaInputRef.current?.click()} style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>
                 <div style={{fontSize:'18px',color:'rgba(59,130,246,0.5)',lineHeight:1}}>+</div>
