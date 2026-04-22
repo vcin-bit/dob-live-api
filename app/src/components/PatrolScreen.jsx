@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { compressImage, isImage } from '../lib/imageUtils';
@@ -488,8 +489,8 @@ function AddCheckpointModal({ currentPos, onSave, onClose }) {
   const [imageUrl, setImageUrl] = useState('');
   const [uploading, setUploading] = useState(false);
 
-  async function handlePhoto(e) {
-    const rawFile = e.target.files?.[0];
+  const { portal: photoPortal, trigger: triggerPhoto } = useFileCapture(async (files) => {
+    const rawFile = files[0];
     if (!rawFile) return;
     setUploading(true);
     try {
@@ -498,7 +499,7 @@ function AddCheckpointModal({ currentPos, onSave, onClose }) {
       setImageUrl(res.url);
     } catch (err) { console.error('Image upload failed:', err.message); }
     finally { setUploading(false); }
-  }
+  });
 
   function save() {
     if (!name.trim()) return;
@@ -544,11 +545,12 @@ function AddCheckpointModal({ currentPos, onSave, onClose }) {
                   <button onClick={() => setImageUrl('')} style={{position:'absolute',top:-6,right:-6,width:18,height:18,background:'rgba(239,68,68,0.9)',borderRadius:'50%',border:'none',color:'#fff',fontSize:'11px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>x</button>
                 </div>
               )}
+              {photoPortal}
               {!uploading && (
-                <label style={{padding:'8px 14px',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',cursor:'pointer',fontSize:'12px',color:'rgba(255,255,255,0.5)'}}>
+                <button type="button" onClick={triggerPhoto}
+                  style={{padding:'8px 14px',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',cursor:'pointer',fontSize:'12px',color:'rgba(255,255,255,0.5)'}}>
                   {imageUrl ? 'Change photo' : 'Take / upload photo'}
-                  <input type="file" accept="image/*" capture="environment" style={{display:'none'}} onChange={handlePhoto} disabled={uploading} />
-                </label>
+                </button>
               )}
               {uploading && <span style={{fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>Uploading...</span>}
             </div>
@@ -579,8 +581,8 @@ function CheckpointModal({ site, session, currentPos, route, isRoutePlanner, onC
   }, [currentPos?.lat, currentPos?.lng]);
 
   const [uploadError, setUploadError] = useState('');
-  async function uploadPhoto(e) {
-    const rawFile = e.target.files?.[0];
+  const { portal: photoPortal, trigger: triggerPhoto } = useFileCapture(async (files) => {
+    const rawFile = files[0];
     if (!rawFile) return;
     setUploadError('');
     setUploading(true);
@@ -594,7 +596,7 @@ function CheckpointModal({ site, session, currentPos, route, isRoutePlanner, onC
       if (data.url) setPhotoUrl(data.url);
     } catch (err) { console.error('Photo upload failed:', err); setUploadError('Upload failed'); setTimeout(() => setUploadError(''), 3000); }
     finally { setUploading(false); }
-  }
+  });
 
   async function save() {
     if (!name.trim()) return;
@@ -639,11 +641,12 @@ function CheckpointModal({ site, session, currentPos, route, isRoutePlanner, onC
                   <button onClick={() => setPhotoUrl('')} style={{position:'absolute',top:-6,right:-6,width:18,height:18,background:'rgba(239,68,68,0.9)',borderRadius:'50%',border:'none',color:'#fff',fontSize:'11px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>x</button>
                 </div>
               )}
+              {photoPortal}
               {!uploading && (
-                <label style={{padding:'8px 14px',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',cursor:'pointer',fontSize:'12px',color:'rgba(255,255,255,0.5)'}}>
+                <button type="button" onClick={triggerPhoto}
+                  style={{padding:'8px 14px',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',cursor:'pointer',fontSize:'12px',color:'rgba(255,255,255,0.5)'}}>
                   {photoUrl ? 'Change photo' : 'Take / upload photo'}
-                  <input type="file" accept="image/*" capture="environment" style={{display:'none'}} onChange={uploadPhoto} disabled={uploading} />
-                </label>
+                </button>
               )}
               {uploading && <span style={{fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>Uploading...</span>}
               {uploadError && <span style={{fontSize:'11px',color:'#ef4444'}}>{uploadError}</span>}
@@ -680,8 +683,7 @@ function ReportModal({ user, site, session, onClose }) {
     { key:'MAINTENANCE', label:'Maintenance', color:'rgba(255,255,255,0.5)' },
     { key:'OTHER', label:'Other', color:'rgba(255,255,255,0.35)' },
   ];
-  async function handleMedia(e) {
-    const files = Array.from(e.target.files || []);
+  const { portal: mediaPortal, trigger: triggerMedia } = useFileCapture(async (files) => {
     const uploads = await Promise.all(files.map(async rawFile => {
       try {
         const file = isImage(rawFile) ? await compressImage(rawFile) : rawFile;
@@ -694,7 +696,7 @@ function ReportModal({ user, site, session, onClose }) {
       } catch (err) { console.error('Media upload error:', err); return null; }
     }));
     setMedia(prev => [...prev, ...uploads.filter(Boolean)]);
-  }
+  });
   async function submit() {
     if (!notes.trim()) { alert('Please add a description'); return; }
     setSaving(true);
@@ -723,12 +725,13 @@ function ReportModal({ user, site, session, onClose }) {
           <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'8px'}}>
             {media.map((m, i) => (<div key={i} style={{width:56,height:56,borderRadius:'8px',background:'#1a2535',border:'1px solid rgba(255,255,255,0.1)',overflow:'hidden',position:'relative'}}>{m.type?.startsWith('image') ? <img src={m.url} style={{width:'100%',height:'100%',objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'10px',color:'rgba(255,255,255,0.4)'}}>video</div>}<button onClick={() => setMedia(p => p.filter((_,j)=>j!==i))} style={{position:'absolute',top:1,right:1,width:16,height:16,background:'rgba(239,68,68,0.9)',borderRadius:'50%',border:'none',color:'#fff',fontSize:10,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>x</button></div>))}
           </div>
+          {mediaPortal}
           <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'14px'}}>
-            <label style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>
+            <button type="button" onClick={triggerMedia}
+              style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>
               <div style={{fontSize:'18px',color:'rgba(59,130,246,0.5)',lineHeight:1}}>+</div>
               <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)'}}>Photo/Video</div>
-              <input type="file" accept="image/*,video/*" capture="environment" style={{display:'none'}} onChange={handleMedia} />
-            </label>
+            </button>
           </div>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'11px 13px',background:clientReportable?'rgba(59,130,246,0.07)':'rgba(255,255,255,0.03)',border:`1px solid ${clientReportable?'rgba(59,130,246,0.25)':'rgba(255,255,255,0.07)'}`,borderRadius:'10px',marginBottom:'14px',cursor:'pointer'}} onClick={() => setClientReportable(p => !p)}>
             <div><div style={{fontSize:'13px',fontWeight:600,color:'#fff'}}>Report to client</div><div style={{fontSize:'11px',color:'rgba(255,255,255,0.35)',marginTop:'1px'}}>{clientReportable ? 'Visible in client portal + ops' : 'Ops only'}</div></div>
@@ -757,9 +760,8 @@ function OccurrenceModal({ site, shift, currentPos, onClose }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  async function handleMedia(e) {
+  const { portal: mediaPortal, trigger: triggerMedia } = useFileCapture(async (files) => {
     if (media.length >= 5) return;
-    const files = Array.from(e.target.files || []);
     const rawFiles = files.slice(0, 5 - media.length);
     const uploads = await Promise.all(rawFiles.map(async rawFile => {
       try {
@@ -773,7 +775,7 @@ function OccurrenceModal({ site, shift, currentPos, onClose }) {
       } catch (err) { console.error('Media upload error:', err); return null; }
     }));
     setMedia(prev => [...prev, ...uploads.filter(Boolean)].slice(0, 5));
-  }
+  });
 
 
   async function submit() {
@@ -858,13 +860,14 @@ function OccurrenceModal({ site, shift, currentPos, onClose }) {
               </div>
             ))}
           </div>
+          {mediaPortal}
           {media.length < 5 && (
             <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'14px'}}>
-              <label style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>
+              <button type="button" onClick={triggerMedia}
+                style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>
                 <div style={{fontSize:'18px',color:'rgba(59,130,246,0.5)',lineHeight:1}}>+</div>
                 <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)'}}>Photo/Video</div>
-                <input type="file" accept="image/*,video/*" capture="environment" style={{display:'none'}} onChange={handleMedia} />
-              </label>
+              </button>
             </div>
           )}
 
