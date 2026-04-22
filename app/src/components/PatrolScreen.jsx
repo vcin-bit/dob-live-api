@@ -547,7 +547,7 @@ function AddCheckpointModal({ currentPos, onSave, onClose }) {
               {!uploading && (
                 <label style={{padding:'8px 14px',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',cursor:'pointer',fontSize:'12px',color:'rgba(255,255,255,0.5)'}}>
                   {imageUrl ? 'Change photo' : 'Take / upload photo'}
-                  <input type="file" accept="image/*" capture="environment" style={{display:'none'}} onChange={handlePhoto} disabled={uploading} />
+                  <input type="file" accept="image/*" style={{display:'none'}} onChange={handlePhoto} disabled={uploading} />
                 </label>
               )}
               {uploading && <span style={{fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>Uploading...</span>}
@@ -642,7 +642,7 @@ function CheckpointModal({ site, session, currentPos, route, isRoutePlanner, onC
               {!uploading && (
                 <label style={{padding:'8px 14px',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',cursor:'pointer',fontSize:'12px',color:'rgba(255,255,255,0.5)'}}>
                   {photoUrl ? 'Change photo' : 'Take / upload photo'}
-                  <input type="file" accept="image/*" capture="environment" style={{display:'none'}} onChange={uploadPhoto} disabled={uploading} />
+                  <input type="file" accept="image/*" style={{display:'none'}} onChange={uploadPhoto} disabled={uploading} />
                 </label>
               )}
               {uploading && <span style={{fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>Uploading...</span>}
