@@ -95,6 +95,12 @@ router.post('/expire', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// POST /api/shifts/start — officer starts an ad-hoc shift
+router.post('/start', authenticate, async (req, res, next) => {
+  try {
+    const { site_id, lat, lng, end_time } = req.body;
+    if (!site_id) return res.status(400).json({ error: 'site_id required' });
+
 // POST /api/shifts/:id/checkin — officer checks in
 router.post('/:id/checkin', authenticate, async (req, res, next) => {
   try {
@@ -132,11 +138,6 @@ router.post('/:id/checkout', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// POST /api/shifts/start — officer starts an ad-hoc shift
-router.post('/start', authenticate, async (req, res, next) => {
-  try {
-    const { site_id, lat, lng, end_time } = req.body;
-    if (!site_id) return res.status(400).json({ error: 'site_id required' });
 
     // Check no active shift already
     const { data: existing } = await supabase
