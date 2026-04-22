@@ -111,20 +111,24 @@ function LogEntryScreen({ user, site, shift }) {
     e.target.value = '';
     if (!files.length) return;
     setUploadingMedia(true);
+    // Show local previews instantly so officer sees the image immediately
+    const previews = files.map(rawFile => ({ url: URL.createObjectURL(rawFile), name: rawFile.name, type: rawFile.type, uploading: true }));
+    f('media', [...form.media, ...previews]);
     const token = await window.__clerkGetToken?.() || '';
-    const uploads = [];
-    for (const rawFile of files) {
+    const finalMedia = [...form.media];
+    for (let i = 0; i < files.length; i++) {
+      const rawFile = files[i];
       try {
         const file = isImage(rawFile) ? await compressImage(rawFile) : rawFile;
         const fd = new FormData(); fd.append('file', file);
         const r = await fetch(`${API}/api/patrols/media/upload`, { method:'POST', body:fd, headers:{ Authorization:`Bearer ${token}` } });
         if (!r.ok) { const txt = await r.text(); throw new Error(`Upload failed: ${r.status} ${txt}`); }
         const d = await r.json();
-        if (d.url) uploads.push({ url:d.url, name:rawFile.name, type:rawFile.type });
+        if (d.url) finalMedia.push({ url: d.url, name: rawFile.name, type: rawFile.type });
         else throw new Error('No URL in response: ' + JSON.stringify(d));
       } catch (err) { console.error('Upload error:', err); alert('Upload failed: ' + err.message); }
     }
-    f('media', [...form.media, ...uploads]);
+    f('media', finalMedia);
     setUploadingMedia(false);
   }
 

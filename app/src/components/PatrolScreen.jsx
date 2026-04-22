@@ -494,11 +494,12 @@ function AddCheckpointModal({ currentPos, onSave, onClose }) {
     const rawFile = e.target.files?.[0];
     if (!rawFile) return;
     setUploading(true);
+    setImageUrl(URL.createObjectURL(rawFile));
     try {
       const file = isImage(rawFile) ? await compressImage(rawFile) : rawFile;
       const res = await api.patrols.uploadCheckpointImage(file);
       setImageUrl(res.url);
-    } catch (err) { console.error('Image upload failed:', err.message); }
+    } catch (err) { console.error('Image upload failed:', err.message); setImageUrl(''); }
     finally { setUploading(false); }
   }
 
@@ -587,6 +588,7 @@ function CheckpointModal({ site, session, currentPos, route, isRoutePlanner, onC
     if (!rawFile) return;
     setUploadError('');
     setUploading(true);
+    setPhotoUrl(URL.createObjectURL(rawFile));
     try {
       const file = isImage(rawFile) ? await compressImage(rawFile) : rawFile;
       const fd = new FormData(); fd.append('file', file);
@@ -595,7 +597,7 @@ function CheckpointModal({ site, session, currentPos, route, isRoutePlanner, onC
       const res = await fetch(`${API}/api/patrols/media/upload`, { method: 'POST', body: fd, headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       if (data.url) setPhotoUrl(data.url);
-    } catch (err) { console.error('Photo upload failed:', err); setUploadError('Upload failed'); setTimeout(() => setUploadError(''), 3000); }
+    } catch (err) { console.error('Photo upload failed:', err); setUploadError('Upload failed'); setPhotoUrl(''); setTimeout(() => setUploadError(''), 3000); }
     finally { setUploading(false); }
   }
 
@@ -686,18 +688,24 @@ function ReportModal({ user, site, session, onClose }) {
   ];
   async function handleMedia(e) {
     const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    const previews = files.map(rawFile => ({ url: URL.createObjectURL(rawFile), name: rawFile.name, type: rawFile.type, uploading: true }));
+    setMedia(prev => [...prev, ...previews]);
+    const token = await window.__clerkGetToken?.() || '';
     const uploads = await Promise.all(files.map(async rawFile => {
       try {
         const file = isImage(rawFile) ? await compressImage(rawFile) : rawFile;
         const form = new FormData(); form.append('file', file);
         const API = import.meta.env.VITE_API_URL || 'https://dob-live-api.onrender.com';
-        const token = await window.__clerkGetToken?.() || '';
         const res = await fetch(`${API}/api/patrols/media/upload`, { method: 'POST', body: form, headers: { Authorization: `Bearer ${token}` } });
         if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
         const data = await res.json(); return { url: data.url, name: rawFile.name, type: rawFile.type };
       } catch (err) { console.error('Media upload error:', err); return null; }
     }));
-    setMedia(prev => [...prev, ...uploads.filter(Boolean)]);
+    setMedia(prev => {
+      const withoutPreviews = prev.filter(m => !m.uploading);
+      return [...withoutPreviews, ...uploads.filter(Boolean)];
+    });
   }
   async function submit() {
     if (!notes.trim()) { alert('Please add a description'); return; }
@@ -766,18 +774,24 @@ function OccurrenceModal({ site, shift, currentPos, onClose }) {
     if (media.length >= 5) return;
     const files = Array.from(e.target.files || []);
     const rawFiles = files.slice(0, 5 - media.length);
+    if (!rawFiles.length) return;
+    const previews = rawFiles.map(rawFile => ({ url: URL.createObjectURL(rawFile), name: rawFile.name, type: rawFile.type, uploading: true }));
+    setMedia(prev => [...prev, ...previews].slice(0, 5));
+    const token = await window.__clerkGetToken?.() || '';
     const uploads = await Promise.all(rawFiles.map(async rawFile => {
       try {
         const file = isImage(rawFile) ? await compressImage(rawFile) : rawFile;
         const form = new FormData(); form.append('file', file);
         const API = import.meta.env.VITE_API_URL || 'https://dob-live-api.onrender.com';
-        const token = await window.__clerkGetToken?.() || '';
         const res = await fetch(`${API}/api/patrols/media/upload`, { method: 'POST', body: form, headers: { Authorization: `Bearer ${token}` } });
         if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
         const data = await res.json(); return { url: data.url, name: rawFile.name, type: rawFile.type };
       } catch (err) { console.error('Media upload error:', err); return null; }
     }));
-    setMedia(prev => [...prev, ...uploads.filter(Boolean)].slice(0, 5));
+    setMedia(prev => {
+      const withoutPreviews = prev.filter(m => !m.uploading);
+      return [...withoutPreviews, ...uploads.filter(Boolean)].slice(0, 5);
+    });
   }
 
 
