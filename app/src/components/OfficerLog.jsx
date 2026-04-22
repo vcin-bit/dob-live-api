@@ -4,7 +4,6 @@ import { api } from '../lib/api';
 import { MapPinIcon, ClipboardDocumentListIcon } from '@heroicons/react/24/outline';
 import { LOG_TYPE_CONFIG } from '../lib/constants';
 import { compressImage, isImage } from '../lib/imageUtils';
-import PhotoPickerModal from './PhotoPickerModal';
 
 // ── Types config ─────────────────────────────────────────────────────────────
 const HIGH_PRIORITY = [
@@ -105,10 +104,8 @@ function LogEntryScreen({ user, site, shift }) {
   }
 
   // Media upload
-  const [showPhotoPicker, setShowPhotoPicker] = useState(false);
-
-  async function uploadMedia(filesInput) {
-    const files = Array.isArray(filesInput) ? filesInput : Array.from(filesInput || []);
+  async function uploadMedia(e) {
+    const files = Array.from(e.target.files || []);
     if (!files.length) return;
     setUploadingMedia(true);
     const token = await window.__clerkGetToken?.() || '';
@@ -418,11 +415,14 @@ function LogEntryScreen({ user, site, shift }) {
           ))}
         </div>
         {form.media.length < 5 && (
-          <div style={{display:'flex',gap:'6px',marginBottom:'20px'}}>
-            <button onClick={() => setShowPhotoPicker(true)} style={{cursor:'pointer',padding:'8px 14px',background:'rgba(255,255,255,0.06)',border:'0.5px solid rgba(255,255,255,0.12)',borderRadius:'8px',fontSize:'11px',color:'rgba(255,255,255,0.7)'}}>Add Photo</button>
+          <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'20px'}}>
+            <label style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>
+              <div style={{fontSize:'18px',color:'rgba(59,130,246,0.5)',lineHeight:1}}>+</div>
+              <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)'}}>Photo/Video</div>
+              <input type="file" accept="image/*,video/*" multiple style={{display:'none'}} onChange={uploadMedia} />
+            </label>
           </div>
         )}
-        <PhotoPickerModal open={showPhotoPicker} onClose={() => setShowPhotoPicker(false)} onFilesSelected={uploadMedia} />
 
         {/* Submit */}
         <button onClick={async () => {
