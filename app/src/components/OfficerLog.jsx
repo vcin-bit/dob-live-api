@@ -108,6 +108,7 @@ function LogEntryScreen({ user, site, shift }) {
   // Media upload
   async function uploadMedia(e) {
     const files = Array.from(e.target.files || []);
+    e.target.value = '';
     if (!files.length) return;
     setUploadingMedia(true);
     const token = await window.__clerkGetToken?.() || '';
@@ -117,10 +118,11 @@ function LogEntryScreen({ user, site, shift }) {
         const file = isImage(rawFile) ? await compressImage(rawFile) : rawFile;
         const fd = new FormData(); fd.append('file', file);
         const r = await fetch(`${API}/api/patrols/media/upload`, { method:'POST', body:fd, headers:{ Authorization:`Bearer ${token}` } });
-        if (!r.ok) throw new Error(`Upload failed: ${r.status}`);
+        if (!r.ok) { const txt = await r.text(); throw new Error(`Upload failed: ${r.status} ${txt}`); }
         const d = await r.json();
         if (d.url) uploads.push({ url:d.url, name:rawFile.name, type:rawFile.type });
-      } catch (err) { console.error('Upload error:', err); }
+        else throw new Error('No URL in response: ' + JSON.stringify(d));
+      } catch (err) { console.error('Upload error:', err); alert('Upload failed: ' + err.message); }
     }
     f('media', [...form.media, ...uploads]);
     setUploadingMedia(false);
@@ -416,7 +418,7 @@ function LogEntryScreen({ user, site, shift }) {
             </div>
           ))}
         </div>
-        {createPortal(<input ref={mediaInputRef} type="file" accept="image/*,video/*" multiple style={{position:'absolute',top:0,left:0,width:1,height:1,opacity:0,visibility:'hidden'}} onChange={uploadMedia} />, document.body)}
+        {createPortal(<input ref={mediaInputRef} type="file" accept="image/*,video/*" multiple style={{position:'absolute',top:0,left:0,width:'1px',height:'1px',opacity:0,pointerEvents:'none'}} onChange={uploadMedia} />, document.body)}
         {form.media.length < 5 && (
           <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'20px'}}>
             <button type="button" onClick={() => mediaInputRef.current?.click()} style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>

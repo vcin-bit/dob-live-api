@@ -546,7 +546,7 @@ function AddCheckpointModal({ currentPos, onSave, onClose }) {
                   <button onClick={() => setImageUrl('')} style={{position:'absolute',top:-6,right:-6,width:18,height:18,background:'rgba(239,68,68,0.9)',borderRadius:'50%',border:'none',color:'#fff',fontSize:'11px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>x</button>
                 </div>
               )}
-              {createPortal(<input ref={photoInputRef} type="file" accept="image/*" style={{position:'absolute',top:0,left:0,width:1,height:1,opacity:0,visibility:'hidden'}} onChange={handlePhoto} />, document.body)}
+              {createPortal(<input ref={photoInputRef} type="file" accept="image/*" style={{position:'absolute',top:0,left:0,width:'1px',height:'1px',opacity:0,pointerEvents:'none'}} onChange={handlePhoto} />, document.body)}
               {!uploading && (
                 <button type="button" onClick={() => photoInputRef.current?.click()} style={{padding:'8px 14px',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',cursor:'pointer',fontSize:'12px',color:'rgba(255,255,255,0.5)'}}>
                   {imageUrl ? 'Change photo' : 'Take / upload photo'}
@@ -642,7 +642,7 @@ function CheckpointModal({ site, session, currentPos, route, isRoutePlanner, onC
                   <button onClick={() => setPhotoUrl('')} style={{position:'absolute',top:-6,right:-6,width:18,height:18,background:'rgba(239,68,68,0.9)',borderRadius:'50%',border:'none',color:'#fff',fontSize:'11px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>x</button>
                 </div>
               )}
-              {createPortal(<input ref={photoInputRef} type="file" accept="image/*" style={{position:'absolute',top:0,left:0,width:1,height:1,opacity:0,visibility:'hidden'}} onChange={uploadPhoto} />, document.body)}
+              {createPortal(<input ref={photoInputRef} type="file" accept="image/*" style={{position:'absolute',top:0,left:0,width:'1px',height:'1px',opacity:0,pointerEvents:'none'}} onChange={uploadPhoto} />, document.body)}
               {!uploading && (
                 <button type="button" onClick={() => photoInputRef.current?.click()} style={{padding:'8px 14px',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',cursor:'pointer',fontSize:'12px',color:'rgba(255,255,255,0.5)'}}>
                   {photoUrl ? 'Change photo' : 'Take / upload photo'}
@@ -727,7 +727,7 @@ function ReportModal({ user, site, session, onClose }) {
           <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'8px'}}>
             {media.map((m, i) => (<div key={i} style={{width:56,height:56,borderRadius:'8px',background:'#1a2535',border:'1px solid rgba(255,255,255,0.1)',overflow:'hidden',position:'relative'}}>{m.type?.startsWith('image') ? <img src={m.url} style={{width:'100%',height:'100%',objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'10px',color:'rgba(255,255,255,0.4)'}}>video</div>}<button onClick={() => setMedia(p => p.filter((_,j)=>j!==i))} style={{position:'absolute',top:1,right:1,width:16,height:16,background:'rgba(239,68,68,0.9)',borderRadius:'50%',border:'none',color:'#fff',fontSize:10,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>x</button></div>))}
           </div>
-          {createPortal(<input ref={mediaInputRef} type="file" accept="image/*,video/*" multiple style={{position:'absolute',top:0,left:0,width:1,height:1,opacity:0,visibility:'hidden'}} onChange={handleMedia} />, document.body)}
+          {createPortal(<input ref={mediaInputRef} type="file" accept="image/*,video/*" multiple style={{position:'absolute',top:0,left:0,width:'1px',height:'1px',opacity:0,pointerEvents:'none'}} onChange={handleMedia} />, document.body)}
           <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'14px'}}>
             <button type="button" onClick={() => mediaInputRef.current?.click()} style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>
               <div style={{fontSize:'18px',color:'rgba(59,130,246,0.5)',lineHeight:1}}>+</div>
@@ -863,7 +863,7 @@ function OccurrenceModal({ site, shift, currentPos, onClose }) {
               </div>
             ))}
           </div>
-          {createPortal(<input ref={mediaInputRef} type="file" accept="image/*,video/*" multiple style={{position:'absolute',top:0,left:0,width:1,height:1,opacity:0,visibility:'hidden'}} onChange={handleMedia} />, document.body)}
+          {createPortal(<input ref={mediaInputRef} type="file" accept="image/*,video/*" multiple style={{position:'absolute',top:0,left:0,width:'1px',height:'1px',opacity:0,pointerEvents:'none'}} onChange={handleMedia} />, document.body)}
           {media.length < 5 && (
             <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'14px'}}>
               <button type="button" onClick={() => mediaInputRef.current?.click()} style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>
