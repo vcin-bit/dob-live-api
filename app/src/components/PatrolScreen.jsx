@@ -605,7 +605,9 @@ function CheckpointModal({ site, session, currentPos, route, isRoutePlanner, onC
     if (!name.trim()) return;
     setSaving(true);
     try {
-      await api.logs.create({ site_id: site?.id, log_type: 'PATROL', title: name.trim(), description: description.trim() || `Checkpoint: ${name.trim()}`, occurred_at: new Date().toISOString(), latitude: currentPos?.lat, longitude: currentPos?.lng, type_data: { checkpoint: true, patrol_session_id: session?.id, ...(photoUrl ? { photo_url: photoUrl } : {}), ...(w3w ? { what3words: w3w } : {}) } });
+      // Don't save a blob URL — if still uploading, photo_url will be a local blob, skip it
+      const savedPhotoUrl = photoUrl && !photoUrl.startsWith('blob:') ? photoUrl : null;
+      await api.logs.create({ site_id: site?.id, log_type: 'PATROL', title: name.trim(), description: description.trim() || `Checkpoint: ${name.trim()}`, occurred_at: new Date().toISOString(), latitude: currentPos?.lat, longitude: currentPos?.lng, type_data: { checkpoint: true, patrol_session_id: session?.id, ...(savedPhotoUrl ? { photo_url: savedPhotoUrl } : {}), ...(w3w ? { what3words: w3w } : {}) } });
       if (savePermanent && route?.id && currentPos) {
         try {
           const existing = route.checkpoints || [];

@@ -928,16 +928,18 @@ function PatrolDetailModal({ log, onClose }) {
           </div>
           <div>
             <div style={{fontSize:'0.75rem',color:'var(--text-3)'}}>Date</div>
-            <div>{fmtDate(td.started_at)}</div>
+            <div>{fmtDate(td.started_at || log.occurred_at)}</div>
           </div>
           <div>
             <div style={{fontSize:'0.75rem',color:'var(--text-3)'}}>Time</div>
-            <div>{fmtTime(td.started_at)} → {fmtTime(td.ended_at)}</div>
+            <div>{fmtTime(td.started_at || log.occurred_at)}{td.ended_at ? ` → ${fmtTime(td.ended_at)}` : ''}</div>
           </div>
+          {duration != null && (
           <div>
             <div style={{fontSize:'0.75rem',color:'var(--text-3)'}}>Duration</div>
-            <div style={{fontWeight:600}}>{duration != null ? (duration >= 60 ? `${Math.floor(duration/60)}h ${duration%60}m` : `${duration}m`) : '—'}</div>
+            <div style={{fontWeight:600}}>{duration >= 60 ? `${Math.floor(duration/60)}h ${duration%60}m` : `${duration}m`}</div>
           </div>
+          )}
         </div>
 
         {/* Stats */}

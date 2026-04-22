@@ -715,9 +715,9 @@ function LogEntryScreen({ user, site, shift }) {
         <div style={S.toggle(form.client_reportable)}><div style={S.toggleDot(form.client_reportable)}/></div>
       </div>
 
-      <button onClick={submit} disabled={submitting}
+      <button onClick={submit} disabled={submitting || uploadingMedia}
         style={S.btn(type?.key==='INCIDENT'||type?.key==='EMERGENCY'?'#ef4444':type?.key==='ALARM'||type?.key==='FIRE_ALARM'?'#d97706':'#1a52a8')}>
-        {submitting ? 'SUBMITTING...' : `SUBMIT ${type?.label || ''} REPORT`}
+        {uploadingMedia ? 'UPLOADING PHOTO...' : submitting ? 'SUBMITTING...' : `SUBMIT ${type?.label || ''} REPORT`}
       </button>
       <div style={{height:'8px'}}/>
       <button onClick={() => setStep(2)} style={S.ghost}>← BACK</button>
