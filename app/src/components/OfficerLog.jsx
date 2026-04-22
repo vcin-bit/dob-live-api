@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { MapPinIcon, ClipboardDocumentListIcon } from '@heroicons/react/24/outline';
@@ -86,6 +87,7 @@ function LogEntryScreen({ user, site, shift }) {
   const [generatingAI, setGeneratingAI] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const mediaInputRef = useRef(null);
   const [error, setError] = useState('');
   const [gpsLoading, setGpsLoading] = useState(false);
 
@@ -414,13 +416,13 @@ function LogEntryScreen({ user, site, shift }) {
             </div>
           ))}
         </div>
+        {createPortal(<input ref={mediaInputRef} type="file" accept="image/*,video/*" multiple style={{position:'fixed',top:-9999,left:-9999,width:1,height:1,opacity:0}} onChange={uploadMedia} />, document.body)}
         {form.media.length < 5 && (
           <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'20px'}}>
-            <label style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>
+            <button type="button" onClick={() => mediaInputRef.current?.click()} style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>
               <div style={{fontSize:'18px',color:'rgba(59,130,246,0.5)',lineHeight:1}}>+</div>
               <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)'}}>Photo/Video</div>
-              <input type="file" accept="image/*,video/*" multiple style={{display:'none'}} onChange={uploadMedia} />
-            </label>
+            </button>
           </div>
         )}
 
@@ -606,11 +608,10 @@ function LogEntryScreen({ user, site, shift }) {
             </div>
           ))}
           {uploadingMedia && <div style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)',display:'flex',alignItems:'center',justifyContent:'center'}}><div style={{width:20,height:20,border:'2px solid rgba(255,255,255,0.1)',borderTop:'2px solid #3b82f6',borderRadius:'50%',animation:'spin 1s linear infinite'}}/></div>}
-          <label style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>
+          <button type="button" onClick={() => mediaInputRef.current?.click()} style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>
             <div style={{fontSize:'22px',color:'rgba(59,130,246,0.5)',lineHeight:1}}>+</div>
             <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)',fontWeight:600,letterSpacing:'0.05em'}}>ADD PHOTO</div>
-            <input type="file" accept="image/*,video/*" multiple style={{display:'none'}} onChange={e=>uploadMedia(e.target.files)} />
-          </label>
+          </button>
         </div>
       </div>
 
