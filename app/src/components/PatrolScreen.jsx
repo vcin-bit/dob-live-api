@@ -727,7 +727,7 @@ function ReportModal({ user, site, session, onClose }) {
             <label style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>
               <div style={{fontSize:'18px',color:'rgba(59,130,246,0.5)',lineHeight:1}}>+</div>
               <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)'}}>Photo/Video</div>
-              <input type="file" accept="image/*,video/*" capture="environment" multiple style={{display:'none'}} onChange={handleMedia} />
+              <input type="file" accept="image/*,video/*" capture="environment" style={{display:'none'}} onChange={handleMedia} />
             </label>
           </div>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'11px 13px',background:clientReportable?'rgba(59,130,246,0.07)':'rgba(255,255,255,0.03)',border:`1px solid ${clientReportable?'rgba(59,130,246,0.25)':'rgba(255,255,255,0.07)'}`,borderRadius:'10px',marginBottom:'14px',cursor:'pointer'}} onClick={() => setClientReportable(p => !p)}>
@@ -863,7 +863,7 @@ function OccurrenceModal({ site, shift, currentPos, onClose }) {
               <label style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>
                 <div style={{fontSize:'18px',color:'rgba(59,130,246,0.5)',lineHeight:1}}>+</div>
                 <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)'}}>Photo/Video</div>
-                <input type="file" accept="image/*,video/*" capture="environment" multiple style={{display:'none'}} onChange={handleMedia} />
+                <input type="file" accept="image/*,video/*" capture="environment" style={{display:'none'}} onChange={handleMedia} />
               </label>
             </div>
           )}
