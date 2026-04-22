@@ -991,7 +991,11 @@ function PatrolDetailModal({ log, onClose }) {
         {(() => {
           const allMedia = [
             ...(td.media || []),
-            ...(session?.checkpoints_completed || []).flatMap(cp => cp.media || []),
+            ...(td.photo_url ? [{ url: td.photo_url, type: 'image/jpeg', name: 'checkpoint-photo' }] : []),
+            ...(session?.checkpoints_completed || []).flatMap(cp => [
+              ...(cp.media || []),
+              ...(cp.photo_url ? [{ url: cp.photo_url, type: 'image/jpeg', name: cp.name || 'checkpoint-photo' }] : []),
+            ]),
           ];
           if (!allMedia.length) return null;
           return (
