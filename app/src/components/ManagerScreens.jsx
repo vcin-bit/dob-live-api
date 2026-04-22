@@ -987,6 +987,30 @@ function PatrolDetailModal({ log, onClose }) {
           </div>
         )}
 
+        {/* Media from patrol reports/occurrences */}
+        {(() => {
+          const allMedia = [
+            ...(td.media || []),
+            ...(session?.checkpoints_completed || []).flatMap(cp => cp.media || []),
+          ];
+          if (!allMedia.length) return null;
+          return (
+            <div style={{marginTop:'1rem'}}>
+              <div style={{fontSize:'0.75rem',fontWeight:700,color:'var(--text-3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.5rem'}}>Photos / Video ({allMedia.length})</div>
+              <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+                {allMedia.map((m, i) => (
+                  <div key={i} style={{width:80,height:80,borderRadius:'8px',overflow:'hidden',border:'1px solid var(--border)',flexShrink:0,cursor:'pointer'}}
+                    onClick={() => window.open(m.url, '_blank')}>
+                    {m.type?.startsWith('image')
+                      ? <img src={m.url} style={{width:'100%',height:'100%',objectFit:'cover'}} alt={m.name||'photo'} />
+                      : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--surface-2)',fontSize:'0.75rem',color:'var(--text-3)'}}>video</div>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>Close</button>
         </div>
