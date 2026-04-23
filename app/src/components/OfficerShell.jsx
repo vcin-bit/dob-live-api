@@ -275,28 +275,30 @@ function SitePickerScreen({ sites, onSiteSelect, user }) {
 // Officer Dashboard
 function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
   const [recentLogs, setRecentLogs] = useState([]);
+  const [todayCount, setTodayCount] = useState(0);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
-  
+  const [historyDate, setHistoryDate] = useState('');
+  const [historyLogs, setHistoryLogs] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
   useEffect(() => {
     async function fetchDashboardData() {
       try {
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+
         // Get recent logs for this officer at this site
-        const logsResponse = await api.logs.list({
-          site_id: site?.id,
-          limit: 20,
-          officer_id: user.id
-        });
+        const [logsResponse, todayResponse, tasksResponse] = await Promise.all([
+          api.logs.list({ site_id: site?.id, limit: 20, officer_id: user.id }),
+          api.logs.list({ site_id: site?.id, officer_id: user.id, from: todayStart, limit: 500 }),
+          api.tasks.list({ site_id: site?.id, status: 'PENDING' }),
+        ]);
         setRecentLogs(logsResponse.data || []);
-        
-        // Get pending tasks
-        const tasksResponse = await api.tasks.list({
-          site_id: site?.id,
-          status: 'PENDING'
-        });
+        setTodayCount((todayResponse.data || []).length);
         setTasks(tasksResponse.data || []);
-        
+
       } catch (err) {
         console.error('Failed to fetch dashboard data:', err);
       } finally {
@@ -304,7 +306,7 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
         setLastUpdated(new Date());
       }
     }
-    
+
     if (site) {
       fetchDashboardData();
       // Auto-refresh every 60s
@@ -312,6 +314,18 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
       return () => clearInterval(interval);
     }
   }, [site, user]);
+
+  // Fetch logs for selected history date
+  useEffect(() => {
+    if (!historyDate || !site) { setHistoryLogs([]); return; }
+    setHistoryLoading(true);
+    const from = new Date(historyDate + 'T00:00:00').toISOString();
+    const to = new Date(historyDate + 'T23:59:59').toISOString();
+    api.logs.list({ site_id: site.id, officer_id: user.id, from, to, limit: 100 })
+      .then(res => setHistoryLogs(res.data || []))
+      .catch(() => setHistoryLogs([]))
+      .finally(() => setHistoryLoading(false));
+  }, [historyDate, site?.id]);
   
   if (!site) {
     return <Navigate to="/sites" replace />;
@@ -400,7 +414,7 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
       {/* Stats row */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.625rem',marginBottom:'1.25rem'}}>
         <div className="officer-card" style={{textAlign:'center'}}>
-          <div style={{fontSize:'1.75rem',fontWeight:700,color:'#fff'}}>{recentLogs.length}</div>
+          <div style={{fontSize:'1.75rem',fontWeight:700,color:'#fff'}}>{todayCount}</div>
           <div style={{fontSize:'0.6875rem',color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.06em',marginTop:'0.125rem'}}>Logs Today</div>
         </div>
         <div className="officer-card" style={{textAlign:'center'}}>
@@ -421,6 +435,27 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
       ) : (
         recentLogs.map((log) => <LogPreviewCard key={log.id} log={log} />)
       )}
+
+      {/* Occurrence History */}
+      <div style={{marginTop:'1.25rem',borderTop:'1px solid rgba(255,255,255,0.06)',paddingTop:'1rem'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.625rem'}}>
+          <div style={{fontSize:'0.6875rem',fontWeight:600,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.08em'}}>Log History</div>
+          <input type="date" value={historyDate} onChange={e => setHistoryDate(e.target.value)}
+            style={{background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'6px',padding:'0.375rem 0.5rem',fontSize:'0.75rem',color:'#fff',fontFamily:'inherit'}} />
+        </div>
+        {historyDate && (
+          historyLoading ? (
+            <div style={{display:'flex',justifyContent:'center',padding:'1rem'}}><div className="spinner" style={{borderTopColor:'#fff',borderColor:'rgba(255,255,255,0.15)',width:'1.25rem',height:'1.25rem'}} /></div>
+          ) : historyLogs.length === 0 ? (
+            <div style={{textAlign:'center',padding:'1rem',color:'rgba(255,255,255,0.3)',fontSize:'0.8125rem'}}>No logs for {new Date(historyDate + 'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</div>
+          ) : (
+            <>
+              <div style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.3)',marginBottom:'0.5rem'}}>{historyLogs.length} log{historyLogs.length!==1?'s':''} on {new Date(historyDate + 'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</div>
+              {historyLogs.map(log => <LogPreviewCard key={log.id} log={log} />)}
+            </>
+          )
+        )}
+      </div>
     </div>
   );
 }
