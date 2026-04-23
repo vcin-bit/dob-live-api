@@ -15,6 +15,13 @@ function officerColour(id) {
 
 function isoDate(d) { return d.toISOString().split('T')[0]; }
 function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
+function localISOString(dateStr, timeStr) {
+  const d = new Date(`${dateStr}T${timeStr}:00`);
+  const offset = -d.getTimezoneOffset();
+  const sign = offset >= 0 ? '+' : '-';
+  const pad = n => String(Math.floor(Math.abs(n))).padStart(2, '0');
+  return `${dateStr}T${timeStr}:00${sign}${pad(offset / 60)}:${pad(offset % 60)}`;
+}
 function startOfWeek(d) { const r = new Date(d); r.setDate(r.getDate() - ((r.getDay() + 6) % 7)); r.setHours(0,0,0,0); return r; }
 function startOfMonth(d) { return new Date(d.getFullYear(), d.getMonth(), 1); }
 function fmtTime(iso) { return new Date(iso).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' }); }
@@ -176,10 +183,10 @@ export default function RosterCalendar({ siteId, user }) {
       const selectedShifts = shifts.filter(s => selected.has(s.id));
       await Promise.all(selectedShifts.map(s => {
         const date = isoDate(new Date(s.start_time));
-        const startDt = new Date(`${date}T${startTime}:00`).toISOString();
-        let endDt = new Date(`${date}T${endTime}:00`).toISOString();
+        const startDt = localISOString(date, startTime);
+        let endDt = localISOString(date, endTime);
         if (new Date(endDt) <= new Date(startDt)) {
-          endDt = new Date(`${isoDate(addDays(new Date(date), 1))}T${endTime}:00`).toISOString();
+          endDt = localISOString(isoDate(addDays(new Date(date), 1)), endTime);
         }
         return api.shifts.update(s.id, { start_time: startDt, end_time: endDt });
       }));
@@ -607,11 +614,11 @@ function ShiftModal({ shift, prefillDate, officers, allOfficers, sites, rates, s
     if (!form.site_id || !form.officer_id || !form.date) { setError('Site, officer and date are required'); return; }
     setSaving(true);
     try {
-      const startDt = new Date(`${form.date}T${form.start_time}:00`).toISOString();
-      const endDt = form.end_time ? new Date(`${form.date}T${form.end_time}:00`).toISOString() : null;
+      const startDt = localISOString(form.date, form.start_time);
+      const endDt = form.end_time ? localISOString(form.date, form.end_time) : null;
       let adjustedEnd = endDt;
       if (endDt && new Date(endDt) <= new Date(startDt)) {
-        adjustedEnd = new Date(`${isoDate(addDays(new Date(form.date), 1))}T${form.end_time}:00`).toISOString();
+        adjustedEnd = localISOString(isoDate(addDays(new Date(form.date), 1)), form.end_time);
       }
       const payload = { site_id: form.site_id, officer_id: form.officer_id, start_time: startDt, end_time: adjustedEnd, notes: form.notes || null,
         pay_rate: form.pay_rate ? parseFloat(form.pay_rate) : null,
