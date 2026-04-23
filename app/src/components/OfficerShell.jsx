@@ -44,7 +44,24 @@ function OfficerApp({ user }) {
       const end = new Date(now);
       end.setHours(h, m, 0, 0);
       if (end <= now) end.setDate(end.getDate() + 1); // next day
-      const r = await api.shifts.start({ site_id: selectedSite.id, lat, lng, end_time: end.toISOString() });
+
+      // Check for existing SCHEDULED shift today at this site
+      let existingShift = null;
+      try {
+        const scheduled = await api.shifts.list({ officer_id: user.id, status: 'SCHEDULED', site_id: selectedSite.id });
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+        const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
+        existingShift = (scheduled.data || []).find(s => s.start_time >= todayStart && s.start_time < todayEnd);
+      } catch {}
+
+      let r;
+      if (existingShift) {
+        // Activate the existing roster shift instead of creating a duplicate
+        r = await api.shifts.update(existingShift.id, { status: 'ACTIVE', checked_in_at: new Date().toISOString(), end_time: end.toISOString() });
+      } else {
+        // Ad-hoc shift — no roster entry for today
+        r = await api.shifts.start({ site_id: selectedSite.id, lat, lng, end_time: end.toISOString() });
+      }
       setActiveShift(r.data);
       setShowShiftModal(false);
       setPlannedEnd('');
