@@ -823,14 +823,15 @@ function LogDetailModal({ log, onClose }) {
 function PatrolDetailModal({ log, onClose }) {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [sessionError, setSessionError] = useState(null);
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
 
   useEffect(() => {
-    if (!log.type_data?.patrol_session_id) return;
+    if (!log.type_data?.patrol_session_id) { setLoading(false); return; }
     api.patrols.getSession(log.type_data.patrol_session_id)
-      .then(res => setSession(res.data))
-      .catch(() => {})
+      .then(res => { if (res?.data) setSession(res.data); else setSessionError('Session data not found'); })
+      .catch(err => setSessionError(err.message || 'Failed to load patrol session'))
       .finally(() => setLoading(false));
   }, []);
 
@@ -965,6 +966,10 @@ function PatrolDetailModal({ log, onClose }) {
         {/* Map */}
         {loading ? (
           <div style={{display:'flex',justifyContent:'center',padding:'2rem'}}><div className="spinner" /></div>
+        ) : sessionError ? (
+          <div style={{padding:'1rem',background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:'8px',color:'#ef4444',fontSize:'0.875rem',marginBottom:'1rem'}}>Could not load patrol map: {sessionError}</div>
+        ) : !session ? (
+          <div style={{padding:'1rem',background:'var(--surface-2)',borderRadius:'8px',color:'var(--text-3)',fontSize:'0.875rem',marginBottom:'1rem'}}>No session data found for this patrol.</div>
         ) : (
           <div ref={mapRef} style={{width:'100%',height:'350px',borderRadius:'8px',border:'1px solid var(--border)',marginBottom:'1rem'}} />
         )}
