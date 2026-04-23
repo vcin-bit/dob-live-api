@@ -484,6 +484,18 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
                           {!isCompact && !siteId && s.site?.name && (
                             <div style={{fontSize:'0.625rem',color:'var(--text-3)',overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',marginLeft:bulkMode?'1rem':'0'}}>{s.site.name}</div>
                           )}
+                          {canSeePay(user?.role) && !isCompact && (
+                            s.pay_rate ? (
+                              <div style={{fontSize:'0.5625rem',color:'#f59e0b',marginLeft:bulkMode?'1rem':'0',marginTop:'1px'}}>
+                                £{parseFloat(s.pay_rate).toFixed(2)}/hr · £{(shiftHours(s) * parseFloat(s.pay_rate)).toFixed(2)}
+                              </div>
+                            ) : (
+                              <div style={{fontSize:'0.5625rem',color:'#f59e0b',marginLeft:bulkMode?'1rem':'0',marginTop:'1px',opacity:0.8}}>Rate not set</div>
+                            )
+                          )}
+                          {canSeePay(user?.role) && isCompact && !s.pay_rate && (
+                            <div style={{fontSize:'0.5rem',color:'#f59e0b',marginLeft:bulkMode?'1rem':'0',opacity:0.8}}>!</div>
+                          )}
                         </div>
                       );
                     })}
@@ -499,17 +511,64 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
             })}
           </div>
           {/* Weekly summary row */}
-          {!isCompact && weekHours > 0 && (
-            <div style={{display:'grid',gridTemplateColumns:'repeat(7, minmax(120px, 1fr))',gap:'1px',background:'var(--border)'}}>
-              <div style={{gridColumn:'1/-1',background:'var(--surface-2)',padding:'0.5rem 0.75rem',display:'flex',alignItems:'center',gap:'1rem',flexWrap:'wrap',fontSize:'0.75rem',fontWeight:600,color:'var(--text-2)'}}>
-                <span>{weekHours.toFixed(1)} hrs</span>
-                {canSeePay(user?.role) && weekPayCost > 0 && <span style={{color:'#f59e0b'}}>Pay: £{weekPayCost.toFixed(2)}</span>}
-                {canSeeCharge(user?.role) && weekChargeRev > 0 && <span style={{color:'#10b981'}}>Charge: £{weekChargeRev.toFixed(2)}</span>}
+          {weekHours > 0 && canSeePay(user?.role) && (() => {
+            const byOfficer = {};
+            weekShifts.forEach(s => {
+              const name = s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unassigned';
+              if (!byOfficer[name]) byOfficer[name] = { hours: 0, pay: 0 };
+              const h = shiftHours(s);
+              byOfficer[name].hours += h;
+              byOfficer[name].pay += h * (parseFloat(s.pay_rate) || 0);
+            });
+            const entries = Object.entries(byOfficer).sort((a,b) => b[1].pay - a[1].pay);
+            return (
+              <div style={{background:'var(--surface-2)',padding:'0.5rem 0.75rem',fontSize:'0.75rem',color:'var(--text-2)'}}>
+                {entries.map(([name, d]) => (
+                  <div key={name} style={{display:'flex',justifyContent:'space-between',padding:'2px 0'}}>
+                    <span>{name}</span>
+                    <span>{d.hours.toFixed(1)} hrs{d.pay > 0 ? <span style={{color:'#f59e0b',marginLeft:'0.5rem'}}>£{d.pay.toFixed(2)}</span> : ''}</span>
+                  </div>
+                ))}
+                <div style={{display:'flex',justifyContent:'space-between',borderTop:'1px solid var(--border)',marginTop:'4px',paddingTop:'4px',fontWeight:700,color:'var(--text)'}}>
+                  <span>Total</span>
+                  <span>{weekHours.toFixed(1)} hrs<span style={{color:'#f59e0b',marginLeft:'0.5rem'}}>£{weekPayCost.toFixed(2)}</span></span>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
           </React.Fragment>);
         })}
+        {/* Monthly summary */}
+        {isCompact && canSeePay(user?.role) && (() => {
+          const monthShifts = days.filter(d => d.getMonth() === anchorMonth && d.getFullYear() === anchorYear).flatMap(d => shiftsForDay(d));
+          if (!monthShifts.length) return null;
+          const byOfficer = {};
+          monthShifts.forEach(s => {
+            const name = s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unassigned';
+            if (!byOfficer[name]) byOfficer[name] = { hours: 0, pay: 0 };
+            const h = shiftHours(s);
+            byOfficer[name].hours += h;
+            byOfficer[name].pay += h * (parseFloat(s.pay_rate) || 0);
+          });
+          const entries = Object.entries(byOfficer).sort((a,b) => b[1].pay - a[1].pay);
+          const totalHrs = entries.reduce((t, [,d]) => t + d.hours, 0);
+          const totalPay = entries.reduce((t, [,d]) => t + d.pay, 0);
+          return (
+            <div style={{background:'var(--surface-2)',borderRadius:'0 0 8px 8px',padding:'0.75rem 1rem',fontSize:'0.8125rem',color:'var(--text-2)',marginTop:'1px'}}>
+              <div style={{fontWeight:700,color:'var(--text)',marginBottom:'0.5rem',fontSize:'0.875rem'}}>Monthly Pay Summary</div>
+              {entries.map(([name, d]) => (
+                <div key={name} style={{display:'flex',justifyContent:'space-between',padding:'3px 0'}}>
+                  <span>{name}</span>
+                  <span>{d.hours.toFixed(1)} hrs{d.pay > 0 ? <span style={{color:'#f59e0b',marginLeft:'0.5rem'}}>£{d.pay.toFixed(2)}</span> : ''}</span>
+                </div>
+              ))}
+              <div style={{display:'flex',justifyContent:'space-between',borderTop:'1px solid var(--border)',marginTop:'6px',paddingTop:'6px',fontWeight:700,color:'var(--text)',fontSize:'0.875rem'}}>
+                <span>Total pay this month</span>
+                <span>{totalHrs.toFixed(1)} hrs<span style={{color:'#f59e0b',marginLeft:'0.5rem'}}>£{totalPay.toFixed(2)}</span></span>
+              </div>
+            </div>
+          );
+        })()}
       </div>
       <style>{`@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }`}</style>
     </div>
