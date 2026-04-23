@@ -532,9 +532,16 @@ function LogEntryScreen({ user, site, shift }) {
       {/* Description */}
       <div style={{marginBottom:'14px'}}>
         <div style={S.label}>WHAT HAPPENED</div>
-        <textarea value={form.description} onChange={e=>f('description',e.target.value)} rows={4}
+        <textarea value={narrative || form.description} onChange={e => { if (narrative) setNarrative(e.target.value); else f('description', e.target.value); }} rows={4}
           placeholder="e.g. Saw a man trying car door handles in the car park..."
-          style={S.input} />
+          style={{...S.input, ...(narrative ? {border:'1.5px solid rgba(139,92,246,0.3)', background:'rgba(139,92,246,0.05)'} : {})}} />
+        {['INCIDENT','ALARM','FIRE_ALARM','EMERGENCY'].includes(form.log_type) && form.description.trim() && (
+          <button type="button" onClick={generateNarrative} disabled={generatingAI}
+            style={{marginTop:'8px',width:'100%',padding:'12px',background:generatingAI?'rgba(139,92,246,0.08)':'rgba(139,92,246,0.12)',border:'1.5px solid rgba(139,92,246,0.4)',borderRadius:'8px',color:'#a78bfa',fontSize:'13px',fontWeight:700,cursor:generatingAI?'default':'pointer',letterSpacing:'0.03em'}}>
+            {generatingAI ? '⏳ Writing report...' : '✦ Write with AI'}
+          </button>
+        )}
+        {narrative && <div style={{fontSize:'10px',color:'rgba(139,92,246,0.6)',marginTop:'4px'}}>AI-generated — edit above before submitting</div>}
       </div>
 
       {/* Location + people + actions — single combined notes field */}
