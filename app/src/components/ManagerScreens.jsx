@@ -1741,6 +1741,46 @@ function TeamManagement({ user }) {
 
 function UserFormModal({ user, onClose, onSaved }) {
   const SIA_TYPES = ['Security Guarding','Door Supervisor','CCTV Operator','Close Protection','Vehicle Immobiliser','Key Holding'];
+  const [officerRates, setOfficerRates] = useState([]);
+  const [ratesLoading, setRatesLoading] = useState(false);
+  const [allSites, setAllSites] = useState([]);
+  const [showAddRate, setShowAddRate] = useState(false);
+  const [editRateId, setEditRateId] = useState(null);
+  const [rateForm, setRateForm] = useState({ site_id: '', hourly_rate: '', role_label: '' });
+
+  useEffect(() => {
+    if (!user) return;
+    setRatesLoading(true);
+    Promise.all([
+      api.rates.list({ officer_id: user.id }),
+      api.sites.list(),
+    ]).then(([ratesRes, sitesRes]) => {
+      setOfficerRates(ratesRes.data || []);
+      setAllSites(sitesRes.data || []);
+    }).catch(() => {}).finally(() => setRatesLoading(false));
+  }, [user?.id]);
+
+  async function saveRate() {
+    if (!rateForm.hourly_rate) return;
+    try {
+      if (editRateId) {
+        await api.rates.update(editRateId, { hourly_rate: parseFloat(rateForm.hourly_rate), site_id: rateForm.site_id || null, role_label: rateForm.role_label || null });
+      } else {
+        await api.rates.create({ officer_id: user.id, site_id: rateForm.site_id || null, hourly_rate: parseFloat(rateForm.hourly_rate), role_label: rateForm.role_label || null });
+      }
+      const res = await api.rates.list({ officer_id: user.id });
+      setOfficerRates(res.data || []);
+      setShowAddRate(false); setEditRateId(null); setRateForm({ site_id: '', hourly_rate: '', role_label: '' });
+    } catch (err) { alert(err.message); }
+  }
+
+  async function deleteRate(id) {
+    try {
+      await api.rates.delete(id);
+      setOfficerRates(prev => prev.filter(r => r.id !== id));
+    } catch (err) { alert(err.message); }
+  }
+
   const [form, setForm] = useState({
     first_name: user?.first_name || '',
     last_name:  user?.last_name  || '',
@@ -1816,6 +1856,44 @@ function UserFormModal({ user, onClose, onSaved }) {
             <span className="label" style={{margin:0}}>Route Planner — can create &amp; edit patrol routes</span>
           </label>
         </div>
+        {/* Pay Rates */}
+        {user && (
+          <div style={{borderTop:'1px solid var(--border)',paddingTop:'0.75rem',marginTop:'0.75rem'}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.5rem'}}>
+              <div className="section-title" style={{margin:0}}>Pay Rates</div>
+              {!showAddRate && <button className="btn btn-ghost btn-sm" onClick={() => { setEditRateId(null); setRateForm({ site_id:'', hourly_rate:'', role_label:'' }); setShowAddRate(true); }}>+ Add Rate</button>}
+            </div>
+            {ratesLoading ? <div style={{fontSize:'0.8125rem',color:'var(--text-3)'}}>Loading...</div> : officerRates.length === 0 && !showAddRate ? (
+              <div style={{fontSize:'0.8125rem',color:'var(--text-3)',padding:'0.5rem 0'}}>No pay rates set</div>
+            ) : (
+              <div style={{display:'flex',flexDirection:'column',gap:'0.375rem',marginBottom: showAddRate ? '0.75rem' : 0}}>
+                {officerRates.map(r => (
+                  <div key={r.id} style={{display:'flex',alignItems:'center',gap:'0.75rem',padding:'0.5rem 0.75rem',background:'var(--surface-2)',borderRadius:'6px',fontSize:'0.8125rem'}}>
+                    <span style={{flex:1,fontWeight:500}}>{r.site?.name || 'All sites (default)'}</span>
+                    <span style={{fontWeight:700,color:'var(--text)'}}>£{parseFloat(r.hourly_rate||0).toFixed(2)}/hr</span>
+                    {r.role_label && <span style={{color:'var(--text-3)',fontSize:'0.75rem'}}>{r.role_label}</span>}
+                    <button className="btn btn-ghost btn-sm" style={{padding:'0.25rem 0.5rem',fontSize:'0.75rem'}} onClick={() => { setEditRateId(r.id); setRateForm({ site_id: r.site_id||'', hourly_rate: r.hourly_rate||'', role_label: r.role_label||'' }); setShowAddRate(true); }}>Edit</button>
+                    <button className="btn btn-ghost btn-sm" style={{padding:'0.25rem 0.5rem',fontSize:'0.75rem',color:'var(--danger)'}} onClick={() => deleteRate(r.id)}>Delete</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {showAddRate && (
+              <div style={{padding:'0.75rem',background:'var(--surface-2)',borderRadius:'8px',border:'1px solid var(--border)'}}>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'0.5rem',marginBottom:'0.5rem'}}>
+                  <div className="field"><label className="label">Site</label><select className="input" value={rateForm.site_id} onChange={e => setRateForm(p=>({...p, site_id:e.target.value}))}><option value="">All sites (default)</option>{allSites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
+                  <div className="field"><label className="label">Rate (£/hr)</label><input type="number" step="0.01" min="0" className="input" value={rateForm.hourly_rate} onChange={e => setRateForm(p=>({...p, hourly_rate:e.target.value}))} placeholder="12.50" /></div>
+                  <div className="field"><label className="label">Role Label</label><input className="input" value={rateForm.role_label} onChange={e => setRateForm(p=>({...p, role_label:e.target.value}))} placeholder="e.g. SG, DS" /></div>
+                </div>
+                <div style={{display:'flex',gap:'0.5rem',justifyContent:'flex-end'}}>
+                  <button className="btn btn-ghost btn-sm" onClick={() => { setShowAddRate(false); setEditRateId(null); }}>Cancel</button>
+                  <button className="btn btn-primary btn-sm" onClick={saveRate} disabled={!rateForm.hourly_rate}>{editRateId ? 'Update' : 'Add Rate'}</button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
           <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? (user ? 'Saving...' : 'Sending invite...') : (user ? 'Save' : 'Send Invite')}</button>

@@ -533,7 +533,10 @@ function ShiftModal({ shift, prefillDate, officers, allOfficers, sites, rates, s
   // Auto-populate pay rate from officer_rates when officer or site changes (only for new shifts)
   useEffect(() => {
     if (shift?.pay_rate) return; // don't overwrite existing
-    const rate = rates.find(r => r.officer_id === form.officer_id && r.site_id === form.site_id);
+    if (!form.officer_id) return;
+    const siteRate = rates.find(r => r.officer_id === form.officer_id && r.site_id === form.site_id);
+    const defaultRate = rates.find(r => r.officer_id === form.officer_id && !r.site_id);
+    const rate = siteRate || defaultRate;
     if (rate) f('pay_rate', parseFloat(rate.hourly_rate || rate.pay_rate || 0));
   }, [form.officer_id, form.site_id]);
 

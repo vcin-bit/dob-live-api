@@ -244,8 +244,9 @@ export const api = {
     delete: (id) => request(`/api/patterns/${id}`, { method: 'DELETE' }),
   },
   rates: {
-    list: () => request('/api/rates'),
+    list: (params = {}) => request(`/api/rates?${new URLSearchParams(params)}`),
     create: (data) => request('/api/rates', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id, data) => request(`/api/rates/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     delete: (id) => request(`/api/rates/${id}`, { method: 'DELETE' }),
   },
   alerts: {
