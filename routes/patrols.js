@@ -80,6 +80,25 @@ router.delete('/routes/:id', authenticate, requireRole('SUPER_ADMIN','COMPANY','
 
 // ── Patrol sessions ────────────────────────────────────────────────────────────
 
+// GET /api/patrols/sessions — list sessions for company (ops) or officer (officer)
+router.get('/sessions', authenticate, async (req, res, next) => {
+  try {
+    const { site_id, officer_id, limit = 50, offset = 0 } = req.query;
+    let query = supabase
+      .from('patrol_sessions')
+      .select('*, officer:users(id, first_name, last_name), site:sites(id, name)')
+      .eq('company_id', req.user.company_id)
+      .order('started_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+    if (req.user.role === 'OFFICER') query = query.eq('officer_id', req.user.id);
+    else if (officer_id) query = query.eq('officer_id', officer_id);
+    if (site_id) query = query.eq('site_id', site_id);
+    const { data, error } = await query;
+    if (error) throw error;
+    res.json({ data });
+  } catch (err) { next(err); }
+});
+
 // POST /api/patrols/sessions/start
 // GET /api/patrols/sessions/active — get officer's current active session
 router.get('/sessions/active', authenticate, async (req, res, next) => {

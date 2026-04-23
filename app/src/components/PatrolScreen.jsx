@@ -908,3 +908,161 @@ function hexToRgb(hex) {
   const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
   return `${r},${g},${b}`;
 }
+
+// ── Officer Patrol History Screen ─────────────────────────────────────────────
+export function PatrolHistoryOfficerScreen({ user, site }) {
+  const [sessions, setSessions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const S = {
+    container: { padding:'1.25rem', paddingBottom:'5rem' },
+    heading: { fontSize:'16px', fontWeight:700, color:'#fff', marginBottom:'4px' },
+    sub: { fontSize:'13px', color:'rgba(255,255,255,0.4)', marginBottom:'1.25rem' },
+    card: { background:'#1a2235', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'10px', padding:'0.875rem', marginBottom:'0.625rem', cursor:'pointer' },
+    row: { display:'flex', alignItems:'center', justifyContent:'space-between', gap:'0.5rem' },
+    badge: { fontSize:'10px', fontWeight:700, padding:'2px 7px', borderRadius:'999px', background:'rgba(74,222,128,0.15)', color:'#4ade80', border:'1px solid rgba(74,222,128,0.25)' },
+    meta: { fontSize:'12px', color:'rgba(255,255,255,0.4)', marginTop:'4px' },
+    stat: { fontSize:'11px', color:'rgba(255,255,255,0.35)', textAlign:'center' },
+    statVal: { fontSize:'15px', fontWeight:700, color:'#fff', textAlign:'center' },
+  };
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const res = await api.patrols.listSessions({ limit: 50, ...(site?.id ? { site_id: site.id } : {}) });
+        setSessions(res.data || []);
+      } catch (err) { console.error(err); }
+      finally { setLoading(false); }
+    }
+    load();
+  }, [site]);
+
+  async function open(s) {
+    if (s.gps_trail != null) { setSelected(s); return; }
+    setLoadingDetail(true);
+    try {
+      const res = await api.patrols.getSession(s.id);
+      setSelected(res.data);
+    } catch (err) { alert('Failed to load patrol'); }
+    finally { setLoadingDetail(false); }
+  }
+
+  const fmtDate = t => t ? new Date(t).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric', timeZone:'Europe/London' }) : '—';
+  const fmtTime = t => t ? new Date(t).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', timeZone:'Europe/London' }) : '—';
+  const duration = s => s.started_at && s.ended_at ? Math.round((new Date(s.ended_at) - new Date(s.started_at)) / 60000) : null;
+  const fmtDur = d => d == null ? '—' : d >= 60 ? `${Math.floor(d/60)}h ${d%60}m` : `${d}m`;
+
+  return (
+    <div style={S.container}>
+      <div style={S.heading}>Patrol History</div>
+      <div style={S.sub}>{site?.name || 'All sites'} — tap to view route</div>
+
+      {loading ? (
+        <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}>
+          <div className="spinner" style={{borderTopColor:'#3b82f6',borderColor:'rgba(255,255,255,0.1)',width:'2rem',height:'2rem'}} />
+        </div>
+      ) : sessions.length === 0 ? (
+        <div style={{textAlign:'center',padding:'3rem',color:'rgba(255,255,255,0.3)',fontSize:'14px'}}>No patrols recorded yet</div>
+      ) : (
+        sessions.map(s => {
+          const d = duration(s);
+          const cps = s.checkpoints_completed?.length || 0;
+          return (
+            <div key={s.id} style={S.card} onClick={() => open(s)}>
+              <div style={S.row}>
+                <div>
+                  <div style={{fontSize:'14px',fontWeight:600,color:'#fff'}}>{fmtDate(s.started_at)}</div>
+                  <div style={S.meta}>{fmtTime(s.started_at)}{s.ended_at ? ` → ${fmtTime(s.ended_at)}` : ' (active)'}</div>
+                </div>
+                <span style={S.badge}>{s.status === 'completed' ? 'Complete' : s.status}</span>
+              </div>
+              <div style={{display:'flex',gap:'1rem',marginTop:'0.625rem'}}>
+                <div><div style={S.statVal}>{fmtDur(d)}</div><div style={S.stat}>Duration</div></div>
+                <div><div style={S.statVal}>{cps}</div><div style={S.stat}>Checkpoints</div></div>
+                <div><div style={S.statVal}>{s.gps_trail?.length || '—'}</div><div style={S.stat}>GPS pts</div></div>
+              </div>
+              <div style={{fontSize:'11px',color:'rgba(59,130,246,0.7)',marginTop:'6px'}}>Tap to view map →</div>
+            </div>
+          );
+        })
+      )}
+
+      {loadingDetail && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <div className="spinner" style={{borderTopColor:'#3b82f6',borderColor:'rgba(255,255,255,0.1)',width:'2.5rem',height:'2.5rem'}} />
+        </div>
+      )}
+
+      {selected && <OfficerPatrolModal session={selected} onClose={() => setSelected(null)} />}
+    </div>
+  );
+}
+
+// Lightweight map modal for officer UI (dark themed, mobile-first)
+function OfficerPatrolModal({ session, onClose }) {
+  const mapRef = useRef(null);
+  const mapInst = useRef(null);
+  const fmtTime = t => t ? new Date(t).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', timeZone:'Europe/London' }) : '—';
+  const checkpoints = session.checkpoints_completed || [];
+
+  useEffect(() => {
+    if (!mapRef.current || mapInst.current) return;
+    function renderMap() {
+      if (!window.L || !mapRef.current) return;
+      const L = window.L;
+      const map = L.map(mapRef.current, { zoomControl: false, attributionControl: false });
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(map);
+      const pts = [];
+      if (session.gps_trail?.length) {
+        const trail = session.gps_trail.filter(p => p.lat && p.lng).map(p => [p.lat, p.lng]);
+        if (trail.length) {
+          L.polyline(trail, { color:'#3b82f6', weight:3, opacity:0.9 }).addTo(map);
+          L.circleMarker(trail[0], { radius:7, fillColor:'#22c55e', fillOpacity:1, color:'#fff', weight:2 }).addTo(map);
+          L.circleMarker(trail[trail.length-1], { radius:7, fillColor:'#ef4444', fillOpacity:1, color:'#fff', weight:2 }).addTo(map);
+          pts.push(...trail);
+        }
+      }
+      checkpoints.forEach((cp, i) => {
+        if (!cp.lat || !cp.lng) return;
+        const icon = L.divIcon({ html:`<div style="width:20px;height:20px;background:#a78bfa;border:2px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#0b1222">${i+1}</div>`, iconSize:[20,20], iconAnchor:[10,10] });
+        L.marker([cp.lat, cp.lng], { icon }).addTo(map);
+        pts.push([cp.lat, cp.lng]);
+      });
+      if (pts.length) map.fitBounds(pts, { padding:[24,24] });
+      else map.setView([52.48,-1.89], 14);
+      mapInst.current = map;
+    }
+    if (window.L) renderMap();
+    else {
+      if (!document.getElementById('leaflet-css')) { const l=document.createElement('link'); l.id='leaflet-css'; l.rel='stylesheet'; l.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; document.head.appendChild(l); }
+      if (!document.getElementById('leaflet-js')) { const s=document.createElement('script'); s.id='leaflet-js'; s.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'; s.onload=renderMap; document.head.appendChild(s); }
+      else setTimeout(renderMap, 200);
+    }
+    return () => { if (mapInst.current) { mapInst.current.remove(); mapInst.current = null; } };
+  }, [session]);
+
+  return (
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:9999,display:'flex',flexDirection:'column'}} onClick={onClose}>
+      <div style={{background:'#0f1929',borderRadius:'16px 16px 0 0',marginTop:'auto',maxHeight:'90vh',display:'flex',flexDirection:'column'}} onClick={e => e.stopPropagation()}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'1rem 1.25rem 0.75rem',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
+          <div style={{fontSize:'15px',fontWeight:700,color:'#fff'}}>Patrol Route</div>
+          <button onClick={onClose} style={{background:'rgba(255,255,255,0.1)',border:'none',color:'#fff',width:32,height:32,borderRadius:'50%',fontSize:'1.25rem',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
+        </div>
+        <div ref={mapRef} style={{width:'100%',height:'300px',flexShrink:0}} />
+        {checkpoints.length > 0 && (
+          <div style={{overflowY:'auto',padding:'0.75rem 1.25rem 1.5rem'}}>
+            <div style={{fontSize:'11px',fontWeight:600,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.5rem'}}>Checkpoints</div>
+            {checkpoints.map((cp, i) => (
+              <div key={i} style={{display:'flex',alignItems:'center',gap:'0.5rem',padding:'0.5rem 0',borderBottom:'1px solid rgba(255,255,255,0.05)'}}>
+                <div style={{width:20,height:20,borderRadius:'50%',background:'#a78bfa',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'9px',fontWeight:700,color:'#0b1222',flexShrink:0}}>{i+1}</div>
+                <div style={{flex:1,fontSize:'13px',color:'#fff'}}>{typeof cp === 'object' ? cp.name || `Checkpoint ${i+1}` : cp}</div>
+                {cp.timestamp && <div style={{fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>{fmtTime(cp.timestamp)}</div>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

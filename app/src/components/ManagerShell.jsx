@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation, useParams, Routes, Route, Navigate } fr
 import { useAuth } from '@clerk/clerk-react';
 import { api, ApiError } from '../lib/api';
 import { LOG_TYPES, LOG_TYPE_CONFIG, formatDateTime, getRelativeTime } from '../lib/constants';
-import { ManagerDashboard, SiteManagement, LogReview, TaskAssignment, SiteDetail, TeamManagement, Reporting, OnDutyScreen } from './ManagerScreens';
+import { ManagerDashboard, SiteManagement, LogReview, TaskAssignment, SiteDetail, TeamManagement, Reporting, OnDutyScreen, PatrolHistoryScreen } from './ManagerScreens';
 import { ProfitLoss } from './RosterPnL';
 import { DocumentsScreen, PatrolRoutesScreen, ShiftPatternsScreen, RatesScreen, AlertsScreen, PoliciesScreen, SiteInstructionsScreen, MessagesScreen } from './ManagerFeatures';
 import { PortalSettingsModal } from './Portal';
@@ -33,6 +33,7 @@ function ManagerApp({ user }) {
           <Route path="/pnl"       element={<ProfitLoss user={user} />} />
           <Route path="/docs"       element={<DocumentsScreen user={user} />} />
           <Route path="/patrols"    element={<PatrolRoutesScreen user={user} />} />
+          <Route path="/patrol-history" element={<PatrolHistoryScreen user={user} />} />
           <Route path="/patterns"   element={<ShiftPatternsScreen user={user} />} />
           <Route path="/rates"      element={<RatesScreen user={user} />} />
           <Route path="/alerts"     element={<AlertsScreen user={user} />} />
@@ -85,6 +86,7 @@ function ManagerSidebar({ user }) {
       items: [
         { to: '/docs',         icon: DocumentTextIcon, label: 'Documents' },
         { to: '/patrols',      icon: MapPinIcon,       label: 'Patrol Routes' },
+        { to: '/patrol-history', icon: ClockIcon,       label: 'Patrol History' },
         { to: '/instructions', icon: DocumentTextIcon, label: 'Instructions' },
         { to: '/policies',     icon: DocumentTextIcon, label: 'Policies' },
       ]

@@ -8,7 +8,7 @@ import { TasksScreen } from './OfficerTasks';
 import { OfficerInstructionsScreen, OfficerPoliciesScreen, OfficerNavigation } from './OfficerInfo';
 import OfficerProfile from './OfficerProfile';
 import PlaybookAlerts from './PlaybookAlerts';
-import PatrolScreen from './PatrolScreen';
+import PatrolScreen, { PatrolHistoryOfficerScreen } from './PatrolScreen';
 import { HandoverScreen } from './HandoverScreen';
 import OfficerVisitorsScreen from './OfficerVisitors';
 import {
@@ -150,6 +150,7 @@ function OfficerApp({ user }) {
         } />
         <Route path="/instructions" element={<OfficerInstructionsScreen user={user} site={selectedSite} />} />
         <Route path="/patrol"   element={<PatrolScreen user={user} site={selectedSite} shift={activeShift} />} />
+        <Route path="/patrol-history" element={<PatrolHistoryOfficerScreen user={user} site={selectedSite} />} />
         <Route path="/handover" element={<HandoverScreen user={user} site={selectedSite} shift={activeShift} onShiftEnded={() => { setActiveShift(null); }} />} />
         <Route path="/visitors" element={<OfficerVisitorsScreen site={selectedSite} />} />
           <Route path="/profile" element={<OfficerProfile user={user} />} />
@@ -330,6 +331,10 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
         <Link to="/patrol" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.9375rem',marginBottom:0,background:'rgba(74,222,128,0.12)',borderColor:'rgba(74,222,128,0.3)',color:'#4ade80'}}>
           <MapPinIcon style={{width:'1.125rem',height:'1.125rem'}} />
           Start Patrol
+        </Link>
+        <Link to="/patrol-history" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.875rem',marginBottom:0,background:'rgba(59,130,246,0.08)',borderColor:'rgba(59,130,246,0.25)',color:'#60a5fa'}}>
+          <ClockIcon style={{width:'1rem',height:'1rem'}} />
+          Patrol History
         </Link>
         <Link to="/log?type=GENERAL" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.9375rem',marginBottom:0}}>
           <PlusIcon style={{width:'1.125rem',height:'1.125rem'}} />
