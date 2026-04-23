@@ -491,17 +491,14 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
                           {!isCompact && !siteId && s.site?.name && (
                             <div style={{fontSize:'0.625rem',color:'var(--text-3)',overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',marginLeft:bulkMode?'1rem':'0'}}>{s.site.name}</div>
                           )}
-                          {canSeePay(user?.role) && !isCompact && (
+                          {canSeePay(user?.role) && (
                             s.pay_rate ? (
-                              <div style={{fontSize:'0.5625rem',color:'#f59e0b',marginLeft:bulkMode?'1rem':'0',marginTop:'1px'}}>
-                                £{parseFloat(s.pay_rate).toFixed(2)}/hr · £{(shiftHours(s) * parseFloat(s.pay_rate)).toFixed(2)}
+                              <div style={{fontSize: isCompact ? '0.5rem' : '0.5625rem',color:'#f59e0b',marginLeft:bulkMode?'1rem':'0',marginTop:'1px',overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis'}}>
+                                {isCompact ? `£${(shiftHours(s) * parseFloat(s.pay_rate)).toFixed(0)}` : `£${parseFloat(s.pay_rate).toFixed(2)}/hr · £${(shiftHours(s) * parseFloat(s.pay_rate)).toFixed(2)}`}
                               </div>
                             ) : (
-                              <div style={{fontSize:'0.5625rem',color:'#f59e0b',marginLeft:bulkMode?'1rem':'0',marginTop:'1px',opacity:0.8}}>Rate not set</div>
+                              <div style={{fontSize: isCompact ? '0.5rem' : '0.5625rem',color:'#f59e0b',marginLeft:bulkMode?'1rem':'0',marginTop:'1px',opacity:0.8}}>{isCompact ? '!' : 'Rate not set'}</div>
                             )
-                          )}
-                          {canSeePay(user?.role) && isCompact && !s.pay_rate && (
-                            <div style={{fontSize:'0.5rem',color:'#f59e0b',marginLeft:bulkMode?'1rem':'0',opacity:0.8}}>!</div>
                           )}
                         </div>
                       );
