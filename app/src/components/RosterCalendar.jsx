@@ -31,6 +31,14 @@ function shiftTimeLabel(s) {
   return isOvernight(s) ? `${start}–${end} ↗` : `${start}–${end}`;
 }
 
+function shiftHours(s) {
+  if (!s.start_time || !s.end_time) return 0;
+  return Math.max(0, (new Date(s.end_time) - new Date(s.start_time)) / 3600000);
+}
+
+function canSeePay(role) { return ['COMPANY','OPS_MANAGER','SUPER_ADMIN','FD'].includes(role); }
+function canSeeCharge(role) { return ['COMPANY','SUPER_ADMIN','FD'].includes(role); }
+
 function statusBadge(status) {
   switch (status) {
     case 'ACTIVE': return { cls: 'badge-success', label: 'Active', pulse: true };
@@ -266,7 +274,7 @@ export default function RosterCalendar({ siteId, user }) {
       ) : (
         <RotaGrid days={days} view={view} shiftsForDay={shiftsForDay} isToday={isToday} isManager={isManager}
           onShiftClick={handleShiftClick} onAdd={d => setAddDate(d)} siteId={siteId}
-          bulkMode={bulkMode} selected={selected} onSelectDay={selectDay} />
+          bulkMode={bulkMode} selected={selected} onSelectDay={selectDay} user={user} />
       )}
 
       {/* Bulk action bar */}
@@ -399,7 +407,7 @@ function BulkTimesModal({ count, onApply, onClose, processing }) {
 
 // ── Rota Grid ────────────────────────────────────────────────────────────────
 
-function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, onAdd, siteId, bulkMode, selected, onSelectDay }) {
+function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, onAdd, siteId, bulkMode, selected, onSelectDay, user }) {
   const weeks = [];
   for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7));
   const isCompact = view === 'month';
@@ -415,8 +423,13 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
             </div>
           ))}
         </div>
-        {weeks.map((week, wi) => (
-          <div key={wi} style={{display:'grid',gridTemplateColumns:'repeat(7, minmax(120px, 1fr))',gap:'1px',background:'var(--border)'}}>
+        {weeks.map((week, wi) => {
+          const weekShifts = week.flatMap(d => shiftsForDay(d));
+          const weekHours = weekShifts.reduce((t, s) => t + shiftHours(s), 0);
+          const weekPayCost = weekShifts.reduce((t, s) => t + shiftHours(s) * (parseFloat(s.pay_rate) || 0), 0);
+          const weekChargeRev = weekShifts.reduce((t, s) => t + shiftHours(s) * (parseFloat(s.charge_rate) || 0), 0);
+          return (<React.Fragment key={wi}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(7, minmax(120px, 1fr))',gap:'1px',background:'var(--border)'}}>
             {week.map(d => {
               const dayShifts = shiftsForDay(d).sort((a,b) => new Date(a.start_time) - new Date(b.start_time));
               const today = isToday(d);
@@ -481,7 +494,18 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
               );
             })}
           </div>
-        ))}
+          {/* Weekly summary row */}
+          {!isCompact && weekHours > 0 && (
+            <div style={{display:'grid',gridTemplateColumns:'repeat(7, minmax(120px, 1fr))',gap:'1px',background:'var(--border)'}}>
+              <div style={{gridColumn:'1/-1',background:'var(--surface-2)',padding:'0.5rem 0.75rem',display:'flex',alignItems:'center',gap:'1rem',flexWrap:'wrap',fontSize:'0.75rem',fontWeight:600,color:'var(--text-2)'}}>
+                <span>{weekHours.toFixed(1)} hrs</span>
+                {canSeePay(user?.role) && weekPayCost > 0 && <span style={{color:'#f59e0b'}}>Pay: £{weekPayCost.toFixed(2)}</span>}
+                {canSeeCharge(user?.role) && weekChargeRev > 0 && <span style={{color:'#10b981'}}>Charge: £{weekChargeRev.toFixed(2)}</span>}
+              </div>
+            </div>
+          )}
+          </React.Fragment>);
+        })}
       </div>
       <style>{`@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }`}</style>
     </div>
@@ -496,6 +520,7 @@ function ShiftModal({ shift, prefillDate, officers, allOfficers, sites, rates, s
     date: shift ? isoDate(new Date(shift.start_time)) : (prefillDate || ''),
     start_time: shift ? fmtTime(shift.start_time) : '19:00',
     end_time: shift?.end_time ? fmtTime(shift.end_time) : '07:00', notes: shift?.notes || '',
+    pay_rate: shift?.pay_rate || '', charge_rate: shift?.charge_rate || '',
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -504,7 +529,13 @@ function ShiftModal({ shift, prefillDate, officers, allOfficers, sites, rates, s
   const f = (k, v) => setForm(p => ({...p, [k]: v}));
   const isManager = ['COMPANY','OPS_MANAGER','SUPER_ADMIN'].includes(user?.role);
   const visibleOfficers = siteId ? officers : (allOfficers || officers);
-  const payRate = rates.find(r => r.officer_id === form.officer_id && r.site_id === form.site_id);
+
+  // Auto-populate pay rate from officer_rates when officer or site changes (only for new shifts)
+  useEffect(() => {
+    if (shift?.pay_rate) return; // don't overwrite existing
+    const rate = rates.find(r => r.officer_id === form.officer_id && r.site_id === form.site_id);
+    if (rate) f('pay_rate', parseFloat(rate.hourly_rate || rate.pay_rate || 0));
+  }, [form.officer_id, form.site_id]);
 
   async function save() {
     if (!form.site_id || !form.officer_id || !form.date) { setError('Site, officer and date are required'); return; }
@@ -516,7 +547,10 @@ function ShiftModal({ shift, prefillDate, officers, allOfficers, sites, rates, s
       if (endDt && new Date(endDt) <= new Date(startDt)) {
         adjustedEnd = new Date(`${isoDate(addDays(new Date(form.date), 1))}T${form.end_time}:00`).toISOString();
       }
-      const payload = { site_id: form.site_id, officer_id: form.officer_id, start_time: startDt, end_time: adjustedEnd, notes: form.notes || null };
+      const payload = { site_id: form.site_id, officer_id: form.officer_id, start_time: startDt, end_time: adjustedEnd, notes: form.notes || null,
+        pay_rate: form.pay_rate ? parseFloat(form.pay_rate) : null,
+        charge_rate: form.charge_rate ? parseFloat(form.charge_rate) : null,
+      };
       if (shift) await api.shifts.update(shift.id, payload);
       else await api.shifts.create(payload);
       onSaved();
@@ -541,12 +575,36 @@ function ShiftModal({ shift, prefillDate, officers, allOfficers, sites, rates, s
           <div className="field"><label className="label">End Time</label><input type="time" className="input" value={form.end_time} onChange={e => f('end_time', e.target.value)} /></div>
           <div className="field" style={{gridColumn:'1/-1'}}><label className="label">Notes</label><input className="input" value={form.notes} onChange={e => f('notes', e.target.value)} placeholder="Optional notes" /></div>
         </div>
-        {isManager && payRate && (
-          <div style={{padding:'0.625rem 0.75rem',background:'var(--surface-2)',borderRadius:'6px',marginTop:'0.75rem',fontSize:'0.8125rem',color:'var(--text-2)'}}>
-            Pay rate: <strong style={{color:'var(--text)'}}>£{parseFloat(payRate.hourly_rate || payRate.pay_rate || 0).toFixed(2)}/hr</strong>
-            {payRate.role_label && <span> — {payRate.role_label}</span>}
+        {/* Pay & Charge rates */}
+        {canSeePay(user?.role) && (
+          <div style={{display:'grid',gridTemplateColumns: canSeeCharge(user?.role) ? '1fr 1fr' : '1fr',gap:'0.75rem',marginTop:'0.75rem'}}>
+            <div className="field">
+              <label className="label">Pay Rate (£/hr)</label>
+              <input type="number" step="0.01" min="0" className="input" value={form.pay_rate} onChange={e => f('pay_rate', e.target.value)} placeholder="0.00" />
+            </div>
+            {canSeeCharge(user?.role) && (
+              <div className="field">
+                <label className="label">Charge Rate (£/hr)</label>
+                <input type="number" step="0.01" min="0" className="input" value={form.charge_rate} onChange={e => f('charge_rate', e.target.value)} placeholder="0.00" />
+              </div>
+            )}
           </div>
         )}
+        {(form.pay_rate || form.charge_rate) && form.start_time && form.end_time && form.date && (() => {
+          const startDt = new Date(`${form.date}T${form.start_time}:00`);
+          let endDt = new Date(`${form.date}T${form.end_time}:00`);
+          if (endDt <= startDt) endDt = new Date(`${isoDate(addDays(new Date(form.date), 1))}T${form.end_time}:00`);
+          const hrs = Math.max(0, (endDt - startDt) / 3600000);
+          const showPay = canSeePay(user?.role) && form.pay_rate;
+          const showCharge = canSeeCharge(user?.role) && form.charge_rate;
+          return (showPay || showCharge) ? (
+            <div style={{padding:'0.5rem 0.75rem',background:'var(--surface-2)',borderRadius:'6px',marginTop:'0.5rem',fontSize:'0.8125rem',color:'var(--text-2)',display:'flex',gap:'1rem',flexWrap:'wrap'}}>
+              <span>{hrs.toFixed(1)} hrs</span>
+              {showPay && <span style={{color:'#f59e0b'}}>Pay: <strong>£{(hrs * parseFloat(form.pay_rate)).toFixed(2)}</strong></span>}
+              {showCharge && <span style={{color:'#10b981'}}>Charge: <strong>£{(hrs * parseFloat(form.charge_rate)).toFixed(2)}</strong></span>}
+            </div>
+          ) : null;
+        })()}
         <div className="modal-footer" style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
           <div style={{display:'flex',justifyContent: shift ? 'space-between' : 'flex-end',gap:'0.5rem'}}>
             {shift && !confirmRemove && !confirmDelete && (
