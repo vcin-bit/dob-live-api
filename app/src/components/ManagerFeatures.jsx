@@ -283,11 +283,11 @@ function PatrolRoutesScreen({ user }) {
 function PatrolRouteFormModal({ route, siteId, onClose, onSaved }) {
   const [name, setName] = useState(route?.name || '');
   const [instructions, setInstructions] = useState(route?.instructions || '');
-  const [checkpoints, setCheckpoints] = useState(route?.checkpoints?.map(c => ({ name: c.name, instructions: c.instructions || '' })) || [{ name: '', instructions: '' }]);
+  const [checkpoints, setCheckpoints] = useState(route?.checkpoints?.map(c => ({ name: c.name, instructions: c.instructions || '', what_to_look_for: c.what_to_look_for || '' })) || [{ name: '', instructions: '', what_to_look_for: '' }]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
-  function addCheckpoint() { setCheckpoints(cp => [...cp, { name: '', instructions: '' }]); }
+  function addCheckpoint() { setCheckpoints(cp => [...cp, { name: '', instructions: '', what_to_look_for: '' }]); }
   function removeCheckpoint(i) { setCheckpoints(cp => cp.filter((_, j) => j !== i)); }
   function updateCheckpoint(i, field, val) { setCheckpoints(cp => cp.map((c, j) => j === i ? {...c, [field]: val} : c)); }
 
@@ -327,10 +327,14 @@ function PatrolRouteFormModal({ route, siteId, onClose, onSaved }) {
             <button className="btn btn-ghost btn-sm" onClick={addCheckpoint}>+ Add</button>
           </div>
           {checkpoints.map((cp, i) => (
-            <div key={i} style={{display:'grid',gridTemplateColumns:'1fr 1fr auto',gap:'0.5rem',marginBottom:'0.5rem',alignItems:'center'}}>
-              <input className="input" value={cp.name} onChange={e => updateCheckpoint(i, 'name', e.target.value)} placeholder={`Checkpoint ${i+1} name`} />
-              <input className="input" value={cp.instructions} onChange={e => updateCheckpoint(i, 'instructions', e.target.value)} placeholder="Instructions (optional)" />
-              <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={() => removeCheckpoint(i)}>x</button>
+            <div key={i} style={{background:'var(--surface-2)',border:'1px solid var(--border)',borderRadius:'8px',padding:'0.75rem',marginBottom:'0.625rem'}}>
+              <div style={{display:'flex',gap:'0.5rem',alignItems:'center',marginBottom:'0.5rem'}}>
+                <div style={{width:22,height:22,borderRadius:'50%',background:'var(--blue)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',fontWeight:700,color:'#fff',flexShrink:0}}>{i+1}</div>
+                <input className="input" style={{flex:1}} value={cp.name} onChange={e => updateCheckpoint(i, 'name', e.target.value)} placeholder={`Checkpoint ${i+1} name e.g. Unit 12 North Gate`} />
+                <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)',flexShrink:0}} onClick={() => removeCheckpoint(i)}>✕</button>
+              </div>
+              <input className="input" style={{marginBottom:'0.375rem'}} value={cp.instructions} onChange={e => updateCheckpoint(i, 'instructions', e.target.value)} placeholder="Navigation instructions e.g. Turn left at reception, take stairs to 2nd floor" />
+              <textarea className="input" rows={2} value={cp.what_to_look_for} onChange={e => updateCheckpoint(i, 'what_to_look_for', e.target.value)} placeholder="What to check / look for e.g. Check fire exits are clear, verify alarm panel shows green, ensure server room door is locked" style={{resize:'vertical'}} />
             </div>
           ))}
         </div>

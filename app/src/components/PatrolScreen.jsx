@@ -18,7 +18,10 @@ export default function PatrolScreen({ user, site, shift }) {
   const navigate = useNavigate();
   const watchRef = useRef(null);
 
+  const [allRoutes, setAllRoutes] = useState([]);
   const [route, setRoute] = useState(null);
+  const [selectedRouteId, setSelectedRouteId] = useState(''); // '' = free roam
+  const [showRouteSelector, setShowRouteSelector] = useState(false);
   const [session, setSession] = useState(null);
   const [completedCps, setCompletedCps] = useState([]);
   const [currentPos, setCurrentPos] = useState(null);
@@ -32,6 +35,7 @@ export default function PatrolScreen({ user, site, shift }) {
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [plannerMode, setPlannerMode] = useState(false);
   const [mapType, setMapType] = useState('satellite');
+  const [showNextCpGuide, setShowNextCpGuide] = useState(true);
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markerRef = useRef(null);
@@ -125,7 +129,8 @@ export default function PatrolScreen({ user, site, shift }) {
           setPatrolStarted(true);
         }
         const routes = (routesRes.status === 'fulfilled' ? routesRes.value : null)?.data || [];
-        if (routes.length > 0) setRoute(routes[0]);
+        setAllRoutes(routes);
+        // Don't auto-select a route — let officer choose
         setIsRoutePlanner(user.is_route_planner || ['COMPANY','OPS_MANAGER','SUPER_ADMIN'].includes(user.role));
       } catch (e) { console.error(e); }
       finally { setLoading(false); }
@@ -137,9 +142,15 @@ export default function PatrolScreen({ user, site, shift }) {
     try {
       const res = await api.patrols.getRoutes(site.id);
       const routes = res.data || [];
-      if (routes.length > 0) setRoute(routes[0]);
-      else setRoute(null);
+      setAllRoutes(routes);
+      if (selectedRouteId) setRoute(routes.find(r => r.id === selectedRouteId) || null);
     } catch {}
+  }
+
+  function selectRoute(routeId) {
+    setSelectedRouteId(routeId);
+    setRoute(routeId ? allRoutes.find(r => r.id === routeId) || null : null);
+    setShowRouteSelector(false);
   }
 
   async function startPatrol() {
@@ -149,11 +160,13 @@ export default function PatrolScreen({ user, site, shift }) {
       setSession(res.data);
       setPatrolStarted(true);
       setCompletedCps([]);
+      setShowNextCpGuide(true);
     } catch (e) { alert('Could not start patrol: ' + e.message); }
   }
 
   async function markCheckpoint(cp) {
     setCompletedCps(prev => prev.includes(cp.id) ? prev : [...prev, cp.id]);
+    setShowNextCpGuide(true); // show guide for the next checkpoint
     if (session?.id) {
       try { await api.patrols.checkpoint(session.id, cp.id, cp.name, currentPos?.lat, currentPos?.lng); }
       catch (e) { console.error('Checkpoint sync failed:', e.message); }
@@ -185,6 +198,8 @@ export default function PatrolScreen({ user, site, shift }) {
 
   const checkpoints = route?.checkpoints ? [...route.checkpoints].sort((a,b) => a.order_index - b.order_index) : [];
   const nextCp = checkpoints.find(cp => !completedCps.includes(cp.id));
+  // On a named route, only allow marking the next checkpoint in sequence
+  const isNamedRoute = !!route?.id;
 
   // ── ROUTE PLANNER MODE ──────────────────────────────────────────────
   if (plannerMode) {
@@ -209,12 +224,32 @@ export default function PatrolScreen({ user, site, shift }) {
         </div>
       </div>
 
-      {/* Pre-patrol buttons */}
+      {/* Pre-patrol UI */}
       {!patrolStarted && (
         <div style={{padding:'10px 14px',flexShrink:0,display:'flex',flexDirection:'column',gap:'8px',borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
+          {/* Route selector */}
+          {allRoutes.length > 0 && (
+            <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'10px',padding:'10px 12px'}}>
+              <div style={{fontSize:'10px',fontWeight:700,color:'rgba(255,255,255,0.35)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'6px'}}>Select Patrol Route</div>
+              <div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
+                <button onClick={() => selectRoute('')}
+                  style={{padding:'10px 12px',background:!selectedRouteId?'rgba(59,130,246,0.15)':'rgba(255,255,255,0.04)',border:`1.5px solid ${!selectedRouteId?'rgba(59,130,246,0.5)':'rgba(255,255,255,0.08)'}`,borderRadius:'8px',color:!selectedRouteId?'#60a5fa':'rgba(255,255,255,0.5)',fontSize:'13px',fontWeight:600,cursor:'pointer',textAlign:'left'}}>
+                  🔓 Free Roam — no fixed route
+                </button>
+                {allRoutes.map(r => (
+                  <button key={r.id} onClick={() => selectRoute(r.id)}
+                    style={{padding:'10px 12px',background:selectedRouteId===r.id?'rgba(167,139,250,0.15)':'rgba(255,255,255,0.04)',border:`1.5px solid ${selectedRouteId===r.id?'rgba(167,139,250,0.5)':'rgba(255,255,255,0.08)'}`,borderRadius:'8px',color:selectedRouteId===r.id?'#c4b5fd':'rgba(255,255,255,0.6)',fontSize:'13px',fontWeight:600,cursor:'pointer',textAlign:'left'}}>
+                    <div>🗺 {r.name}</div>
+                    {r.instructions && <div style={{fontSize:'11px',color:'rgba(255,255,255,0.35)',marginTop:'2px'}}>{r.instructions}</div>}
+                    <div style={{fontSize:'11px',color:'rgba(255,255,255,0.3)',marginTop:'2px'}}>{(r.checkpoints||[]).length} checkpoints</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <button onClick={startPatrol}
             style={{width:'100%',padding:'15px',background:'rgba(74,222,128,0.15)',border:'2px solid rgba(74,222,128,0.4)',borderRadius:'10px',color:'#4ade80',fontSize:'16px',fontWeight:700,cursor:'pointer'}}>
-            ▶ START PATROL
+            ▶ START PATROL{route ? ` — ${route.name}` : allRoutes.length > 0 ? ' — Free Roam' : ''}
           </button>
           {isRoutePlanner && (
             <button onClick={() => setPlannerMode(true)}
@@ -258,10 +293,45 @@ export default function PatrolScreen({ user, site, shift }) {
           </div>
         )}
 
+        {/* Guided next checkpoint banner — shown for named routes */}
+        {patrolStarted && isNamedRoute && nextCp && showNextCpGuide && (
+          <div style={{margin:'10px 14px 0',background:'rgba(251,191,36,0.08)',border:'2px solid rgba(251,191,36,0.4)',borderRadius:'12px',padding:'12px 14px',flexShrink:0}}>
+            <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:'8px'}}>
+              <div style={{flex:1}}>
+                <div style={{fontSize:'10px',fontWeight:700,color:'#fbbf24',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:'4px'}}>Next Checkpoint ({checkpoints.indexOf(nextCp)+1} of {checkpoints.length})</div>
+                <div style={{fontSize:'16px',fontWeight:700,color:'#fff',marginBottom:'4px'}}>{nextCp.name}</div>
+                {nextCp.instructions && <div style={{fontSize:'12px',color:'rgba(255,255,255,0.55)',lineHeight:1.4,marginBottom:'4px'}}>{nextCp.instructions}</div>}
+                {nextCp.what_to_look_for && (
+                  <div style={{background:'rgba(0,0,0,0.3)',borderRadius:'6px',padding:'6px 8px',marginBottom:'6px'}}>
+                    <div style={{fontSize:'10px',fontWeight:700,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:'2px'}}>What to check</div>
+                    <div style={{fontSize:'12px',color:'rgba(255,255,255,0.75)',lineHeight:1.5}}>{nextCp.what_to_look_for}</div>
+                  </div>
+                )}
+                {nextCp.image_url && <img src={nextCp.image_url} style={{width:'100%',maxHeight:'140px',objectFit:'cover',borderRadius:'8px',marginBottom:'6px'}} />}
+                <button onClick={() => { markCheckpoint(nextCp); }}
+                  style={{width:'100%',padding:'12px',background:'rgba(74,222,128,0.15)',border:'1.5px solid rgba(74,222,128,0.4)',borderRadius:'8px',color:'#4ade80',fontSize:'14px',fontWeight:700,cursor:'pointer'}}>
+                  ✓ All Clear — Mark Reached
+                </button>
+              </div>
+              {nextCp.image_url ? null : (
+                <button onClick={() => setShowNextCpGuide(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,0.3)',fontSize:'18px',cursor:'pointer',padding:'0',lineHeight:1,flexShrink:0}}>×</button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Re-show guide button if dismissed */}
+        {patrolStarted && isNamedRoute && nextCp && !showNextCpGuide && (
+          <button onClick={() => setShowNextCpGuide(true)}
+            style={{margin:'8px 14px 0',width:'calc(100% - 28px)',padding:'10px',background:'rgba(251,191,36,0.1)',border:'1.5px solid rgba(251,191,36,0.3)',borderRadius:'8px',color:'#fbbf24',fontSize:'12px',fontWeight:700,cursor:'pointer'}}>
+            📍 Show Next Checkpoint Guide
+          </button>
+        )}
+
         {/* Action buttons */}
         {patrolStarted && (
           <div style={{padding:'10px 14px',borderBottom:'1px solid rgba(255,255,255,0.08)',background:'#0b1222'}}>
-            {nextCp && (
+            {nextCp && !isNamedRoute && (
               <button onClick={() => markCheckpoint(nextCp)}
                 style={{width:'100%',padding:'14px',background:'rgba(251,191,36,0.15)',border:'2px solid rgba(251,191,36,0.5)',borderRadius:'10px',color:'#fbbf24',fontSize:'15px',fontWeight:700,cursor:'pointer',marginBottom:'8px',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px'}}>
                 ✓ REACHED: {nextCp.name}
@@ -296,29 +366,35 @@ export default function PatrolScreen({ user, site, shift }) {
               <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
                 {checkpoints.map((cp, i) => {
                   const done = completedCps.includes(cp.id);
-                  const canMark = patrolStarted && !done;
+                  const isNext = nextCp?.id === cp.id;
+                  // On named routes, can only mark the NEXT checkpoint in sequence
+                  const canMark = patrolStarted && !done && (isNamedRoute ? isNext : true);
+                  const isLocked = patrolStarted && !done && isNamedRoute && !isNext;
                   return (
                     <div key={cp.id} style={{
                       padding:'12px',
-                      background:done?'rgba(74,222,128,0.06)':canMark?'rgba(251,191,36,0.05)':'rgba(255,255,255,0.02)',
-                      border:`1px solid ${done?'rgba(74,222,128,0.15)':canMark?'rgba(251,191,36,0.25)':'rgba(255,255,255,0.06)'}`,
+                      background:done?'rgba(74,222,128,0.06)':isNext&&patrolStarted?'rgba(251,191,36,0.05)':'rgba(255,255,255,0.02)',
+                      border:`1px solid ${done?'rgba(74,222,128,0.15)':isNext&&patrolStarted?'rgba(251,191,36,0.2)':'rgba(255,255,255,0.06)'}`,
                       borderRadius:'10px',
+                      opacity: isLocked ? 0.45 : 1,
                     }}>
                       <div style={{display:'flex',alignItems:'flex-start',gap:'10px'}}>
-                        <div style={{width:24,height:24,borderRadius:'50%',background:done?'rgba(74,222,128,0.2)':canMark?'#fbbf24':'rgba(255,255,255,0.1)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:'11px',fontWeight:700,color:done?'#4ade80':canMark?'#0b1222':'rgba(255,255,255,0.3)'}}>
-                          {done ? '✓' : i+1}
+                        <div style={{width:24,height:24,borderRadius:'50%',background:done?'rgba(74,222,128,0.2)':isNext&&patrolStarted?'#fbbf24':'rgba(255,255,255,0.1)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:'11px',fontWeight:700,color:done?'#4ade80':isNext&&patrolStarted?'#0b1222':'rgba(255,255,255,0.3)'}}>
+                          {done ? '✓' : isLocked ? '🔒' : i+1}
                         </div>
                         <div style={{flex:1,minWidth:0}}>
                           <div style={{fontSize:'13px',fontWeight:600,color:done?'rgba(255,255,255,0.45)':'#fff'}}>{cp.name}</div>
-                          {cp.what_to_look_for && (
-                            <div style={{fontSize:'11px',color:'rgba(255,255,255,0.35)',marginTop:'3px',lineHeight:1.4}}>{cp.what_to_look_for}</div>
+                          {cp.instructions && !done && <div style={{fontSize:'11px',color:'rgba(255,255,255,0.4)',marginTop:'2px',lineHeight:1.4}}>{cp.instructions}</div>}
+                          {cp.what_to_look_for && !done && (
+                            <div style={{fontSize:'11px',color:'rgba(255,255,255,0.35)',marginTop:'3px',lineHeight:1.4,fontStyle:'italic'}}>Check: {cp.what_to_look_for}</div>
                           )}
+                          {isLocked && <div style={{fontSize:'10px',color:'rgba(255,255,255,0.25)',marginTop:'3px'}}>Complete previous checkpoints first</div>}
                         </div>
                         {cp.image_url && (
-                          <img src={cp.image_url} style={{width:48,height:48,borderRadius:'6px',objectFit:'cover',flexShrink:0,border:'1px solid rgba(255,255,255,0.1)'}} />
+                          <img src={cp.image_url} style={{width:48,height:48,borderRadius:'6px',objectFit:'cover',flexShrink:0,border:'1px solid rgba(255,255,255,0.1)',opacity:isLocked?0.4:1}} />
                         )}
                       </div>
-                      {/* Action buttons for active patrol */}
+                      {/* Action buttons — only for the current checkpoint */}
                       {canMark && (
                         <div style={{display:'flex',gap:'6px',marginTop:'8px'}}>
                           <button onClick={() => markCheckpoint(cp)}
