@@ -274,7 +274,7 @@ export default function RosterCalendar({ siteId, user }) {
       ) : (
         <RotaGrid days={days} view={view} shiftsForDay={shiftsForDay} isToday={isToday} isManager={isManager}
           onShiftClick={handleShiftClick} onAdd={d => setAddDate(d)} siteId={siteId}
-          bulkMode={bulkMode} selected={selected} onSelectDay={selectDay} user={user} />
+          bulkMode={bulkMode} selected={selected} onSelectDay={selectDay} user={user} anchorMonth={anchor.getMonth()} anchorYear={anchor.getFullYear()} />
       )}
 
       {/* Bulk action bar */}
@@ -407,7 +407,7 @@ function BulkTimesModal({ count, onApply, onClose, processing }) {
 
 // ── Rota Grid ────────────────────────────────────────────────────────────────
 
-function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, onAdd, siteId, bulkMode, selected, onSelectDay, user }) {
+function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, onAdd, siteId, bulkMode, selected, onSelectDay, user, anchorMonth, anchorYear }) {
   const weeks = [];
   for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7));
   const isCompact = view === 'month';
@@ -431,6 +431,10 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
           return (<React.Fragment key={wi}>
           <div style={{display:'grid',gridTemplateColumns:'repeat(7, minmax(120px, 1fr))',gap:'1px',background:'var(--border)'}}>
             {week.map(d => {
+              const outOfMonth = isCompact && (d.getMonth() !== anchorMonth || d.getFullYear() !== anchorYear);
+              if (outOfMonth) {
+                return <div key={isoDate(d)} style={{background:'var(--surface-2)',minHeight:`${cellMinH}px`,opacity:0.4}} />;
+              }
               const dayShifts = shiftsForDay(d).sort((a,b) => new Date(a.start_time) - new Date(b.start_time));
               const today = isToday(d);
               return (
