@@ -76,7 +76,7 @@ function ManagerSidebar({ user }) {
       label: 'Scheduling',
       items: [
         { to: '/patterns',  icon: ClockIcon,                 label: 'Shift Patterns' },
-        { to: '/pnl',       icon: ChartBarIcon,              label: 'P&L' },
+        ...(['FD','COMPANY','SUPER_ADMIN'].includes(user.role) ? [{ to: '/pnl', icon: ChartBarIcon, label: 'P&L' }] : []),
         { to: '/rates',     icon: ChartBarIcon,              label: 'Rates' },
         { to: '/reports',   icon: ChartBarIcon,              label: 'Reports' },
       ]

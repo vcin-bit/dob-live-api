@@ -9,7 +9,8 @@ const ALL_FIELDS = ['name','address','city','postcode','active','client_id',
   'geofence_lat','geofence_lng','geofence_radius','notes',
   'client_portal_enabled','client_portal_pin','client_name',
   'client_contact_name','client_contact_email','client_contact_phone',
-  'contract_start_date','client_company_address'];
+  'contract_start_date','client_company_address',
+  'charge_rate','contracted_hours_weekly'];
 
 router.get('/', authenticate, async (req, res, next) => {
   try {
