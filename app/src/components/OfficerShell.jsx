@@ -371,9 +371,9 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
           <PlusIcon style={{width:'1.125rem',height:'1.125rem'}} />
           Log Occurrence
         </Link>
-        <Link to="/log" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.875rem',marginBottom:0}}>
-          <ClipboardDocumentListIcon style={{width:'1rem',height:'1rem'}} />
-          General Log
+        <Link to="/log?type=GENERAL_INFO" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.875rem',marginBottom:0}}>
+          <PlusIcon style={{width:'1rem',height:'1rem'}} />
+          Gen Info
         </Link>
         <Link to="/log?type=CCTV_CHECK" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.875rem',marginBottom:0}}>
           CCTV Patrol

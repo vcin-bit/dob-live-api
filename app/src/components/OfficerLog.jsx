@@ -201,6 +201,49 @@ function LogEntryScreen({ user, site, shift }) {
     finally { setSubmitting(false); }
   }
 
+  // ── GENERAL INFO: quick single-field entry, no categories/tabs ───────────────
+  if (form.log_type === 'GENERAL_INFO') return (
+    <div style={{padding:'1rem 1rem 5rem'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'1.25rem'}}>
+        <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
+          <div style={{width:'3px',height:'24px',background:'#3b82f6',borderRadius:'2px'}} />
+          <div>
+            <div style={{fontSize:'14px',fontWeight:700,color:'#3b82f6',letterSpacing:'0.02em'}}>GENERAL INFO</div>
+            <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)',marginTop:'1px'}}>Record non-incident occurrences</div>
+          </div>
+        </div>
+        <button onClick={() => navigate('/')} style={{background:'none',border:'none',color:'rgba(255,255,255,0.4)',fontSize:'0.8125rem',cursor:'pointer'}}>Cancel</button>
+      </div>
+
+      {error && <div style={{background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:'8px',padding:'10px',fontSize:'13px',color:'#ef4444',marginBottom:'12px'}}>{error}</div>}
+
+      <div style={{marginBottom:'14px'}}>
+        <div style={S.label}>WHAT'S HAPPENING?</div>
+        <textarea value={form.description} onChange={e=>f('description',e.target.value)} rows={4}
+          placeholder="e.g. Site workers arriving, milk delivered, MD on site, cleaners finished..."
+          style={S.input} autoFocus />
+      </div>
+
+      <button onClick={async () => {
+        if (!form.description.trim()) { setError('Please enter what happened'); return; }
+        setSubmitting(true); setError('');
+        try {
+          await api.logs.create({
+            site_id: site?.id, shift_id: shift?.id || null, log_type: 'GENERAL',
+            title: form.description.trim().slice(0, 60),
+            description: form.description.trim(),
+            occurred_at: new Date().toISOString(),
+          });
+          navigate('/', { state: { message: 'Info logged' } });
+        } catch (e) { setError(e.message); }
+        finally { setSubmitting(false); }
+      }} disabled={submitting || !form.description.trim()}
+        style={S.btn(!form.description.trim() ? '#333' : '#1a52a8')}>
+        {submitting ? 'LOGGING...' : 'LOG INFO'}
+      </button>
+    </div>
+  );
+
   // ── CCTV PATROL: single page form, no steps ─────────────────────────────────
   if (form.log_type === 'CCTV_CHECK') return (
     <div style={{padding:'1rem 1rem 5rem'}}>
