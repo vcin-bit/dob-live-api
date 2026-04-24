@@ -47,17 +47,19 @@ function ProfitLoss({ user }) {
   }
   const { from, to } = getRange();
 
-  function load() {
+  useEffect(() => {
     setLoading(true);
+    const { from: f, to: t } = getRange();
     Promise.all([
       api.sites.list(),
-      api.shifts.list({ from: from.toISOString(), to: to.toISOString(), limit: 1000 }),
+      api.shifts.list({ from: f.toISOString(), to: t.toISOString(), limit: 1000 }),
       api.rates.list(),
-    ]).then(([sr, shr, rr]) => { setSites(sr.data || []); setShifts(shr.data || []); setRates(rr.data || []); })
-      .catch(console.error).finally(() => setLoading(false));
-  }
-
-  useEffect(() => { load(); }, [anchor, period]);
+    ]).then(([sr, shr, rr]) => {
+      setSites(sr.data || []);
+      setShifts(shr.data || []);
+      setRates(rr.data || []);
+    }).catch(console.error).finally(() => setLoading(false));
+  }, [anchor, period]);
 
   // Look up pay rate: shift.pay_rate first, then officer_rates for that site, then default officer rate
   function getPayRate(s) {
