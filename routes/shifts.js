@@ -45,7 +45,7 @@ router.get('/:id', authenticate, async (req, res, next) => {
 });
 
 // POST /api/shifts
-router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER'), async (req, res, next) => {
+router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
   try {
     const { site_id, officer_id, start_time, end_time, pay_rate, charge_rate, notes } = req.body;
     const { data, error } = await supabase
@@ -59,7 +59,7 @@ router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGE
 });
 
 // PATCH /api/shifts/:id
-router.patch('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER'), async (req, res, next) => {
+router.patch('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
   try {
     const allowed = ['site_id', 'officer_id', 'start_time', 'end_time', 'status', 'pay_rate', 'charge_rate', 'notes', 'checked_out_at'];
     const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
@@ -189,7 +189,7 @@ router.post('/expire', async (req, res, next) => {
 });
 
 // DELETE /api/shifts/:id
-router.delete('/:id', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANAGER'), async (req, res, next) => {
+router.delete('/:id', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANAGER','FD'), async (req, res, next) => {
   try {
     const { error } = await supabase.from('shifts').delete()
       .eq('id', req.params.id)
