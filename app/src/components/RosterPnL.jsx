@@ -34,9 +34,11 @@ function ProfitLoss({ user }) {
   const isFD = ['FD','COMPANY','SUPER_ADMIN'].includes(user?.role);
   const [sites, setSites] = useState([]);
   const [shifts, setShifts] = useState([]);
+  const [rates, setRates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('week');
   const [anchor, setAnchor] = useState(new Date());
+  const [savingSite, setSavingSite] = useState(null);
 
   function getRange() {
     const d = new Date(anchor); d.setHours(0,0,0,0);
@@ -45,14 +47,36 @@ function ProfitLoss({ user }) {
   }
   const { from, to } = getRange();
 
-  useEffect(() => {
+  function load() {
     setLoading(true);
     Promise.all([
       api.sites.list(),
       api.shifts.list({ from: from.toISOString(), to: to.toISOString(), limit: 1000 }),
-    ]).then(([sr, shr]) => { setSites(sr.data || []); setShifts(shr.data || []); })
+      api.rates.list(),
+    ]).then(([sr, shr, rr]) => { setSites(sr.data || []); setShifts(shr.data || []); setRates(rr.data || []); })
       .catch(console.error).finally(() => setLoading(false));
-  }, [anchor, period]);
+  }
+
+  useEffect(() => { load(); }, [anchor, period]);
+
+  // Look up pay rate: shift.pay_rate first, then officer_rates for that site, then default officer rate
+  function getPayRate(s) {
+    if (s.pay_rate) return parseFloat(s.pay_rate);
+    const siteRate = rates.find(r => r.officer_id === s.officer_id && r.site_id === s.site_id);
+    if (siteRate) return parseFloat(siteRate.hourly_rate || 0);
+    const defaultRate = rates.find(r => r.officer_id === s.officer_id && !r.site_id);
+    if (defaultRate) return parseFloat(defaultRate.hourly_rate || 0);
+    return 0;
+  }
+
+  async function saveSiteRate(siteId, field, value) {
+    setSavingSite(siteId);
+    try {
+      await api.sites.update(siteId, { [field]: value ? parseFloat(value) : null });
+      setSites(prev => prev.map(s => s.id === siteId ? { ...s, [field]: value ? parseFloat(value) : null } : s));
+    } catch (e) { alert(e.message); }
+    finally { setSavingSite(null); }
+  }
 
   function nav(dir) {
     const d = new Date(anchor);
@@ -92,7 +116,7 @@ function ProfitLoss({ user }) {
       if (!byOfficer[name]) byOfficer[name] = { hours: 0, pay: 0, shifts: 0 };
       const h = calcHours(s);
       byOfficer[name].hours += h;
-      byOfficer[name].pay += h * (parseFloat(s.pay_rate) || 0);
+      byOfficer[name].pay += h * getPayRate(s);
       byOfficer[name].shifts += 1;
     });
     const totalHours = Object.values(byOfficer).reduce((t, o) => t + o.hours, 0);
@@ -162,19 +186,30 @@ function ProfitLoss({ user }) {
             {/* Per site breakdown */}
             {siteRows.map(({ site, byOfficer, totalHours, totalPay, totalCharge, margin, chargeRate, contractedWeekly, contractedPeriod }) => (
               <div key={site.id} className="card" style={{marginBottom:'1rem',padding:'1rem'}}>
-                <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:'0.75rem'}}>
-                  <div>
+                <div style={{marginBottom:'0.75rem'}}>
+                  <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:'0.5rem'}}>
                     <div style={{fontSize:'1rem',fontWeight:700}}>{site.name}</div>
-                    {chargeRate > 0 && <div style={{fontSize:'0.75rem',color:'#10b981'}}>Charge: £{chargeRate.toFixed(2)}/hr</div>}
-                  </div>
-                  {contractedWeekly > 0 && (
-                    <div style={{textAlign:'right'}}>
-                      <div style={{fontSize:'0.75rem',color:'var(--text-3)'}}>Contract: {contractedWeekly} hrs/wk</div>
+                    {contractedWeekly > 0 && (
                       <div style={{fontSize:'0.8125rem',fontWeight:600,color: totalHours >= contractedPeriod ? '#10b981' : '#ef4444'}}>
                         {totalHours.toFixed(1)} / {contractedPeriod.toFixed(1)} hrs
                       </div>
+                    )}
+                  </div>
+                  <div style={{display:'flex',gap:'0.75rem',alignItems:'center',flexWrap:'wrap'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:'0.375rem',fontSize:'0.8125rem'}}>
+                      <span style={{color:'var(--text-3)'}}>Charge £/hr:</span>
+                      <input type="number" step="0.01" min="0" value={site.charge_rate || ''} style={{width:'80px',padding:'0.25rem 0.5rem',background:'var(--surface-2)',border:'1px solid var(--border)',borderRadius:'4px',fontSize:'0.8125rem',color:'var(--text)'}}
+                        onChange={e => setSites(prev => prev.map(s => s.id === site.id ? {...s, charge_rate: e.target.value} : s))}
+                        onBlur={e => saveSiteRate(site.id, 'charge_rate', e.target.value)} />
                     </div>
-                  )}
+                    <div style={{display:'flex',alignItems:'center',gap:'0.375rem',fontSize:'0.8125rem'}}>
+                      <span style={{color:'var(--text-3)'}}>Contract hrs/wk:</span>
+                      <input type="number" step="0.5" min="0" value={site.contracted_hours_weekly || ''} style={{width:'70px',padding:'0.25rem 0.5rem',background:'var(--surface-2)',border:'1px solid var(--border)',borderRadius:'4px',fontSize:'0.8125rem',color:'var(--text)'}}
+                        onChange={e => setSites(prev => prev.map(s => s.id === site.id ? {...s, contracted_hours_weekly: e.target.value} : s))}
+                        onBlur={e => saveSiteRate(site.id, 'contracted_hours_weekly', e.target.value)} />
+                    </div>
+                    {savingSite === site.id && <span style={{fontSize:'0.75rem',color:'var(--text-3)'}}>Saving...</span>}
+                  </div>
                 </div>
 
                 <table className="table" style={{marginBottom:'0.75rem'}}>

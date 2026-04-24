@@ -46,7 +46,7 @@ router.post('/', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANAGER'
   } catch (err) { next(err); }
 });
 
-router.patch('/:id', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANAGER'), async (req, res, next) => {
+router.patch('/:id', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANAGER','FD'), async (req, res, next) => {
   try {
     const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => ALL_FIELDS.includes(k)));
     if (updates.geofence_lat) updates.geofence_lat = parseFloat(updates.geofence_lat);
