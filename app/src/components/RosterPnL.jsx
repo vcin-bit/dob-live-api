@@ -95,41 +95,53 @@ function ProfitLoss({ user }) {
   const periodDays = Math.round((to - from) / 86400000);
   const periodWeeks = periodDays / 7;
 
-  // Group shifts by site, then by officer
-  const siteMap = {};
-  sites.forEach(s => { siteMap[s.id] = s; });
-  const bySite = {};
-  shifts.forEach(s => {
-    const sid = s.site_id;
-    if (!bySite[sid]) bySite[sid] = [];
-    bySite[sid].push(s);
-  });
+  // Split shifts: SCHEDULED = contracted/planned, ACTIVE+COMPLETED = actual worked
+  const scheduled = shifts.filter(s => s.status === 'SCHEDULED');
+  const actual = shifts.filter(s => s.status === 'ACTIVE' || s.status === 'COMPLETED');
 
-  let grandHours = 0, grandPay = 0, grandCharge = 0, grandContracted = 0;
+  // Group by site
+  const bySite = {};
+  shifts.forEach(s => { if (!bySite[s.site_id]) bySite[s.site_id] = []; bySite[s.site_id].push(s); });
+
+  let grandScheduledHrs = 0, grandActualHrs = 0, grandActualPay = 0, grandCharge = 0;
 
   const siteRows = sites.map(site => {
     const ss = bySite[site.id] || [];
+    const siteScheduled = ss.filter(s => s.status === 'SCHEDULED');
+    const siteActual = ss.filter(s => s.status === 'ACTIVE' || s.status === 'COMPLETED');
     const chargeRate = parseFloat(site.charge_rate) || 0;
-    const contractedWeekly = parseFloat(site.contracted_hours_weekly) || 0;
-    const contractedPeriod = contractedWeekly * periodWeeks;
+
+    const scheduledHrs = siteScheduled.reduce((t, s) => t + calcHours(s), 0);
+
+    // Per officer: actual hours + pay
     const byOfficer = {};
-    ss.forEach(s => {
+    siteActual.forEach(s => {
       const name = s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unassigned';
-      if (!byOfficer[name]) byOfficer[name] = { hours: 0, pay: 0, shifts: 0 };
+      if (!byOfficer[name]) byOfficer[name] = { scheduledHrs: 0, actualHrs: 0, pay: 0, shifts: 0 };
       const h = calcHours(s);
-      byOfficer[name].hours += h;
+      byOfficer[name].actualHrs += h;
       byOfficer[name].pay += h * getPayRate(s);
       byOfficer[name].shifts += 1;
     });
-    const totalHours = Object.values(byOfficer).reduce((t, o) => t + o.hours, 0);
-    const totalPay = Object.values(byOfficer).reduce((t, o) => t + o.pay, 0);
-    const totalCharge = totalHours * chargeRate;
-    const margin = totalCharge - totalPay;
-    grandHours += totalHours; grandPay += totalPay; grandCharge += totalCharge; grandContracted += contractedPeriod;
-    return { site, byOfficer, totalHours, totalPay, totalCharge, margin, chargeRate, contractedWeekly, contractedPeriod, shiftCount: ss.length };
-  }).filter(r => r.shiftCount > 0 || r.contractedWeekly > 0);
+    // Add scheduled hours per officer (for comparison)
+    siteScheduled.forEach(s => {
+      const name = s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unassigned';
+      if (!byOfficer[name]) byOfficer[name] = { scheduledHrs: 0, actualHrs: 0, pay: 0, shifts: 0 };
+      byOfficer[name].scheduledHrs += calcHours(s);
+    });
 
-  const grandMargin = grandCharge - grandPay;
+    const actualHrs = Object.values(byOfficer).reduce((t, o) => t + o.actualHrs, 0);
+    const actualPay = Object.values(byOfficer).reduce((t, o) => t + o.pay, 0);
+    const chargeRevenue = scheduledHrs * chargeRate; // bill based on scheduled/contracted
+    const variance = actualHrs - scheduledHrs;
+    const margin = chargeRevenue - actualPay;
+
+    grandScheduledHrs += scheduledHrs; grandActualHrs += actualHrs; grandActualPay += actualPay; grandCharge += chargeRevenue;
+    return { site, byOfficer, scheduledHrs, actualHrs, actualPay, chargeRevenue, margin, variance, chargeRate, shiftCount: ss.length };
+  }).filter(r => r.shiftCount > 0);
+
+  const grandVariance = grandActualHrs - grandScheduledHrs;
+  const grandMargin = grandCharge - grandActualPay;
   const marginPct = grandCharge > 0 ? (grandMargin / grandCharge * 100).toFixed(1) : '0.0';
 
   if (!isFD) return <div className="page-content"><div className="alert alert-danger">Access restricted to Field Directors</div></div>;
@@ -161,41 +173,52 @@ function ProfitLoss({ user }) {
           <>
             {/* Grand totals */}
             <div className="stats-grid" style={{marginBottom:'1.5rem'}}>
-              <div className="stat-card"><div className="stat-value">{grandHours.toFixed(1)}h</div><div className="stat-label">Total Hours</div></div>
-              <div className="stat-card"><div className="stat-value" style={{color:'#f59e0b'}}>{fmt(grandPay)}</div><div className="stat-label">Total Pay Cost</div></div>
+              <div className="stat-card"><div className="stat-value">{grandScheduledHrs.toFixed(1)}h</div><div className="stat-label">Scheduled Hours</div></div>
+              <div className="stat-card"><div className="stat-value">{grandActualHrs.toFixed(1)}h</div><div className="stat-label">Actual Worked</div></div>
+              <div className="stat-card">
+                <div className="stat-value" style={{color: grandVariance === 0 ? '#10b981' : grandVariance > 0 ? '#3b82f6' : '#ef4444'}}>
+                  {grandVariance > 0 ? '+' : ''}{grandVariance.toFixed(1)}h
+                </div>
+                <div className="stat-label">Variance</div>
+              </div>
+              <div className="stat-card"><div className="stat-value" style={{color:'#f59e0b'}}>{fmt(grandActualPay)}</div><div className="stat-label">Total Pay Cost</div></div>
               <div className="stat-card"><div className="stat-value" style={{color:'#10b981'}}>{fmt(grandCharge)}</div><div className="stat-label">Charge Revenue</div></div>
               <div className="stat-card"><div className="stat-value" style={{color: grandMargin >= 0 ? '#10b981' : '#ef4444'}}>{fmt(grandMargin)}</div><div className="stat-label">Gross Margin ({marginPct}%)</div></div>
             </div>
 
-            {/* Contracted hours check */}
-            {grandContracted > 0 && (
+            {/* Scheduled vs Actual progress */}
+            {grandScheduledHrs > 0 && (
               <div className="card" style={{marginBottom:'1.25rem',padding:'1rem'}}>
-                <div className="section-title" style={{marginBottom:'0.75rem'}}>Contracted vs Actual Hours</div>
+                <div className="section-title" style={{marginBottom:'0.75rem'}}>Scheduled vs Actual Hours</div>
                 <div style={{display:'flex',alignItems:'center',gap:'1rem',marginBottom:'0.5rem'}}>
                   <div style={{flex:1,background:'var(--surface-2)',borderRadius:'4px',height:'10px',overflow:'hidden'}}>
-                    <div style={{width:`${Math.min(100, (grandHours / grandContracted) * 100)}%`,height:'100%',background: grandHours >= grandContracted ? '#10b981' : '#f59e0b',borderRadius:'4px'}} />
+                    <div style={{width:`${Math.min(100, (grandActualHrs / grandScheduledHrs) * 100)}%`,height:'100%',background: grandActualHrs >= grandScheduledHrs ? '#10b981' : '#f59e0b',borderRadius:'4px'}} />
                   </div>
-                  <span style={{fontSize:'0.875rem',fontWeight:700,whiteSpace:'nowrap'}}>{grandHours.toFixed(1)} / {grandContracted.toFixed(1)} hrs</span>
+                  <span style={{fontSize:'0.875rem',fontWeight:700,whiteSpace:'nowrap'}}>{grandActualHrs.toFixed(1)} / {grandScheduledHrs.toFixed(1)} hrs</span>
                 </div>
-                <div style={{fontSize:'0.8125rem',fontWeight:600,color: grandHours >= grandContracted ? '#10b981' : '#ef4444'}}>
-                  {grandHours >= grandContracted
-                    ? `${(grandHours - grandContracted).toFixed(1)} hrs over contract (+${((grandHours / grandContracted - 1) * 100).toFixed(1)}%)`
-                    : `${(grandContracted - grandHours).toFixed(1)} hrs under contract (${((1 - grandHours / grandContracted) * 100).toFixed(1)}% short)`}
+                <div style={{fontSize:'0.8125rem',fontWeight:600,color: grandVariance === 0 ? '#10b981' : grandVariance > 0 ? '#3b82f6' : '#ef4444'}}>
+                  {grandVariance === 0 ? 'On target'
+                    : grandVariance > 0 ? `${grandVariance.toFixed(1)} hrs over scheduled (+${((grandVariance / grandScheduledHrs) * 100).toFixed(1)}%) — check billing`
+                    : `${Math.abs(grandVariance).toFixed(1)} hrs under scheduled (${((Math.abs(grandVariance) / grandScheduledHrs) * 100).toFixed(1)}% short)`}
                 </div>
               </div>
             )}
 
             {/* Per site breakdown */}
-            {siteRows.map(({ site, byOfficer, totalHours, totalPay, totalCharge, margin, chargeRate, contractedWeekly, contractedPeriod }) => (
+            {siteRows.map(({ site, byOfficer, scheduledHrs, actualHrs, actualPay, chargeRevenue, margin, variance, chargeRate }) => (
               <div key={site.id} className="card" style={{marginBottom:'1rem',padding:'1rem'}}>
                 <div style={{marginBottom:'0.75rem'}}>
                   <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:'0.5rem'}}>
                     <div style={{fontSize:'1rem',fontWeight:700}}>{site.name}</div>
-                    {contractedWeekly > 0 && (
-                      <div style={{fontSize:'0.8125rem',fontWeight:600,color: totalHours >= contractedPeriod ? '#10b981' : '#ef4444'}}>
-                        {totalHours.toFixed(1)} / {contractedPeriod.toFixed(1)} hrs
-                      </div>
-                    )}
+                    <div style={{textAlign:'right',fontSize:'0.8125rem'}}>
+                      <span style={{color:'var(--text-2)'}}>Sched: {scheduledHrs.toFixed(1)}h</span>
+                      <span style={{margin:'0 0.375rem',color:'var(--text-3)'}}>|</span>
+                      <span>Actual: {actualHrs.toFixed(1)}h</span>
+                      <span style={{margin:'0 0.375rem',color:'var(--text-3)'}}>|</span>
+                      <span style={{fontWeight:600,color: variance === 0 ? '#10b981' : variance > 0 ? '#3b82f6' : '#ef4444'}}>
+                        {variance > 0 ? '+' : ''}{variance.toFixed(1)}h
+                      </span>
+                    </div>
                   </div>
                   <div style={{display:'flex',gap:'0.75rem',alignItems:'center',flexWrap:'wrap'}}>
                     <div style={{display:'flex',alignItems:'center',gap:'0.375rem',fontSize:'0.8125rem'}}>
@@ -204,35 +227,37 @@ function ProfitLoss({ user }) {
                         onChange={e => setSites(prev => prev.map(s => s.id === site.id ? {...s, charge_rate: e.target.value} : s))}
                         onBlur={e => saveSiteRate(site.id, 'charge_rate', e.target.value)} />
                     </div>
-                    <div style={{display:'flex',alignItems:'center',gap:'0.375rem',fontSize:'0.8125rem'}}>
-                      <span style={{color:'var(--text-3)'}}>Contract hrs/wk:</span>
-                      <input type="number" step="0.5" min="0" value={site.contracted_hours_weekly || ''} style={{width:'70px',padding:'0.25rem 0.5rem',background:'var(--surface-2)',border:'1px solid var(--border)',borderRadius:'4px',fontSize:'0.8125rem',color:'var(--text)'}}
-                        onChange={e => setSites(prev => prev.map(s => s.id === site.id ? {...s, contracted_hours_weekly: e.target.value} : s))}
-                        onBlur={e => saveSiteRate(site.id, 'contracted_hours_weekly', e.target.value)} />
-                    </div>
                     {savingSite === site.id && <span style={{fontSize:'0.75rem',color:'var(--text-3)'}}>Saving...</span>}
                   </div>
                 </div>
 
                 <table className="table" style={{marginBottom:'0.75rem'}}>
-                  <thead><tr><th>Officer</th><th style={{textAlign:'right'}}>Shifts</th><th style={{textAlign:'right'}}>Hours</th><th style={{textAlign:'right'}}>Avg Rate</th><th style={{textAlign:'right'}}>Total Pay</th></tr></thead>
+                  <thead><tr><th>Officer</th><th style={{textAlign:'right'}}>Scheduled</th><th style={{textAlign:'right'}}>Actual</th><th style={{textAlign:'right'}}>Variance</th><th style={{textAlign:'right'}}>Pay Rate</th><th style={{textAlign:'right'}}>Pay</th></tr></thead>
                   <tbody>
-                    {Object.values(byOfficer).sort((a,b) => b.hours - a.hours).map(o => (
-                      <tr key={o.name}>
-                        <td style={{fontWeight:500}}>{o.name}</td>
-                        <td style={{textAlign:'right',color:'var(--text-2)'}}>{o.shifts}</td>
-                        <td style={{textAlign:'right'}}>{o.hours.toFixed(1)}</td>
-                        <td style={{textAlign:'right',color:'var(--text-2)'}}>{o.hours > 0 ? `£${(o.pay / o.hours).toFixed(2)}` : '—'}</td>
-                        <td style={{textAlign:'right',color:'#f59e0b',fontWeight:600}}>{fmt(o.pay)}</td>
-                      </tr>
-                    ))}
+                    {Object.entries(byOfficer).sort((a,b) => b[1].scheduledHrs - a[1].scheduledHrs).map(([name, o]) => {
+                      const v = o.actualHrs - o.scheduledHrs;
+                      return (
+                        <tr key={name}>
+                          <td style={{fontWeight:500}}>{name}</td>
+                          <td style={{textAlign:'right',color:'var(--text-2)'}}>{o.scheduledHrs.toFixed(1)}</td>
+                          <td style={{textAlign:'right'}}>{o.actualHrs.toFixed(1)}</td>
+                          <td style={{textAlign:'right',fontWeight:600,color: v === 0 ? '#10b981' : v > 0 ? '#3b82f6' : '#ef4444'}}>
+                            {o.actualHrs > 0 || o.scheduledHrs > 0 ? `${v > 0 ? '+' : ''}${v.toFixed(1)}` : '—'}
+                          </td>
+                          <td style={{textAlign:'right',color:'var(--text-2)'}}>{o.actualHrs > 0 ? `£${(o.pay / o.actualHrs).toFixed(2)}` : '—'}</td>
+                          <td style={{textAlign:'right',color:'#f59e0b',fontWeight:600}}>{o.pay > 0 ? fmt(o.pay) : '—'}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                   <tfoot>
                     <tr style={{fontWeight:700,borderTop:'2px solid var(--border)'}}>
-                      <td colSpan={2}>Site Total</td>
-                      <td style={{textAlign:'right'}}>{totalHours.toFixed(1)}</td>
+                      <td>Site Total</td>
+                      <td style={{textAlign:'right'}}>{scheduledHrs.toFixed(1)}</td>
+                      <td style={{textAlign:'right'}}>{actualHrs.toFixed(1)}</td>
+                      <td style={{textAlign:'right',color: variance === 0 ? '#10b981' : variance > 0 ? '#3b82f6' : '#ef4444'}}>{variance > 0 ? '+' : ''}{variance.toFixed(1)}</td>
                       <td></td>
-                      <td style={{textAlign:'right',color:'#f59e0b'}}>{fmt(totalPay)}</td>
+                      <td style={{textAlign:'right',color:'#f59e0b'}}>{fmt(actualPay)}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -240,12 +265,12 @@ function ProfitLoss({ user }) {
                 {chargeRate > 0 && (
                   <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'0.5rem',padding:'0.75rem',background:'var(--surface-2)',borderRadius:'8px',fontSize:'0.8125rem'}}>
                     <div style={{textAlign:'center'}}>
-                      <div style={{color:'var(--text-3)',fontSize:'0.6875rem',textTransform:'uppercase',letterSpacing:'0.05em'}}>Revenue</div>
-                      <div style={{fontWeight:700,color:'#10b981'}}>{fmt(totalCharge)}</div>
+                      <div style={{color:'var(--text-3)',fontSize:'0.6875rem',textTransform:'uppercase',letterSpacing:'0.05em'}}>Revenue (scheduled)</div>
+                      <div style={{fontWeight:700,color:'#10b981'}}>{fmt(chargeRevenue)}</div>
                     </div>
                     <div style={{textAlign:'center'}}>
-                      <div style={{color:'var(--text-3)',fontSize:'0.6875rem',textTransform:'uppercase',letterSpacing:'0.05em'}}>Cost</div>
-                      <div style={{fontWeight:700,color:'#f59e0b'}}>{fmt(totalPay)}</div>
+                      <div style={{color:'var(--text-3)',fontSize:'0.6875rem',textTransform:'uppercase',letterSpacing:'0.05em'}}>Cost (actual)</div>
+                      <div style={{fontWeight:700,color:'#f59e0b'}}>{fmt(actualPay)}</div>
                     </div>
                     <div style={{textAlign:'center'}}>
                       <div style={{color:'var(--text-3)',fontSize:'0.6875rem',textTransform:'uppercase',letterSpacing:'0.05em'}}>Margin</div>
@@ -260,7 +285,7 @@ function ProfitLoss({ user }) {
 
             {shifts.length > 0 && grandCharge === 0 && (
               <div className="alert alert-warning" style={{marginTop:'1rem'}}>
-                No charge rates set on sites. Set charge rates in Site Detail to see revenue and margin figures.
+                No charge rates set. Enter charge rates above to see revenue and margin.
               </div>
             )}
           </>
