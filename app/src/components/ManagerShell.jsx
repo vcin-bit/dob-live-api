@@ -4,7 +4,7 @@ import { useAuth } from '@clerk/clerk-react';
 import { api, ApiError } from '../lib/api';
 import { LOG_TYPES, LOG_TYPE_CONFIG, formatDateTime, getRelativeTime } from '../lib/constants';
 import { ManagerDashboard, SiteManagement, LogReview, TaskAssignment, SiteDetail, TeamManagement, Reporting, OnDutyScreen, PatrolHistoryScreen } from './ManagerScreens';
-import { ProfitLoss } from './RosterPnL';
+import { ProfitLoss, ShiftRoster } from './RosterPnL';
 import { DocumentsScreen, PatrolRoutesScreen, ShiftPatternsScreen, RatesScreen, AlertsScreen, PoliciesScreen, SiteInstructionsScreen, MessagesScreen } from './ManagerFeatures';
 import { PortalSettingsModal } from './Portal';
 import { ContractsScreen } from './ContractsScreen';
@@ -29,7 +29,7 @@ function ManagerApp({ user }) {
           <Route path="/logs"      element={<LogReview user={user} />} />
           <Route path="/assignments" element={<TaskAssignment user={user} />} />
           <Route path="/reports"   element={<Reporting user={user} />} />
-          {/* Roster is now site-specific via SiteDetail tab */}
+          <Route path="/roster"    element={<ShiftRoster user={user} />} />
           <Route path="/pnl"       element={<ProfitLoss user={user} />} />
           <Route path="/docs"       element={<DocumentsScreen user={user} />} />
           <Route path="/patrols"    element={<PatrolRoutesScreen user={user} />} />
@@ -75,6 +75,7 @@ function ManagerSidebar({ user }) {
     {
       label: 'Scheduling',
       items: [
+        { to: '/roster',    icon: ClockIcon,                 label: 'Roster' },
         { to: '/patterns',  icon: ClockIcon,                 label: 'Shift Patterns' },
         ...(['FD','COMPANY','SUPER_ADMIN'].includes(user.role) ? [{ to: '/pnl', icon: ChartBarIcon, label: 'P&L' }] : []),
         { to: '/rates',     icon: ChartBarIcon,              label: 'Rates' },
