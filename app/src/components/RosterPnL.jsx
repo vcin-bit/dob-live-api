@@ -251,9 +251,9 @@ function ProfitLoss({ user }) {
                           <td style={{fontWeight:500}}>{name}</td>
                           <td style={{textAlign:'right'}}>{o.rosterHrs.toFixed(1)}</td>
                           <td style={{textAlign:'right',color: o.actualHrs >= o.rosterHrs ? '#10b981' : 'var(--text-2)'}}>{o.actualHrs.toFixed(1)}</td>
-                          <td style={{textAlign:'right',color: avgRate > 0 ? '#f59e0b' : '#ef4444',fontWeight:600}}>{avgRate > 0 ? `£${avgRate.toFixed(2)}` : 'NOT SET'}</td>
-                          <td style={{textAlign:'right',color:'#10b981'}}>{chargeRate > 0 ? `£${chargeRate.toFixed(2)}` : '—'}</td>
-                          <td style={{textAlign:'right',fontWeight:700,color: gp >= 0 ? '#10b981' : '#ef4444'}}>{chargeRate > 0 && avgRate > 0 ? fmt(gp) : '—'}</td>
+                          <td style={{textAlign:'right',color:'#f59e0b',fontWeight:600}}>£{avgRate.toFixed(2)}</td>
+                          <td style={{textAlign:'right',color:'#10b981'}}>£{chargeRate.toFixed(2)}</td>
+                          <td style={{textAlign:'right',fontWeight:700,color: gp >= 0 ? '#10b981' : '#ef4444'}}>{fmt(gp)}</td>
                         </tr>
                       );
                     })}
