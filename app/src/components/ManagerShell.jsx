@@ -77,11 +77,16 @@ function ManagerSidebar({ user }) {
       items: [
         { to: '/roster',    icon: ClockIcon,                 label: 'Roster' },
         { to: '/patterns',  icon: ClockIcon,                 label: 'Shift Patterns' },
-        ...(['FD','COMPANY','SUPER_ADMIN'].includes(user.role) ? [{ to: '/pnl', icon: ChartBarIcon, label: 'P&L' }] : []),
         { to: '/rates',     icon: ChartBarIcon,              label: 'Rates' },
         { to: '/reports',   icon: ChartBarIcon,              label: 'Reports' },
       ]
     },
+    ...(['FD','COMPANY','SUPER_ADMIN'].includes(user.role) ? [{
+      label: 'P&L',
+      items: [
+        { to: '/pnl', icon: ChartBarIcon, label: 'P&L Dashboard' },
+      ]
+    }] : []),
     {
       label: 'Site Config',
       items: [
