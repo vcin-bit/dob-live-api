@@ -501,24 +501,24 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
                             const rate = s.pay_rate ? parseFloat(s.pay_rate) : 0;
                             const ml = bulkMode ? '1rem' : '0';
                             return (
-                              <>
-                                <div style={{fontSize:'0.625rem',color:'rgba(255,255,255,0.4)',marginLeft:ml,marginTop:'2px'}}>
-                                  {s.status === 'ACTIVE' && !actEnd ? <span style={{color:'#4ade80'}}>On duty {new Date(s.checked_in_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}</span>
-                                    : hasAct && actEnd ? <span>{new Date(s.checked_in_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}–{new Date(actEnd).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})} ({actH.toFixed(1)}h)</span>
-                                    : <span style={{color:'rgba(255,255,255,0.25)'}}>Pending</span>}
+                              <div style={{marginTop:'3px',paddingTop:'3px',borderTop:'1px solid rgba(255,255,255,0.06)',marginLeft:ml}}>
+                                <div style={{fontSize:'0.6875rem',marginBottom:'1px'}}>
+                                  {s.status === 'ACTIVE' && !actEnd ? <span style={{color:'#4ade80',fontWeight:600}}>On duty {new Date(s.checked_in_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}</span>
+                                    : hasAct && actEnd ? <span style={{color:'#fff'}}>{new Date(s.checked_in_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}–{new Date(actEnd).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})} <span style={{color:'rgba(255,255,255,0.5)'}}>({actH.toFixed(1)}h)</span></span>
+                                    : <span style={{color:'rgba(255,255,255,0.35)',fontStyle:'italic'}}>Pending</span>}
                                 </div>
                                 {v !== null && (
-                                  <div style={{fontSize:'0.625rem',fontWeight:700,marginLeft:ml,color: Math.abs(v) < 0.25 ? '#10b981' : v < 0 ? '#ef4444' : '#f59e0b'}}>
-                                    {Math.abs(v) < 0.25 ? '0 hrs' : `${v > 0 ? '+' : ''}${v.toFixed(1)} hrs`}
+                                  <div style={{fontSize:'0.6875rem',fontWeight:700,color: Math.abs(v) < 0.25 ? '#10b981' : v < 0 ? '#ef4444' : '#f59e0b'}}>
+                                    {Math.abs(v) < 0.25 ? '✓ 0 hrs' : `${v > 0 ? '+' : ''}${v.toFixed(1)} hrs`}
                                   </div>
                                 )}
                                 {canSeePay(user?.role) && (
-                                  <div style={{fontSize:'0.5625rem',color:'#f59e0b',marginLeft:ml,marginTop:'1px'}}>
-                                    {rate > 0 ? `£${rate.toFixed(2)}/hr` : <span style={{opacity:0.6}}>Rate not set</span>}
-                                    {actH > 0 && rate > 0 && <span style={{marginLeft:'4px',fontWeight:600}}> £{(actH * rate).toFixed(2)}</span>}
+                                  <div style={{fontSize:'0.625rem',color:'#f59e0b',marginTop:'1px'}}>
+                                    {rate > 0 ? `£${rate.toFixed(2)}/hr` : <span style={{opacity:0.7}}>Rate not set</span>}
+                                    {rate > 0 && <span style={{fontWeight:600}}> · £{(setH * rate).toFixed(2)}</span>}
                                   </div>
                                 )}
-                              </>
+                              </div>
                             );
                           })()}
                           {/* Pay info for non-site views or compact */}
