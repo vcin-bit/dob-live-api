@@ -283,24 +283,14 @@ function ProfitLoss({ user }) {
                   </tfoot>
                 </table>
 
-                {/* Contract rate vs roster check */}
-                {contractedWeekly > 0 && (() => {
-                  const avgWeekly = periodWeeks > 0 ? scheduledHrs / periodWeeks : 0;
-                  const diff = avgWeekly - contractedWeekly;
-                  return (
-                    <div style={{padding:'0.5rem 0.75rem',marginBottom:'0.75rem',borderRadius:'6px',fontSize:'0.8125rem',background: Math.abs(diff) < 1 ? 'rgba(16,185,129,0.08)' : diff > 0 ? 'rgba(59,130,246,0.08)' : 'rgba(239,68,68,0.08)',border:`1px solid ${Math.abs(diff) < 1 ? 'rgba(16,185,129,0.2)' : diff > 0 ? 'rgba(59,130,246,0.2)' : 'rgba(239,68,68,0.2)'}`}}>
-                      <span style={{fontWeight:600}}>Contract: {contractedWeekly}h/wk</span>
-                      <span style={{margin:'0 0.5rem',color:'var(--text-3)'}}>|</span>
-                      <span>Roster avg: {avgWeekly.toFixed(1)}h/wk</span>
-                      <span style={{margin:'0 0.5rem',color:'var(--text-3)'}}>|</span>
-                      <span>Total: {scheduledHrs.toFixed(1)}h</span>
-                      <span style={{margin:'0 0.5rem',color:'var(--text-3)'}}>|</span>
-                      <span style={{fontWeight:700,color: Math.abs(diff) < 1 ? '#10b981' : diff > 0 ? '#3b82f6' : '#ef4444'}}>
-                        {Math.abs(diff) < 1 ? 'On target' : diff > 0 ? `+${diff.toFixed(1)}h/wk over` : `${diff.toFixed(1)}h/wk under`}
-                      </span>
-                    </div>
-                  );
-                })()}
+                {/* Contract reference */}
+                {contractedWeekly > 0 && (
+                  <div style={{padding:'0.5rem 0.75rem',marginBottom:'0.75rem',borderRadius:'6px',fontSize:'0.8125rem',background:'rgba(59,130,246,0.06)',border:'1px solid rgba(59,130,246,0.15)'}}>
+                    <span style={{color:'var(--text-2)'}}>Contract: <strong>{contractedWeekly}h/wk</strong></span>
+                    <span style={{margin:'0 0.5rem',color:'var(--text-3)'}}>|</span>
+                    <span style={{color:'var(--text-2)'}}>Roster total: <strong>{scheduledHrs.toFixed(1)}h</strong></span>
+                  </div>
+                )}
 
                 {/* Products & Services */}
                 <div style={{marginBottom:'0.75rem'}}>
