@@ -313,9 +313,9 @@ function ProfitLoss({ user }) {
                               <td style={{textAlign:'right',color:'#10b981'}}>{fmt(m.charge)}</td>
                               <td style={{textAlign:'center',color:'var(--text-3)',fontSize:'0.75rem'}}>{p.frequency}</td>
                               <td style={{textAlign:'right',fontWeight:600,color: m.charge - m.cost >= 0 ? '#10b981' : '#ef4444'}}>{fmt(m.charge - m.cost)}</td>
-                              <td style={{textAlign:'right'}}>
-                                <button className="btn btn-ghost btn-sm" style={{padding:'0.125rem 0.375rem',fontSize:'0.6875rem'}} onClick={() => { setEditProduct(p); setAddProductSite(site.id); setProductForm({ name: p.name, cost: p.cost||'', charge: p.charge||'', frequency: p.frequency }); }}>Edit</button>
-                                <button className="btn btn-ghost btn-sm" style={{padding:'0.125rem 0.375rem',fontSize:'0.6875rem',color:'var(--danger)'}} onClick={() => deleteProduct(p.id)}>Del</button>
+                              <td style={{textAlign:'right',whiteSpace:'nowrap'}}>
+                                <button type="button" style={{padding:'0.375rem 0.625rem',fontSize:'0.75rem',background:'rgba(59,130,246,0.1)',border:'1px solid rgba(59,130,246,0.3)',borderRadius:'4px',color:'#60a5fa',cursor:'pointer',marginRight:'0.25rem',fontWeight:600}} onClick={(e) => { e.stopPropagation(); setEditProduct(p); setAddProductSite(site.id); setProductForm({ name: p.name, cost: p.cost||'', charge: p.charge||'', frequency: p.frequency }); }}>Edit</button>
+                                <button type="button" style={{padding:'0.375rem 0.625rem',fontSize:'0.75rem',background:'rgba(220,38,38,0.1)',border:'1px solid rgba(220,38,38,0.3)',borderRadius:'4px',color:'#ef4444',cursor:'pointer',fontWeight:600}} onClick={(e) => { e.stopPropagation(); deleteProduct(p.id); }}>Del</button>
                               </td>
                             </tr>
                           );
