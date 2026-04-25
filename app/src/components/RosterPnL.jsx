@@ -35,10 +35,14 @@ function ProfitLoss({ user }) {
   const [sites, setSites] = useState([]);
   const [shifts, setShifts] = useState([]);
   const [rates, setRates] = useState([]);
+  const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState('week');
+  const [period, setPeriod] = useState('month');
   const [anchor, setAnchor] = useState(new Date());
   const [savingSite, setSavingSite] = useState(null);
+  const [addProductSite, setAddProductSite] = useState(null);
+  const [editProduct, setEditProduct] = useState(null);
+  const [productForm, setProductForm] = useState({ name:'', cost:'', charge:'', frequency:'monthly' });
 
   function getRange() {
     const d = new Date(anchor); d.setHours(0,0,0,0);
@@ -54,10 +58,12 @@ function ProfitLoss({ user }) {
       api.sites.list(),
       api.shifts.list({ from: f.toISOString(), to: t.toISOString(), limit: 1000 }),
       api.rates.list(),
-    ]).then(([sr, shr, rr]) => {
+      api.products.list(),
+    ]).then(([sr, shr, rr, pr]) => {
       setSites(sr.data || []);
       setShifts(shr.data || []);
       setRates(rr.data || []);
+      setProducts(pr.data || []);
     }).catch(console.error).finally(() => setLoading(false));
   }, [anchor, period]);
 
@@ -95,11 +101,42 @@ function ProfitLoss({ user }) {
   const periodDays = Math.round((to - from) / 86400000);
   const periodWeeks = periodDays / 7;
 
+  // Product helpers
+  function productMonthly(p, periodDays) {
+    const cost = parseFloat(p.cost) || 0;
+    const charge = parseFloat(p.charge) || 0;
+    const mult = p.frequency === 'daily' ? periodDays : p.frequency === 'weekly' ? periodDays / 7 : p.frequency === 'one-off' ? 1 : 1; // monthly = 1
+    return { cost: cost * mult, charge: charge * mult };
+  }
+
+  async function saveProduct() {
+    if (!productForm.name.trim()) return;
+    try {
+      if (editProduct) {
+        await api.products.update(editProduct.id, productForm);
+      } else {
+        await api.products.create({ ...productForm, site_id: addProductSite });
+      }
+      const res = await api.products.list();
+      setProducts(res.data || []);
+      setAddProductSite(null); setEditProduct(null);
+      setProductForm({ name:'', cost:'', charge:'', frequency:'monthly' });
+    } catch (e) { alert(e.message); }
+  }
+
+  async function deleteProduct(id) {
+    if (!confirm('Delete this product?')) return;
+    try {
+      await api.products.delete(id);
+      setProducts(prev => prev.filter(p => p.id !== id));
+    } catch (e) { alert(e.message); }
+  }
+
   // ALL shifts = the roster (total planned). COMPLETED+ACTIVE = what's been worked so far.
   const bySite = {};
   shifts.forEach(s => { if (!bySite[s.site_id]) bySite[s.site_id] = []; bySite[s.site_id].push(s); });
 
-  let grandRosterHrs = 0, grandRosterPay = 0, grandActualHrs = 0, grandActualPay = 0, grandCharge = 0;
+  let grandRosterHrs = 0, grandRosterPay = 0, grandActualHrs = 0, grandActualPay = 0, grandCharge = 0, grandProductCost = 0, grandProductCharge = 0;
 
   const siteRows = sites.map(site => {
     const ss = bySite[site.id] || [];
@@ -129,14 +166,21 @@ function ProfitLoss({ user }) {
     const chargeRevenue = rosterHrs * chargeRate;
     const margin = chargeRevenue - rosterPay;
 
+    const siteProducts = products.filter(p => p.site_id === site.id);
+    let productCost = 0, productCharge = 0;
+    siteProducts.forEach(p => { const m = productMonthly(p, periodDays); productCost += m.cost; productCharge += m.charge; });
+
     grandRosterHrs += rosterHrs; grandRosterPay += rosterPay;
     grandActualHrs += actualHrs; grandActualPay += actualPay;
-    grandCharge += chargeRevenue;
-    return { site, byOfficer, rosterHrs, rosterPay, actualHrs, actualPay, chargeRevenue, margin, chargeRate, shiftCount: ss.length };
-  }).filter(r => r.shiftCount > 0);
+    grandCharge += chargeRevenue + productCharge;
+    grandProductCost += productCost; grandProductCharge += productCharge;
+    return { site, byOfficer, rosterHrs, rosterPay, actualHrs, actualPay, chargeRevenue, chargeRate, siteProducts, productCost, productCharge, shiftCount: ss.length };
+  }).filter(r => r.shiftCount > 0 || products.some(p => p.site_id === r.site.id));
 
-  const grandMargin = grandCharge - grandRosterPay;
-  const marginPct = grandCharge > 0 ? (grandMargin / grandCharge * 100).toFixed(1) : '0.0';
+  const grandTotalCost = grandRosterPay + grandProductCost;
+  const grandTotalRevenue = grandCharge;
+  const grandMargin = grandTotalRevenue - grandTotalCost;
+  const marginPct = grandTotalRevenue > 0 ? (grandMargin / grandTotalRevenue * 100).toFixed(1) : '0.0';
 
   if (!isFD) return <div className="page-content"><div className="alert alert-danger">Access restricted to Field Directors</div></div>;
 
@@ -168,8 +212,8 @@ function ProfitLoss({ user }) {
             {/* Grand totals */}
             <div className="stats-grid" style={{marginBottom:'1.5rem'}}>
               <div className="stat-card"><div className="stat-value">{grandRosterHrs.toFixed(1)}h</div><div className="stat-label">Roster Hours</div></div>
-              <div className="stat-card"><div className="stat-value" style={{color:'#f59e0b'}}>{fmt(grandRosterPay)}</div><div className="stat-label">Total Pay</div></div>
-              <div className="stat-card"><div className="stat-value" style={{color:'#10b981'}}>{fmt(grandCharge)}</div><div className="stat-label">Charge Revenue</div></div>
+              <div className="stat-card"><div className="stat-value" style={{color:'#f59e0b'}}>{fmt(grandTotalCost)}</div><div className="stat-label">Total Cost</div></div>
+              <div className="stat-card"><div className="stat-value" style={{color:'#10b981'}}>{fmt(grandTotalRevenue)}</div><div className="stat-label">Total Revenue</div></div>
               <div className="stat-card"><div className="stat-value" style={{color: grandMargin >= 0 ? '#10b981' : '#ef4444'}}>{fmt(grandMargin)}</div><div className="stat-label">Margin ({marginPct}%)</div></div>
             </div>
 
@@ -234,24 +278,102 @@ function ProfitLoss({ user }) {
                   </tfoot>
                 </table>
 
-                {chargeRate > 0 && (
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'0.5rem',padding:'0.75rem',background:'var(--surface-2)',borderRadius:'8px',fontSize:'0.8125rem'}}>
-                    <div style={{textAlign:'center'}}>
-                      <div style={{color:'var(--text-3)',fontSize:'0.6875rem',textTransform:'uppercase',letterSpacing:'0.05em'}}>Revenue</div>
-                      <div style={{fontWeight:700,color:'#10b981'}}>{fmt(chargeRevenue)}</div>
-                    </div>
-                    <div style={{textAlign:'center'}}>
-                      <div style={{color:'var(--text-3)',fontSize:'0.6875rem',textTransform:'uppercase',letterSpacing:'0.05em'}}>Pay Cost</div>
-                      <div style={{fontWeight:700,color:'#f59e0b'}}>{fmt(rosterPay)}</div>
-                    </div>
-                    <div style={{textAlign:'center'}}>
-                      <div style={{color:'var(--text-3)',fontSize:'0.6875rem',textTransform:'uppercase',letterSpacing:'0.05em'}}>Margin</div>
-                      <div style={{fontWeight:700,color: margin >= 0 ? '#10b981' : '#ef4444'}}>{fmt(margin)}</div>
-                    </div>
+                {/* Products & Services */}
+                <div style={{marginBottom:'0.75rem'}}>
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.5rem'}}>
+                    <div style={{fontSize:'0.75rem',fontWeight:700,color:'var(--text-2)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Products & Services</div>
+                    <button className="btn btn-ghost btn-sm" style={{fontSize:'0.75rem'}} onClick={() => { setAddProductSite(site.id); setEditProduct(null); setProductForm({ name:'', cost:'', charge:'', frequency:'monthly' }); }}>+ Add</button>
                   </div>
-                )}
+                  {siteProducts.length > 0 ? (
+                    <table className="table" style={{marginBottom:'0.5rem'}}>
+                      <thead><tr><th>Product</th><th style={{textAlign:'right'}}>Cost</th><th style={{textAlign:'right'}}>Charge</th><th style={{textAlign:'center'}}>Freq</th><th style={{textAlign:'right'}}>Profit</th><th></th></tr></thead>
+                      <tbody>
+                        {siteProducts.map(p => {
+                          const m = productMonthly(p, periodDays);
+                          return (
+                            <tr key={p.id}>
+                              <td style={{fontWeight:500}}>{p.name}</td>
+                              <td style={{textAlign:'right',color:'#f59e0b'}}>{fmt(m.cost)}</td>
+                              <td style={{textAlign:'right',color:'#10b981'}}>{fmt(m.charge)}</td>
+                              <td style={{textAlign:'center',color:'var(--text-3)',fontSize:'0.75rem'}}>{p.frequency}</td>
+                              <td style={{textAlign:'right',fontWeight:600,color: m.charge - m.cost >= 0 ? '#10b981' : '#ef4444'}}>{fmt(m.charge - m.cost)}</td>
+                              <td style={{textAlign:'right'}}>
+                                <button className="btn btn-ghost btn-sm" style={{padding:'0.125rem 0.375rem',fontSize:'0.6875rem'}} onClick={() => { setEditProduct(p); setAddProductSite(site.id); setProductForm({ name: p.name, cost: p.cost||'', charge: p.charge||'', frequency: p.frequency }); }}>Edit</button>
+                                <button className="btn btn-ghost btn-sm" style={{padding:'0.125rem 0.375rem',fontSize:'0.6875rem',color:'var(--danger)'}} onClick={() => deleteProduct(p.id)}>Del</button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot>
+                        <tr style={{fontWeight:700,borderTop:'2px solid var(--border)'}}>
+                          <td>Products Total</td>
+                          <td style={{textAlign:'right',color:'#f59e0b'}}>{fmt(productCost)}</td>
+                          <td style={{textAlign:'right',color:'#10b981'}}>{fmt(productCharge)}</td>
+                          <td></td>
+                          <td style={{textAlign:'right',color: productCharge - productCost >= 0 ? '#10b981' : '#ef4444'}}>{fmt(productCharge - productCost)}</td>
+                          <td></td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  ) : (
+                    <div style={{fontSize:'0.8125rem',color:'var(--text-3)',padding:'0.25rem 0'}}>No products — click + Add</div>
+                  )}
+                </div>
+
+                {/* Site P&L summary */}
+                {(chargeRate > 0 || productCharge > 0) && (() => {
+                  const totalRev = chargeRevenue + productCharge;
+                  const totalCost = rosterPay + productCost;
+                  const siteMargin = totalRev - totalCost;
+                  return (
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'0.5rem',padding:'0.75rem',background:'var(--surface-2)',borderRadius:'8px',fontSize:'0.8125rem'}}>
+                      <div style={{textAlign:'center'}}>
+                        <div style={{color:'var(--text-3)',fontSize:'0.6875rem',textTransform:'uppercase',letterSpacing:'0.05em'}}>Revenue</div>
+                        <div style={{fontWeight:700,color:'#10b981'}}>{fmt(totalRev)}</div>
+                      </div>
+                      <div style={{textAlign:'center'}}>
+                        <div style={{color:'var(--text-3)',fontSize:'0.6875rem',textTransform:'uppercase',letterSpacing:'0.05em'}}>Total Cost</div>
+                        <div style={{fontWeight:700,color:'#f59e0b'}}>{fmt(totalCost)}</div>
+                      </div>
+                      <div style={{textAlign:'center'}}>
+                        <div style={{color:'var(--text-3)',fontSize:'0.6875rem',textTransform:'uppercase',letterSpacing:'0.05em'}}>Margin</div>
+                        <div style={{fontWeight:700,color: siteMargin >= 0 ? '#10b981' : '#ef4444'}}>{fmt(siteMargin)}</div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             ))}
+
+            {/* Add/Edit Product Modal */}
+            {addProductSite && (
+              <div className="modal-overlay" onClick={() => { setAddProductSite(null); setEditProduct(null); }}>
+                <div className="modal" onClick={e => e.stopPropagation()} style={{maxWidth:'440px'}}>
+                  <div className="modal-header">
+                    <div className="modal-title">{editProduct ? 'Edit Product' : 'Add Product'}</div>
+                    <button className="modal-close" onClick={() => { setAddProductSite(null); setEditProduct(null); }}>×</button>
+                  </div>
+                  <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
+                    <div className="field"><label className="label">Product Name</label><input className="input" value={productForm.name} onChange={e => setProductForm(p=>({...p, name:e.target.value}))} placeholder="e.g. CCTV Tower Rental" /></div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
+                      <div className="field"><label className="label">Your Cost (£)</label><input type="number" step="0.01" min="0" className="input" value={productForm.cost} onChange={e => setProductForm(p=>({...p, cost:e.target.value}))} placeholder="0.00" /></div>
+                      <div className="field"><label className="label">Client Charge (£)</label><input type="number" step="0.01" min="0" className="input" value={productForm.charge} onChange={e => setProductForm(p=>({...p, charge:e.target.value}))} placeholder="0.00" /></div>
+                    </div>
+                    <div className="field"><label className="label">Frequency</label><select className="input" value={productForm.frequency} onChange={e => setProductForm(p=>({...p, frequency:e.target.value}))}>
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
+                      <option value="one-off">One-off</option>
+                    </select></div>
+                  </div>
+                  <div className="modal-footer">
+                    <button className="btn btn-secondary" onClick={() => { setAddProductSite(null); setEditProduct(null); }}>Cancel</button>
+                    <button className="btn btn-primary" onClick={saveProduct} disabled={!productForm.name.trim()}>{editProduct ? 'Update' : 'Add Product'}</button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {siteRows.length === 0 && <div className="empty-state"><p>No shifts for this period</p></div>}
 
