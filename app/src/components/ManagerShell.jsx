@@ -94,8 +94,13 @@ function ManagerSidebar({ user }) {
         { to: '/docs',         icon: DocumentTextIcon, label: 'Documents' },
         { to: '/patrols',      icon: MapPinIcon,       label: 'Patrol Routes' },
         { to: '/patrol-history', icon: ClockIcon,       label: 'Patrol History' },
-        { to: '/instructions', icon: DocumentTextIcon, label: 'Instructions' },
+      ]
+    },
+    {
+      label: 'Compliance',
+      items: [
         { to: '/policies',     icon: DocumentTextIcon, label: 'Policies' },
+        { to: '/instructions', icon: DocumentTextIcon, label: 'Instructions' },
       ]
     },
   ];
