@@ -490,15 +490,15 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
                           </div>
                           {siteId && (
                             <>
-                              <div style={{fontSize: isCompact ? '0.5rem' : '0.6875rem',color:'#93c5fd',marginLeft:bulkMode?'1rem':'0',fontWeight:600}}>{isCompact ? `${shiftHours(s).toFixed(0)}h` : `Scheduled: ${shiftHours(s).toFixed(0)} hrs`}</div>
-                              <div style={{fontSize: isCompact ? '0.5rem' : '0.6875rem',color:'#86efac',marginLeft:bulkMode?'1rem':'0'}}>
+                              <div style={{fontSize: isCompact ? '0.5625rem' : '0.75rem',color:'#3b82f6',marginLeft:bulkMode?'1rem':'0',fontWeight:700}}>{isCompact ? `${shiftHours(s).toFixed(0)}h` : `Scheduled: ${shiftHours(s).toFixed(0)} hrs`}</div>
+                              <div style={{fontSize: isCompact ? '0.5625rem' : '0.75rem',color:'#3b82f6',marginLeft:bulkMode?'1rem':'0',fontWeight:600}}>
                                 {isCompact ? '' : 'Actual: '}{s.checked_in_at && s.status === 'ACTIVE' && !s.checked_out_at
-                                  ? <span style={{color:'#4ade80',fontWeight:700}}>On duty</span>
+                                  ? <span style={{color:'#22c55e',fontWeight:700}}>On duty</span>
                                   : s.checked_in_at && s.checked_out_at
-                                  ? <span style={{color:'#4ade80',fontWeight:700}}>{Math.max(0,(new Date(s.checked_out_at)-new Date(s.checked_in_at))/3600000).toFixed(1)}{isCompact ? 'h' : ' hrs'}</span>
-                                  : <span style={{color:'rgba(255,255,255,0.4)'}}>Pending</span>}
+                                  ? <span style={{color:'#22c55e',fontWeight:700}}>{Math.max(0,(new Date(s.checked_out_at)-new Date(s.checked_in_at))/3600000).toFixed(1)}{isCompact ? 'h' : ' hrs'}</span>
+                                  : <span style={{color:'#6b7280'}}>Pending</span>}
                               </div>
-                              {canSeePay(user?.role) && <div style={{fontSize: isCompact ? '0.5rem' : '0.6875rem',color:'#fbbf24',fontWeight:600,marginLeft:bulkMode?'1rem':'0'}}>
+                              {canSeePay(user?.role) && <div style={{fontSize: isCompact ? '0.5625rem' : '0.75rem',color:'#f59e0b',fontWeight:700,marginLeft:bulkMode?'1rem':'0'}}>
                                 {s.pay_rate ? (isCompact ? `£${(shiftHours(s) * parseFloat(s.pay_rate)).toFixed(0)}` : `£${parseFloat(s.pay_rate).toFixed(2)}/hr · £${(shiftHours(s) * parseFloat(s.pay_rate)).toFixed(2)}`) : 'Rate not set'}
                               </div>}
                             </>
