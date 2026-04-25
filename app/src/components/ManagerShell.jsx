@@ -41,6 +41,7 @@ function ManagerApp({ user }) {
           <Route path="/instructions" element={<SiteInstructionsScreen user={user} />} />
           <Route path="/messages"     element={<MessagesScreen user={user} />} />
           <Route path="/contracts"   element={<ContractsScreen user={user} />} />
+          <Route path="/portal"      element={<PortalManagement user={user} />} />
           <Route path="*"          element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </div>
@@ -69,7 +70,6 @@ function ManagerSidebar({ user }) {
         { to: '/logs',      icon: ClipboardDocumentListIcon, label: 'Log Review' },
         { to: '/assignments', icon: ClipboardDocumentListIcon, label: 'Assignments' },
         { to: '/sites',     icon: BuildingOfficeIcon,        label: 'Sites' },
-        { to: '/team',      icon: UsersIcon,                 label: 'Team' },
       ]
     },
     {
@@ -79,6 +79,12 @@ function ManagerSidebar({ user }) {
         { to: '/patterns',  icon: ClockIcon,                 label: 'Shift Patterns' },
         { to: '/rates',     icon: ChartBarIcon,              label: 'Rates' },
         { to: '/reports',   icon: ChartBarIcon,              label: 'Reports' },
+      ]
+    },
+    {
+      label: 'HR',
+      items: [
+        { to: '/team',      icon: UsersIcon,                 label: 'Team' },
       ]
     },
     ...(['FD','COMPANY','SUPER_ADMIN'].includes(user.role) ? [{
@@ -94,6 +100,12 @@ function ManagerSidebar({ user }) {
         { to: '/docs',         icon: DocumentTextIcon, label: 'Documents' },
         { to: '/patrols',      icon: MapPinIcon,       label: 'Patrol Routes' },
         { to: '/patrol-history', icon: ClockIcon,       label: 'Patrol History' },
+      ]
+    },
+    {
+      label: 'Client Portal',
+      items: [
+        { to: '/portal', icon: EyeIcon, label: 'Portal Settings' },
       ]
     },
     {
@@ -164,6 +176,41 @@ function ManagerSidebar({ user }) {
   );
 }
 
+
+function PortalManagement({ user }) {
+  const [sites, setSites] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [editSite, setEditSite] = useState(null);
+
+  useEffect(() => {
+    api.sites.list().then(r => setSites(r.data || [])).catch(console.error).finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <div>
+      <div className="topbar"><div className="topbar-title">Client Portal</div></div>
+      <div className="page-content">
+        {loading ? <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div> : (
+          <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
+            {sites.map(s => (
+              <div key={s.id} className="card" style={{padding:'1rem',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                <div>
+                  <div style={{fontWeight:600}}>{s.name}</div>
+                  <div style={{fontSize:'0.8125rem',color:'var(--text-2)',marginTop:'0.25rem'}}>
+                    {s.client_portal_enabled ? <span style={{color:'#10b981',fontWeight:600}}>Portal active</span> : <span style={{color:'var(--text-3)'}}>Portal off</span>}
+                    {s.client_portal_pin && <span style={{marginLeft:'0.75rem',color:'var(--text-3)'}}>PIN: {s.client_portal_pin}</span>}
+                  </div>
+                </div>
+                <button className="btn btn-ghost btn-sm" onClick={() => setEditSite(s)}>Settings</button>
+              </div>
+            ))}
+          </div>
+        )}
+        {editSite && <PortalSettingsModal site={editSite} onClose={() => setEditSite(null)} onSaved={() => { setEditSite(null); api.sites.list().then(r => setSites(r.data || [])); }} />}
+      </div>
+    </div>
+  );
+}
 
 function ManagerHeader({ user, title, subtitle }) {
   return (
