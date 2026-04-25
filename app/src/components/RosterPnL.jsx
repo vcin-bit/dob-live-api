@@ -227,21 +227,21 @@ function ProfitLoss({ user }) {
           <>
             {/* Grand totals */}
             <div className="stats-grid" style={{marginBottom:'1.5rem'}}>
-              <div className="stat-card"><div className="stat-value">{grandRosterHrs.toFixed(1)}h</div><div className="stat-label">Roster Hours</div></div>
-              <div className="stat-card"><div className="stat-value" style={{color:'#f59e0b'}}>{fmt(grandTotalCost)}</div><div className="stat-label">Total Cost</div></div>
-              <div className="stat-card"><div className="stat-value" style={{color:'#10b981'}}>{fmt(grandTotalRevenue)}</div><div className="stat-label">Total Revenue</div></div>
-              <div className="stat-card"><div className="stat-value" style={{color: grandMargin >= 0 ? '#10b981' : '#ef4444'}}>{fmt(grandMargin)}</div><div className="stat-label">Margin ({marginPct}%)</div></div>
+              <div className="stat-card" style={{borderLeft:'3px solid #3b82f6'}}><div className="stat-value" style={{color:'#3b82f6'}}>{grandRosterHrs.toFixed(1)}h</div><div className="stat-label">Roster Hours</div></div>
+              <div className="stat-card" style={{borderLeft:'3px solid #f59e0b'}}><div className="stat-value" style={{color:'#f59e0b'}}>{fmt(grandTotalCost)}</div><div className="stat-label">Total Cost</div></div>
+              <div className="stat-card" style={{borderLeft:'3px solid #10b981'}}><div className="stat-value" style={{color:'#10b981'}}>{fmt(grandTotalRevenue)}</div><div className="stat-label">Total Revenue</div></div>
+              <div className="stat-card" style={{borderLeft:`3px solid ${grandMargin >= 0 ? '#10b981' : '#ef4444'}`,background: grandMargin >= 0 ? 'rgba(16,185,129,0.05)' : 'rgba(239,68,68,0.05)'}}><div className="stat-value" style={{color: grandMargin >= 0 ? '#10b981' : '#ef4444'}}>{fmt(grandMargin)}</div><div className="stat-label">Margin ({marginPct}%)</div></div>
             </div>
 
             {/* Actual worked progress */}
             {grandRosterHrs > 0 && (
-              <div className="card" style={{marginBottom:'1.25rem',padding:'1rem'}}>
-                <div className="section-title" style={{marginBottom:'0.75rem'}}>Hours Worked vs Roster</div>
+              <div className="card" style={{marginBottom:'1.25rem',padding:'1rem',borderLeft:'3px solid #3b82f6',background:'rgba(59,130,246,0.03)'}}>
+                <div className="section-title" style={{marginBottom:'0.75rem',color:'#3b82f6'}}>Hours Worked vs Roster</div>
                 <div style={{display:'flex',alignItems:'center',gap:'1rem',marginBottom:'0.5rem'}}>
-                  <div style={{flex:1,background:'var(--surface-2)',borderRadius:'4px',height:'10px',overflow:'hidden'}}>
-                    <div style={{width:`${Math.min(100, (grandActualHrs / grandRosterHrs) * 100)}%`,height:'100%',background:'#3b82f6',borderRadius:'4px'}} />
+                  <div style={{flex:1,background:'rgba(59,130,246,0.1)',borderRadius:'6px',height:'12px',overflow:'hidden'}}>
+                    <div style={{width:`${Math.min(100, (grandActualHrs / grandRosterHrs) * 100)}%`,height:'100%',background:'linear-gradient(90deg, #3b82f6, #60a5fa)',borderRadius:'6px',transition:'width 0.5s'}} />
                   </div>
-                  <span style={{fontSize:'0.875rem',fontWeight:700,whiteSpace:'nowrap'}}>{grandActualHrs.toFixed(1)} / {grandRosterHrs.toFixed(1)} hrs</span>
+                  <span style={{fontSize:'0.875rem',fontWeight:700,whiteSpace:'nowrap',color:'#3b82f6'}}>{grandActualHrs.toFixed(1)} / {grandRosterHrs.toFixed(1)} hrs</span>
                 </div>
                 <div style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>
                   {grandActualHrs.toFixed(1)} hrs completed · {(grandRosterHrs - grandActualHrs).toFixed(1)} hrs remaining
@@ -251,12 +251,13 @@ function ProfitLoss({ user }) {
 
             {/* Per site breakdown */}
             {siteRows.map(({ site, byOfficer, rosterHrs, rosterPay, actualHrs, actualPay, chargeRevenue, chargeRate, siteProducts, productCost, productCharge }) => (
-              <div key={site.id} className="card" style={{marginBottom:'1rem',padding:'1rem'}}>
+              <div key={site.id} className="card" style={{marginBottom:'1rem',padding:'1rem',borderLeft:'3px solid #8b5cf6'}}>
                 <div style={{marginBottom:'0.75rem'}}>
                   <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:'0.5rem'}}>
-                    <div style={{fontSize:'1rem',fontWeight:700}}>{site.name}</div>
-                    <div style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>
-                      {rosterHrs.toFixed(1)}h roster · {actualHrs.toFixed(1)}h worked
+                    <div style={{fontSize:'1rem',fontWeight:700,color:'#c4b5fd'}}>{site.name}</div>
+                    <div style={{display:'flex',gap:'0.75rem',fontSize:'0.8125rem'}}>
+                      <span style={{color:'#3b82f6',fontWeight:600}}>{rosterHrs.toFixed(1)}h roster</span>
+                      <span style={{color:'#10b981',fontWeight:600}}>{actualHrs.toFixed(1)}h worked</span>
                     </div>
                   </div>
                   <div style={{display:'flex',gap:'0.75rem',alignItems:'center',flexWrap:'wrap'}}>
@@ -297,7 +298,7 @@ function ProfitLoss({ user }) {
                 {/* Products & Services */}
                 <div style={{marginBottom:'0.75rem'}}>
                   <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.5rem'}}>
-                    <div style={{fontSize:'0.75rem',fontWeight:700,color:'var(--text-2)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Products & Services</div>
+                    <div style={{fontSize:'0.75rem',fontWeight:700,color:'#a78bfa',textTransform:'uppercase',letterSpacing:'0.05em'}}>Products & Services</div>
                     <button className="btn btn-ghost btn-sm" style={{fontSize:'0.75rem'}} onClick={() => { setAddProductSite(site.id); setEditProduct(null); setProductForm({ name:'', cost:'', charge:'', frequency:'monthly' }); }}>+ Add</button>
                   </div>
                   {siteProducts.length > 0 ? (
@@ -343,18 +344,18 @@ function ProfitLoss({ user }) {
                   const totalCost = rosterPay + productCost;
                   const siteMargin = totalRev - totalCost;
                   return (
-                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'0.5rem',padding:'0.75rem',background:'var(--surface-2)',borderRadius:'8px',fontSize:'0.8125rem'}}>
-                      <div style={{textAlign:'center'}}>
-                        <div style={{color:'var(--text-3)',fontSize:'0.6875rem',textTransform:'uppercase',letterSpacing:'0.05em'}}>Revenue</div>
-                        <div style={{fontWeight:700,color:'#10b981'}}>{fmt(totalRev)}</div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'0',borderRadius:'8px',overflow:'hidden',fontSize:'0.8125rem'}}>
+                      <div style={{textAlign:'center',padding:'0.75rem',background:'rgba(16,185,129,0.08)'}}>
+                        <div style={{color:'#10b981',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em'}}>Revenue</div>
+                        <div style={{fontWeight:700,color:'#10b981',fontSize:'1rem'}}>{fmt(totalRev)}</div>
                       </div>
-                      <div style={{textAlign:'center'}}>
-                        <div style={{color:'var(--text-3)',fontSize:'0.6875rem',textTransform:'uppercase',letterSpacing:'0.05em'}}>Total Cost</div>
-                        <div style={{fontWeight:700,color:'#f59e0b'}}>{fmt(totalCost)}</div>
+                      <div style={{textAlign:'center',padding:'0.75rem',background:'rgba(245,158,11,0.08)'}}>
+                        <div style={{color:'#f59e0b',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em'}}>Total Cost</div>
+                        <div style={{fontWeight:700,color:'#f59e0b',fontSize:'1rem'}}>{fmt(totalCost)}</div>
                       </div>
-                      <div style={{textAlign:'center'}}>
-                        <div style={{color:'var(--text-3)',fontSize:'0.6875rem',textTransform:'uppercase',letterSpacing:'0.05em'}}>Margin</div>
-                        <div style={{fontWeight:700,color: siteMargin >= 0 ? '#10b981' : '#ef4444'}}>{fmt(siteMargin)}</div>
+                      <div style={{textAlign:'center',padding:'0.75rem',background: siteMargin >= 0 ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)'}}>
+                        <div style={{color: siteMargin >= 0 ? '#10b981' : '#ef4444',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em'}}>Margin</div>
+                        <div style={{fontWeight:700,color: siteMargin >= 0 ? '#10b981' : '#ef4444',fontSize:'1rem'}}>{fmt(siteMargin)}</div>
                       </div>
                     </div>
                   );
