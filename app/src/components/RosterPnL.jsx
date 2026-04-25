@@ -241,7 +241,7 @@ function ProfitLoss({ user }) {
 
                 {/* Officer table */}
                 <table className="table" style={{marginBottom:'0.75rem'}}>
-                  <thead><tr><th>Officer</th><th style={{textAlign:'right'}}>Roster Hrs</th><th style={{textAlign:'right'}}>Worked</th><th style={{textAlign:'right'}}>Pay Rate</th><th style={{textAlign:'right'}}>Charge Rate</th><th style={{textAlign:'right'}}>Gross Profit</th></tr></thead>
+                  <thead><tr><th>Officer</th><th style={{textAlign:'right'}}>Roster Hrs</th><th style={{textAlign:'right'}}>Pay Rate</th><th style={{textAlign:'right'}}>Charge Rate</th><th style={{textAlign:'right'}}>Gross Profit</th></tr></thead>
                   <tbody>
                     {Object.entries(byOfficer).sort((a,b) => b[1].rosterHrs - a[1].rosterHrs).map(([name, o]) => {
                       const avgRate = o.rosterHrs > 0 ? o.rosterPay / o.rosterHrs : 0;
@@ -250,7 +250,6 @@ function ProfitLoss({ user }) {
                         <tr key={name}>
                           <td style={{fontWeight:500}}>{name}</td>
                           <td style={{textAlign:'right'}}>{o.rosterHrs.toFixed(1)}</td>
-                          <td style={{textAlign:'right',color: o.actualHrs >= o.rosterHrs ? '#10b981' : 'var(--text-2)'}}>{o.actualHrs.toFixed(1)}</td>
                           <td style={{textAlign:'right',color:'#f59e0b',fontWeight:600}}>£{avgRate.toFixed(2)}</td>
                           <td style={{textAlign:'right',color:'#10b981'}}>£{chargeRate.toFixed(2)}</td>
                           <td style={{textAlign:'right',fontWeight:700,color: gp >= 0 ? '#10b981' : '#ef4444'}}>{fmt(gp)}</td>
@@ -262,13 +261,31 @@ function ProfitLoss({ user }) {
                     <tr style={{fontWeight:700,borderTop:'2px solid var(--border)'}}>
                       <td>Site Total</td>
                       <td style={{textAlign:'right'}}>{rosterHrs.toFixed(1)}</td>
-                      <td style={{textAlign:'right',color: actualHrs >= rosterHrs ? '#10b981' : 'var(--text-2)'}}>{actualHrs.toFixed(1)}</td>
                       <td style={{textAlign:'right',color:'#f59e0b'}}>{fmt(rosterPay)}</td>
-                      <td style={{textAlign:'right',color:'#10b981'}}>{chargeRate > 0 ? fmt(chargeRevenue) : '—'}</td>
-                      <td style={{textAlign:'right',color: chargeRevenue - rosterPay >= 0 ? '#10b981' : '#ef4444',fontWeight:700}}>{chargeRate > 0 ? fmt(chargeRevenue - rosterPay) : '—'}</td>
+                      <td style={{textAlign:'right',color:'#10b981'}}>{fmt(chargeRevenue)}</td>
+                      <td style={{textAlign:'right',color: chargeRevenue - rosterPay >= 0 ? '#10b981' : '#ef4444',fontWeight:700}}>{fmt(chargeRevenue - rosterPay)}</td>
                     </tr>
                   </tfoot>
                 </table>
+
+                {/* Contracted hours sense check */}
+                {(() => {
+                  const contractedWeekly = parseFloat(site.contracted_hours_weekly) || 0;
+                  if (!contractedWeekly) return null;
+                  const contractedPeriod = contractedWeekly * periodWeeks;
+                  const diff = rosterHrs - contractedPeriod;
+                  return (
+                    <div style={{padding:'0.5rem 0.75rem',marginBottom:'0.75rem',borderRadius:'6px',fontSize:'0.8125rem',background: Math.abs(diff) < 1 ? 'rgba(16,185,129,0.08)' : diff > 0 ? 'rgba(59,130,246,0.08)' : 'rgba(239,68,68,0.08)',border:`1px solid ${Math.abs(diff) < 1 ? 'rgba(16,185,129,0.2)' : diff > 0 ? 'rgba(59,130,246,0.2)' : 'rgba(239,68,68,0.2)'}`}}>
+                      <span style={{fontWeight:600}}>Contract: {contractedPeriod.toFixed(1)}h</span>
+                      <span style={{margin:'0 0.5rem',color:'var(--text-3)'}}>|</span>
+                      <span>Roster: {rosterHrs.toFixed(1)}h</span>
+                      <span style={{margin:'0 0.5rem',color:'var(--text-3)'}}>|</span>
+                      <span style={{fontWeight:700,color: Math.abs(diff) < 1 ? '#10b981' : diff > 0 ? '#3b82f6' : '#ef4444'}}>
+                        {Math.abs(diff) < 1 ? 'On target' : diff > 0 ? `+${diff.toFixed(1)}h over` : `${diff.toFixed(1)}h under`}
+                      </span>
+                    </div>
+                  );
+                })()}
 
                 {/* Products & Services */}
                 <div style={{marginBottom:'0.75rem'}}>
@@ -307,17 +324,21 @@ function ProfitLoss({ user }) {
 
             {/* Grand Totals */}
             <div className="card" style={{padding:'1rem',borderLeft:'3px solid #10b981',background:'rgba(16,185,129,0.03)'}}>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'1.5rem',fontSize:'0.9375rem'}}>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:'1.5rem',fontSize:'0.9375rem'}}>
                 <div>
-                  <div style={{color:'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem'}}>Total Contract Hours</div>
+                  <div style={{color:'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem'}}>Roster Hours</div>
                   <div style={{fontWeight:700,fontSize:'1.25rem',color:'#3b82f6'}}>{grandRosterHrs.toFixed(1)}h</div>
                 </div>
                 <div>
-                  <div style={{color:'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem'}}>Total Hours Worked</div>
-                  <div style={{fontWeight:700,fontSize:'1.25rem',color: grandActualHrs >= grandRosterHrs ? '#10b981' : 'var(--text)'}}>{grandActualHrs.toFixed(1)}h</div>
+                  <div style={{color:'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem'}}>Total Pay</div>
+                  <div style={{fontWeight:700,fontSize:'1.25rem',color:'#f59e0b'}}>{fmt(grandRosterPay)}</div>
                 </div>
                 <div>
-                  <div style={{color:'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem'}}>Total Gross Profit</div>
+                  <div style={{color:'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem'}}>Total Revenue</div>
+                  <div style={{fontWeight:700,fontSize:'1.25rem',color:'#10b981'}}>{fmt(grandTotalRevenue)}</div>
+                </div>
+                <div>
+                  <div style={{color:'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem'}}>Gross Profit</div>
                   <div style={{fontWeight:700,fontSize:'1.25rem',color: grandMargin >= 0 ? '#10b981' : '#ef4444'}}>{fmt(grandMargin)} <span style={{fontSize:'0.8125rem',fontWeight:600}}>({marginPct}%)</span></div>
                 </div>
               </div>
