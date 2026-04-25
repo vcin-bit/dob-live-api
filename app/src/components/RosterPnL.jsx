@@ -249,7 +249,7 @@ function ProfitLoss({ user }) {
             )}
 
             {/* Per site breakdown */}
-            {siteRows.map(({ site, byOfficer, rosterHrs, rosterPay, actualHrs, actualPay, chargeRevenue, margin, chargeRate }) => (
+            {siteRows.map(({ site, byOfficer, rosterHrs, rosterPay, actualHrs, actualPay, chargeRevenue, chargeRate, siteProducts, productCost, productCharge }) => (
               <div key={site.id} className="card" style={{marginBottom:'1rem',padding:'1rem'}}>
                 <div style={{marginBottom:'0.75rem'}}>
                   <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:'0.5rem'}}>
