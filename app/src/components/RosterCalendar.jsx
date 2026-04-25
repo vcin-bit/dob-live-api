@@ -333,8 +333,8 @@ export default function RosterCalendar({ siteId, user }) {
         </div>
       )}
 
-      {/* Contracted vs Actual grid — site-specific only */}
-      {siteId && !loading && <ContractedActualGrid shifts={shifts} days={days} view={view} anchor={anchor} user={user} rates={rates} />}
+      {/* Contracted vs Actual grid */}
+      {siteId && !loading && <ContractedActualGrid shifts={shifts} anchor={anchor} user={user} rates={rates} />}
 
       {/* Edit modal */}
       {editShift && (
@@ -491,14 +491,6 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
                           <div style={{fontSize: isCompact ? '0.5625rem' : '0.6875rem', color:'var(--text-2)', marginLeft:bulkMode?'1rem':'0'}}>
                             {shiftTimeLabel(s)}
                           </div>
-                          {!isCompact && s.checked_in_at && (s.status === 'COMPLETED' || s.status === 'ACTIVE') && (() => {
-                            const setH = shiftHours(s);
-                            const actEnd = s.checked_out_at || s.end_time;
-                            const actH = actEnd ? Math.max(0, (new Date(actEnd) - new Date(s.checked_in_at)) / 3600000) : 0;
-                            const v = actH - setH;
-                            if (Math.abs(v) < 0.08) return null;
-                            return <div style={{fontSize:'0.5625rem',fontWeight:700,color: v > 0 ? '#3b82f6' : '#ef4444',marginLeft:bulkMode?'1rem':'0'}}>{v > 0 ? '+' : ''}{v.toFixed(1)}h</div>;
-                          })()}
                           {!isCompact && !siteId && s.site?.name && (
                             <div style={{fontSize:'0.625rem',color:'var(--text-3)',overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',marginLeft:bulkMode?'1rem':'0'}}>{s.site.name}</div>
                           )}
@@ -738,17 +730,18 @@ function ShiftModal({ shift, prefillDate, officers, allOfficers, sites, rates, s
 }
 
 // ── Contracted vs Actual Grid ───────────────────────────────────────────────
-function ContractedActualGrid({ shifts, days, view, anchor, user, rates }) {
+function ContractedActualGrid({ shifts, anchor, user, rates }) {
   const weekStart = startOfWeek(new Date(anchor));
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const londonTime = iso => new Date(iso).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', timeZone:'Europe/London' });
 
-  function getPayRate(s) {
+  function getRate(s) {
     if (s.pay_rate) return parseFloat(s.pay_rate);
-    const siteRate = rates.find(r => r.officer_id === s.officer_id && r.site_id === s.site_id);
-    if (siteRate) return parseFloat(siteRate.hourly_rate || 0);
-    const defaultRate = rates.find(r => r.officer_id === s.officer_id && !r.site_id);
-    if (defaultRate) return parseFloat(defaultRate.hourly_rate || 0);
+    const sr = rates.find(r => r.officer_id === s.officer_id && r.site_id === s.site_id);
+    if (sr) return parseFloat(sr.hourly_rate || 0);
+    const dr = rates.find(r => r.officer_id === s.officer_id && !r.site_id);
+    if (dr) return parseFloat(dr.hourly_rate || 0);
     return 0;
   }
 
@@ -756,136 +749,145 @@ function ContractedActualGrid({ shifts, days, view, anchor, user, rates }) {
     const ds = isoDate(d);
     const dayShifts = shifts.filter(s => isoDate(new Date(s.start_time)) === ds).sort((a,b) => new Date(a.start_time) - new Date(b.start_time));
     const s = dayShifts[0] || null;
-    if (!s) return { day: d, shift: null, setHrs: 0, actualHrs: 0, variance: null, hasActual: false };
+    if (!s) return { shift: null, setHrs: 0, actualHrs: 0, variance: null, hasActual: false, rate: 0, shiftPay: 0 };
     const setHrs = shiftHours(s);
-    const hasActual = s.checked_in_at && (s.status === 'COMPLETED' || s.status === 'ACTIVE');
-    const actualEnd = s.checked_out_at || (s.status === 'ACTIVE' ? null : s.end_time);
-    const actualHrs = hasActual && actualEnd ? Math.max(0, (new Date(actualEnd) - new Date(s.checked_in_at)) / 3600000) : 0;
-    const variance = hasActual ? actualHrs - setHrs : null;
-    return { day: d, shift: s, setHrs, actualHrs, variance, hasActual };
+    const hasActual = !!s.checked_in_at && (s.status === 'COMPLETED' || s.status === 'ACTIVE');
+    const actEnd = s.checked_out_at || (s.status === 'ACTIVE' ? null : null);
+    const actualHrs = hasActual && actEnd ? Math.max(0, (new Date(actEnd) - new Date(s.checked_in_at)) / 3600000) : 0;
+    const variance = hasActual && actEnd ? actualHrs - setHrs : null;
+    const rate = getRate(s);
+    const shiftPay = actualHrs * rate;
+    return { shift: s, setHrs, actualHrs, variance, hasActual, rate, shiftPay };
   });
 
-  const totals = dayData.reduce((t, d) => {
-    t.setHrs += d.setHrs || 0;
-    t.actualHrs += d.actualHrs || 0;
-    if (d.variance !== null) { t.varianceHrs += d.variance; t.hasVariance = true; }
-    return t;
-  }, { setHrs: 0, actualHrs: 0, varianceHrs: 0, hasVariance: false });
+  const tot = { setHrs: 0, actualHrs: 0, varHrs: 0, hasVar: false, pay: 0 };
+  dayData.forEach(d => { tot.setHrs += d.setHrs; tot.actualHrs += d.actualHrs; tot.pay += d.shiftPay; if (d.variance !== null) { tot.varHrs += d.variance; tot.hasVar = true; } });
 
-  const weekShifts = shifts.filter(s => {
-    const ds = isoDate(new Date(s.start_time));
-    return ds >= isoDate(weekStart) && ds < isoDate(addDays(weekStart, 7));
-  });
-  const officerPay = {};
+  // Officer pay summary
+  const weekShifts = shifts.filter(s => { const ds = isoDate(new Date(s.start_time)); return ds >= isoDate(weekStart) && ds < isoDate(addDays(weekStart, 7)); });
+  const byOfficer = {};
   weekShifts.forEach(s => {
     if (!s.officer) return;
-    const name = `${s.officer.first_name} ${s.officer.last_name}`;
-    if (!officerPay[name]) officerPay[name] = { actualHrs: 0, pay: 0, rate: 0 };
-    const hasAct = s.checked_in_at && (s.status === 'COMPLETED' || s.status === 'ACTIVE');
-    const actEnd = s.checked_out_at || (s.status === 'ACTIVE' ? null : s.end_time);
-    const hrs = hasAct && actEnd ? Math.max(0, (new Date(actEnd) - new Date(s.checked_in_at)) / 3600000) : 0;
-    const rate = getPayRate(s);
-    officerPay[name].actualHrs += hrs;
-    officerPay[name].pay += hrs * rate;
-    officerPay[name].rate = rate;
+    const n = `${s.officer.first_name} ${s.officer.last_name}`;
+    if (!byOfficer[n]) byOfficer[n] = { hrs: 0, pay: 0, rate: 0 };
+    const ha = !!s.checked_in_at && (s.status === 'COMPLETED' || s.status === 'ACTIVE');
+    const ae = s.checked_out_at;
+    const h = ha && ae ? Math.max(0, (new Date(ae) - new Date(s.checked_in_at)) / 3600000) : 0;
+    const r = getRate(s);
+    byOfficer[n].hrs += h; byOfficer[n].pay += h * r; byOfficer[n].rate = r;
   });
 
-  const vColor = v => v === null ? 'rgba(255,255,255,0.2)' : Math.abs(v) < 0.25 ? '#10b981' : v < 0 ? '#ef4444' : '#f59e0b';
-  const vLabel = v => v === null ? '—' : Math.abs(v) < 0.25 ? '✓ 0' : `${v > 0 ? '+' : ''}${v.toFixed(1)}h`;
-  const cs = { fontSize:'0.75rem', padding:'0.375rem 0.5rem', borderRight:'1px solid rgba(255,255,255,0.06)', verticalAlign:'top' };
-  const hcs = { ...cs, fontWeight:700, fontSize:'0.6875rem', color:'rgba(255,255,255,0.4)', textTransform:'uppercase', letterSpacing:'0.05em', background:'rgba(255,255,255,0.03)' };
+  const vc = v => v === null ? 'rgba(255,255,255,0.2)' : Math.abs(v) < 0.25 ? '#10b981' : v < 0 ? '#ef4444' : '#f59e0b';
+  const vl = v => v === null ? '—' : Math.abs(v) < 0.25 ? '0 hrs' : `${v > 0 ? '+' : ''}${v.toFixed(1)} hrs`;
+  const c = { fontSize:'0.75rem', padding:'0.5rem', borderBottom:'1px solid rgba(255,255,255,0.06)', verticalAlign:'top' };
+  const hc = { ...c, fontWeight:700, fontSize:'0.6875rem', color:'rgba(255,255,255,0.4)', textTransform:'uppercase', letterSpacing:'0.04em', background:'rgba(255,255,255,0.03)' };
+  const rc = { ...c, fontWeight:600, color:'rgba(255,255,255,0.5)', width:'80px' };
 
   return (
-    <div style={{marginTop:'1.25rem'}}>
-      <div style={{fontSize:'0.75rem',fontWeight:700,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.5rem'}}>
-        Contracted vs Actual — {weekStart.toLocaleDateString('en-GB',{day:'numeric',month:'short'})} – {addDays(weekStart,6).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}
+    <div style={{marginTop:'1.5rem'}}>
+      <div style={{fontSize:'0.8125rem',fontWeight:700,color:'rgba(255,255,255,0.5)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.625rem'}}>
+        Contracted vs Actual — {weekStart.toLocaleDateString('en-GB',{day:'numeric',month:'short',timeZone:'Europe/London'})} – {addDays(weekStart,6).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'Europe/London'})}
       </div>
       <div style={{overflowX:'auto'}}>
-        <table style={{width:'100%',borderCollapse:'collapse',background:'rgba(255,255,255,0.02)',borderRadius:'8px',overflow:'hidden',border:'1px solid rgba(255,255,255,0.06)'}}>
+        <table style={{width:'100%',borderCollapse:'collapse',background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'8px'}}>
           <thead>
             <tr>
-              <td style={{...hcs,width:'90px'}}></td>
+              <th style={{...hc,textAlign:'left',width:'80px'}}></th>
               {dayNames.map((dn,i) => {
-                const isToday = isoDate(weekDays[i]) === isoDate(new Date());
-                return <td key={dn} style={{...hcs,textAlign:'center',color: isToday ? '#3b82f6' : hcs.color}}>{dn} {weekDays[i].getDate()}</td>;
+                const today = isoDate(weekDays[i]) === isoDate(new Date());
+                return <th key={dn} style={{...hc,textAlign:'center',color: today ? '#3b82f6' : hc.color,borderLeft: today ? '2px solid #3b82f6' : 'none'}}>{dn} {weekDays[i].getDate()}</th>;
               })}
-              <td style={{...hcs,textAlign:'center',borderRight:'none',color:'#fff'}}>TOTAL</td>
+              <th style={{...hc,textAlign:'center',color:'#fff',background:'rgba(255,255,255,0.05)'}}>Week Total</th>
             </tr>
           </thead>
           <tbody>
+            {/* Row 1: Contracted */}
             <tr>
-              <td style={{...cs,fontWeight:600,color:'rgba(255,255,255,0.5)'}}>Contracted</td>
+              <td style={rc}>Contracted</td>
               {dayData.map((d,i) => (
-                <td key={i} style={{...cs,textAlign:'center'}}>
-                  {d.shift ? (<><div style={{color:'#fff'}}>{fmtTime(d.shift.start_time)}–{fmtTime(d.shift.end_time)}</div><div style={{color:'rgba(255,255,255,0.4)'}}>({d.setHrs.toFixed(1)}h)</div></>) : <span style={{color:'#ef4444',fontWeight:600}}>Uncovered</span>}
+                <td key={i} style={{...c,textAlign:'center'}}>
+                  {d.shift ? (<><div style={{color:'#fff'}}>{londonTime(d.shift.start_time)}–{londonTime(d.shift.end_time)}</div><div style={{color:'rgba(255,255,255,0.4)',fontSize:'0.6875rem'}}>{d.setHrs.toFixed(0)} hrs</div></>) : <span style={{color:'#ef4444',fontWeight:700}}>Uncovered</span>}
                 </td>
               ))}
-              <td style={{...cs,textAlign:'center',borderRight:'none',fontWeight:700}}>{totals.setHrs.toFixed(1)}h</td>
+              <td style={{...c,textAlign:'center',fontWeight:700,background:'rgba(255,255,255,0.03)'}}>{tot.setHrs.toFixed(1)} hrs</td>
             </tr>
-            <tr style={{background:'rgba(255,255,255,0.02)'}}>
-              <td style={{...cs,fontWeight:600,color:'rgba(255,255,255,0.5)'}}>Officer</td>
+            {/* Row 2: Officer */}
+            <tr style={{background:'rgba(255,255,255,0.015)'}}>
+              <td style={rc}>Officer</td>
               {dayData.map((d,i) => (
-                <td key={i} style={{...cs,textAlign:'center',color: d.shift?.officer ? '#fff' : 'rgba(255,255,255,0.2)'}}>
+                <td key={i} style={{...c,textAlign:'center',color: d.shift?.officer ? '#fff' : 'rgba(255,255,255,0.2)',fontWeight:500}}>
                   {d.shift?.officer ? d.shift.officer.first_name : '—'}
                 </td>
               ))}
-              <td style={{...cs,borderRight:'none'}}></td>
+              <td style={{...c,background:'rgba(255,255,255,0.03)'}}></td>
             </tr>
+            {/* Row 3: Actual */}
             <tr>
-              <td style={{...cs,fontWeight:600,color:'rgba(255,255,255,0.5)'}}>Actual</td>
+              <td style={rc}>Actual</td>
               {dayData.map((d,i) => (
-                <td key={i} style={{...cs,textAlign:'center'}}>
-                  {!d.shift ? <span style={{color:'rgba(255,255,255,0.15)'}}>—</span>
-                    : d.shift.status === 'ACTIVE' && !d.shift.checked_out_at ? <span style={{color:'#4ade80',fontWeight:600}}>On duty {fmtTime(d.shift.checked_in_at)}</span>
-                    : d.hasActual ? (<><div style={{color:'#fff'}}>{fmtTime(d.shift.checked_in_at)}–{fmtTime(d.shift.checked_out_at)}</div><div style={{color:'rgba(255,255,255,0.4)'}}>({d.actualHrs.toFixed(1)}h)</div></>) : <span style={{color:'rgba(255,255,255,0.3)'}}>Pending</span>}
+                <td key={i} style={{...c,textAlign:'center'}}>
+                  {!d.shift ? <span style={{color:'#ef4444',fontSize:'0.6875rem'}}>No cover / 0 hrs</span>
+                    : d.shift.status === 'ACTIVE' && !d.shift.checked_out_at ? <span style={{color:'#4ade80',fontWeight:600}}>On duty</span>
+                    : d.hasActual && d.shift.checked_out_at ? (<><div style={{color:'#fff'}}>{londonTime(d.shift.checked_in_at)}–{londonTime(d.shift.checked_out_at)}</div><div style={{color:'rgba(255,255,255,0.4)',fontSize:'0.6875rem'}}>{d.actualHrs.toFixed(1)} hrs</div></>) : <span style={{color:'rgba(255,255,255,0.3)'}}>Pending</span>}
                 </td>
               ))}
-              <td style={{...cs,textAlign:'center',borderRight:'none',fontWeight:700}}>{totals.actualHrs.toFixed(1)}h</td>
+              <td style={{...c,textAlign:'center',fontWeight:700,background:'rgba(255,255,255,0.03)'}}>{tot.actualHrs.toFixed(1)} hrs</td>
             </tr>
-            <tr style={{background:'rgba(255,255,255,0.02)'}}>
-              <td style={{...cs,fontWeight:600,color:'rgba(255,255,255,0.5)'}}>Variance</td>
+            {/* Row 4: Variance */}
+            <tr style={{background:'rgba(255,255,255,0.015)'}}>
+              <td style={rc}>Variance</td>
               {dayData.map((d,i) => (
-                <td key={i} style={{...cs,textAlign:'center',fontWeight:700,color:vColor(d.variance)}}>{vLabel(d.variance)}</td>
+                <td key={i} style={{...c,textAlign:'center'}}>
+                  <span style={{display:'inline-block',padding:'2px 8px',borderRadius:'4px',fontWeight:700,fontSize:'0.6875rem',color:vc(d.variance),background: d.variance !== null ? (Math.abs(d.variance) < 0.25 ? 'rgba(16,185,129,0.1)' : d.variance < 0 ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)') : 'transparent'}}>{vl(d.variance)}</span>
+                </td>
               ))}
-              <td style={{...cs,textAlign:'center',borderRight:'none',fontWeight:700,color:vColor(totals.hasVariance ? totals.varianceHrs : null)}}>
-                {totals.hasVariance ? vLabel(totals.varianceHrs) : '—'}
+              <td style={{...c,textAlign:'center',background:'rgba(255,255,255,0.03)'}}>
+                <span style={{display:'inline-block',padding:'2px 8px',borderRadius:'4px',fontWeight:700,fontSize:'0.6875rem',color:vc(tot.hasVar ? tot.varHrs : null),background: tot.hasVar ? (Math.abs(tot.varHrs) < 0.25 ? 'rgba(16,185,129,0.1)' : tot.varHrs < 0 ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)') : 'transparent'}}>{tot.hasVar ? vl(tot.varHrs) : '—'}</span>
               </td>
             </tr>
+            {/* Row 5: Pay rate (COMPANY/OPS_MANAGER only) */}
+            {canSeePay(user?.role) && (
+              <tr>
+                <td style={rc}>Pay rate</td>
+                {dayData.map((d,i) => (
+                  <td key={i} style={{...c,textAlign:'center',color: d.rate > 0 ? '#f59e0b' : '#f59e0b',fontWeight:600,fontSize:'0.6875rem'}}>
+                    {d.shift ? (d.rate > 0 ? `£${d.rate.toFixed(2)}/hr` : <span style={{opacity:0.6}}>Not set</span>) : '—'}
+                  </td>
+                ))}
+                <td style={{...c,background:'rgba(255,255,255,0.03)'}}></td>
+              </tr>
+            )}
+            {/* Row 6: Shift pay (COMPANY/OPS_MANAGER only) */}
+            {canSeePay(user?.role) && (
+              <tr style={{background:'rgba(255,255,255,0.015)'}}>
+                <td style={rc}>Shift pay</td>
+                {dayData.map((d,i) => (
+                  <td key={i} style={{...c,textAlign:'center',color:'#f59e0b',fontWeight:700,fontSize:'0.6875rem'}}>
+                    {d.shiftPay > 0 ? `£${d.shiftPay.toFixed(2)}` : '—'}
+                  </td>
+                ))}
+                <td style={{...c,textAlign:'center',fontWeight:700,color:'#f59e0b',background:'rgba(255,255,255,0.03)'}}>£{tot.pay.toFixed(2)}</td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
 
-      {canSeePay(user?.role) && Object.keys(officerPay).length > 0 && (
-        <div style={{marginTop:'0.75rem'}}>
-          <div style={{fontSize:'0.6875rem',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.375rem'}}>Week Pay Summary</div>
-          <table style={{width:'100%',borderCollapse:'collapse',fontSize:'0.8125rem'}}>
-            <thead>
-              <tr style={{borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
-                <th style={{textAlign:'left',padding:'0.375rem 0.5rem',color:'rgba(255,255,255,0.4)',fontWeight:600,fontSize:'0.75rem'}}>Officer</th>
-                <th style={{textAlign:'right',padding:'0.375rem 0.5rem',color:'rgba(255,255,255,0.4)',fontWeight:600,fontSize:'0.75rem'}}>Actual Hrs</th>
-                <th style={{textAlign:'right',padding:'0.375rem 0.5rem',color:'rgba(255,255,255,0.4)',fontWeight:600,fontSize:'0.75rem'}}>Rate</th>
-                <th style={{textAlign:'right',padding:'0.375rem 0.5rem',color:'rgba(255,255,255,0.4)',fontWeight:600,fontSize:'0.75rem'}}>Pay</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(officerPay).sort((a,b) => b[1].actualHrs - a[1].actualHrs).map(([name, o]) => (
-                <tr key={name} style={{borderBottom:'1px solid rgba(255,255,255,0.04)'}}>
-                  <td style={{padding:'0.375rem 0.5rem',fontWeight:500}}>{name}</td>
-                  <td style={{padding:'0.375rem 0.5rem',textAlign:'right'}}>{o.actualHrs.toFixed(1)}</td>
-                  <td style={{padding:'0.375rem 0.5rem',textAlign:'right',color:'rgba(255,255,255,0.5)'}}>£{o.rate.toFixed(2)}</td>
-                  <td style={{padding:'0.375rem 0.5rem',textAlign:'right',color:'#f59e0b',fontWeight:600}}>£{o.pay.toFixed(2)}</td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr style={{borderTop:'2px solid rgba(255,255,255,0.1)'}}>
-                <td style={{padding:'0.375rem 0.5rem',fontWeight:700}}>Total</td>
-                <td style={{padding:'0.375rem 0.5rem',textAlign:'right',fontWeight:700}}>{Object.values(officerPay).reduce((t,o) => t + o.actualHrs, 0).toFixed(1)}</td>
-                <td></td>
-                <td style={{padding:'0.375rem 0.5rem',textAlign:'right',fontWeight:700,color:'#f59e0b'}}>£{Object.values(officerPay).reduce((t,o) => t + o.pay, 0).toFixed(2)}</td>
-              </tr>
-            </tfoot>
-          </table>
+      {/* Officer pay summary cards */}
+      {canSeePay(user?.role) && Object.keys(byOfficer).length > 0 && (
+        <div style={{display:'flex',gap:'0.75rem',flexWrap:'wrap',marginTop:'1rem'}}>
+          {Object.entries(byOfficer).sort((a,b) => b[1].hrs - a[1].hrs).map(([name, o]) => (
+            <div key={name} style={{padding:'0.625rem 1rem',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'8px',fontSize:'0.8125rem'}}>
+              <div style={{fontWeight:600,marginBottom:'0.25rem'}}>{name}</div>
+              <div style={{color:'rgba(255,255,255,0.5)'}}>{o.hrs.toFixed(1)} hrs · £{o.rate.toFixed(2)}/hr</div>
+              <div style={{color:'#f59e0b',fontWeight:700,marginTop:'0.125rem'}}>£{o.pay.toFixed(2)}</div>
+            </div>
+          ))}
+          <div style={{padding:'0.625rem 1rem',background:'rgba(245,158,11,0.08)',border:'1px solid rgba(245,158,11,0.2)',borderRadius:'8px',fontSize:'0.8125rem'}}>
+            <div style={{fontWeight:700,color:'#f59e0b',marginBottom:'0.25rem'}}>Total</div>
+            <div style={{color:'rgba(255,255,255,0.5)'}}>{Object.values(byOfficer).reduce((t,o) => t + o.hrs, 0).toFixed(1)} hrs</div>
+            <div style={{color:'#f59e0b',fontWeight:700,marginTop:'0.125rem'}}>£{Object.values(byOfficer).reduce((t,o) => t + o.pay, 0).toFixed(2)}</div>
+          </div>
         </div>
       )}
     </div>
