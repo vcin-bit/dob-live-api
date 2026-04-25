@@ -170,10 +170,12 @@ function ProfitLoss({ user }) {
     const byOfficer = {};
     ss.forEach(s => {
       const name = s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unassigned';
-      if (!byOfficer[name]) byOfficer[name] = { scheduledHrs: 0, actualHrs: 0, actualPay: 0 };
+      if (!byOfficer[name]) byOfficer[name] = { scheduledHrs: 0, scheduledPay: 0, actualHrs: 0, actualPay: 0 };
       const rate = getPayRate(s);
       // Scheduled hours from roster (start_time → end_time)
-      byOfficer[name].scheduledHrs += calcScheduledHours(s);
+      const sch = calcScheduledHours(s);
+      byOfficer[name].scheduledHrs += sch;
+      byOfficer[name].scheduledPay += sch * rate;
       // Actual hours from check-in/out (only COMPLETED/ACTIVE)
       if (s.status === 'COMPLETED' || s.status === 'ACTIVE') {
         const actual = calcActualHours(s);
@@ -254,16 +256,20 @@ function ProfitLoss({ user }) {
 
                 {/* Officer table */}
                 <table className="table" style={{marginBottom:'0.75rem'}}>
-                  <thead><tr><th>Officer</th><th style={{textAlign:'right'}}>Scheduled</th><th style={{textAlign:'right'}}>Actual</th><th style={{textAlign:'right'}}>Pay Rate</th><th style={{textAlign:'right'}}>Charge Rate</th><th style={{textAlign:'right'}}>Gross Profit</th></tr></thead>
+                  <thead><tr><th>Officer</th><th style={{textAlign:'right'}}>Set Hrs</th><th style={{textAlign:'right'}}>Actual</th><th style={{textAlign:'right'}}>Variance</th><th style={{textAlign:'right'}}>Pay Rate</th><th style={{textAlign:'right'}}>Charge Rate</th><th style={{textAlign:'right'}}>Gross Profit</th></tr></thead>
                   <tbody>
                     {Object.entries(byOfficer).sort((a,b) => b[1].scheduledHrs - a[1].scheduledHrs).map(([name, o]) => {
-                      const avgRate = o.actualHrs > 0 ? o.actualPay / o.actualHrs : 0;
+                      const avgRate = o.actualHrs > 0 ? o.actualPay / o.actualHrs : (o.scheduledHrs > 0 ? o.scheduledPay / o.scheduledHrs : 0);
+                      const variance = o.actualHrs - o.scheduledHrs;
                       const gp = (chargeRate * o.scheduledHrs) - o.actualPay;
                       return (
                         <tr key={name}>
                           <td style={{fontWeight:500}}>{name}</td>
                           <td style={{textAlign:'right'}}>{o.scheduledHrs.toFixed(1)}</td>
-                          <td style={{textAlign:'right',color: o.actualHrs > 0 ? '#10b981' : 'var(--text-3)'}}>{o.actualHrs.toFixed(1)}</td>
+                          <td style={{textAlign:'right',color: o.actualHrs > 0 ? 'var(--text)' : 'var(--text-3)'}}>{o.actualHrs.toFixed(1)}</td>
+                          <td style={{textAlign:'right',fontWeight:700,color: variance === 0 ? 'var(--text-3)' : variance > 0 ? '#3b82f6' : '#ef4444'}}>
+                            {o.actualHrs > 0 ? `${variance > 0 ? '+' : ''}${variance.toFixed(1)}` : '—'}
+                          </td>
                           <td style={{textAlign:'right',color:'#f59e0b',fontWeight:600}}>£{avgRate.toFixed(2)}</td>
                           <td style={{textAlign:'right',color:'#10b981'}}>£{chargeRate.toFixed(2)}</td>
                           <td style={{textAlign:'right',fontWeight:700,color: gp >= 0 ? '#10b981' : '#ef4444'}}>{fmt(gp)}</td>
@@ -272,14 +278,17 @@ function ProfitLoss({ user }) {
                     })}
                   </tbody>
                   <tfoot>
+                    {(() => { const v = actualHrs - scheduledHrs; return (
                     <tr style={{fontWeight:700,borderTop:'2px solid var(--border)'}}>
                       <td>Site Total</td>
                       <td style={{textAlign:'right'}}>{scheduledHrs.toFixed(1)}</td>
-                      <td style={{textAlign:'right',color: actualHrs > 0 ? '#10b981' : 'var(--text-3)'}}>{actualHrs.toFixed(1)}</td>
+                      <td style={{textAlign:'right'}}>{actualHrs.toFixed(1)}</td>
+                      <td style={{textAlign:'right',color: v === 0 ? 'var(--text-3)' : v > 0 ? '#3b82f6' : '#ef4444'}}>{actualHrs > 0 ? `${v > 0 ? '+' : ''}${v.toFixed(1)}` : '—'}</td>
                       <td style={{textAlign:'right',color:'#f59e0b'}}>{fmt(actualPay)}</td>
                       <td style={{textAlign:'right',color:'#10b981'}}>{fmt(chargeRevenue)}</td>
                       <td style={{textAlign:'right',color: chargeRevenue - actualPay >= 0 ? '#10b981' : '#ef4444',fontWeight:700}}>{fmt(chargeRevenue - actualPay)}</td>
                     </tr>
+                    ); })()}
                   </tfoot>
                 </table>
 
@@ -329,14 +338,19 @@ function ProfitLoss({ user }) {
 
             {/* Grand Totals */}
             <div className="card" style={{padding:'1rem',borderLeft:'3px solid #10b981',background:'rgba(16,185,129,0.03)'}}>
+              {(() => { const gv = grandActualHrs - grandScheduled; return (
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr 1fr',gap:'1.25rem',fontSize:'0.9375rem'}}>
                 <div>
-                  <div style={{color:'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem'}}>Total Hours</div>
+                  <div style={{color:'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem'}}>Set Hours</div>
                   <div style={{fontWeight:700,fontSize:'1.25rem',color:'#3b82f6'}}>{grandScheduled.toFixed(1)}h</div>
                 </div>
                 <div>
-                  <div style={{color:'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem'}}>Actual Worked</div>
+                  <div style={{color:'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem'}}>Actual Hours</div>
                   <div style={{fontWeight:700,fontSize:'1.25rem'}}>{grandActualHrs.toFixed(1)}h</div>
+                </div>
+                <div>
+                  <div style={{color:'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem'}}>Variance</div>
+                  <div style={{fontWeight:700,fontSize:'1.25rem',color: gv === 0 ? 'var(--text-3)' : gv > 0 ? '#3b82f6' : '#ef4444'}}>{grandActualHrs > 0 ? `${gv > 0 ? '+' : ''}${gv.toFixed(1)}h` : '—'}</div>
                 </div>
                 <div>
                   <div style={{color:'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem'}}>Actual Pay</div>
@@ -347,6 +361,7 @@ function ProfitLoss({ user }) {
                   <div style={{fontWeight:700,fontSize:'1.25rem',color: grandMargin >= 0 ? '#10b981' : '#ef4444'}}>{fmt(grandMargin)} <span style={{fontSize:'0.8125rem',fontWeight:600}}>({marginPct}%)</span></div>
                 </div>
               </div>
+              ); })()}
             </div>
 
             {/* Add/Edit Product Modal */}

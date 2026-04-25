@@ -488,6 +488,14 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
                           <div style={{fontSize: isCompact ? '0.5625rem' : '0.6875rem', color:'var(--text-2)', marginLeft:bulkMode?'1rem':'0'}}>
                             {shiftTimeLabel(s)}
                           </div>
+                          {!isCompact && s.checked_in_at && (s.status === 'COMPLETED' || s.status === 'ACTIVE') && (() => {
+                            const setH = shiftHours(s);
+                            const actEnd = s.checked_out_at || s.end_time;
+                            const actH = actEnd ? Math.max(0, (new Date(actEnd) - new Date(s.checked_in_at)) / 3600000) : 0;
+                            const v = actH - setH;
+                            if (Math.abs(v) < 0.08) return null;
+                            return <div style={{fontSize:'0.5625rem',fontWeight:700,color: v > 0 ? '#3b82f6' : '#ef4444',marginLeft:bulkMode?'1rem':'0'}}>{v > 0 ? '+' : ''}{v.toFixed(1)}h</div>;
+                          })()}
                           {!isCompact && !siteId && s.site?.name && (
                             <div style={{fontSize:'0.625rem',color:'var(--text-3)',overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',marginLeft:bulkMode?'1rem':'0'}}>{s.site.name}</div>
                           )}
