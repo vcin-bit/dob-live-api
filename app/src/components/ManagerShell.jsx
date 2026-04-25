@@ -85,6 +85,7 @@ function ManagerSidebar({ user }) {
       label: 'P&L',
       items: [
         { to: '/pnl', icon: ChartBarIcon, label: 'P&L Dashboard' },
+        { to: '/contracts', icon: DocumentTextIcon, label: 'Contracts' },
       ]
     }] : []),
     {
@@ -95,12 +96,6 @@ function ManagerSidebar({ user }) {
         { to: '/patrol-history', icon: ClockIcon,       label: 'Patrol History' },
         { to: '/instructions', icon: DocumentTextIcon, label: 'Instructions' },
         { to: '/policies',     icon: DocumentTextIcon, label: 'Policies' },
-      ]
-    },
-    {
-      label: 'Commercial',
-      items: [
-        { to: '/contracts', icon: DocumentTextIcon, label: 'Contracts' },
       ]
     },
   ];
