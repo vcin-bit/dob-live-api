@@ -488,24 +488,24 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
                           <div style={{fontSize: isCompact ? '0.5625rem' : '0.6875rem', color:'var(--text-2)', marginLeft:bulkMode?'1rem':'0'}}>
                             {shiftTimeLabel(s)}
                           </div>
+                          {!isCompact && siteId && (
+                            <>
+                              <div style={{fontSize:'0.625rem',color:'rgba(255,255,255,0.35)',marginLeft:bulkMode?'1rem':'0'}}>Scheduled: {shiftHours(s).toFixed(0)} hrs</div>
+                              <div style={{fontSize:'0.625rem',color:'rgba(255,255,255,0.4)',marginLeft:bulkMode?'1rem':'0'}}>
+                                Actual: {s.checked_in_at && s.status === 'ACTIVE' && !s.checked_out_at
+                                  ? <span style={{color:'#4ade80',fontWeight:600}}>On duty</span>
+                                  : s.checked_in_at && s.checked_out_at
+                                  ? <span style={{color:'#fff'}}>{Math.max(0,(new Date(s.checked_out_at)-new Date(s.checked_in_at))/3600000).toFixed(1)} hrs</span>
+                                  : <span>Pending</span>}
+                              </div>
+                              <div style={{fontSize:'0.625rem',color:'#f59e0b',marginLeft:bulkMode?'1rem':'0'}}>
+                                {s.pay_rate ? `£${parseFloat(s.pay_rate).toFixed(2)}/hr · £${(shiftHours(s) * parseFloat(s.pay_rate)).toFixed(2)}` : 'Rate not set'}
+                              </div>
+                            </>
+                          )}
                           {!isCompact && !siteId && s.site?.name && (
                             <div style={{fontSize:'0.625rem',color:'var(--text-3)',overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',marginLeft:bulkMode?'1rem':'0'}}>{s.site.name}</div>
                           )}
-                          {/* Actual / Variance / Pay — inline in week view for site rosters */}
-                          {!isCompact && siteId && (
-                            <div style={{marginTop:'3px',paddingTop:'3px',borderTop:'1px solid rgba(255,255,255,0.15)'}}>
-                              <div style={{fontSize:'0.6875rem',color:'rgba(255,255,255,0.5)'}}>
-                                {s.checked_in_at && s.status === 'ACTIVE' && !s.checked_out_at
-                                  ? <span style={{color:'#4ade80',fontWeight:600}}>On duty</span>
-                                  : s.checked_in_at && s.checked_out_at
-                                  ? <span style={{color:'#fff'}}>{new Date(s.checked_in_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}–{new Date(s.checked_out_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}</span>
-                                  : <span style={{color:'rgba(255,255,255,0.4)'}}>Pending</span>}
-                              </div>
-                              {s.pay_rate && <div style={{fontSize:'0.625rem',color:'#f59e0b'}}>£{parseFloat(s.pay_rate).toFixed(2)}/hr · £{(shiftHours(s) * parseFloat(s.pay_rate)).toFixed(2)}</div>}
-                              {!s.pay_rate && <div style={{fontSize:'0.625rem',color:'#f59e0b',opacity:0.7}}>Rate not set</div>}
-                            </div>
-                          )}
-                          {/* Pay info for non-site views or compact */}
                           {(!siteId || isCompact) && canSeePay(user?.role) && (
                             s.pay_rate ? (
                               <div style={{fontSize: isCompact ? '0.5rem' : '0.5625rem',color:'#f59e0b',marginLeft:bulkMode?'1rem':'0',marginTop:'1px',overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis'}}>
