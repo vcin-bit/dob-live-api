@@ -127,10 +127,11 @@ function ProfitLoss({ user }) {
   async function saveProduct() {
     if (!productForm.name.trim()) return;
     try {
+      const payload = { name: productForm.name, cost: parseFloat(productForm.cost) || 0, charge: parseFloat(productForm.charge) || 0, frequency: productForm.frequency };
       if (editProduct) {
-        await api.products.update(editProduct.id, productForm);
+        await api.products.update(editProduct.id, payload);
       } else {
-        await api.products.create({ ...productForm, site_id: addProductSite });
+        await api.products.create({ ...payload, site_id: addProductSite });
       }
       const res = await api.products.list();
       setProducts(res.data || []);
