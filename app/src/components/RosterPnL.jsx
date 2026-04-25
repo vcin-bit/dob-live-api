@@ -230,11 +230,19 @@ function ProfitLoss({ user }) {
               <div key={site.id} className="card" style={{marginBottom:'1.25rem',padding:'1rem',borderLeft:'3px solid #8b5cf6'}}>
                 <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.75rem'}}>
                   <div style={{fontSize:'1.125rem',fontWeight:700,color:'#c4b5fd'}}>{site.name}</div>
-                  <div style={{display:'flex',alignItems:'center',gap:'0.375rem',fontSize:'0.8125rem'}}>
-                    <span style={{color:'var(--text-3)'}}>Charge £/hr:</span>
-                    <input type="number" step="0.01" min="0" value={site.charge_rate || ''} style={{width:'80px',padding:'0.25rem 0.5rem',background:'var(--surface-2)',border:'1px solid var(--border)',borderRadius:'4px',fontSize:'0.8125rem',color:'var(--text)'}}
-                      onChange={e => setSites(prev => prev.map(s => s.id === site.id ? {...s, charge_rate: e.target.value} : s))}
-                      onBlur={e => saveSiteRate(site.id, 'charge_rate', e.target.value)} />
+                  <div style={{display:'flex',alignItems:'center',gap:'1rem',fontSize:'0.8125rem'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:'0.375rem'}}>
+                      <span style={{color:'var(--text-3)'}}>Charge £/hr:</span>
+                      <input type="number" step="0.01" min="0" value={site.charge_rate || ''} style={{width:'80px',padding:'0.25rem 0.5rem',background:'var(--surface-2)',border:'1px solid var(--border)',borderRadius:'4px',fontSize:'0.8125rem',color:'var(--text)'}}
+                        onChange={e => setSites(prev => prev.map(s => s.id === site.id ? {...s, charge_rate: e.target.value} : s))}
+                        onBlur={e => saveSiteRate(site.id, 'charge_rate', e.target.value)} />
+                    </div>
+                    <div style={{display:'flex',alignItems:'center',gap:'0.375rem'}}>
+                      <span style={{color:'var(--text-3)'}}>Contract hrs/mth:</span>
+                      <input type="number" step="0.5" min="0" value={site.contracted_hours_weekly || ''} style={{width:'70px',padding:'0.25rem 0.5rem',background:'var(--surface-2)',border:'1px solid var(--border)',borderRadius:'4px',fontSize:'0.8125rem',color:'var(--text)'}}
+                        onChange={e => setSites(prev => prev.map(s => s.id === site.id ? {...s, contracted_hours_weekly: e.target.value} : s))}
+                        onBlur={e => saveSiteRate(site.id, 'contracted_hours_weekly', e.target.value)} />
+                    </div>
                     {savingSite === site.id && <span style={{fontSize:'0.75rem',color:'var(--text-3)'}}>Saving...</span>}
                   </div>
                 </div>
@@ -270,9 +278,9 @@ function ProfitLoss({ user }) {
 
                 {/* Contracted hours sense check */}
                 {(() => {
-                  const contractedWeekly = parseFloat(site.contracted_hours_weekly) || 0;
-                  if (!contractedWeekly) return null;
-                  const contractedPeriod = contractedWeekly * periodWeeks;
+                  const contractedTotal = parseFloat(site.contracted_hours_weekly) || 0;
+                  if (!contractedTotal) return null;
+                  const contractedPeriod = contractedTotal;
                   const diff = rosterHrs - contractedPeriod;
                   return (
                     <div style={{padding:'0.5rem 0.75rem',marginBottom:'0.75rem',borderRadius:'6px',fontSize:'0.8125rem',background: Math.abs(diff) < 1 ? 'rgba(16,185,129,0.08)' : diff > 0 ? 'rgba(59,130,246,0.08)' : 'rgba(239,68,68,0.08)',border:`1px solid ${Math.abs(diff) < 1 ? 'rgba(16,185,129,0.2)' : diff > 0 ? 'rgba(59,130,246,0.2)' : 'rgba(239,68,68,0.2)'}`}}>
