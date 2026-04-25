@@ -460,7 +460,7 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
                     )}
                   </div>
                   <div style={{flex:1,display:'flex',flexDirection:'column',gap:'3px'}}>
-                    {!isCompact && siteId && <div style={{fontSize:'0.5625rem',color:'#3b82f6',textAlign:'center',fontWeight:700}}>SET {dayShifts.reduce((t,s) => t + shiftHours(s), 0).toFixed(0)}h</div>}
+                    {!isCompact && <div style={{fontSize:'0.75rem',color:'#ef4444',textAlign:'center',fontWeight:700,background:'rgba(239,68,68,0.2)',padding:'2px',borderRadius:'3px'}}>TEST VISIBLE</div>}
                     {dayShifts.length === 0 && (
                       <div style={{fontSize: isCompact ? '0.5625rem' : '0.6875rem', color:'#ef4444', textAlign:'center', padding:'0.25rem 0', fontWeight:600, opacity:0.7}}>Uncovered</div>
                     )}
