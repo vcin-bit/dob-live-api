@@ -42,7 +42,13 @@ function ShiftRoster({ user }) {
 // ── P&L DASHBOARD (FD / COMPANY / SUPER_ADMIN only) ──────────────────────────
 function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
 function startOfWeek(d) { const r = new Date(d); r.setDate(r.getDate() - ((r.getDay() + 6) % 7)); r.setHours(0,0,0,0); return r; }
-function calcHours(s) { return s.start_time && s.end_time ? Math.max(0, (new Date(s.end_time) - new Date(s.start_time)) / 3600000) : 0; }
+function calcScheduledHours(s) { return s.start_time && s.end_time ? Math.max(0, (new Date(s.end_time) - new Date(s.start_time)) / 3600000) : 0; }
+function calcActualHours(s) {
+  if (!s.checked_in_at) return 0;
+  const end = s.checked_out_at || s.end_time;
+  if (!end) return 0;
+  return Math.max(0, (new Date(end) - new Date(s.checked_in_at)) / 3600000);
+}
 const fmt = n => `£${n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
 
 function ProfitLoss({ user }) {
@@ -148,52 +154,53 @@ function ProfitLoss({ user }) {
     } catch (e) { alert(e.message); }
   }
 
-  // ALL shifts = the roster (total planned). COMPLETED+ACTIVE = what's been worked so far.
+  // Scheduled = roster hours (from start_time/end_time on all shifts)
+  // Actual = worked hours (from checked_in_at/checked_out_at on COMPLETED/ACTIVE shifts)
+  // Contracted = weekly contracted hours × weeks in period
   const bySite = {};
   shifts.forEach(s => { if (!bySite[s.site_id]) bySite[s.site_id] = []; bySite[s.site_id].push(s); });
 
-  let grandRosterHrs = 0, grandRosterPay = 0, grandActualHrs = 0, grandActualPay = 0, grandCharge = 0, grandProductCost = 0, grandProductCharge = 0;
+  let grandContracted = 0, grandScheduled = 0, grandActualHrs = 0, grandActualPay = 0, grandCharge = 0, grandProductCost = 0, grandProductCharge = 0;
 
   const siteRows = sites.map(site => {
     const ss = bySite[site.id] || [];
     const chargeRate = parseFloat(site.charge_rate) || 0;
+    const contractedWeekly = parseFloat(site.contracted_hours_weekly) || 0;
+    const contractedPeriod = contractedWeekly * periodWeeks;
 
-    // Per officer breakdown from ALL shifts (the full roster)
     const byOfficer = {};
     ss.forEach(s => {
       const name = s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unassigned';
-      if (!byOfficer[name]) byOfficer[name] = { rosterHrs: 0, rosterPay: 0, actualHrs: 0, actualPay: 0 };
-      const h = calcHours(s);
+      if (!byOfficer[name]) byOfficer[name] = { scheduledHrs: 0, actualHrs: 0, actualPay: 0 };
       const rate = getPayRate(s);
-      // Every shift counts towards roster totals
-      byOfficer[name].rosterHrs += h;
-      byOfficer[name].rosterPay += h * rate;
-      // Only COMPLETED/ACTIVE count as actually worked
+      // Scheduled hours from roster (start_time → end_time)
+      byOfficer[name].scheduledHrs += calcScheduledHours(s);
+      // Actual hours from check-in/out (only COMPLETED/ACTIVE)
       if (s.status === 'COMPLETED' || s.status === 'ACTIVE') {
-        byOfficer[name].actualHrs += h;
-        byOfficer[name].actualPay += h * rate;
+        const actual = calcActualHours(s);
+        byOfficer[name].actualHrs += actual;
+        byOfficer[name].actualPay += actual * rate;
       }
     });
 
-    const rosterHrs = Object.values(byOfficer).reduce((t, o) => t + o.rosterHrs, 0);
-    const rosterPay = Object.values(byOfficer).reduce((t, o) => t + o.rosterPay, 0);
+    const scheduledHrs = Object.values(byOfficer).reduce((t, o) => t + o.scheduledHrs, 0);
     const actualHrs = Object.values(byOfficer).reduce((t, o) => t + o.actualHrs, 0);
     const actualPay = Object.values(byOfficer).reduce((t, o) => t + o.actualPay, 0);
-    const chargeRevenue = rosterHrs * chargeRate;
-    const margin = chargeRevenue - rosterPay;
+    const chargeRevenue = contractedPeriod > 0 ? contractedPeriod * chargeRate : scheduledHrs * chargeRate;
 
     const siteProducts = products.filter(p => p.site_id === site.id);
     let productCost = 0, productCharge = 0;
     siteProducts.forEach(p => { const m = productMonthly(p, periodDays); productCost += m.cost; productCharge += m.charge; });
 
-    grandRosterHrs += rosterHrs; grandRosterPay += rosterPay;
+    grandContracted += contractedPeriod;
+    grandScheduled += scheduledHrs;
     grandActualHrs += actualHrs; grandActualPay += actualPay;
     grandCharge += chargeRevenue + productCharge;
     grandProductCost += productCost; grandProductCharge += productCharge;
-    return { site, byOfficer, rosterHrs, rosterPay, actualHrs, actualPay, chargeRevenue, chargeRate, siteProducts, productCost, productCharge, shiftCount: ss.length };
+    return { site, byOfficer, scheduledHrs, actualHrs, actualPay, chargeRevenue, chargeRate, contractedWeekly, contractedPeriod, siteProducts, productCost, productCharge, shiftCount: ss.length };
   }).filter(r => r.shiftCount > 0 || products.some(p => p.site_id === r.site.id));
 
-  const grandTotalCost = grandRosterPay + grandProductCost;
+  const grandTotalCost = grandActualPay + grandProductCost;
   const grandTotalRevenue = grandCharge;
   const grandMargin = grandTotalRevenue - grandTotalCost;
   const marginPct = grandTotalRevenue > 0 ? (grandMargin / grandTotalRevenue * 100).toFixed(1) : '0.0';
@@ -226,11 +233,11 @@ function ProfitLoss({ user }) {
         ) : (
           <>
             {/* Per site breakdown */}
-            {siteRows.map(({ site, byOfficer, rosterHrs, rosterPay, actualHrs, actualPay, chargeRevenue, chargeRate, siteProducts, productCost, productCharge }) => (
+            {siteRows.map(({ site, byOfficer, scheduledHrs, actualHrs, actualPay, chargeRevenue, chargeRate, contractedWeekly, contractedPeriod, siteProducts, productCost, productCharge }) => (
               <div key={site.id} className="card" style={{marginBottom:'1.25rem',padding:'1rem',borderLeft:'3px solid #8b5cf6'}}>
-                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.75rem'}}>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.75rem',flexWrap:'wrap',gap:'0.5rem'}}>
                   <div style={{fontSize:'1.125rem',fontWeight:700,color:'#c4b5fd'}}>{site.name}</div>
-                  <div style={{display:'flex',alignItems:'center',gap:'1rem',fontSize:'0.8125rem'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:'1rem',fontSize:'0.8125rem',flexWrap:'wrap'}}>
                     <div style={{display:'flex',alignItems:'center',gap:'0.375rem'}}>
                       <span style={{color:'var(--text-3)'}}>Charge £/hr:</span>
                       <input type="number" step="0.01" min="0" value={site.charge_rate || ''} style={{width:'80px',padding:'0.25rem 0.5rem',background:'var(--surface-2)',border:'1px solid var(--border)',borderRadius:'4px',fontSize:'0.8125rem',color:'var(--text)'}}
@@ -238,7 +245,7 @@ function ProfitLoss({ user }) {
                         onBlur={e => saveSiteRate(site.id, 'charge_rate', e.target.value)} />
                     </div>
                     <div style={{display:'flex',alignItems:'center',gap:'0.375rem'}}>
-                      <span style={{color:'var(--text-3)'}}>Contract hrs/mth:</span>
+                      <span style={{color:'var(--text-3)'}}>Contract hrs/wk:</span>
                       <input type="number" step="0.5" min="0" value={site.contracted_hours_weekly || ''} style={{width:'70px',padding:'0.25rem 0.5rem',background:'var(--surface-2)',border:'1px solid var(--border)',borderRadius:'4px',fontSize:'0.8125rem',color:'var(--text)'}}
                         onChange={e => setSites(prev => prev.map(s => s.id === site.id ? {...s, contracted_hours_weekly: e.target.value} : s))}
                         onBlur={e => saveSiteRate(site.id, 'contracted_hours_weekly', e.target.value)} />
@@ -249,15 +256,16 @@ function ProfitLoss({ user }) {
 
                 {/* Officer table */}
                 <table className="table" style={{marginBottom:'0.75rem'}}>
-                  <thead><tr><th>Officer</th><th style={{textAlign:'right'}}>Roster Hrs</th><th style={{textAlign:'right'}}>Pay Rate</th><th style={{textAlign:'right'}}>Charge Rate</th><th style={{textAlign:'right'}}>Gross Profit</th></tr></thead>
+                  <thead><tr><th>Officer</th><th style={{textAlign:'right'}}>Scheduled</th><th style={{textAlign:'right'}}>Actual</th><th style={{textAlign:'right'}}>Pay Rate</th><th style={{textAlign:'right'}}>Charge Rate</th><th style={{textAlign:'right'}}>Gross Profit</th></tr></thead>
                   <tbody>
-                    {Object.entries(byOfficer).sort((a,b) => b[1].rosterHrs - a[1].rosterHrs).map(([name, o]) => {
-                      const avgRate = o.rosterHrs > 0 ? o.rosterPay / o.rosterHrs : 0;
-                      const gp = (chargeRate - avgRate) * o.rosterHrs;
+                    {Object.entries(byOfficer).sort((a,b) => b[1].scheduledHrs - a[1].scheduledHrs).map(([name, o]) => {
+                      const avgRate = o.actualHrs > 0 ? o.actualPay / o.actualHrs : 0;
+                      const gp = (chargeRate * o.scheduledHrs) - o.actualPay;
                       return (
                         <tr key={name}>
                           <td style={{fontWeight:500}}>{name}</td>
-                          <td style={{textAlign:'right'}}>{o.rosterHrs.toFixed(1)}</td>
+                          <td style={{textAlign:'right'}}>{o.scheduledHrs.toFixed(1)}</td>
+                          <td style={{textAlign:'right',color: o.actualHrs > 0 ? '#10b981' : 'var(--text-3)'}}>{o.actualHrs.toFixed(1)}</td>
                           <td style={{textAlign:'right',color:'#f59e0b',fontWeight:600}}>£{avgRate.toFixed(2)}</td>
                           <td style={{textAlign:'right',color:'#10b981'}}>£{chargeRate.toFixed(2)}</td>
                           <td style={{textAlign:'right',fontWeight:700,color: gp >= 0 ? '#10b981' : '#ef4444'}}>{fmt(gp)}</td>
@@ -268,25 +276,23 @@ function ProfitLoss({ user }) {
                   <tfoot>
                     <tr style={{fontWeight:700,borderTop:'2px solid var(--border)'}}>
                       <td>Site Total</td>
-                      <td style={{textAlign:'right'}}>{rosterHrs.toFixed(1)}</td>
-                      <td style={{textAlign:'right',color:'#f59e0b'}}>{fmt(rosterPay)}</td>
+                      <td style={{textAlign:'right'}}>{scheduledHrs.toFixed(1)}</td>
+                      <td style={{textAlign:'right',color: actualHrs > 0 ? '#10b981' : 'var(--text-3)'}}>{actualHrs.toFixed(1)}</td>
+                      <td style={{textAlign:'right',color:'#f59e0b'}}>{fmt(actualPay)}</td>
                       <td style={{textAlign:'right',color:'#10b981'}}>{fmt(chargeRevenue)}</td>
-                      <td style={{textAlign:'right',color: chargeRevenue - rosterPay >= 0 ? '#10b981' : '#ef4444',fontWeight:700}}>{fmt(chargeRevenue - rosterPay)}</td>
+                      <td style={{textAlign:'right',color: chargeRevenue - actualPay >= 0 ? '#10b981' : '#ef4444',fontWeight:700}}>{fmt(chargeRevenue - actualPay)}</td>
                     </tr>
                   </tfoot>
                 </table>
 
-                {/* Contracted hours sense check */}
-                {(() => {
-                  const contractedTotal = parseFloat(site.contracted_hours_weekly) || 0;
-                  if (!contractedTotal) return null;
-                  const contractedPeriod = contractedTotal;
-                  const diff = rosterHrs - contractedPeriod;
+                {/* Contracted vs Scheduled sense check */}
+                {contractedPeriod > 0 && (() => {
+                  const diff = scheduledHrs - contractedPeriod;
                   return (
                     <div style={{padding:'0.5rem 0.75rem',marginBottom:'0.75rem',borderRadius:'6px',fontSize:'0.8125rem',background: Math.abs(diff) < 1 ? 'rgba(16,185,129,0.08)' : diff > 0 ? 'rgba(59,130,246,0.08)' : 'rgba(239,68,68,0.08)',border:`1px solid ${Math.abs(diff) < 1 ? 'rgba(16,185,129,0.2)' : diff > 0 ? 'rgba(59,130,246,0.2)' : 'rgba(239,68,68,0.2)'}`}}>
-                      <span style={{fontWeight:600}}>Contract: {contractedPeriod.toFixed(1)}h</span>
+                      <span style={{fontWeight:600}}>Contract: {contractedPeriod.toFixed(1)}h ({contractedWeekly}/wk)</span>
                       <span style={{margin:'0 0.5rem',color:'var(--text-3)'}}>|</span>
-                      <span>Roster: {rosterHrs.toFixed(1)}h</span>
+                      <span>Scheduled: {scheduledHrs.toFixed(1)}h</span>
                       <span style={{margin:'0 0.5rem',color:'var(--text-3)'}}>|</span>
                       <span style={{fontWeight:700,color: Math.abs(diff) < 1 ? '#10b981' : diff > 0 ? '#3b82f6' : '#ef4444'}}>
                         {Math.abs(diff) < 1 ? 'On target' : diff > 0 ? `+${diff.toFixed(1)}h over` : `${diff.toFixed(1)}h under`}
@@ -332,18 +338,22 @@ function ProfitLoss({ user }) {
 
             {/* Grand Totals */}
             <div className="card" style={{padding:'1rem',borderLeft:'3px solid #10b981',background:'rgba(16,185,129,0.03)'}}>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:'1.5rem',fontSize:'0.9375rem'}}>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr 1fr',gap:'1.25rem',fontSize:'0.9375rem'}}>
+                {grandContracted > 0 && <div>
+                  <div style={{color:'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem'}}>Contracted</div>
+                  <div style={{fontWeight:700,fontSize:'1.25rem'}}>{grandContracted.toFixed(1)}h</div>
+                </div>}
                 <div>
-                  <div style={{color:'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem'}}>Roster Hours</div>
-                  <div style={{fontWeight:700,fontSize:'1.25rem',color:'#3b82f6'}}>{grandRosterHrs.toFixed(1)}h</div>
+                  <div style={{color:'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem'}}>Scheduled</div>
+                  <div style={{fontWeight:700,fontSize:'1.25rem',color:'#3b82f6'}}>{grandScheduled.toFixed(1)}h</div>
                 </div>
                 <div>
-                  <div style={{color:'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem'}}>Total Pay</div>
-                  <div style={{fontWeight:700,fontSize:'1.25rem',color:'#f59e0b'}}>{fmt(grandRosterPay)}</div>
+                  <div style={{color:'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem'}}>Actual Worked</div>
+                  <div style={{fontWeight:700,fontSize:'1.25rem'}}>{grandActualHrs.toFixed(1)}h</div>
                 </div>
                 <div>
-                  <div style={{color:'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem'}}>Total Revenue</div>
-                  <div style={{fontWeight:700,fontSize:'1.25rem',color:'#10b981'}}>{fmt(grandTotalRevenue)}</div>
+                  <div style={{color:'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem'}}>Actual Pay</div>
+                  <div style={{fontWeight:700,fontSize:'1.25rem',color:'#f59e0b'}}>{fmt(grandActualPay)}</div>
                 </div>
                 <div>
                   <div style={{color:'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem'}}>Gross Profit</div>
