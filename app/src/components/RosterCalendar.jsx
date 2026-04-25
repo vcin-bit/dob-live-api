@@ -490,15 +490,15 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
                           </div>
                           {!isCompact && siteId && (
                             <>
-                              <div style={{fontSize:'0.625rem',color:'rgba(255,255,255,0.35)',marginLeft:bulkMode?'1rem':'0'}}>Scheduled: {shiftHours(s).toFixed(0)} hrs</div>
-                              <div style={{fontSize:'0.625rem',color:'rgba(255,255,255,0.4)',marginLeft:bulkMode?'1rem':'0'}}>
+                              <div style={{fontSize:'0.6875rem',color:'#fff',marginLeft:bulkMode?'1rem':'0',fontWeight:600}}>Scheduled: {shiftHours(s).toFixed(0)} hrs</div>
+                              <div style={{fontSize:'0.6875rem',color:'#fff',marginLeft:bulkMode?'1rem':'0'}}>
                                 Actual: {s.checked_in_at && s.status === 'ACTIVE' && !s.checked_out_at
-                                  ? <span style={{color:'#4ade80',fontWeight:600}}>On duty</span>
+                                  ? <span style={{color:'#4ade80',fontWeight:700}}>On duty</span>
                                   : s.checked_in_at && s.checked_out_at
-                                  ? <span style={{color:'#fff'}}>{Math.max(0,(new Date(s.checked_out_at)-new Date(s.checked_in_at))/3600000).toFixed(1)} hrs</span>
-                                  : <span>Pending</span>}
+                                  ? <span style={{color:'#10b981',fontWeight:700}}>{Math.max(0,(new Date(s.checked_out_at)-new Date(s.checked_in_at))/3600000).toFixed(1)} hrs</span>
+                                  : <span style={{color:'rgba(255,255,255,0.5)'}}>Pending</span>}
                               </div>
-                              <div style={{fontSize:'0.625rem',color:'#f59e0b',marginLeft:bulkMode?'1rem':'0'}}>
+                              <div style={{fontSize:'0.6875rem',color:'#f59e0b',fontWeight:600,marginLeft:bulkMode?'1rem':'0'}}>
                                 {s.pay_rate ? `£${parseFloat(s.pay_rate).toFixed(2)}/hr · £${(shiftHours(s) * parseFloat(s.pay_rate)).toFixed(2)}` : 'Rate not set'}
                               </div>
                             </>
