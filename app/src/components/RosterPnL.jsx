@@ -12,13 +12,28 @@ import {
 } from '@heroicons/react/24/outline';
 
 function ShiftRoster({ user }) {
+  const [sites, setSites] = useState([]);
+  const [selectedSite, setSelectedSite] = useState('');
+
+  useEffect(() => {
+    api.sites.list().then(r => setSites(r.data || [])).catch(() => {});
+  }, []);
+
   return (
     <div>
       <div className="topbar">
         <div className="topbar-title">Shift Roster</div>
+        <select className="input" style={{width:'220px'}} value={selectedSite} onChange={e => setSelectedSite(e.target.value)}>
+          <option value="">Select a site...</option>
+          {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
       </div>
       <div className="page-content">
-        <RosterCalendar user={user} />
+        {selectedSite ? (
+          <RosterCalendar siteId={selectedSite} user={user} />
+        ) : (
+          <div style={{textAlign:'center',padding:'3rem',color:'var(--text-3)',fontSize:'0.875rem'}}>Select a site above to view its roster</div>
+        )}
       </div>
     </div>
   );
