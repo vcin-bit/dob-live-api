@@ -225,72 +225,47 @@ function ProfitLoss({ user }) {
           <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>
         ) : (
           <>
-            {/* Grand totals */}
-            <div className="stats-grid" style={{marginBottom:'1.5rem'}}>
-              <div className="stat-card" style={{borderLeft:'3px solid #3b82f6'}}><div className="stat-value" style={{color:'#3b82f6'}}>{grandRosterHrs.toFixed(1)}h</div><div className="stat-label">Roster Hours</div></div>
-              <div className="stat-card" style={{borderLeft:'3px solid #f59e0b'}}><div className="stat-value" style={{color:'#f59e0b'}}>{fmt(grandTotalCost)}</div><div className="stat-label">Total Cost</div></div>
-              <div className="stat-card" style={{borderLeft:'3px solid #10b981'}}><div className="stat-value" style={{color:'#10b981'}}>{fmt(grandTotalRevenue)}</div><div className="stat-label">Total Revenue</div></div>
-              <div className="stat-card" style={{borderLeft:`3px solid ${grandMargin >= 0 ? '#10b981' : '#ef4444'}`,background: grandMargin >= 0 ? 'rgba(16,185,129,0.05)' : 'rgba(239,68,68,0.05)'}}><div className="stat-value" style={{color: grandMargin >= 0 ? '#10b981' : '#ef4444'}}>{fmt(grandMargin)}</div><div className="stat-label">Margin ({marginPct}%)</div></div>
-            </div>
-
-            {/* Actual worked progress */}
-            {grandRosterHrs > 0 && (
-              <div className="card" style={{marginBottom:'1.25rem',padding:'1rem',borderLeft:'3px solid #3b82f6',background:'rgba(59,130,246,0.03)'}}>
-                <div className="section-title" style={{marginBottom:'0.75rem',color:'#3b82f6'}}>Hours Worked vs Roster</div>
-                <div style={{display:'flex',alignItems:'center',gap:'1rem',marginBottom:'0.5rem'}}>
-                  <div style={{flex:1,background:'rgba(59,130,246,0.1)',borderRadius:'6px',height:'12px',overflow:'hidden'}}>
-                    <div style={{width:`${Math.min(100, (grandActualHrs / grandRosterHrs) * 100)}%`,height:'100%',background:'linear-gradient(90deg, #3b82f6, #60a5fa)',borderRadius:'6px',transition:'width 0.5s'}} />
-                  </div>
-                  <span style={{fontSize:'0.875rem',fontWeight:700,whiteSpace:'nowrap',color:'#3b82f6'}}>{grandActualHrs.toFixed(1)} / {grandRosterHrs.toFixed(1)} hrs</span>
-                </div>
-                <div style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>
-                  {grandActualHrs.toFixed(1)} hrs completed · {(grandRosterHrs - grandActualHrs).toFixed(1)} hrs remaining
-                </div>
-              </div>
-            )}
-
             {/* Per site breakdown */}
             {siteRows.map(({ site, byOfficer, rosterHrs, rosterPay, actualHrs, actualPay, chargeRevenue, chargeRate, siteProducts, productCost, productCharge }) => (
-              <div key={site.id} className="card" style={{marginBottom:'1rem',padding:'1rem',borderLeft:'3px solid #8b5cf6'}}>
-                <div style={{marginBottom:'0.75rem'}}>
-                  <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:'0.5rem'}}>
-                    <div style={{fontSize:'1rem',fontWeight:700,color:'#c4b5fd'}}>{site.name}</div>
-                    <div style={{display:'flex',gap:'0.75rem',fontSize:'0.8125rem'}}>
-                      <span style={{color:'#3b82f6',fontWeight:600}}>{rosterHrs.toFixed(1)}h roster</span>
-                      <span style={{color:'#10b981',fontWeight:600}}>{actualHrs.toFixed(1)}h worked</span>
-                    </div>
-                  </div>
-                  <div style={{display:'flex',gap:'0.75rem',alignItems:'center',flexWrap:'wrap'}}>
-                    <div style={{display:'flex',alignItems:'center',gap:'0.375rem',fontSize:'0.8125rem'}}>
-                      <span style={{color:'var(--text-3)'}}>Charge £/hr:</span>
-                      <input type="number" step="0.01" min="0" value={site.charge_rate || ''} style={{width:'80px',padding:'0.25rem 0.5rem',background:'var(--surface-2)',border:'1px solid var(--border)',borderRadius:'4px',fontSize:'0.8125rem',color:'var(--text)'}}
-                        onChange={e => setSites(prev => prev.map(s => s.id === site.id ? {...s, charge_rate: e.target.value} : s))}
-                        onBlur={e => saveSiteRate(site.id, 'charge_rate', e.target.value)} />
-                    </div>
+              <div key={site.id} className="card" style={{marginBottom:'1.25rem',padding:'1rem',borderLeft:'3px solid #8b5cf6'}}>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.75rem'}}>
+                  <div style={{fontSize:'1.125rem',fontWeight:700,color:'#c4b5fd'}}>{site.name}</div>
+                  <div style={{display:'flex',alignItems:'center',gap:'0.375rem',fontSize:'0.8125rem'}}>
+                    <span style={{color:'var(--text-3)'}}>Charge £/hr:</span>
+                    <input type="number" step="0.01" min="0" value={site.charge_rate || ''} style={{width:'80px',padding:'0.25rem 0.5rem',background:'var(--surface-2)',border:'1px solid var(--border)',borderRadius:'4px',fontSize:'0.8125rem',color:'var(--text)'}}
+                      onChange={e => setSites(prev => prev.map(s => s.id === site.id ? {...s, charge_rate: e.target.value} : s))}
+                      onBlur={e => saveSiteRate(site.id, 'charge_rate', e.target.value)} />
                     {savingSite === site.id && <span style={{fontSize:'0.75rem',color:'var(--text-3)'}}>Saving...</span>}
                   </div>
                 </div>
 
+                {/* Officer table */}
                 <table className="table" style={{marginBottom:'0.75rem'}}>
-                  <thead><tr><th>Officer</th><th style={{textAlign:'right'}}>Roster Hrs</th><th style={{textAlign:'right'}}>Worked</th><th style={{textAlign:'right'}}>Pay Rate</th><th style={{textAlign:'right'}}>Total Pay</th></tr></thead>
+                  <thead><tr><th>Officer</th><th style={{textAlign:'right'}}>Roster Hrs</th><th style={{textAlign:'right'}}>Worked</th><th style={{textAlign:'right'}}>Pay Rate</th><th style={{textAlign:'right'}}>Charge Rate</th><th style={{textAlign:'right'}}>Gross Profit</th></tr></thead>
                   <tbody>
-                    {Object.entries(byOfficer).sort((a,b) => b[1].rosterHrs - a[1].rosterHrs).map(([name, o]) => (
-                      <tr key={name}>
-                        <td style={{fontWeight:500}}>{name}</td>
-                        <td style={{textAlign:'right'}}>{o.rosterHrs.toFixed(1)}</td>
-                        <td style={{textAlign:'right',color:'var(--text-2)'}}>{o.actualHrs.toFixed(1)}</td>
-                        <td style={{textAlign:'right',color:'var(--text-2)'}}>{o.rosterHrs > 0 ? `£${(o.rosterPay / o.rosterHrs).toFixed(2)}` : '—'}</td>
-                        <td style={{textAlign:'right',color:'#f59e0b',fontWeight:600}}>{fmt(o.rosterPay)}</td>
-                      </tr>
-                    ))}
+                    {Object.entries(byOfficer).sort((a,b) => b[1].rosterHrs - a[1].rosterHrs).map(([name, o]) => {
+                      const avgRate = o.rosterHrs > 0 ? o.rosterPay / o.rosterHrs : 0;
+                      const gp = (chargeRate - avgRate) * o.rosterHrs;
+                      return (
+                        <tr key={name}>
+                          <td style={{fontWeight:500}}>{name}</td>
+                          <td style={{textAlign:'right'}}>{o.rosterHrs.toFixed(1)}</td>
+                          <td style={{textAlign:'right',color: o.actualHrs >= o.rosterHrs ? '#10b981' : 'var(--text-2)'}}>{o.actualHrs.toFixed(1)}</td>
+                          <td style={{textAlign:'right',color: avgRate > 0 ? '#f59e0b' : '#ef4444',fontWeight:600}}>{avgRate > 0 ? `£${avgRate.toFixed(2)}` : 'NOT SET'}</td>
+                          <td style={{textAlign:'right',color:'#10b981'}}>{chargeRate > 0 ? `£${chargeRate.toFixed(2)}` : '—'}</td>
+                          <td style={{textAlign:'right',fontWeight:700,color: gp >= 0 ? '#10b981' : '#ef4444'}}>{chargeRate > 0 && avgRate > 0 ? fmt(gp) : '—'}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                   <tfoot>
                     <tr style={{fontWeight:700,borderTop:'2px solid var(--border)'}}>
                       <td>Site Total</td>
                       <td style={{textAlign:'right'}}>{rosterHrs.toFixed(1)}</td>
-                      <td style={{textAlign:'right',color:'var(--text-2)'}}>{actualHrs.toFixed(1)}</td>
-                      <td></td>
+                      <td style={{textAlign:'right',color: actualHrs >= rosterHrs ? '#10b981' : 'var(--text-2)'}}>{actualHrs.toFixed(1)}</td>
                       <td style={{textAlign:'right',color:'#f59e0b'}}>{fmt(rosterPay)}</td>
+                      <td style={{textAlign:'right',color:'#10b981'}}>{chargeRate > 0 ? fmt(chargeRevenue) : '—'}</td>
+                      <td style={{textAlign:'right',color: chargeRevenue - rosterPay >= 0 ? '#10b981' : '#ef4444',fontWeight:700}}>{chargeRate > 0 ? fmt(chargeRevenue - rosterPay) : '—'}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -299,7 +274,7 @@ function ProfitLoss({ user }) {
                 <div style={{marginBottom:'0.75rem'}}>
                   <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.5rem'}}>
                     <div style={{fontSize:'0.75rem',fontWeight:700,color:'#a78bfa',textTransform:'uppercase',letterSpacing:'0.05em'}}>Products & Services</div>
-                    <button className="btn btn-ghost btn-sm" style={{fontSize:'0.75rem'}} onClick={() => { setAddProductSite(site.id); setEditProduct(null); setProductForm({ name:'', cost:'', charge:'', frequency:'monthly' }); }}>+ Add</button>
+                    <button type="button" style={{padding:'0.375rem 0.625rem',fontSize:'0.75rem',background:'rgba(139,92,246,0.1)',border:'1px solid rgba(139,92,246,0.3)',borderRadius:'4px',color:'#a78bfa',cursor:'pointer',fontWeight:600}} onClick={() => { setAddProductSite(site.id); setEditProduct(null); setProductForm({ name:'', cost:'', charge:'', frequency:'monthly' }); }}>+ Add</button>
                   </div>
                   {siteProducts.length > 0 ? (
                     <table className="table" style={{marginBottom:'0.5rem'}}>
@@ -322,46 +297,31 @@ function ProfitLoss({ user }) {
                           );
                         })}
                       </tbody>
-                      <tfoot>
-                        <tr style={{fontWeight:700,borderTop:'2px solid var(--border)'}}>
-                          <td>Products Total</td>
-                          <td style={{textAlign:'right',color:'#f59e0b'}}>{fmt(productCost)}</td>
-                          <td style={{textAlign:'right',color:'#10b981'}}>{fmt(productCharge)}</td>
-                          <td></td>
-                          <td style={{textAlign:'right',color: productCharge - productCost >= 0 ? '#10b981' : '#ef4444'}}>{fmt(productCharge - productCost)}</td>
-                          <td></td>
-                        </tr>
-                      </tfoot>
                     </table>
                   ) : (
-                    <div style={{fontSize:'0.8125rem',color:'var(--text-3)',padding:'0.25rem 0'}}>No products — click + Add</div>
+                    <div style={{fontSize:'0.8125rem',color:'var(--text-3)',padding:'0.25rem 0'}}>No products</div>
                   )}
                 </div>
-
-                {/* Site P&L summary */}
-                {(chargeRate > 0 || productCharge > 0) && (() => {
-                  const totalRev = chargeRevenue + productCharge;
-                  const totalCost = rosterPay + productCost;
-                  const siteMargin = totalRev - totalCost;
-                  return (
-                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'0',borderRadius:'8px',overflow:'hidden',fontSize:'0.8125rem'}}>
-                      <div style={{textAlign:'center',padding:'0.75rem',background:'rgba(16,185,129,0.08)'}}>
-                        <div style={{color:'#10b981',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em'}}>Revenue</div>
-                        <div style={{fontWeight:700,color:'#10b981',fontSize:'1rem'}}>{fmt(totalRev)}</div>
-                      </div>
-                      <div style={{textAlign:'center',padding:'0.75rem',background:'rgba(245,158,11,0.08)'}}>
-                        <div style={{color:'#f59e0b',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em'}}>Total Cost</div>
-                        <div style={{fontWeight:700,color:'#f59e0b',fontSize:'1rem'}}>{fmt(totalCost)}</div>
-                      </div>
-                      <div style={{textAlign:'center',padding:'0.75rem',background: siteMargin >= 0 ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)'}}>
-                        <div style={{color: siteMargin >= 0 ? '#10b981' : '#ef4444',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em'}}>Margin</div>
-                        <div style={{fontWeight:700,color: siteMargin >= 0 ? '#10b981' : '#ef4444',fontSize:'1rem'}}>{fmt(siteMargin)}</div>
-                      </div>
-                    </div>
-                  );
-                })()}
               </div>
             ))}
+
+            {/* Grand Totals */}
+            <div className="card" style={{padding:'1rem',borderLeft:'3px solid #10b981',background:'rgba(16,185,129,0.03)'}}>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'1.5rem',fontSize:'0.9375rem'}}>
+                <div>
+                  <div style={{color:'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem'}}>Total Contract Hours</div>
+                  <div style={{fontWeight:700,fontSize:'1.25rem',color:'#3b82f6'}}>{grandRosterHrs.toFixed(1)}h</div>
+                </div>
+                <div>
+                  <div style={{color:'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem'}}>Total Hours Worked</div>
+                  <div style={{fontWeight:700,fontSize:'1.25rem',color: grandActualHrs >= grandRosterHrs ? '#10b981' : 'var(--text)'}}>{grandActualHrs.toFixed(1)}h</div>
+                </div>
+                <div>
+                  <div style={{color:'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem'}}>Total Gross Profit</div>
+                  <div style={{fontWeight:700,fontSize:'1.25rem',color: grandMargin >= 0 ? '#10b981' : '#ef4444'}}>{fmt(grandMargin)} <span style={{fontSize:'0.8125rem',fontWeight:600}}>({marginPct}%)</span></div>
+                </div>
+              </div>
+            </div>
 
             {/* Add/Edit Product Modal */}
             {addProductSite && (
