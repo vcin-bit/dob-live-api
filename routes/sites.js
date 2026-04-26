@@ -33,7 +33,7 @@ router.get('/:id', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.post('/', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANAGER'), async (req, res, next) => {
+router.post('/', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANAGER','FD'), async (req, res, next) => {
   try {
     const payload = Object.fromEntries(Object.entries(req.body).filter(([k]) => ALL_FIELDS.includes(k)));
     if (!payload.name) return res.status(400).json({ error: 'Site name is required' });
@@ -57,7 +57,7 @@ router.patch('/:id', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANA
   } catch (err) { next(err); }
 });
 
-router.delete('/:id', authenticate, requireRole('SUPER_ADMIN','COMPANY'), async (req, res, next) => {
+router.delete('/:id', authenticate, requireRole('SUPER_ADMIN','COMPANY','FD'), async (req, res, next) => {
   try {
     const { error } = await supabase.from('sites').delete().eq('id', req.params.id).eq('company_id', req.user.company_id);
     if (error) throw error;
@@ -79,7 +79,7 @@ router.get('/:id/codes', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_
   } catch (err) { next(err); }
 });
 
-router.post('/:id/codes', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANAGER'), async (req, res, next) => {
+router.post('/:id/codes', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANAGER','FD'), async (req, res, next) => {
   try {
     const { label, code, code_type, notes } = req.body;
     if (!label || !code) return res.status(400).json({ error: 'Label and code are required' });
@@ -93,7 +93,7 @@ router.post('/:id/codes', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS
   } catch (err) { next(err); }
 });
 
-router.patch('/:id/codes/:codeId', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANAGER'), async (req, res, next) => {
+router.patch('/:id/codes/:codeId', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANAGER','FD'), async (req, res, next) => {
   try {
     const allowed = ['label', 'code', 'code_type', 'notes'];
     const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
@@ -111,7 +111,7 @@ router.patch('/:id/codes/:codeId', authenticate, requireRole('SUPER_ADMIN','COMP
   } catch (err) { next(err); }
 });
 
-router.delete('/:id/codes/:codeId', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANAGER'), async (req, res, next) => {
+router.delete('/:id/codes/:codeId', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANAGER','FD'), async (req, res, next) => {
   try {
     const { error } = await supabase
       .from('site_codes')

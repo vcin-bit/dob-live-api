@@ -71,7 +71,7 @@ router.put('/routes/:id', authenticate, async (req, res, next) => {
 });
 
 // DELETE /api/patrols/routes/:id
-router.delete('/routes/:id', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANAGER'), async (req, res, next) => {
+router.delete('/routes/:id', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANAGER','FD'), async (req, res, next) => {
   try {
     await supabase.from('named_patrol_routes').delete().eq('id', req.params.id).eq('company_id', req.user.company_id);
     res.json({ success: true });

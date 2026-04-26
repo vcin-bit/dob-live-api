@@ -73,7 +73,7 @@ router.patch('/:id', authenticate, async (req, res, next) => {
 });
 
 // DELETE /api/visitors/:id
-router.delete('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER'), async (req, res, next) => {
+router.delete('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
   try {
     const { error } = await supabase
       .from('visitors')

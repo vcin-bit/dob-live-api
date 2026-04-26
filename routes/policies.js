@@ -14,7 +14,7 @@ router.get('/', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.put('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY'), async (req, res, next) => {
+router.put('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'FD'), async (req, res, next) => {
   try {
     const { sections } = req.body;
     const { data, error } = await supabase

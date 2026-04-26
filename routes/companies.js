@@ -14,7 +14,7 @@ router.get('/me', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.patch('/me', authenticate, requireRole('SUPER_ADMIN', 'COMPANY'), async (req, res, next) => {
+router.patch('/me', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'FD'), async (req, res, next) => {
   try {
     const allowed = ['name', 'email', 'phone', 'address', 'logo_url'];
     const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
@@ -26,7 +26,7 @@ router.patch('/me', authenticate, requireRole('SUPER_ADMIN', 'COMPANY'), async (
 });
 
 // POST /api/companies/logo — upload company logo
-router.post('/logo', authenticate, requireRole('SUPER_ADMIN','COMPANY'), upload.single('logo'), async (req, res, next) => {
+router.post('/logo', authenticate, requireRole('SUPER_ADMIN','COMPANY','FD'), upload.single('logo'), async (req, res, next) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
     const ext = req.file.originalname.split('.').pop() || 'png';

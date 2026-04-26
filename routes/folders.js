@@ -14,7 +14,7 @@ router.get('/', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER'), async (req, res, next) => {
+router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
   try {
     const { site_id, name, description } = req.body;
     const { data, error } = await supabase.from('site_folders').insert({ company_id: req.user.company_id, site_id, name, description, created_by: req.user.id }).select().single();
@@ -23,7 +23,7 @@ router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGE
   } catch (err) { next(err); }
 });
 
-router.delete('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER'), async (req, res, next) => {
+router.delete('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
   try {
     const { error } = await supabase.from('site_folders').delete().eq('id', req.params.id).eq('company_id', req.user.company_id);
     if (error) throw error;
@@ -44,7 +44,7 @@ router.get('/documents', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.post('/documents', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER'), async (req, res, next) => {
+router.post('/documents', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
   try {
     const { site_id, folder_id, name, original_name, mime_type, file_size, storage_path } = req.body;
     const { data, error } = await supabase.from('site_documents').insert({ company_id: req.user.company_id, site_id, folder_id, name, original_name, mime_type, file_size, storage_path, uploaded_by: req.user.id }).select().single();
@@ -53,7 +53,7 @@ router.post('/documents', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'O
   } catch (err) { next(err); }
 });
 
-router.delete('/documents/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER'), async (req, res, next) => {
+router.delete('/documents/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
   try {
     const { error } = await supabase.from('site_documents').delete().eq('id', req.params.id).eq('company_id', req.user.company_id);
     if (error) throw error;

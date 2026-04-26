@@ -17,7 +17,7 @@ router.get('/lines', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.post('/lines', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANAGER'), async (req, res, next) => {
+router.post('/lines', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANAGER','FD'), async (req, res, next) => {
   try {
     const { site_id, name, category, description, cost, charge, recurring, start_date, end_date, notes } = req.body;
     const { data, error } = await supabase.from('contract_lines')
@@ -28,7 +28,7 @@ router.post('/lines', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MAN
   } catch (err) { next(err); }
 });
 
-router.patch('/lines/:id', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANAGER'), async (req, res, next) => {
+router.patch('/lines/:id', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANAGER','FD'), async (req, res, next) => {
   try {
     const allowed = ['name','category','description','cost','charge','recurring','start_date','end_date','notes','active'];
     const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
@@ -38,7 +38,7 @@ router.patch('/lines/:id', authenticate, requireRole('SUPER_ADMIN','COMPANY','OP
   } catch (err) { next(err); }
 });
 
-router.delete('/lines/:id', authenticate, requireRole('SUPER_ADMIN','COMPANY'), async (req, res, next) => {
+router.delete('/lines/:id', authenticate, requireRole('SUPER_ADMIN','COMPANY','FD'), async (req, res, next) => {
   try {
     await supabase.from('contract_lines').delete().eq('id', req.params.id).eq('company_id', req.user.company_id);
     res.json({ success: true });

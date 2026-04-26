@@ -43,7 +43,7 @@ router.patch('/me', authenticate, async (req, res, next) => {
 });
 
 // GET /api/users/:id
-router.get('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER'), async (req, res, next) => {
+router.get('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
   try {
     const { data, error } = await supabase
       .from('users')
@@ -57,7 +57,7 @@ router.get('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANA
 });
 
 // POST /api/users — create officer/manager (company admin only)
-router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY'), async (req, res, next) => {
+router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'FD'), async (req, res, next) => {
   try {
     const { clerk_id, role, first_name, last_name, email, phone, sia_licence_number, sia_expiry_date } = req.body;
     const { data, error } = await supabase
@@ -81,7 +81,7 @@ router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY'), async (req
 });
 
 // PATCH /api/users/:id
-router.patch('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER'), async (req, res, next) => {
+router.patch('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
   try {
     const allowed = ['first_name', 'last_name', 'phone', 'sia_licence_number', 'sia_licence_type', 'sia_expiry_date', 'sia_licence_type_2', 'sia_licence_number_2', 'sia_expiry_date_2', 'bs7858_clearance_date', 'bs7858_expiry_date', 'active', 'role', 'is_route_planner'];
     const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
@@ -110,7 +110,7 @@ router.get('/:id/sites', authenticate, async (req, res, next) => {
 });
 
 // PUT /api/users/:id/sites — replace all site assignments for an officer
-router.put('/:id/sites', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER'), async (req, res, next) => {
+router.put('/:id/sites', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
   try {
     const { site_ids } = req.body;
     // Delete existing
@@ -126,7 +126,7 @@ router.put('/:id/sites', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OP
 });
 
 // DELETE /api/users/:id
-router.delete('/:id', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANAGER'), async (req, res, next) => {
+router.delete('/:id', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANAGER','FD'), async (req, res, next) => {
   try {
     const { error } = await supabase.from('users').delete()
       .eq('id', req.params.id)

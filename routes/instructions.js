@@ -19,7 +19,7 @@ router.get('/', authenticate, async (req, res, next) => {
 });
 
 // PUT /api/instructions?site_id=xxx
-router.put('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER'), async (req, res, next) => {
+router.put('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
   try {
     const { site_id } = req.query;
     const { sections } = req.body;

@@ -2,7 +2,7 @@ const router = require('express').Router();
 const supabase = require('../lib/supabase');
 const { authenticate, requireRole } = require('../middleware/auth');
 
-const OPS = ['SUPER_ADMIN','COMPANY','OPS_MANAGER'];
+const OPS = ['SUPER_ADMIN','COMPANY','OPS_MANAGER','FD'];
 
 // GET /api/playbooks/:siteId — get full playbook for a site
 router.get('/:siteId', authenticate, async (req, res, next) => {

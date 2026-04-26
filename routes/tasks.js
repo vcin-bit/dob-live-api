@@ -21,7 +21,7 @@ router.get('/', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER'), async (req, res, next) => {
+router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
   try {
     const { site_id, assigned_to, title, description, due_date, urgency } = req.body;
     const { data, error } = await supabase
@@ -55,7 +55,7 @@ router.post('/:id/comments', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.delete('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER'), async (req, res, next) => {
+router.delete('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
   try {
     const { error } = await supabase.from('tasks').delete().eq('id', req.params.id).eq('company_id', req.user.company_id);
     if (error) throw error;

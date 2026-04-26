@@ -14,7 +14,7 @@ const FROM = process.env.SENDGRID_FROM || 'noreply@doblive.co.uk';
 const APP_URL = process.env.APP_URL || 'https://app.doblive.co.uk';
 
 // POST /api/invite
-router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER'), async (req, res, next) => {
+router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
   try {
     const { email, first_name, last_name, role, sia_licence_number, sia_licence_type, sia_expiry_date, phone } = req.body;
 
@@ -111,7 +111,7 @@ router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGE
 });
 
 // POST /api/invite/resend
-router.post('/resend', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANAGER'), async (req, res, next) => {
+router.post('/resend', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANAGER','FD'), async (req, res, next) => {
   try {
     const { user_id } = req.body;
     const { data: officer, error } = await supabase.from('users').select('*').eq('id', user_id).eq('company_id', req.user.company_id).single();

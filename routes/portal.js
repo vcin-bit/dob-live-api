@@ -132,7 +132,7 @@ router.get('/documents', portalAuth, async (req, res, next) => {
 });
 
 // ── Manager: enable portal + set PIN ──────────────────────────────────────
-router.put('/settings/:site_id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER'), async (req, res, next) => {
+router.put('/settings/:site_id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
   try {
     const { client_portal_enabled, client_portal_pin, client_name, client_contact_name, client_contact_email, client_contact_phone } = req.body;
     const { data, error } = await supabase.from('sites')
