@@ -636,8 +636,8 @@ function ShiftModal({ shift, prefillDate, officers, allOfficers, sites, rates, s
         adjustedEnd = localISOString(isoDate(addDays(new Date(form.date), 1)), form.end_time);
       }
       const payload = { site_id: form.site_id, officer_id: form.officer_id, start_time: startDt, end_time: adjustedEnd, notes: form.notes || null,
-        pay_rate: form.pay_rate ? parseFloat(form.pay_rate) : null,
-        charge_rate: form.charge_rate ? parseFloat(form.charge_rate) : null,
+        pay_rate: form.pay_rate !== '' ? parseFloat(form.pay_rate) : null,
+        charge_rate: form.charge_rate !== '' ? parseFloat(form.charge_rate) : null,
       };
       if (hasActuals && form.actual_start) {
         payload.checked_in_at = localISOString(form.date, form.actual_start);
