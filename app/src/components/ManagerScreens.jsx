@@ -20,6 +20,9 @@ function ManagerDashboard({ user }) {
   const [refreshPulse, setRefreshPulse] = useState(false);
   const [forceEndId, setForceEndId] = useState(null);
   const [incidentAlerts, setIncidentAlerts] = useState([]);
+  const [dashPanel, setDashPanel] = useState(null);
+  const [tasksDueList, setTasksDueList] = useState([]);
+  const [tasksDoneList, setTasksDoneList] = useState([]);
   const seenIncidentIds = React.useRef(new Set());
 
   async function load() {
@@ -34,7 +37,10 @@ function ManagerDashboard({ user }) {
       ]);
       const todayLogs = todayLogsRes.data || [];
       const incidents = todayLogs.filter(l => ['INCIDENT','ALARM','FIRE_ALARM','EMERGENCY'].includes(l.log_type));
-      const tasksDone = todayLogs.filter(l => l.type_data?.scheduled_task_id).length;
+      const doneList = todayLogs.filter(l => l.type_data?.scheduled_task_id);
+      const tasksDone = doneList.length;
+      setTasksDueList(tasksRes.data || []);
+      setTasksDoneList(doneList);
       setData({
         shifts: shiftsRes.data || [],
         incidents,
@@ -228,13 +234,74 @@ function ManagerDashboard({ user }) {
 
         {/* Stats row */}
         <div className="stats-grid" style={{marginBottom:'1.25rem'}}>
-          <div className="stat-card"><div className="stat-value">{data.shifts.length}</div><div className="stat-label">On Duty</div></div>
-          <div className="stat-card"><div className="stat-value" style={{color:data.incidents.length>0?'var(--danger)':'var(--text)'}}>{data.incidents.length}</div><div className="stat-label">Incidents Today</div></div>
+          <Link to="/on-duty" className="stat-card" style={{cursor:'pointer',textDecoration:'none'}}><div className="stat-value">{data.shifts.length}</div><div className="stat-label">On Duty</div></Link>
+          <div className="stat-card" style={{cursor:'pointer'}} onClick={() => setDashPanel(dashPanel === 'incidents' ? null : 'incidents')}><div className="stat-value" style={{color:data.incidents.length>0?'var(--danger)':'var(--text)'}}>{data.incidents.length}</div><div className="stat-label">Incidents Today</div></div>
           <div className="stat-card"><div className="stat-value">{data.logsToday||0}</div><div className="stat-label">Logs Today</div></div>
-          <div className="stat-card"><div className="stat-value" style={{color:data.pendingTasks>0?'var(--warning)':'var(--text)'}}>{data.pendingTasks}</div><div className="stat-label">Tasks Due</div></div>
-          <div className="stat-card"><div className="stat-value" style={{color:data.tasksDone>0?'#10b981':'var(--text)'}}>{data.tasksDone||0}</div><div className="stat-label">Tasks Done</div></div>
+          <div className="stat-card" style={{cursor:'pointer'}} onClick={() => setDashPanel(dashPanel === 'tasksDue' ? null : 'tasksDue')}><div className="stat-value" style={{color:data.pendingTasks>0?'var(--warning)':'var(--text)'}}>{data.pendingTasks}</div><div className="stat-label">Tasks Due</div></div>
+          <div className="stat-card" style={{cursor:'pointer'}} onClick={() => setDashPanel(dashPanel === 'tasksDone' ? null : 'tasksDone')}><div className="stat-value" style={{color:data.tasksDone>0?'#10b981':'var(--text)'}}>{data.tasksDone||0}</div><div className="stat-label">Tasks Done</div></div>
           <div className="stat-card"><div className="stat-value">{data.totalOfficers}</div><div className="stat-label">Officers</div></div>
         </div>
+
+        {/* Expandable panels */}
+        {dashPanel === 'incidents' && (
+          <div className="card" style={{marginBottom:'1.25rem'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.75rem'}}>
+              <div className="section-title">Incidents Today</div>
+              <button onClick={() => setDashPanel(null)} style={{background:'none',border:'none',color:'var(--text-3)',cursor:'pointer',fontSize:'1rem'}}>×</button>
+            </div>
+            {data.incidents.length === 0 ? <div style={{color:'var(--text-3)',fontSize:'0.875rem'}}>No incidents today</div> : (
+              <div style={{display:'flex',flexDirection:'column',gap:'0.5rem'}}>
+                {data.incidents.map(l => (
+                  <div key={l.id} style={{padding:'0.625rem 0.75rem',background:'rgba(220,38,38,0.06)',border:'1px solid rgba(220,38,38,0.15)',borderRadius:'8px'}}>
+                    <div style={{fontWeight:600,fontSize:'0.875rem',color:'#ef4444'}}>{l.title || l.log_type}</div>
+                    <div style={{fontSize:'0.8125rem',color:'var(--text-2)',marginTop:'2px'}}>{l.description?.slice(0,100)}</div>
+                    <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginTop:'4px'}}>{l.site?.name} · {l.officer?.first_name} {l.officer?.last_name} · {new Date(l.occurred_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {dashPanel === 'tasksDue' && (
+          <div className="card" style={{marginBottom:'1.25rem'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.75rem'}}>
+              <div className="section-title">Tasks Due</div>
+              <button onClick={() => setDashPanel(null)} style={{background:'none',border:'none',color:'var(--text-3)',cursor:'pointer',fontSize:'1rem'}}>×</button>
+            </div>
+            {tasksDueList.length === 0 ? <div style={{color:'var(--text-3)',fontSize:'0.875rem'}}>No tasks due</div> : (
+              <div style={{display:'flex',flexDirection:'column',gap:'0.5rem'}}>
+                {tasksDueList.map(t => (
+                  <div key={t.id} style={{padding:'0.625rem 0.75rem',background:'rgba(251,191,36,0.06)',border:'1px solid rgba(251,191,36,0.15)',borderRadius:'8px'}}>
+                    <div style={{fontWeight:600,fontSize:'0.875rem'}}>{t.title}</div>
+                    {t.description && <div style={{fontSize:'0.8125rem',color:'var(--text-2)',marginTop:'2px'}}>{t.description?.slice(0,100)}</div>}
+                    <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginTop:'4px'}}>{t.site?.name} · {t.assigned_to_name || 'Unassigned'} · Due {t.due_date ? new Date(t.due_date).toLocaleDateString('en-GB') : '—'}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {dashPanel === 'tasksDone' && (
+          <div className="card" style={{marginBottom:'1.25rem'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.75rem'}}>
+              <div className="section-title">Tasks Completed Today</div>
+              <button onClick={() => setDashPanel(null)} style={{background:'none',border:'none',color:'var(--text-3)',cursor:'pointer',fontSize:'1rem'}}>×</button>
+            </div>
+            {tasksDoneList.length === 0 ? <div style={{color:'var(--text-3)',fontSize:'0.875rem'}}>No tasks completed today</div> : (
+              <div style={{display:'flex',flexDirection:'column',gap:'0.5rem'}}>
+                {tasksDoneList.map(l => (
+                  <div key={l.id} style={{padding:'0.625rem 0.75rem',background:'rgba(16,185,129,0.06)',border:'1px solid rgba(16,185,129,0.15)',borderRadius:'8px'}}>
+                    <div style={{fontWeight:600,fontSize:'0.875rem',color:'#10b981'}}>{l.title}</div>
+                    {l.description && <div style={{fontSize:'0.8125rem',color:'var(--text-2)',marginTop:'2px'}}>{l.description?.slice(0,100)}</div>}
+                    <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginTop:'4px'}}>{l.site?.name} · {l.officer?.first_name} {l.officer?.last_name} · {new Date(l.occurred_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Recent activity + quick actions */}
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1.25rem'}}>
