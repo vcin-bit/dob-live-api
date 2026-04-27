@@ -279,6 +279,9 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
   const [tasks, setTasks] = useState([]);
   const [scheduledTasks, setScheduledTasks] = useState([]);
   const [completedTaskIds, setCompletedTaskIds] = useState(new Set());
+  const [taskModal, setTaskModal] = useState(null);
+  const [taskNotes, setTaskNotes] = useState('');
+  const [taskSubmitting, setTaskSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [historyDate, setHistoryDate] = useState('');
@@ -415,7 +418,8 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
             {scheduledTasks.map(t => {
               const done = completedTaskIds.has(t.id);
               return (
-                <div key={t.id} style={{display:'flex',alignItems:'center',gap:'0.625rem',padding:'0.625rem 0.75rem',background: done ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)',border:`1px solid ${done ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.08)'}`,borderRadius:'8px'}}>
+                <div key={t.id} onClick={() => { if (!done) { setTaskModal(t); setTaskNotes(''); } }}
+                  style={{display:'flex',alignItems:'center',gap:'0.625rem',padding:'0.625rem 0.75rem',background: done ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)',border:`1px solid ${done ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.08)'}`,borderRadius:'8px',cursor: done ? 'default' : 'pointer'}}>
                   <div style={{width:24,height:24,borderRadius:'50%',background: done ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.06)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:'12px',color: done ? '#10b981' : 'rgba(255,255,255,0.3)',fontWeight:700}}>
                     {done ? '✓' : '○'}
                   </div>
@@ -423,12 +427,69 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
                     <div style={{fontSize:'0.875rem',fontWeight:600,color: done ? 'rgba(255,255,255,0.5)' : '#fff'}}>{t.name}</div>
                     <div style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.35)'}}>
                       {t.scheduled_time ? t.scheduled_time.slice(0,5) : 'Shift start'}
+                      {t.description && <span style={{marginLeft:'0.5rem'}}>· {t.description}</span>}
                       {done && <span style={{color:'#10b981',marginLeft:'0.5rem'}}>Done</span>}
                     </div>
                   </div>
+                  {!done && <span style={{color:'rgba(255,255,255,0.2)',fontSize:'1rem'}}>›</span>}
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Task completion modal */}
+      {taskModal && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',zIndex:9999,display:'flex',alignItems:'flex-end',justifyContent:'center',padding:'1rem'}}>
+          <div style={{background:'#0f1929',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'16px',padding:'1.5rem',width:'100%',maxWidth:'360px'}}>
+            <div style={{fontSize:'16px',fontWeight:700,color:'#fff',marginBottom:'4px'}}>{taskModal.name}</div>
+            {taskModal.description && <div style={{fontSize:'13px',color:'rgba(255,255,255,0.5)',marginBottom:'12px'}}>{taskModal.description}</div>}
+            {taskModal.contact_name && (
+              <div style={{padding:'8px 10px',background:'rgba(251,191,36,0.1)',border:'1px solid rgba(251,191,36,0.2)',borderRadius:'8px',marginBottom:'12px',fontSize:'13px'}}>
+                <span style={{color:'#fbbf24',fontWeight:600}}>{taskModal.contact_name}</span>
+                {taskModal.contact_phone && <span style={{color:'#fff',fontFamily:'monospace',marginLeft:'8px'}}>{taskModal.contact_phone}</span>}
+              </div>
+            )}
+            <div style={{marginBottom:'12px'}}>
+              <label style={{fontSize:'11px',fontWeight:600,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:'6px'}}>Notes</label>
+              <textarea value={taskNotes} onChange={e => setTaskNotes(e.target.value)} rows={3}
+                placeholder="Add any notes, observations..."
+                style={{width:'100%',background:'rgba(255,255,255,0.07)',border:'1.5px solid rgba(255,255,255,0.1)',borderRadius:'10px',padding:'10px',fontSize:'14px',color:'#fff',resize:'none',boxSizing:'border-box',fontFamily:'inherit'}} />
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
+              <button disabled={taskSubmitting} onClick={async () => {
+                setTaskSubmitting(true);
+                try {
+                  const validLogTypes = ['INCIDENT','PATROL','HEALTH_SAFETY','MEDICAL','VEHICLE_CHECK','CCTV_PATROL','GENERAL','WELFARE_CHECK','CCTV_CHECK','MANAGEMENT_VISIT','VISITOR','ACCESS_CONTROL','MAINTENANCE','HANDOVER','ALARM','FIRE_ALARM','EMERGENCY'];
+                  const logType = validLogTypes.includes(taskModal.task_type) ? taskModal.task_type : 'GENERAL';
+                  await api.logs.create({ site_id: site?.id, shift_id: shift?.id || null, log_type: logType, title: `✓ ${taskModal.name}`, description: taskNotes.trim() || `Task completed: ${taskModal.name}`, occurred_at: new Date().toISOString(), type_data: { scheduled_task_id: taskModal.id, task_type: taskModal.task_type } });
+                  setCompletedTaskIds(prev => new Set([...prev, taskModal.id]));
+                  setTaskModal(null);
+                } catch (e) { alert(e.message); }
+                finally { setTaskSubmitting(false); }
+              }} style={{width:'100%',padding:'14px',background:'rgba(74,222,128,0.15)',border:'1.5px solid rgba(74,222,128,0.4)',borderRadius:'10px',color:'#4ade80',fontSize:'15px',fontWeight:700,cursor:'pointer'}}>
+                {taskSubmitting ? 'Saving...' : '✓ TASK COMPLETE'}
+              </button>
+              <button disabled={taskSubmitting} onClick={async () => {
+                if (!taskNotes.trim()) { alert('Please add a reason'); return; }
+                setTaskSubmitting(true);
+                try {
+                  const validLogTypes = ['INCIDENT','PATROL','HEALTH_SAFETY','MEDICAL','VEHICLE_CHECK','CCTV_PATROL','GENERAL','WELFARE_CHECK','CCTV_CHECK','MANAGEMENT_VISIT','VISITOR','ACCESS_CONTROL','MAINTENANCE','HANDOVER','ALARM','FIRE_ALARM','EMERGENCY'];
+                  const logType = validLogTypes.includes(taskModal.task_type) ? taskModal.task_type : 'GENERAL';
+                  await api.logs.create({ site_id: site?.id, shift_id: shift?.id || null, log_type: logType, title: `✗ ${taskModal.name} — Unable to complete`, description: taskNotes.trim(), occurred_at: new Date().toISOString(), type_data: { scheduled_task_id: taskModal.id, task_type: taskModal.task_type, unable: true } });
+                  setCompletedTaskIds(prev => new Set([...prev, taskModal.id]));
+                  setTaskModal(null);
+                } catch (e) { alert(e.message); }
+                finally { setTaskSubmitting(false); }
+              }} style={{width:'100%',padding:'12px',background:'rgba(239,68,68,0.1)',border:'1.5px solid rgba(239,68,68,0.3)',borderRadius:'10px',color:'#ef4444',fontSize:'13px',fontWeight:700,cursor:'pointer'}}>
+                UNABLE TO COMPLETE
+              </button>
+              <button onClick={() => setTaskModal(null)}
+                style={{width:'100%',padding:'10px',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',color:'rgba(255,255,255,0.4)',fontSize:'13px',cursor:'pointer'}}>
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
