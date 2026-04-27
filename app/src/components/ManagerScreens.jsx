@@ -34,6 +34,7 @@ function ManagerDashboard({ user }) {
       ]);
       const todayLogs = todayLogsRes.data || [];
       const incidents = todayLogs.filter(l => ['INCIDENT','ALARM','FIRE_ALARM','EMERGENCY'].includes(l.log_type));
+      const tasksDone = todayLogs.filter(l => l.type_data?.scheduled_task_id).length;
       setData({
         shifts: shiftsRes.data || [],
         incidents,
@@ -41,6 +42,7 @@ function ManagerDashboard({ user }) {
         pendingTasks: tasksRes.data?.length || 0,
         totalOfficers: usersRes.data?.length || 0,
         logsToday: todayLogs.length,
+        tasksDone,
       });
       setLastRefresh(new Date());
       setRefreshPulse(true);
@@ -230,6 +232,7 @@ function ManagerDashboard({ user }) {
           <div className="stat-card"><div className="stat-value" style={{color:data.incidents.length>0?'var(--danger)':'var(--text)'}}>{data.incidents.length}</div><div className="stat-label">Incidents Today</div></div>
           <div className="stat-card"><div className="stat-value">{data.logsToday||0}</div><div className="stat-label">Logs Today</div></div>
           <div className="stat-card"><div className="stat-value" style={{color:data.pendingTasks>0?'var(--warning)':'var(--text)'}}>{data.pendingTasks}</div><div className="stat-label">Tasks Due</div></div>
+          <div className="stat-card"><div className="stat-value" style={{color:data.tasksDone>0?'#10b981':'var(--text)'}}>{data.tasksDone||0}</div><div className="stat-label">Tasks Done</div></div>
           <div className="stat-card"><div className="stat-value">{data.totalOfficers}</div><div className="stat-label">Officers</div></div>
         </div>
 
