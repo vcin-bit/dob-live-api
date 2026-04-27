@@ -117,7 +117,7 @@ router.patch('/:id', authenticate, async (req, res, next) => {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
-    const allowed = ['title', 'description', 'type_data', 'latitude', 'longitude', 'what3words'];
+    const allowed = ['title', 'description', 'type_data', 'latitude', 'longitude', 'what3words', 'review_status', 'next_action', 'resolution', 'client_informed', 'client_informed_at', 'more_details_required', 'reviewed_by', 'reviewed_at'];
     const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
 
     const { data, error } = await supabase
@@ -208,6 +208,34 @@ router.post('/:id/photos', authenticate, async (req, res, next) => {
       .select()
       .single();
 
+    if (error) throw error;
+    res.status(201).json({ data });
+  } catch (err) { next(err); }
+});
+
+// GET /api/logs/:id/comments
+router.get('/:id/comments', authenticate, async (req, res, next) => {
+  try {
+    const { data, error } = await supabase
+      .from('log_comments')
+      .select('*, user:users(id, first_name, last_name)')
+      .eq('log_id', req.params.id)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    res.json({ data });
+  } catch (err) { next(err); }
+});
+
+// POST /api/logs/:id/comments
+router.post('/:id/comments', authenticate, async (req, res, next) => {
+  try {
+    const { comment } = req.body;
+    if (!comment?.trim()) return res.status(400).json({ error: 'Comment is required' });
+    const { data, error } = await supabase
+      .from('log_comments')
+      .insert({ log_id: req.params.id, user_id: req.user.id, comment: comment.trim() })
+      .select('*, user:users(id, first_name, last_name)')
+      .single();
     if (error) throw error;
     res.status(201).json({ data });
   } catch (err) { next(err); }

@@ -21,6 +21,7 @@ function ManagerDashboard({ user }) {
   const [forceEndId, setForceEndId] = useState(null);
   const [incidentAlerts, setIncidentAlerts] = useState([]);
   const [dashPanel, setDashPanel] = useState(null);
+  const [reviewLog, setReviewLog] = useState(null);
   const [tasksDueList, setTasksDueList] = useState([]);
   const [tasksDoneList, setTasksDoneList] = useState([]);
   const seenIncidentIds = React.useRef(new Set());
@@ -252,8 +253,11 @@ function ManagerDashboard({ user }) {
             {data.incidents.length === 0 ? <div style={{color:'var(--text-3)',fontSize:'0.875rem'}}>No incidents today</div> : (
               <div style={{display:'flex',flexDirection:'column',gap:'0.5rem'}}>
                 {data.incidents.map(l => (
-                  <div key={l.id} style={{padding:'0.625rem 0.75rem',background:'rgba(220,38,38,0.06)',border:'1px solid rgba(220,38,38,0.15)',borderRadius:'8px'}}>
-                    <div style={{fontWeight:600,fontSize:'0.875rem',color:'#ef4444'}}>{l.title || l.log_type}</div>
+                  <div key={l.id} onClick={() => setReviewLog(l)} style={{padding:'0.625rem 0.75rem',background:'rgba(220,38,38,0.06)',border:'1px solid rgba(220,38,38,0.15)',borderRadius:'8px',cursor:'pointer'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                      <div style={{fontWeight:600,fontSize:'0.875rem',color:'#ef4444'}}>{l.title || l.log_type}</div>
+                      <span style={{fontSize:'0.6875rem',padding:'2px 8px',borderRadius:'4px',fontWeight:600,background: l.review_status === 'RESOLVED' ? 'rgba(16,185,129,0.15)' : l.review_status === 'UNDER_REVIEW' ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.08)',color: l.review_status === 'RESOLVED' ? '#10b981' : l.review_status === 'UNDER_REVIEW' ? '#60a5fa' : 'var(--text-3)'}}>{l.review_status || 'NEW'}</span>
+                    </div>
                     <div style={{fontSize:'0.8125rem',color:'var(--text-2)',marginTop:'2px'}}>{l.description?.slice(0,100)}</div>
                     <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginTop:'4px'}}>{l.site?.name} · {l.officer?.first_name} {l.officer?.last_name} · {new Date(l.occurred_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}</div>
                   </div>
@@ -326,10 +330,154 @@ function ManagerDashboard({ user }) {
           </div>
         </div>
       </div>
+      {reviewLog && <IncidentReviewModal log={reviewLog} user={user} onClose={() => setReviewLog(null)} onUpdated={(updated) => { setReviewLog(null); load(); }} />}
     </div>
   );
 }
 
+// ── Incident Review Modal ───────────────────────────────────────────────────
+function IncidentReviewModal({ log, user, onClose, onUpdated }) {
+  const [status, setStatus] = useState(log.review_status || 'NEW');
+  const [nextAction, setNextAction] = useState(log.next_action || '');
+  const [resolution, setResolution] = useState(log.resolution || '');
+  const [clientInformed, setClientInformed] = useState(log.client_informed || false);
+  const [moreDetails, setMoreDetails] = useState(log.more_details_required || false);
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [loadingComments, setLoadingComments] = useState(true);
+
+  useEffect(() => {
+    fetch(`${import.meta.env.VITE_API_URL || 'https://dob-live-api.onrender.com'}/api/logs/${log.id}/comments`, {
+      headers: { Authorization: `Bearer ${window.__clerkGetToken ? '' : ''}` }
+    });
+    api.logs.list({ limit: 1 }).then(() => {});
+    // Load comments
+    (async () => {
+      try {
+        const token = await window.__clerkGetToken?.() || '';
+        const API = import.meta.env.VITE_API_URL || 'https://dob-live-api.onrender.com';
+        const res = await fetch(`${API}/api/logs/${log.id}/comments`, { headers: { Authorization: `Bearer ${token}` } });
+        const data = await res.json();
+        setComments(data.data || []);
+      } catch {}
+      finally { setLoadingComments(false); }
+    })();
+  }, [log.id]);
+
+  async function save() {
+    setSaving(true);
+    try {
+      const token = await window.__clerkGetToken?.() || '';
+      const API = import.meta.env.VITE_API_URL || 'https://dob-live-api.onrender.com';
+      await fetch(`${API}/api/logs/${log.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          review_status: status, next_action: nextAction || null, resolution: resolution || null,
+          client_informed: clientInformed, client_informed_at: clientInformed ? new Date().toISOString() : null,
+          more_details_required: moreDetails,
+          reviewed_by: user.id, reviewed_at: new Date().toISOString(),
+        }),
+      });
+      onUpdated();
+    } catch (e) { alert(e.message); }
+    finally { setSaving(false); }
+  }
+
+  async function addComment() {
+    if (!newComment.trim()) return;
+    try {
+      const token = await window.__clerkGetToken?.() || '';
+      const API = import.meta.env.VITE_API_URL || 'https://dob-live-api.onrender.com';
+      const res = await fetch(`${API}/api/logs/${log.id}/comments`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ comment: newComment.trim() }),
+      });
+      const data = await res.json();
+      if (data.data) setComments(prev => [...prev, data.data]);
+      setNewComment('');
+    } catch (e) { alert(e.message); }
+  }
+
+  const inp = { width:'100%', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'6px', padding:'0.5rem 0.75rem', fontSize:'0.875rem', color:'var(--text)', boxSizing:'border-box', fontFamily:'inherit' };
+  const lbl = { fontSize:'0.6875rem', fontWeight:600, color:'var(--text-3)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:'0.375rem', display:'block' };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{maxWidth:'600px',maxHeight:'90vh',overflowY:'auto'}} onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-title" style={{color:'#ef4444'}}>Incident Review</div>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+
+        {/* Incident details */}
+        <div style={{padding:'0.75rem',background:'rgba(220,38,38,0.06)',border:'1px solid rgba(220,38,38,0.15)',borderRadius:'8px',marginBottom:'1rem'}}>
+          <div style={{fontWeight:700,fontSize:'1rem',color:'#ef4444',marginBottom:'0.25rem'}}>{log.title || log.log_type}</div>
+          <div style={{fontSize:'0.875rem',color:'var(--text)',lineHeight:1.5,marginBottom:'0.5rem'}}>{log.description}</div>
+          <div style={{fontSize:'0.75rem',color:'var(--text-3)'}}>
+            {log.site?.name} · {log.officer?.first_name} {log.officer?.last_name} · {new Date(log.occurred_at).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}
+          </div>
+        </div>
+
+        {/* Review fields */}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem',marginBottom:'1rem'}}>
+          <div>
+            <label style={lbl}>Status</label>
+            <select value={status} onChange={e => setStatus(e.target.value)} style={inp}>
+              <option value="NEW">New</option>
+              <option value="UNDER_REVIEW">Under Review</option>
+              <option value="RESOLVED">Resolved</option>
+              <option value="UNRESOLVED">Unresolved</option>
+            </select>
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:'0.5rem',justifyContent:'flex-end'}}>
+            <label style={{display:'flex',alignItems:'center',gap:'0.5rem',cursor:'pointer',fontSize:'0.875rem'}}>
+              <input type="checkbox" checked={clientInformed} onChange={e => setClientInformed(e.target.checked)} style={{width:'1rem',height:'1rem',accentColor:'var(--blue)'}} />
+              Client Informed
+            </label>
+            <label style={{display:'flex',alignItems:'center',gap:'0.5rem',cursor:'pointer',fontSize:'0.875rem'}}>
+              <input type="checkbox" checked={moreDetails} onChange={e => setMoreDetails(e.target.checked)} style={{width:'1rem',height:'1rem',accentColor:'#f59e0b'}} />
+              More Details Required
+            </label>
+          </div>
+          <div style={{gridColumn:'1/-1'}}>
+            <label style={lbl}>Next Action</label>
+            <input value={nextAction} onChange={e => setNextAction(e.target.value)} placeholder="What needs to happen next..." style={inp} />
+          </div>
+          <div style={{gridColumn:'1/-1'}}>
+            <label style={lbl}>Resolution</label>
+            <textarea value={resolution} onChange={e => setResolution(e.target.value)} rows={2} placeholder="Final outcome..." style={{...inp, resize:'none'}} />
+          </div>
+        </div>
+
+        {/* Comments */}
+        <div style={{borderTop:'1px solid var(--border)',paddingTop:'0.75rem',marginBottom:'0.75rem'}}>
+          <div style={{...lbl,marginBottom:'0.5rem'}}>Comments</div>
+          {loadingComments ? <div style={{fontSize:'0.8125rem',color:'var(--text-3)'}}>Loading...</div> : (
+            <div style={{display:'flex',flexDirection:'column',gap:'0.375rem',marginBottom:'0.75rem',maxHeight:'200px',overflowY:'auto'}}>
+              {comments.length === 0 && <div style={{fontSize:'0.8125rem',color:'var(--text-3)'}}>No comments yet</div>}
+              {comments.map(c => (
+                <div key={c.id} style={{padding:'0.5rem 0.625rem',background:'var(--surface)',borderRadius:'6px',border:'1px solid var(--border)'}}>
+                  <div style={{fontSize:'0.8125rem'}}>{c.comment}</div>
+                  <div style={{fontSize:'0.6875rem',color:'var(--text-3)',marginTop:'2px'}}>{c.user?.first_name} {c.user?.last_name} · {new Date(c.created_at).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}</div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{display:'flex',gap:'0.5rem'}}>
+            <input value={newComment} onChange={e => setNewComment(e.target.value)} onKeyDown={e => e.key === 'Enter' && addComment()} placeholder="Add a comment..." style={{...inp,flex:1}} />
+            <button onClick={addComment} disabled={!newComment.trim()} className="btn btn-primary btn-sm">Post</button>
+          </div>
+        </div>
+
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? 'Saving...' : 'Save Review'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function StatCard({ title, value, color }) {
   return (
