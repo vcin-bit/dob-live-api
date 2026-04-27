@@ -210,7 +210,7 @@ function PatrolRoutesScreen({ user }) {
   async function load() {
     if (!selectedSite) return;
     setLoading(true);
-    const r = await api.patrols.list({ site_id: selectedSite });
+    const r = await api.patrols.getRoutes(selectedSite);
     setRoutes(r.data || []);
     setLoading(false);
   }
@@ -218,7 +218,7 @@ function PatrolRoutesScreen({ user }) {
 
   async function deleteRoute(id) {
     if (!window.confirm('Delete this patrol route?')) return;
-    await api.patrols.delete(id);
+    await api.patrols.deleteRoute(id);
     load();
   }
 
