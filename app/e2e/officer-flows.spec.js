@@ -309,20 +309,28 @@ test.describe('Patrol Start and Checkpoint', () => {
     await page.getByText('Start Patrol').click();
 
     await expect(page.getByText('E2E Test Site').first()).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('Main Perimeter')).toBeVisible();
 
-    const startPatrolBtn = page.getByText(/START PATROL/);
+    // Route selector should appear — select Main Perimeter
+    const routeBtn = page.getByRole('button', { name: /Main Perimeter/ });
+    await expect(routeBtn).toBeVisible({ timeout: 5000 });
+    await routeBtn.click();
+
+    // Start patrol with selected route
+    const startPatrolBtn = page.getByRole('button', { name: /START PATROL/ });
     await expect(startPatrolBtn).toBeVisible({ timeout: 3000 });
     await startPatrolBtn.click();
 
     await expect(page.getByText('● LIVE')).toBeVisible({ timeout: 3000 });
-    await expect(page.getByText('Front Gate').first()).toBeVisible();
-    await expect(page.getByText('Car Park').first()).toBeVisible();
-    await expect(page.getByText('Loading Bay').first()).toBeVisible();
 
-    const reachedBtn = page.getByRole('button', { name: /REACHED.*Front Gate/ });
-    await expect(reachedBtn).toBeVisible();
-    await reachedBtn.click();
+    // Checkpoints from the route should be visible
+    await expect(page.getByText('Front Gate').first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Car Park').first()).toBeVisible({ timeout: 3000 });
+    await expect(page.getByText('Loading Bay').first()).toBeVisible({ timeout: 3000 });
+
+    // Mark first checkpoint as reached via All Clear button
+    const allClearBtn = page.getByRole('button', { name: /All Clear/ }).first();
+    await expect(allClearBtn).toBeVisible({ timeout: 3000 });
+    await allClearBtn.click();
 
     await expect(page.getByText('1 / 3')).toBeVisible({ timeout: 3000 });
   });
