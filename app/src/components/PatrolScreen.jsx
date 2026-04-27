@@ -684,6 +684,11 @@ function CheckpointModal({ site, session, currentPos, route, isRoutePlanner, onC
       // Don't save a blob URL — if still uploading, photo_url will be a local blob, skip it
       const savedPhotoUrl = photoUrl && !photoUrl.startsWith('blob:') ? photoUrl : null;
       await api.logs.create({ site_id: site?.id, log_type: 'PATROL', title: name.trim(), description: description.trim() || `Checkpoint: ${name.trim()}`, occurred_at: new Date().toISOString(), latitude: currentPos?.lat, longitude: currentPos?.lng, type_data: { checkpoint: true, patrol_session_id: session?.id, ...(savedPhotoUrl ? { photo_url: savedPhotoUrl } : {}), ...(w3w ? { what3words: w3w } : {}) } });
+      // Also update patrol session checkpoints_completed array
+      if (session?.id) {
+        try { await api.patrols.checkpoint(session.id, null, name.trim(), currentPos?.lat, currentPos?.lng); }
+        catch (e) { console.error('Session checkpoint sync failed:', e.message); }
+      }
       if (savePermanent && route?.id && currentPos) {
         try {
           const existing = route.checkpoints || [];
