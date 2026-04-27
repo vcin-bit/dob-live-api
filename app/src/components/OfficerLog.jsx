@@ -279,6 +279,11 @@ function LogEntryScreen({ user, site, shift }) {
         </div>
       </div>
 
+      <div style={{marginBottom:'14px'}}>
+        <div style={S.label}>DESCRIPTION / NOTES</div>
+        <textarea value={form.cctv_issue_description} onChange={e=>f('cctv_issue_description',e.target.value)} rows={3} placeholder="Describe any issues, observations or notes..." style={S.input} />
+      </div>
+
       {form.cctv_issues_found && (
         <>
           <div style={{marginBottom:'14px'}}>
