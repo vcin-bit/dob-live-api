@@ -101,44 +101,6 @@ router.post('/start', authenticate, async (req, res, next) => {
     const { site_id, lat, lng, end_time } = req.body;
     if (!site_id) return res.status(400).json({ error: 'site_id required' });
 
-// POST /api/shifts/:id/checkin — officer checks in
-router.post('/:id/checkin', authenticate, async (req, res, next) => {
-  try {
-    const { lat, lng } = req.body;
-    const { data, error } = await supabase
-      .from('shifts')
-      .update({
-        status: 'ACTIVE',
-        checked_in_at: new Date().toISOString(),
-        check_in_lat: lat || null,
-        check_in_lng: lng || null,
-      })
-      .eq('id', req.params.id)
-      .eq('officer_id', req.user.id)
-      .select().single();
-    if (error) throw error;
-    res.json({ data });
-  } catch (err) { next(err); }
-});
-
-// POST /api/shifts/:id/checkout — officer checks out
-router.post('/:id/checkout', authenticate, async (req, res, next) => {
-  try {
-    const { data, error } = await supabase
-      .from('shifts')
-      .update({
-        status: 'COMPLETED',
-        checked_out_at: new Date().toISOString(),
-      })
-      .eq('id', req.params.id)
-      .eq('officer_id', req.user.id)
-      .select().single();
-    if (error) throw error;
-    res.json({ data });
-  } catch (err) { next(err); }
-});
-
-
     // Check no active shift already
     const { data: existing } = await supabase
       .from('shifts')
@@ -168,23 +130,41 @@ router.post('/:id/checkout', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// POST /api/shifts/expire — auto-expire shifts past their end_time (called by cron)
-router.post('/expire', async (req, res, next) => {
+// POST /api/shifts/:id/checkin — officer checks in to a scheduled shift
+router.post('/:id/checkin', authenticate, async (req, res, next) => {
   try {
-    const secret = req.headers['x-cron-secret'];
-    if (secret !== process.env.CRON_SECRET && process.env.CRON_SECRET) {
-      return res.status(401).json({ error: 'Unauthorised' });
-    }
+    const { lat, lng } = req.body;
     const { data, error } = await supabase
       .from('shifts')
-      .update({ status: 'COMPLETED', checked_out_at: new Date().toISOString() })
-      .eq('status', 'ACTIVE')
-      .lt('end_time', new Date().toISOString())
-      .not('end_time', 'is', null)
-      .select('id, officer_id, end_time');
+      .update({
+        status: 'ACTIVE',
+        checked_in_at: new Date().toISOString(),
+        check_in_lat: lat || null,
+        check_in_lng: lng || null,
+      })
+      .eq('id', req.params.id)
+      .eq('officer_id', req.user.id)
+      .select('*, site:sites(id,name)')
+      .single();
     if (error) throw error;
-    console.log(`Auto-expired ${data?.length || 0} shifts`);
-    res.json({ expired: data?.length || 0, shifts: data });
+    res.json({ data });
+  } catch (err) { next(err); }
+});
+
+// POST /api/shifts/:id/checkout — officer checks out
+router.post('/:id/checkout', authenticate, async (req, res, next) => {
+  try {
+    const { data, error } = await supabase
+      .from('shifts')
+      .update({
+        status: 'COMPLETED',
+        checked_out_at: new Date().toISOString(),
+      })
+      .eq('id', req.params.id)
+      .eq('officer_id', req.user.id)
+      .select().single();
+    if (error) throw error;
+    res.json({ data });
   } catch (err) { next(err); }
 });
 
