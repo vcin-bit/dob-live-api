@@ -1432,7 +1432,7 @@ function SiteDetail({ user }) {
                         <td style={{fontWeight:500}}>{o.first_name} {o.last_name}</td>
                         <td style={{fontFamily:'monospace',fontSize:'0.8125rem',color:'var(--text-2)'}}>{o.sia_licence_number||'—'}</td>
                         <td style={{fontSize:'0.8125rem'}}>
-                          {expiry ? new Date(o.sia_expiry_date).toLocaleDateString('en-GB') : '—'}
+                          {exp1 ? new Date(o.sia_expiry_date).toLocaleDateString('en-GB') : '—'}
                         </td>
                         <td>
                           <span style={{display:'inline-flex',alignItems:'center',gap:'0.375rem',fontSize:'0.8125rem',color:siaColor,fontWeight:600}}>
