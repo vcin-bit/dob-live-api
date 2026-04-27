@@ -575,6 +575,7 @@ function LogReview({ user }) {
   const logTypes = ['PATROL','INCIDENT','ALARM','ACCESS','VISITOR','HANDOVER','MAINTENANCE','VEHICLE','GENERAL'];
 
   const filtered = logs.filter(l => {
+    if (l.type_data?.checkpoint) return false;
     if (typeFilter && l.log_type !== typeFilter) return false;
     if (siteFilter && l.site_id !== siteFilter) return false;
     if (filter) {

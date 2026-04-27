@@ -433,7 +433,7 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
       ) : recentLogs.length === 0 ? (
         <div style={{textAlign:'center',padding:'2rem',color:'rgba(255,255,255,0.3)',fontSize:'0.875rem'}}>No recent logs</div>
       ) : (
-        recentLogs.map((log) => <LogPreviewCard key={log.id} log={log} />)
+        recentLogs.filter(l => !l.type_data?.checkpoint).map((log) => <LogPreviewCard key={log.id} log={log} />)
       )}
 
       {/* Occurrence History */}
