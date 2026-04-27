@@ -490,7 +490,7 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
                           </div>
                           {siteId && (
                             <>
-                              <div style={{fontSize: isCompact ? '0.5625rem' : '0.75rem',color:'#3b82f6',marginLeft:bulkMode?'1rem':'0',fontWeight:700}}>{isCompact ? `${shiftHours(s).toFixed(0)}h` : `Scheduled: ${shiftHours(s).toFixed(0)} hrs`}</div>
+                              <div style={{fontSize: isCompact ? '0.5625rem' : '0.75rem',color:'#3b82f6',marginLeft:bulkMode?'1rem':'0',fontWeight:700}}>{isCompact ? `${shiftHours(s).toFixed(1)}h` : `Scheduled: ${shiftHours(s).toFixed(1)} hrs`}</div>
                               <div style={{fontSize: isCompact ? '0.5625rem' : '0.75rem',color:'#3b82f6',marginLeft:bulkMode?'1rem':'0',fontWeight:600}}>
                                 {isCompact ? '' : 'Actual: '}{s.checked_in_at && s.status === 'ACTIVE' && !s.checked_out_at
                                   ? <span style={{color:'#22c55e',fontWeight:700}}>On duty</span>
