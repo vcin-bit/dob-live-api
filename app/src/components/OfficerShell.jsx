@@ -277,6 +277,8 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
   const [recentLogs, setRecentLogs] = useState([]);
   const [todayCount, setTodayCount] = useState(0);
   const [tasks, setTasks] = useState([]);
+  const [scheduledTasks, setScheduledTasks] = useState([]);
+  const [completedTaskIds, setCompletedTaskIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [historyDate, setHistoryDate] = useState('');
@@ -290,14 +292,23 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
         const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
 
         // Get recent logs for this officer at this site
-        const [logsResponse, todayResponse, tasksResponse] = await Promise.all([
+        const [logsResponse, todayResponse, tasksResponse, playbookRes] = await Promise.all([
           api.logs.list({ site_id: site?.id, limit: 20, officer_id: user.id }),
           api.logs.list({ site_id: site?.id, officer_id: user.id, from: todayStart, limit: 500 }),
           api.tasks.list({ site_id: site?.id, status: 'PENDING' }),
+          api.playbooks.get(site?.id).catch(() => ({ tasks: [] })),
         ]);
         setRecentLogs(logsResponse.data || []);
         setTodayCount((todayResponse.data || []).length);
         setTasks(tasksResponse.data || []);
+        // Filter scheduled tasks for today's day of week
+        const today = new Date().getDay();
+        const todayTasks = (playbookRes.tasks || []).filter(t => !t.days_of_week || t.days_of_week.includes(today));
+        setScheduledTasks(todayTasks);
+        // Check which tasks were completed today
+        const done = new Set();
+        (todayResponse.data || []).forEach(l => { if (l.type_data?.scheduled_task_id) done.add(l.type_data.scheduled_task_id); });
+        setCompletedTaskIds(done);
 
       } catch (err) {
         console.error('Failed to fetch dashboard data:', err);
@@ -394,6 +405,32 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
           <span>Tasks</span>
           <span style={{background:'var(--blue)',color:'#fff',borderRadius:'999px',padding:'2px 8px',fontSize:'0.8125rem',fontWeight:700}}>{tasks.length}</span>
         </Link>
+      )}
+
+      {/* Today's scheduled tasks */}
+      {scheduledTasks.length > 0 && (
+        <div style={{marginBottom:'1rem'}}>
+          <div style={{fontSize:'0.6875rem',fontWeight:600,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.5rem'}}>Today's Tasks</div>
+          <div style={{display:'flex',flexDirection:'column',gap:'0.375rem'}}>
+            {scheduledTasks.map(t => {
+              const done = completedTaskIds.has(t.id);
+              return (
+                <div key={t.id} style={{display:'flex',alignItems:'center',gap:'0.625rem',padding:'0.625rem 0.75rem',background: done ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)',border:`1px solid ${done ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.08)'}`,borderRadius:'8px'}}>
+                  <div style={{width:24,height:24,borderRadius:'50%',background: done ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.06)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:'12px',color: done ? '#10b981' : 'rgba(255,255,255,0.3)',fontWeight:700}}>
+                    {done ? '✓' : '○'}
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:'0.875rem',fontWeight:600,color: done ? 'rgba(255,255,255,0.5)' : '#fff'}}>{t.name}</div>
+                    <div style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.35)'}}>
+                      {t.scheduled_time ? t.scheduled_time.slice(0,5) : 'Shift start'}
+                      {done && <span style={{color:'#10b981',marginLeft:'0.5rem'}}>Done</span>}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       {/* Last updated */}
