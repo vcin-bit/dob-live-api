@@ -57,7 +57,7 @@ function OfficerApp({ user }) {
       let r;
       if (existingShift) {
         // Activate the existing roster shift instead of creating a duplicate
-        r = await api.shifts.update(existingShift.id, { status: 'ACTIVE', checked_in_at: new Date().toISOString(), end_time: end.toISOString() });
+        r = await api.shifts.checkin(existingShift.id, { lat, lng });
       } else {
         // Ad-hoc shift — no roster entry for today
         r = await api.shifts.start({ site_id: selectedSite.id, lat, lng, end_time: end.toISOString() });
