@@ -11,7 +11,7 @@ router.get('/', authenticate, async (req, res, next) => {
       .from('occurrence_logs')
       .select(`
         *,
-        officer:users(id, first_name, last_name),
+        officer:users!occurrence_logs_officer_id_fkey(id, first_name, last_name),
         site:sites(id, name),
         photos:occurrence_log_photos(id, storage_path, file_name)
       `)
@@ -45,7 +45,7 @@ router.get('/:id', authenticate, async (req, res, next) => {
       .from('occurrence_logs')
       .select(`
         *,
-        officer:users(id, first_name, last_name),
+        officer:users!occurrence_logs_officer_id_fkey(id, first_name, last_name),
         site:sites(id, name),
         photos:occurrence_log_photos(id, storage_path, file_name)
       `)

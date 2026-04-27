@@ -58,7 +58,7 @@ router.post('/pdf', authenticate, async (req, res, next) => {
     // Get log with all details
     const { data: log, error } = await supabase
       .from('occurrence_logs')
-      .select('*, site:sites(name), officer:users(first_name, last_name, sia_licence_number)')
+      .select('*, site:sites(name), officer:users!occurrence_logs_officer_id_fkey(first_name, last_name, sia_licence_number)')
       .eq('id', log_id)
       .eq('company_id', req.user.company_id)
       .single();
