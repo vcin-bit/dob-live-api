@@ -68,17 +68,19 @@ export default function PlaybookAlerts({ user, site, shift, lastPatrolTime, onTa
 
   async function dismissTask(task) {
     // Auto-create a log entry for the completed task
+    const validLogTypes = ['INCIDENT','PATROL','HEALTH_SAFETY','MEDICAL','VEHICLE_CHECK','CCTV_PATROL','GENERAL','WELFARE_CHECK','CCTV_CHECK','MANAGEMENT_VISIT','VISITOR','ACCESS_CONTROL','MAINTENANCE','HANDOVER','ALARM','FIRE_ALARM','EMERGENCY'];
+    const logType = validLogTypes.includes(task.task_type) ? task.task_type : 'GENERAL';
     try {
       await api.logs.create({
         site_id: site.id,
         shift_id: shift.id,
-        log_type: task.task_type,
+        log_type: logType,
         title: `✓ ${task.name}`,
         description: task.description || `Scheduled task completed: ${task.name}`,
         occurred_at: new Date().toISOString(),
         type_data: { scheduled_task_id: task.id, task_type: task.task_type },
       });
-    } catch {}
+    } catch (err) { console.error('Task log failed:', err); }
     setActiveAlert(null);
     onTaskDismissed?.();
   }

@@ -19,6 +19,7 @@ export default function SitePlaybook({ siteId }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [confirmDeleteTask, setConfirmDeleteTask] = useState(null);
+  const [completedToday, setCompletedToday] = useState(new Set());
 
   // Patrol config form
   const [patrol, setPatrol] = useState({
@@ -47,6 +48,12 @@ export default function SitePlaybook({ siteId }) {
       }
       setTasks(res.tasks || []);
       setChecks(res.checks || []);
+      // Check today's completed tasks from logs
+      const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+      const logsRes = await api.logs.list({ site_id: siteId, from: todayStart.toISOString(), limit: 200 });
+      const done = new Set();
+      (logsRes.data || []).forEach(l => { if (l.type_data?.scheduled_task_id) done.add(l.type_data.scheduled_task_id); });
+      setCompletedToday(done);
     } catch (e) { setError(e.message); }
     finally { setLoading(false); }
   }
@@ -216,13 +223,16 @@ export default function SitePlaybook({ siteId }) {
             {tasks.map(t => {
               const typeInfo = TASK_TYPES.find(x => x.key === t.task_type) || TASK_TYPES[0];
               const typeColor = { WELFARE_CALL:'#f97316', CCTV_CHECK:'#3b82f6', BUILDING_CHECK:'#8b5cf6', TASK:'var(--text-2)' };
+              const isDone = completedToday.has(t.id);
               return (
-                <div key={t.id} style={{display:'flex',gap:'0.75rem',alignItems:'flex-start',padding:'0.75rem',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'8px'}}>
+                <div key={t.id} style={{display:'flex',gap:'0.75rem',alignItems:'flex-start',padding:'0.75rem',background: isDone ? 'rgba(16,185,129,0.06)' : 'var(--surface)',border:`1px solid ${isDone ? 'rgba(16,185,129,0.2)' : 'var(--border)'}`,borderRadius:'8px'}}>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{display:'flex',gap:'0.5rem',alignItems:'center',flexWrap:'wrap',marginBottom:'0.25rem'}}>
+                      {isDone && <span style={{color:'#10b981',fontWeight:700,fontSize:'0.875rem'}}>✓</span>}
                       <span style={{fontWeight:600,fontSize:'0.875rem'}}>{t.name}</span>
                       <span style={{fontSize:'0.6875rem',color:typeColor[t.task_type]||'var(--text-2)',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em'}}>{typeInfo.label}</span>
                       {t.scheduled_time && <span style={{fontSize:'0.75rem',color:'var(--text-3)'}}>⏰ {t.scheduled_time.slice(0,5)}</span>}
+                      {isDone && <span style={{fontSize:'0.6875rem',color:'#10b981',fontWeight:600}}>Completed today</span>}
                     </div>
                     {t.description && <div style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>{t.description}</div>}
                     {t.contact_name && <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginTop:'2px'}}>📞 {t.contact_name}{t.contact_phone ? ` — ${t.contact_phone}` : ''}</div>}
