@@ -768,34 +768,44 @@ function SiteFormModal({ site, onClose, onSaved }) {
 function LogReview({ user }) {
   const [logs, setLogs] = useState([]);
   const [sites, setSites] = useState([]);
+  const [officers, setOfficers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [siteFilter, setSiteFilter] = useState('');
+  const [officerFilter, setOfficerFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [selectedLog, setSelectedLog] = useState(null);
 
   useEffect(() => {
     async function load() {
       try {
-        const [logsRes, sitesRes] = await Promise.all([
-          api.logs.list({ limit: 500 }),
+        const params = { limit: 500 };
+        if (dateFrom) params.from = new Date(dateFrom + 'T00:00:00').toISOString();
+        if (dateTo) params.to = new Date(dateTo + 'T23:59:59').toISOString();
+        const [logsRes, sitesRes, usersRes] = await Promise.all([
+          api.logs.list(params),
           api.sites.list(),
+          api.users.list(),
         ]);
         setLogs(logsRes.data || []);
         setSites(sitesRes.data || []);
+        setOfficers((usersRes.data || []).filter(u => u.role === 'OFFICER').sort((a,b) => (a.last_name||'').localeCompare(b.last_name||'')));
       } catch (err) { setError(err.message); }
       finally { setLoading(false); }
     }
     load();
-  }, []);
+  }, [dateFrom, dateTo]);
 
-  const logTypes = ['PATROL','INCIDENT','ALARM','ACCESS','VISITOR','HANDOVER','MAINTENANCE','VEHICLE','GENERAL'];
+  const logTypes = ['PATROL','INCIDENT','ALARM','ACCESS','VISITOR','HANDOVER','MAINTENANCE','VEHICLE','GENERAL','CCTV_CHECK','WELFARE_CHECK'];
 
   const filtered = logs.filter(l => {
     if (l.type_data?.checkpoint) return false;
     if (typeFilter && l.log_type !== typeFilter) return false;
     if (siteFilter && l.site_id !== siteFilter) return false;
+    if (officerFilter && l.officer_id !== officerFilter) return false;
     if (filter) {
       const q = filter.toLowerCase();
       return (l.title || '').toLowerCase().includes(q) ||
@@ -819,22 +829,22 @@ function LogReview({ user }) {
     <div>
       <div className="topbar">
         <div className="topbar-title">Log Review</div>
-        <div style={{display:'flex',gap:'0.5rem',alignItems:'center'}}>
-          <input
-            className="input"
-            style={{width:'160px'}}
-            placeholder="Search..."
-            value={filter}
-            onChange={e => setFilter(e.target.value)}
-          />
+        <div style={{display:'flex',gap:'0.5rem',alignItems:'center',flexWrap:'wrap'}}>
+          <input className="input" style={{width:'150px'}} placeholder="Search..." value={filter} onChange={e => setFilter(e.target.value)} />
           <select className="input" style={{width:'140px'}} value={siteFilter} onChange={e => setSiteFilter(e.target.value)}>
             <option value="">All sites</option>
             {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
           <select className="input" style={{width:'130px'}} value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
             <option value="">All types</option>
-            {logTypes.map(t => <option key={t} value={t}>{t.charAt(0)+t.slice(1).toLowerCase()}</option>)}
+            {logTypes.map(t => <option key={t} value={t}>{t.charAt(0)+t.slice(1).toLowerCase().replace(/_/g,' ')}</option>)}
           </select>
+          <select className="input" style={{width:'140px'}} value={officerFilter} onChange={e => setOfficerFilter(e.target.value)}>
+            <option value="">All officers</option>
+            {officers.map(o => <option key={o.id} value={o.id}>{o.first_name} {o.last_name}</option>)}
+          </select>
+          <input type="date" className="input" style={{width:'130px'}} value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="From date" />
+          <input type="date" className="input" style={{width:'130px'}} value={dateTo} onChange={e => setDateTo(e.target.value)} title="To date" />
         </div>
       </div>
       <div className="page-content">
