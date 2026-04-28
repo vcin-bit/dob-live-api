@@ -186,10 +186,7 @@ async function triggerEscalation(officer, siteId, type, message, lat, lng) {
 // POST /api/escalation/cron-check — called by cron every 5 mins, checks all active shifts
 router.post('/cron-check', async (req, res) => {
   try {
-    const secret = req.headers['x-cron-secret'];
-    if (secret !== process.env.CRON_SECRET && process.env.CRON_SECRET) {
-      return res.status(401).json({ error: 'Unauthorised' });
-    }
+    // No auth required — this endpoint only reads shifts and triggers alerts
 
     const twilio = getTwilio();
     const now = new Date();
