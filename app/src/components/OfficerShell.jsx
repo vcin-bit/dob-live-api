@@ -282,6 +282,11 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
   const [taskModal, setTaskModal] = useState(null);
   const [taskNotes, setTaskNotes] = useState('');
   const [taskSubmitting, setTaskSubmitting] = useState(false);
+  const [showCheckCall, setShowCheckCall] = useState(false);
+  const [checkPin, setCheckPin] = useState('');
+  const [checkCallSubmitting, setCheckCallSubmitting] = useState(false);
+  const [checkCallDue, setCheckCallDue] = useState(false);
+  const [lastCheckCall, setLastCheckCall] = useState(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [historyDate, setHistoryDate] = useState('');
@@ -328,6 +333,29 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
       return () => clearInterval(interval);
     }
   }, [site, user]);
+
+  // Hourly check call timer
+  useEffect(() => {
+    if (!shift) { setCheckCallDue(false); return; }
+    const check = () => {
+      const last = lastCheckCall || new Date(shift.checked_in_at || shift.start_time);
+      const elapsed = (Date.now() - new Date(last).getTime()) / 60000;
+      if (elapsed >= 55) { // Due at 55 mins, overdue at 60
+        setCheckCallDue(true);
+        // Play audible alert
+        try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); const o = ctx.createOscillator(); o.frequency.value = 800; o.connect(ctx.destination); o.start(); setTimeout(() => o.stop(), 500); } catch {}
+      } else {
+        setCheckCallDue(false);
+      }
+      // If 10+ mins overdue, trigger missed check
+      if (elapsed >= 70) {
+        api.escalation.missedCheck({ site_id: site?.id, shift_id: shift?.id, minutes_overdue: Math.round(elapsed - 60) }).catch(() => {});
+      }
+    };
+    check();
+    const t = setInterval(check, 60000);
+    return () => clearInterval(t);
+  }, [shift, lastCheckCall]);
 
   // Fetch logs for selected history date
   useEffect(() => {
@@ -397,18 +425,58 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
         </Link>
       </div>
 
-      {/* Check Call */}
+      {/* Check Call + Panic */}
       {shift && (
-        <button onClick={async () => {
-          let lat, lng;
-          try { const p = await new Promise((r,j) => navigator.geolocation.getCurrentPosition(r,j,{timeout:5000})); lat = p.coords.latitude; lng = p.coords.longitude; } catch {}
-          try {
-            await api.logs.create({ site_id: site?.id, shift_id: shift?.id, log_type: 'WELFARE_CHECK', title: `Check Call — ${user.first_name} ${user.last_name}`, description: `Officer check call at ${new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}. All OK.`, occurred_at: new Date().toISOString(), latitude: lat, longitude: lng, type_data: { check_call: true } });
-            alert('Check call logged');
-          } catch (e) { alert('Failed: ' + e.message); }
-        }} className="officer-action-btn secondary" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',marginBottom:'0.625rem',background:'rgba(59,130,246,0.1)',borderColor:'rgba(59,130,246,0.25)',color:'#60a5fa',fontWeight:700}}>
-          📞 Check Call
-        </button>
+        <div style={{display:'flex',gap:'0.5rem',marginBottom:'0.625rem'}}>
+          <button onClick={() => { setShowCheckCall(true); setCheckPin(''); }}
+            style={{flex:2,padding:'0.875rem',background: checkCallDue ? 'rgba(239,68,68,0.2)' : 'rgba(59,130,246,0.1)',border:`2px solid ${checkCallDue ? 'rgba(239,68,68,0.5)' : 'rgba(59,130,246,0.25)'}`,borderRadius:'10px',color: checkCallDue ? '#ef4444' : '#60a5fa',fontSize:'0.9375rem',fontWeight:700,cursor:'pointer',animation: checkCallDue ? 'pulse 1s infinite' : 'none'}}>
+            📞 {checkCallDue ? 'CHECK CALL DUE' : 'Check Call'}
+          </button>
+          <button onClick={async () => {
+            if (!confirm('ACTIVATE PANIC ALERT? This will immediately alert the control room.')) return;
+            let lat, lng;
+            try { const p = await new Promise((r,j) => navigator.geolocation.getCurrentPosition(r,j,{timeout:5000})); lat = p.coords.latitude; lng = p.coords.longitude; } catch {}
+            try { await api.escalation.panic({ site_id: site?.id, shift_id: shift?.id, lat, lng }); } catch {}
+          }} style={{flex:1,padding:'0.875rem',background:'rgba(239,68,68,0.2)',border:'2px solid rgba(239,68,68,0.5)',borderRadius:'10px',color:'#ef4444',fontSize:'0.9375rem',fontWeight:700,cursor:'pointer'}}>
+            🚨 SOS
+          </button>
+        </div>
+      )}
+
+      {/* Check Call PIN Modal */}
+      {showCheckCall && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:'1rem'}}>
+          <div style={{background:'#0f1929',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'16px',padding:'1.5rem',width:'100%',maxWidth:'320px',textAlign:'center'}}>
+            <div style={{fontSize:'16px',fontWeight:700,color:'#fff',marginBottom:'4px'}}>Check Call</div>
+            <div style={{fontSize:'13px',color:'rgba(255,255,255,0.4)',marginBottom:'20px'}}>Enter your PIN to confirm</div>
+            <input type="password" inputMode="numeric" maxLength={4} value={checkPin} onChange={e => setCheckPin(e.target.value.replace(/\D/g,''))}
+              autoFocus placeholder="● ● ● ●"
+              style={{width:'100%',background:'rgba(255,255,255,0.07)',border:'1.5px solid rgba(59,130,246,0.3)',borderRadius:'10px',padding:'16px',fontSize:'28px',color:'#fff',textAlign:'center',letterSpacing:'0.5em',boxSizing:'border-box',fontFamily:'monospace'}} />
+            <div style={{display:'flex',gap:'8px',marginTop:'16px'}}>
+              <button onClick={() => setShowCheckCall(false)}
+                style={{flex:1,padding:'13px',background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'10px',color:'rgba(255,255,255,0.6)',fontSize:'14px',fontWeight:600,cursor:'pointer'}}>Cancel</button>
+              <button disabled={checkPin.length !== 4 || checkCallSubmitting} onClick={async () => {
+                setCheckCallSubmitting(true);
+                let lat, lng;
+                try { const p = await new Promise((r,j) => navigator.geolocation.getCurrentPosition(r,j,{timeout:5000})); lat = p.coords.latitude; lng = p.coords.longitude; } catch {}
+                try {
+                  await api.escalation.checkCall({ pin: checkPin, site_id: site?.id, shift_id: shift?.id, lat, lng });
+                  setLastCheckCall(new Date());
+                  setCheckCallDue(false);
+                  setShowCheckCall(false);
+                } catch (e) {
+                  alert(e.message || 'Invalid PIN');
+                }
+                finally { setCheckCallSubmitting(false); }
+              }} style={{flex:2,padding:'13px',background:'rgba(74,222,128,0.15)',border:'1.5px solid rgba(74,222,128,0.4)',borderRadius:'10px',color:'#4ade80',fontSize:'14px',fontWeight:700,cursor:'pointer',opacity: checkPin.length === 4 ? 1 : 0.5}}>
+                {checkCallSubmitting ? 'Verifying...' : 'Confirm'}
+              </button>
+            </div>
+            {!user.safe_pin && (
+              <div style={{marginTop:'12px',fontSize:'11px',color:'#f59e0b'}}>No PIN set — go to Profile to set your safe & duress PINs</div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* On Site Now */}

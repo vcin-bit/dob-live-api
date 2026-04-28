@@ -155,6 +155,53 @@ export default function OfficerProfile({ user }) {
           </div>
         )}
       </div>
+
+      {/* Check Call PINs */}
+      <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'12px',padding:'1rem',marginTop:'1rem'}}>
+        <div style={{fontSize:'13px',fontWeight:700,color:'#fff',marginBottom:'4px'}}>Check Call PINs</div>
+        <div style={{fontSize:'11px',color:'rgba(255,255,255,0.4)',marginBottom:'12px'}}>Your safe PIN confirms you are OK. Your duress PIN silently alerts the control room while appearing normal on screen.</div>
+        <PinSetup user={user} />
+      </div>
+    </div>
+  );
+}
+
+function PinSetup({ user }) {
+  const [safePin, setSafePin] = useState('');
+  const [duressPin, setDuressPin] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState('');
+  const inp = { width:'100%',background:'rgba(255,255,255,0.07)',border:'1.5px solid rgba(255,255,255,0.1)',borderRadius:'8px',padding:'12px',fontSize:'20px',color:'#fff',textAlign:'center',letterSpacing:'0.5em',boxSizing:'border-box',fontFamily:'monospace' };
+
+  useEffect(() => {
+    api.escalation.getPins().then(r => { setSafePin(r.safe_pin || ''); setDuressPin(r.duress_pin || ''); }).catch(() => {});
+  }, []);
+
+  async function save() {
+    if (safePin.length !== 4 || duressPin.length !== 4) { setMsg('Both PINs must be 4 digits'); return; }
+    if (safePin === duressPin) { setMsg('PINs must be different'); return; }
+    setSaving(true); setMsg('');
+    try {
+      await api.escalation.setPins({ safe_pin: safePin, duress_pin: duressPin });
+      setMsg('PINs saved');
+    } catch (e) { setMsg(e.message); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
+      <div>
+        <div style={{fontSize:'10px',fontWeight:600,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',marginBottom:'4px'}}>Safe PIN</div>
+        <input type="password" inputMode="numeric" maxLength={4} value={safePin} onChange={e => setSafePin(e.target.value.replace(/\D/g,''))} placeholder="● ● ● ●" style={inp} />
+      </div>
+      <div>
+        <div style={{fontSize:'10px',fontWeight:600,color:'rgba(239,68,68,0.7)',textTransform:'uppercase',marginBottom:'4px'}}>Duress PIN (silent alert)</div>
+        <input type="password" inputMode="numeric" maxLength={4} value={duressPin} onChange={e => setDuressPin(e.target.value.replace(/\D/g,''))} placeholder="● ● ● ●" style={{...inp, borderColor:'rgba(239,68,68,0.3)'}} />
+      </div>
+      <button onClick={save} disabled={saving} style={{width:'100%',padding:'12px',background:'rgba(59,130,246,0.2)',border:'1.5px solid rgba(59,130,246,0.4)',borderRadius:'8px',color:'#60a5fa',fontSize:'13px',fontWeight:700,cursor:'pointer'}}>
+        {saving ? 'SAVING...' : 'SAVE PINS'}
+      </button>
+      {msg && <div style={{fontSize:'12px',color: msg === 'PINs saved' ? '#10b981' : '#ef4444',textAlign:'center'}}>{msg}</div>}
     </div>
   );
 }

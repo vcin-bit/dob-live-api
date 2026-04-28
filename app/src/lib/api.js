@@ -310,6 +310,13 @@ export const api = {
     update: (id, data) => request(`/api/products/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     delete: (id) => request(`/api/products/${id}`, { method: 'DELETE' }),
   },
+  escalation: {
+    checkCall: (data) => request('/api/escalation/check-call', { method: 'POST', body: JSON.stringify(data) }),
+    panic: (data) => request('/api/escalation/panic', { method: 'POST', body: JSON.stringify(data) }),
+    missedCheck: (data) => request('/api/escalation/missed-check', { method: 'POST', body: JSON.stringify(data) }),
+    getPins: () => request('/api/escalation/pins'),
+    setPins: (data) => request('/api/escalation/pins', { method: 'PATCH', body: JSON.stringify(data) }),
+  },
 };
 
 export { ApiError };
