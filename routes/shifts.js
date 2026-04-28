@@ -126,6 +126,17 @@ router.post('/start', authenticate, async (req, res, next) => {
       .select('*, site:sites(id,name)')
       .single();
     if (error) throw error;
+    // Create on-duty log
+    try {
+      await supabase.from('occurrence_logs').insert({
+        company_id: req.user.company_id, site_id, shift_id: data.id,
+        officer_id: req.user.id, log_type: 'GENERAL',
+        title: `${req.user.first_name} ${req.user.last_name} — On Duty`,
+        description: `Officer signed on duty at ${data.site?.name || 'site'}.`,
+        occurred_at: new Date().toISOString(),
+        type_data: { shift_event: 'ON_DUTY' },
+      });
+    } catch {}
     res.status(201).json({ data });
   } catch (err) { next(err); }
 });
@@ -147,6 +158,17 @@ router.post('/:id/checkin', authenticate, async (req, res, next) => {
       .select('*, site:sites(id,name)')
       .single();
     if (error) throw error;
+    // Create on-duty log
+    try {
+      await supabase.from('occurrence_logs').insert({
+        company_id: req.user.company_id, site_id: data.site_id, shift_id: data.id,
+        officer_id: req.user.id, log_type: 'GENERAL',
+        title: `${req.user.first_name} ${req.user.last_name} — On Duty`,
+        description: `Officer signed on duty at ${data.site?.name || 'site'}.`,
+        occurred_at: new Date().toISOString(),
+        type_data: { shift_event: 'ON_DUTY' },
+      });
+    } catch {}
     res.json({ data });
   } catch (err) { next(err); }
 });
@@ -154,16 +176,30 @@ router.post('/:id/checkin', authenticate, async (req, res, next) => {
 // POST /api/shifts/:id/checkout — officer checks out
 router.post('/:id/checkout', authenticate, async (req, res, next) => {
   try {
+    const now = new Date().toISOString();
     const { data, error } = await supabase
       .from('shifts')
       .update({
         status: 'COMPLETED',
-        checked_out_at: new Date().toISOString(),
+        checked_out_at: now,
       })
       .eq('id', req.params.id)
       .eq('officer_id', req.user.id)
-      .select().single();
+      .select('*, site:sites(id,name)')
+      .single();
     if (error) throw error;
+    // Create off-duty log
+    try {
+      const hrs = data.checked_in_at ? ((new Date(now) - new Date(data.checked_in_at)) / 3600000).toFixed(1) : '?';
+      await supabase.from('occurrence_logs').insert({
+        company_id: req.user.company_id, site_id: data.site_id, shift_id: data.id,
+        officer_id: req.user.id, log_type: 'GENERAL',
+        title: `${req.user.first_name} ${req.user.last_name} — Off Duty`,
+        description: `Officer signed off duty. Shift duration: ${hrs} hours.`,
+        occurred_at: now,
+        type_data: { shift_event: 'OFF_DUTY', duration_hours: hrs },
+      });
+    } catch {}
     res.json({ data });
   } catch (err) { next(err); }
 });
