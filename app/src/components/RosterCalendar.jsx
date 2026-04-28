@@ -138,7 +138,10 @@ export default function RosterCalendar({ siteId, user }) {
 
   function shiftsForDay(d) {
     const ds = isoDate(d);
-    return shifts.filter(s => isoDate(new Date(s.start_time)) === ds);
+    return shifts.filter(s => {
+      const londonDate = new Date(s.start_time).toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+      return londonDate === ds;
+    });
   }
 
   function rangeLabel() {
