@@ -13,7 +13,7 @@ function officerColour(id) {
   return OFFICER_COLOURS[Math.abs(hash) % OFFICER_COLOURS.length];
 }
 
-function isoDate(d) { return d.toISOString().split('T')[0]; }
+function isoDate(d) { return d.toLocaleDateString('en-CA', { timeZone: 'Europe/London' }); }
 function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
 function localISOString(dateStr, timeStr) {
   const d = new Date(`${dateStr}T${timeStr}:00`);
@@ -24,7 +24,7 @@ function localISOString(dateStr, timeStr) {
 }
 function startOfWeek(d) { const r = new Date(d); r.setDate(r.getDate() - ((r.getDay() + 6) % 7)); r.setHours(0,0,0,0); return r; }
 function startOfMonth(d) { return new Date(d.getFullYear(), d.getMonth(), 1); }
-function fmtTime(iso) { return new Date(iso).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' }); }
+function fmtTime(iso) { return new Date(iso).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', timeZone:'Europe/London' }); }
 
 function isOvernight(s) {
   if (!s.end_time) return false;
@@ -138,10 +138,7 @@ export default function RosterCalendar({ siteId, user }) {
 
   function shiftsForDay(d) {
     const ds = isoDate(d);
-    return shifts.filter(s => {
-      const londonDate = new Date(s.start_time).toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
-      return londonDate === ds;
-    });
+    return shifts.filter(s => isoDate(new Date(s.start_time)) === ds);
   }
 
   function rangeLabel() {
