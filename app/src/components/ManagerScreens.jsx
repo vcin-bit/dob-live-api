@@ -866,7 +866,7 @@ function LogReview({ user }) {
             </thead>
             <tbody>
               {filtered.map(log => (
-                <tr key={log.id} onClick={() => setSelectedLog(log)} style={{cursor:'pointer', background: log.type_data?.check_call ? 'rgba(16,185,129,0.06)' : undefined}}>
+                <tr key={log.id} onClick={() => setSelectedLog(log)} style={{cursor:'pointer', background: log.type_data?.panic ? 'rgba(239,68,68,0.1)' : log.type_data?.check_call ? 'rgba(16,185,129,0.06)' : undefined}}>
                   <td style={{color:'var(--text-2)',whiteSpace:'nowrap',fontSize:'0.8125rem'}}>
                     {new Date(log.occurred_at).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'2-digit'})}
                     {' '}
@@ -1013,6 +1013,23 @@ function LogDetailModal({ log, onClose }) {
                     : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--surface-2)',fontSize:'0.75rem',color:'var(--text-3)'}}>video</div>}
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* GPS Location Map */}
+        {log.latitude && log.longitude && (
+          <div style={{marginBottom:'1rem'}}>
+            <div style={{fontSize:'0.75rem',fontWeight:700,color:'var(--text-3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.5rem'}}>Location</div>
+            <div style={{height:'200px',borderRadius:'8px',overflow:'hidden',border:'1px solid var(--border)',position:'relative'}}>
+              <iframe
+                width="100%" height="100%" frameBorder="0" style={{border:0}}
+                src={`https://www.openstreetmap.org/export/embed.html?bbox=${log.longitude-0.003},${log.latitude-0.002},${log.longitude+0.003},${log.latitude+0.002}&layer=mapnik&marker=${log.latitude},${log.longitude}`}
+              />
+            </div>
+            <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginTop:'0.25rem'}}>
+              GPS: {log.latitude.toFixed(5)}, {log.longitude.toFixed(5)}
+              {log.what3words && <span style={{marginLeft:'0.5rem',color:'#ef4444',fontWeight:600}}>///{log.what3words}</span>}
             </div>
           </div>
         )}
