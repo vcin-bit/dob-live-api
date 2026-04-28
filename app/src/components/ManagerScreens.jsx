@@ -866,7 +866,7 @@ function LogReview({ user }) {
             </thead>
             <tbody>
               {filtered.map(log => (
-                <tr key={log.id} onClick={() => setSelectedLog(log)} style={{cursor:'pointer', background: log.type_data?.panic ? 'rgba(239,68,68,0.1)' : log.type_data?.missed_check ? 'rgba(245,158,11,0.1)' : log.type_data?.shift_event === 'OFF_DUTY' ? 'rgba(239,68,68,0.08)' : log.type_data?.shift_event === 'ON_DUTY' ? 'rgba(59,130,246,0.08)' : log.type_data?.check_call ? 'rgba(16,185,129,0.06)' : undefined}}>
+                <tr key={log.id} onClick={() => setSelectedLog(log)} style={{cursor:'pointer', background: log.type_data?.duress ? 'rgba(239,68,68,0.15)' : log.type_data?.panic ? 'rgba(239,68,68,0.1)' : log.type_data?.missed_check ? 'rgba(245,158,11,0.1)' : log.type_data?.shift_event === 'OFF_DUTY' ? 'rgba(239,68,68,0.08)' : log.type_data?.shift_event === 'ON_DUTY' ? 'rgba(59,130,246,0.08)' : log.type_data?.check_call ? 'rgba(16,185,129,0.06)' : undefined}}>
                   <td style={{color:'var(--text-2)',whiteSpace:'nowrap',fontSize:'0.8125rem'}}>
                     {new Date(log.occurred_at).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'2-digit'})}
                     {' '}
@@ -875,6 +875,7 @@ function LogReview({ user }) {
                   <td><span className={`badge ${typeColors[log.log_type] || 'badge-neutral'}`}>{log.log_type}</span></td>
                   <td style={{fontWeight:500,maxWidth:'240px'}}>
                     <div style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{log.title || '—'}</div>
+                    {log.type_data?.duress && <div style={{fontSize:'0.6875rem',fontWeight:700,color:'#ef4444',background:'rgba(239,68,68,0.15)',display:'inline-block',padding:'1px 6px',borderRadius:'3px',marginBottom:'2px'}}>🚨 DURESS</div>}
                     {log.description && <div style={{fontSize:'0.75rem',color:'var(--text-2)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{log.description}</div>}
                     {(log.type_data?.media?.length > 0) && <div style={{fontSize:'0.7rem',color:'var(--blue)'}}>{log.type_data.media.length} photo{log.type_data.media.length>1?'s':''} attached</div>}
                   </td>
