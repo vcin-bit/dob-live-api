@@ -312,7 +312,7 @@ function LogEntryScreen({ user, site, shift }) {
             title: `CCTV PATROL${form.cctv_issues_found ? ' — Issues Found' : ' — AIO'}`,
             description: form.cctv_issues_found ? (form.cctv_issue_description || form.cctv_action_taken) : 'All cameras checked, all in order.',
             occurred_at: new Date().toISOString(),
-            type_data: { cameras_checked: form.cameras_checked, cctv_issues_found: form.cctv_issues_found, cctv_issue_description: form.cctv_issue_description, cctv_action_taken: form.cctv_action_taken },
+            type_data: { cameras_checked: form.cameras_checked, cctv_issues_found: form.cctv_issues_found ? 'Yes' : 'No', ...(form.cctv_issues_found ? { cctv_issue_description: form.cctv_issue_description || 'None', cctv_action_taken: form.cctv_action_taken || 'None' } : {}) },
           });
           navigate('/', { state: { message: 'CCTV patrol submitted' } });
         } catch (e) { setError(e.message); }
