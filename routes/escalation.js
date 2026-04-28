@@ -158,7 +158,7 @@ async function triggerEscalation(officer, siteId, type, message) {
   // Auto-dial escalation number with voice message
   try {
     await twilio.calls.create({
-      twiml: `<Response><Say voice="alice" language="en-GB">DOB Live emergency alert. ${fullMessage}. Please respond immediately. Repeating. ${fullMessage}.</Say></Response>`,
+      twiml: `<Response><Say voice="Polly.Amy" language="en-GB">DOB Live emergency alert. ${fullMessage}. Please respond immediately. Repeating. ${fullMessage}.</Say></Response>`,
       from: process.env.TWILIO_PHONE_NUMBER,
       to: ESCALATION_PHONE,
     });
@@ -187,7 +187,7 @@ router.post('/test', async (req, res) => {
     // Test call
     try {
       const call = await twilio.calls.create({
-        twiml: '<Response><Say voice="alice" language="en-GB">This is Risk Secured emergency national command centre. Officer David Foster at Test Site has failed to make their scheduled safety check. Immediate welfare check required.</Say></Response>',
+        twiml: '<Response><Say voice="Polly.Amy" language="en-GB">This is Risk Secured emergency national command centre. Officer David Foster at Test Site has failed to make their scheduled safety check. Immediate welfare check required.</Say></Response>',
         from: process.env.TWILIO_PHONE_NUMBER,
         to: ESCALATION_PHONE,
       });
