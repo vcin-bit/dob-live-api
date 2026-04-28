@@ -266,7 +266,30 @@ function ProfitLoss({ user }) {
                             {o.actualHrs > 0 ? `${variance > 0 ? '+' : ''}${variance.toFixed(1)}` : '—'}
                           </td>
                           <td style={{textAlign:'right',color:'#f59e0b',fontWeight:600}}>£{avgPayRate.toFixed(2)}</td>
-                          <td style={{textAlign:'right',color:'#10b981',fontWeight:600}}>£{o.avgChargeRate.toFixed(2)}</td>
+                          <td style={{textAlign:'right'}}>
+                            <input type="number" step="0.01" min="0" value={o.avgChargeRate.toFixed(2)}
+                              style={{width:'70px',padding:'0.125rem 0.375rem',background:'rgba(16,185,129,0.08)',border:'1px solid rgba(16,185,129,0.25)',borderRadius:'4px',fontSize:'0.8125rem',color:'#10b981',fontWeight:600,textAlign:'right'}}
+                              onChange={e => {
+                                const val = e.target.value;
+                                const newRate = parseFloat(val) || 0;
+                                // Update local state immediately
+                                byOfficer[name].avgChargeRate = newRate;
+                                byOfficer[name].chargeRevenue = byOfficer[name].scheduledHrs * newRate;
+                              }}
+                              onBlur={async e => {
+                                const newRate = parseFloat(e.target.value) || 0;
+                                // Update all shifts for this officer at this site
+                                const token = await window.__clerkGetToken?.() || '';
+                                const API = import.meta.env.VITE_API_URL || 'https://dob-live-api.onrender.com';
+                                await Promise.all(o.shiftIds.map(id =>
+                                  fetch(`${API}/api/shifts/${id}`, { method:'PATCH', headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`}, body:JSON.stringify({charge_rate:newRate}) })
+                                ));
+                                // Reload data
+                                const { from: f, to: t } = getRange();
+                                const [sr, shr] = await Promise.all([api.sites.list(), api.shifts.list({from:f.toISOString(),to:t.toISOString(),limit:1000})]);
+                                setSites(sr.data||[]); setShifts(shr.data||[]);
+                              }} />
+                          </td>
                           <td style={{textAlign:'right',fontWeight:700,color: gp >= 0 ? '#10b981' : '#ef4444'}}>{fmt(gp)}</td>
                         </tr>
                       );
