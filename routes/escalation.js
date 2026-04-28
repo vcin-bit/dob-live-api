@@ -39,7 +39,7 @@ router.post('/check-call', authenticate, async (req, res, next) => {
 
     // If duress — silently trigger escalation
     if (isDuress) {
-      await triggerEscalation(officer, req.body.site_id, 'DURESS', `DURESS PIN entered by ${officer.first_name} ${officer.last_name}`);
+      await triggerEscalation(officer, req.body.site_id, 'DURESS', `DURESS PIN entered by ${officer.first_name} ${officer.last_name}`, lat, lng);
     }
 
     // Always respond OK (officer sees normal confirmation)
@@ -66,7 +66,7 @@ router.post('/panic', authenticate, async (req, res, next) => {
       type_data: { panic: true },
     });
 
-    await triggerEscalation(officer, site_id, 'PANIC', `PANIC BUTTON activated by ${officer.first_name} ${officer.last_name}`);
+    await triggerEscalation(officer, site_id, 'PANIC', `PANIC BUTTON activated by ${officer.first_name} ${officer.last_name}`, lat, lng);
 
     res.json({ success: true });
   } catch (err) { next(err); }
@@ -131,8 +131,20 @@ router.patch('/pins', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ── What3Words lookup ────────────────────────────────────────────────────────
+async function getW3W(lat, lng) {
+  if (!lat || !lng) return null;
+  const key = process.env.W3W_API_KEY || process.env.VITE_W3W_API_KEY;
+  if (!key) return null;
+  try {
+    const res = await fetch(`https://api.what3words.com/v3/convert-to-3wa?coordinates=${lat}%2C${lng}&language=en&format=json&key=${key}`);
+    const data = await res.json();
+    return data.words || null;
+  } catch { return null; }
+}
+
 // ── Escalation helper ───────────────────────────────────────────────────────
-async function triggerEscalation(officer, siteId, type, message) {
+async function triggerEscalation(officer, siteId, type, message, lat, lng) {
   const twilio = getTwilio();
   if (!twilio) { console.error('Twilio not configured'); return; }
 
@@ -143,12 +155,17 @@ async function triggerEscalation(officer, siteId, type, message) {
     if (site) siteName = site.name;
   }
 
+  // Get What3Words location
+  const w3w = await getW3W(lat, lng);
+  const locationInfo = w3w ? `Location: what 3 words: ${w3w.replace(/\./g, ', ')}` : (lat ? `GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)}` : '');
+
   const fullMessage = `${message} at ${siteName}`;
+  const smsLocation = w3w ? `Location: ///${w3w}` : (lat ? `GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)}` : '');
 
   // SMS to escalation number
   try {
     await twilio.messages.create({
-      body: `DOB Live ALERT: ${fullMessage}. Immediate action required.`,
+      body: `Risk Secured NCC ALERT: ${fullMessage}. ${smsLocation}. Immediate action required.`,
       from: process.env.TWILIO_PHONE_NUMBER,
       to: ESCALATION_PHONE,
     });
@@ -158,7 +175,7 @@ async function triggerEscalation(officer, siteId, type, message) {
   // Auto-dial escalation number with voice message
   try {
     await twilio.calls.create({
-      twiml: `<Response><Say voice="Polly.Amy" language="en-GB">DOB Live emergency alert. ${fullMessage}. Please respond immediately. Repeating. ${fullMessage}.</Say></Response>`,
+      twiml: `<Response><Say voice="Polly.Amy" language="en-GB">This is Risk Secured emergency national command centre. ${fullMessage}. ${locationInfo}. Immediate welfare check required. Repeating. ${fullMessage}. ${locationInfo}.</Say></Response>`,
       from: process.env.TWILIO_PHONE_NUMBER,
       to: ESCALATION_PHONE,
     });
