@@ -236,35 +236,39 @@ router.post('/cron-check', async (req, res) => {
 
       results.alerts++;
 
-      if (minsOverdue >= 5 && minsOverdue < 10 && twilio && officerPhone) {
-        // +5 mins: First call to officer
+      // Always SMS the officer first
+      if (twilio && officerPhone) {
         try {
-          await twilio.calls.create({
-            twiml: `<Response><Say voice="Polly.Amy" language="en-GB">This is Risk Secured national command centre. Your safety check is overdue. Please open the DOB Live app and complete your safety check. If you are safe, press 1.</Say><Gather numDigits="1" timeout="10"><Say voice="Polly.Amy" language="en-GB">Press 1 to confirm you are safe.</Say></Gather><Say voice="Polly.Amy" language="en-GB">No response received. We will call again shortly.</Say></Response>`,
+          await twilio.messages.create({
+            body: `Risk Secured NCC: Your safety check is ${minsOverdue} mins overdue. Please open the DOB Live app and complete your safety check immediately.`,
             from: process.env.TWILIO_PHONE_NUMBER,
             to: officerPhone,
           });
-          console.log(`Safety check call 1 to ${officerName}`);
+          console.log(`Safety SMS sent to ${officerName}`);
+        } catch (e) { console.error(`SMS to officer failed: ${e.message}`); }
+      }
+
+      // Always call the officer
+      if (twilio && officerPhone) {
+        try {
+          await twilio.calls.create({
+            twiml: `<Response><Say voice="Polly.Amy" language="en-GB">This is Risk Secured national command centre. Your safety check is ${minsOverdue} minutes overdue. Please open the DOB Live app and complete your safety check immediately.</Say></Response>`,
+            from: process.env.TWILIO_PHONE_NUMBER,
+            to: officerPhone,
+          });
+          console.log(`Safety call to ${officerName}`);
         } catch (e) { console.error(`Call to officer failed: ${e.message}`); }
-      } else if (minsOverdue >= 10 && minsOverdue < 15 && twilio && officerPhone) {
-        // +10 mins: Second call to officer
-        try {
-          await twilio.calls.create({
-            twiml: `<Response><Say voice="Polly.Amy" language="en-GB">This is Risk Secured national command centre. Second attempt. Your safety check is now ${minsOverdue} minutes overdue. Please respond immediately. Press 1 if you are safe.</Say><Gather numDigits="1" timeout="10"><Say voice="Polly.Amy" language="en-GB">Press 1 to confirm.</Say></Gather><Say voice="Polly.Amy" language="en-GB">No response. Escalating to control.</Say></Response>`,
-            from: process.env.TWILIO_PHONE_NUMBER,
-            to: officerPhone,
-          });
-          console.log(`Safety check call 2 to ${officerName}`);
-        } catch (e) { console.error(`Call 2 to officer failed: ${e.message}`); }
-      } else if (minsOverdue >= 15) {
-        // +15 mins: Escalate to manager
+      }
+
+      // After 15 mins overdue — ALSO escalate to manager
+      if (minsOverdue >= 15) {
         // Log missed check
         await supabase.from('occurrence_logs').insert({
           company_id: shift.officer.company_id,
           site_id: shift.site_id, shift_id: shift.id,
           officer_id: shift.officer.id, log_type: 'WELFARE_CHECK',
           title: `⚠ Missed Safety Check — ${officerName}`,
-          description: `Officer safety check overdue by ${minsOverdue} minutes. Auto-escalated after 3 failed contact attempts.`,
+          description: `Officer safety check overdue by ${minsOverdue} minutes. Escalated to control.`,
           occurred_at: now.toISOString(),
           type_data: { missed_check: true, minutes_overdue: minsOverdue, auto_escalated: true },
         });
