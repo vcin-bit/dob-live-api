@@ -41,7 +41,7 @@ function ManagerApp({ user }) {
           <Route path="/instructions" element={<SiteInstructionsScreen user={user} />} />
           <Route path="/messages"     element={<MessagesScreen user={user} />} />
           <Route path="/contracts"   element={<ContractsScreen user={user} />} />
-          <Route path="/portal"      element={<PortalManagement user={user} />} />
+          <Route path="/portal-settings" element={<PortalManagement user={user} />} />
           <Route path="*"          element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </div>
@@ -105,7 +105,7 @@ function ManagerSidebar({ user }) {
     {
       label: 'Client Portal',
       items: [
-        { to: '/portal', icon: EyeIcon, label: 'Portal Settings' },
+        { to: '/portal-settings', icon: EyeIcon, label: 'Portal Settings' },
       ]
     },
     {
