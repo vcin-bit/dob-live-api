@@ -866,7 +866,7 @@ function LogReview({ user }) {
             </thead>
             <tbody>
               {filtered.map(log => (
-                <tr key={log.id} onClick={() => setSelectedLog(log)} style={{cursor:'pointer', background: log.type_data?.panic ? 'rgba(239,68,68,0.1)' : log.type_data?.check_call ? 'rgba(16,185,129,0.06)' : undefined}}>
+                <tr key={log.id} onClick={() => setSelectedLog(log)} style={{cursor:'pointer', background: log.type_data?.panic ? 'rgba(239,68,68,0.1)' : log.type_data?.shift_event === 'OFF_DUTY' ? 'rgba(239,68,68,0.08)' : log.type_data?.shift_event === 'ON_DUTY' ? 'rgba(16,185,129,0.06)' : log.type_data?.check_call ? 'rgba(16,185,129,0.06)' : undefined}}>
                   <td style={{color:'var(--text-2)',whiteSpace:'nowrap',fontSize:'0.8125rem'}}>
                     {new Date(log.occurred_at).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'2-digit'})}
                     {' '}
