@@ -166,4 +166,36 @@ async function triggerEscalation(officer, siteId, type, message) {
   } catch (e) { console.error('Escalation call failed:', e.message); }
 }
 
+// POST /api/escalation/test — temporary test endpoint
+router.post('/test', async (req, res) => {
+  try {
+    const twilio = getTwilio();
+    if (!twilio) return res.status(500).json({ error: 'Twilio not configured', sid: process.env.TWILIO_ACCOUNT_SID ? 'SID set' : 'SID missing', phone: process.env.TWILIO_PHONE_NUMBER || 'missing' });
+
+    const results = {};
+
+    // Test SMS
+    try {
+      const sms = await twilio.messages.create({
+        body: 'Risk Secured NCC TEST: Officer David Foster at Test Site has failed to make their scheduled safety check. Immediate welfare check required.',
+        from: process.env.TWILIO_PHONE_NUMBER,
+        to: ESCALATION_PHONE,
+      });
+      results.sms = { success: true, sid: sms.sid };
+    } catch (e) { results.sms = { error: e.message }; }
+
+    // Test call
+    try {
+      const call = await twilio.calls.create({
+        twiml: '<Response><Say voice="alice" language="en-GB">This is Risk Secured emergency national command centre. Officer David Foster at Test Site has failed to make their scheduled safety check. Immediate welfare check required.</Say></Response>',
+        from: process.env.TWILIO_PHONE_NUMBER,
+        to: ESCALATION_PHONE,
+      });
+      results.call = { success: true, sid: call.sid };
+    } catch (e) { results.call = { error: e.message }; }
+
+    res.json(results);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 module.exports = router;
