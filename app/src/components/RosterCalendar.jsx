@@ -83,10 +83,8 @@ export default function RosterCalendar({ siteId, user }) {
     else if (view === 'week') { from = startOfWeek(today); to = addDays(from, 7); }
     else if (view === '2week') { from = startOfWeek(today); to = addDays(from, 14); }
     else {
-      from = startOfWeek(startOfMonth(today));
-      const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 1);
-      const endDay = (monthEnd.getDay() + 6) % 7;
-      to = endDay === 0 ? monthEnd : addDays(monthEnd, 7 - endDay);
+      from = new Date(today.getFullYear(), today.getMonth(), 1);
+      to = new Date(today.getFullYear(), today.getMonth() + 1, 1);
     }
     return { from, to };
   }
@@ -415,8 +413,16 @@ function BulkTimesModal({ count, onApply, onClose, processing }) {
 // ── Rota Grid ────────────────────────────────────────────────────────────────
 
 function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, onAdd, siteId, bulkMode, selected, onSelectDay, user, anchorMonth, anchorYear }) {
-  const weeks = [];
-  for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7));
+  // For month view, build weeks with padding for partial first/last weeks
+  let weeks = [];
+  if (view === 'month' && days.length > 0) {
+    const firstDow = (days[0].getDay() + 6) % 7; // 0=Mon
+    const padded = [...Array(firstDow).fill(null), ...days];
+    while (padded.length % 7 !== 0) padded.push(null);
+    for (let i = 0; i < padded.length; i += 7) weeks.push(padded.slice(i, i + 7));
+  } else {
+    for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7));
+  }
   const isCompact = view === 'month';
   const cellMinH = isCompact ? 70 : (siteId ? 160 : 80);
 
@@ -431,16 +437,15 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
           ))}
         </div>
         {weeks.map((week, wi) => {
-          const weekShifts = week.flatMap(d => shiftsForDay(d));
+          const weekShifts = week.filter(Boolean).flatMap(d => shiftsForDay(d));
           const weekHours = weekShifts.reduce((t, s) => t + shiftHours(s), 0);
           const weekPayCost = weekShifts.reduce((t, s) => t + shiftHours(s) * (parseFloat(s.pay_rate) || 0), 0);
           const weekChargeRev = weekShifts.reduce((t, s) => t + shiftHours(s) * (parseFloat(s.charge_rate) || 0), 0);
           return (<React.Fragment key={wi}>
           <div style={{display:'grid',gridTemplateColumns:'repeat(7, minmax(120px, 1fr))',gap:'1px',background:'var(--border)'}}>
-            {week.map(d => {
-              const outOfMonth = isCompact && (d.getMonth() !== anchorMonth || d.getFullYear() !== anchorYear);
-              if (outOfMonth) {
-                return <div key={isoDate(d)} style={{background:'var(--surface-2)',minHeight:`${cellMinH}px`,opacity:0.4}} />;
+            {week.map((d, di) => {
+              if (!d) {
+                return <div key={`empty-${di}`} style={{background:'var(--surface-2)',minHeight:`${cellMinH}px`}} />;
               }
               const dayShifts = shiftsForDay(d).sort((a,b) => new Date(a.start_time) - new Date(b.start_time));
               const today = isToday(d);
