@@ -287,6 +287,7 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
   const [checkCallSubmitting, setCheckCallSubmitting] = useState(false);
   const [checkCallDue, setCheckCallDue] = useState(false);
   const [lastCheckCall, setLastCheckCall] = useState(null);
+  const [checkCallConfirmed, setCheckCallConfirmed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [historyDate, setHistoryDate] = useState('');
@@ -464,6 +465,8 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
                   setLastCheckCall(new Date());
                   setCheckCallDue(false);
                   setShowCheckCall(false);
+                  setCheckCallConfirmed(true);
+                  setTimeout(() => setCheckCallConfirmed(false), 3000);
                 } catch (e) {
                   alert(e.message || 'Invalid PIN');
                 }
@@ -475,6 +478,17 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
             {!user.safe_pin && (
               <div style={{marginTop:'12px',fontSize:'11px',color:'#f59e0b'}}>No PIN set — go to Profile to set your safe & duress PINs</div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Safety Check Confirmation */}
+      {checkCallConfirmed && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <div style={{background:'#0f1929',borderRadius:'16px',padding:'2rem 3rem',textAlign:'center'}}>
+            <div style={{fontSize:'3rem',marginBottom:'0.5rem'}}>✓</div>
+            <div style={{fontSize:'18px',fontWeight:700,color:'#4ade80',marginBottom:'4px'}}>Safety Check Confirmed</div>
+            <div style={{fontSize:'13px',color:'rgba(255,255,255,0.4)'}}>Logged at {new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}</div>
           </div>
         </div>
       )}
