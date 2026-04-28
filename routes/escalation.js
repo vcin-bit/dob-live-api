@@ -204,18 +204,18 @@ router.post('/cron-check', async (req, res) => {
       if (!shift.officer) continue;
       results.checked++;
 
-      // Find last safety check for this officer today
+      // Find last ACTUAL safety check (not missed check alerts) for this officer today
       const { data: lastCheck } = await supabase
         .from('occurrence_logs')
-        .select('occurred_at')
+        .select('occurred_at, type_data')
         .eq('officer_id', shift.officer.id)
         .eq('log_type', 'WELFARE_CHECK')
         .gte('occurred_at', new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString())
         .order('occurred_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(10);
+      const actualCheck = (lastCheck || []).find(l => l.type_data?.check_call === true && !l.type_data?.missed_check);
 
-      const lastTime = lastCheck ? new Date(lastCheck.occurred_at) : new Date(shift.checked_in_at || shift.start_time);
+      const lastTime = actualCheck ? new Date(actualCheck.occurred_at) : new Date(shift.checked_in_at || shift.start_time);
       const minsOverdue = Math.floor((now - lastTime) / 60000) - 60; // mins past the 1hr mark
 
       if (minsOverdue < 5) continue; // Not overdue yet
