@@ -354,6 +354,10 @@ function ShiftPatternsScreen({ user }) {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editPattern, setEditPattern] = useState(null);
+  const [applyPattern, setApplyPattern] = useState(null);
+  const [applyMonth, setApplyMonth] = useState(new Date().toISOString().slice(0,7));
+  const [applying, setApplying] = useState(false);
+  const [applyResult, setApplyResult] = useState(null);
 
   async function load() {
     const [pr, sr] = await Promise.all([api.patterns.list(), api.sites.list()]);
@@ -396,6 +400,7 @@ function ShiftPatternsScreen({ user }) {
                   <td style={{fontSize:'0.8125rem'}}>{p.charge_rate ? `£${p.charge_rate}/h` : '—'}</td>
                   <td><span className={`badge ${p.active!==false?'badge-success':'badge-neutral'}`}>{p.active!==false?'Active':'Inactive'}</span></td>
                   <td style={{textAlign:'right',display:'flex',gap:'0.5rem',justifyContent:'flex-end'}}>
+                    <button className="btn btn-sm" style={{background:'rgba(16,185,129,0.1)',border:'1px solid rgba(16,185,129,0.3)',color:'#10b981',fontWeight:600}} onClick={() => { setApplyPattern(p); setApplyResult(null); }}>Apply to Roster</button>
                     <button className="btn btn-ghost btn-sm" onClick={() => { setEditPattern(p); setShowForm(true); }}>Edit</button>
                     <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={async () => { if(window.confirm('Delete pattern?')){ await api.patterns.delete(p.id); load(); }}}>Delete</button>
                   </td>
@@ -406,6 +411,67 @@ function ShiftPatternsScreen({ user }) {
         )}
       </div>
       {showForm && <ShiftPatternFormModal pattern={editPattern} sites={sites} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); load(); }} />}
+
+      {/* Apply pattern to roster modal */}
+      {applyPattern && (
+        <div className="modal-overlay" onClick={() => setApplyPattern(null)}>
+          <div className="modal" style={{maxWidth:'400px'}} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title">Apply to Roster</div>
+              <button className="modal-close" onClick={() => setApplyPattern(null)}>×</button>
+            </div>
+            <div style={{marginBottom:'1rem'}}>
+              <div style={{fontWeight:600,marginBottom:'0.25rem'}}>{applyPattern.name}</div>
+              <div style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>{applyPattern.site?.name} · {applyPattern.start_time}–{applyPattern.end_time} · {(applyPattern.days||[]).join(', ')}</div>
+            </div>
+            <div className="field" style={{marginBottom:'1rem'}}>
+              <label className="label">Month</label>
+              <input type="month" className="input" value={applyMonth} onChange={e => setApplyMonth(e.target.value)} />
+            </div>
+            {applyResult && (
+              <div className={`alert ${applyResult.error ? 'alert-danger' : 'alert-success'}`} style={{marginBottom:'1rem'}}>
+                {applyResult.error || applyResult.message}
+              </div>
+            )}
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setApplyPattern(null)}>Cancel</button>
+              <button className="btn btn-primary" disabled={applying} onClick={async () => {
+                setApplying(true); setApplyResult(null);
+                try {
+                  const [year, month] = applyMonth.split('-').map(Number);
+                  const daysInMonth = new Date(year, month, 0).getDate();
+                  const dayMap = { mon:1, tue:2, wed:3, thu:4, fri:5, sat:6, sun:0 };
+                  const patternDays = (applyPattern.days||[]).map(d => dayMap[d]);
+                  let created = 0;
+                  for (let day = 1; day <= daysInMonth; day++) {
+                    const date = new Date(year, month - 1, day);
+                    if (!patternDays.includes(date.getDay())) continue;
+                    const dateStr = date.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+                    const startDt = `${dateStr}T${applyPattern.start_time}:00+01:00`;
+                    let endDt = `${dateStr}T${applyPattern.end_time}:00+01:00`;
+                    if (new Date(endDt) <= new Date(startDt)) {
+                      const nextDay = new Date(date); nextDay.setDate(nextDay.getDate() + 1);
+                      endDt = `${nextDay.toLocaleDateString('en-CA', { timeZone: 'Europe/London' })}T${applyPattern.end_time}:00+01:00`;
+                    }
+                    await api.shifts.create({
+                      site_id: applyPattern.site_id,
+                      start_time: startDt, end_time: endDt,
+                      pay_rate: applyPattern.pay_rate ? parseFloat(applyPattern.pay_rate) : null,
+                      charge_rate: applyPattern.charge_rate ? parseFloat(applyPattern.charge_rate) : null,
+                      notes: `From pattern: ${applyPattern.name}`,
+                    });
+                    created++;
+                  }
+                  setApplyResult({ message: `Created ${created} shifts for ${applyMonth}` });
+                } catch (e) { setApplyResult({ error: e.message }); }
+                finally { setApplying(false); }
+              }}>
+                {applying ? 'Creating shifts...' : 'Generate Shifts'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
