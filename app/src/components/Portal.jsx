@@ -159,38 +159,95 @@ function PortalDashboard({ session, onLogout }) {
           <div style={{display:'flex',justifyContent:'center',padding:'4rem'}}><div className="spinner" /></div>
         ) : tab === 'dashboard' ? (
           <div>
-            <div className="stats-grid" style={{marginBottom:'1.5rem'}}>
-              <div className="stat-card"><div className="stat-value">{summary?.logs_7d||0}</div><div className="stat-label">Logs (7 days)</div></div>
-              <div className="stat-card"><div className="stat-value" style={{color:'#1a52a8'}}>{summary?.patrols_7d||0}</div><div className="stat-label">Patrols</div></div>
-              <div className="stat-card"><div className="stat-value" style={{color:'var(--danger)'}}>{summary?.incidents_7d||0}</div><div className="stat-label">Incidents</div></div>
-              <div className="stat-card"><div className="stat-value" style={{color:summary?.open_alerts>0?'var(--warning)':'var(--text)'}}>{summary?.open_alerts||0}</div><div className="stat-label">Open Alerts</div></div>
+            {/* Officer On Duty */}
+            <div className="card" style={{marginBottom:'1.25rem',borderLeft: (summary?.on_duty||[]).length > 0 ? '3px solid #10b981' : '3px solid #ef4444'}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.5rem'}}>
+                <div className="section-title" style={{margin:0}}>Officer On Duty</div>
+                <span style={{display:'inline-flex',alignItems:'center',gap:'0.375rem',fontSize:'0.8125rem',fontWeight:600,color: (summary?.on_duty||[]).length > 0 ? '#10b981' : '#ef4444'}}>
+                  <span style={{width:8,height:8,borderRadius:'50%',background: (summary?.on_duty||[]).length > 0 ? '#10b981' : '#ef4444',animation: (summary?.on_duty||[]).length > 0 ? 'pulse 2s infinite' : 'none'}} />
+                  {(summary?.on_duty||[]).length > 0 ? 'ACTIVE' : 'NO COVER'}
+                </span>
+              </div>
+              {(summary?.on_duty||[]).length > 0 ? (
+                <div style={{display:'flex',flexDirection:'column',gap:'0.5rem'}}>
+                  {summary.on_duty.map((o, i) => (
+                    <div key={i} style={{display:'flex',alignItems:'center',gap:'1rem',padding:'0.75rem',background:'rgba(16,185,129,0.05)',borderRadius:'8px'}}>
+                      <div style={{width:40,height:40,borderRadius:'50%',background:'rgba(16,185,129,0.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1rem',fontWeight:700,color:'#10b981',flexShrink:0}}>
+                        {o.name.split(' ').map(n => n[0]).join('')}
+                      </div>
+                      <div style={{flex:1}}>
+                        <div style={{fontWeight:600,fontSize:'0.9375rem'}}>{o.name}</div>
+                        <div style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>
+                          {o.sia_type && <span>{o.sia_type}</span>}
+                          {o.sia_last4 && <span style={{marginLeft:'0.5rem',fontFamily:'monospace',color:'var(--text-3)'}}>SIA {o.sia_last4}</span>}
+                        </div>
+                      </div>
+                      <div style={{textAlign:'right',fontSize:'0.75rem',color:'var(--text-3)'}}>
+                        On duty since<br /><span style={{fontWeight:600,color:'var(--text-2)'}}>{o.since ? new Date(o.since).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'}) : '—'}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{fontSize:'0.875rem',color:'#ef4444'}}>No officer currently on duty at this site</div>
+              )}
             </div>
+
+            {/* Stats */}
+            <div className="stats-grid" style={{marginBottom:'1.25rem'}}>
+              <div className="stat-card"><div className="stat-value" style={{color:'#1a52a8'}}>{summary?.patrols_7d||0}</div><div className="stat-label">Patrols (7 days)</div></div>
+              <div className="stat-card"><div className="stat-value">{summary?.patrols_today||0}</div><div className="stat-label">Patrols Today</div></div>
+              <div className="stat-card"><div className="stat-value" style={{color:'var(--danger)'}}>{summary?.incidents_7d||0}</div><div className="stat-label">Incidents (7 days)</div></div>
+              <div className="stat-card"><div className="stat-value" style={{color:summary?.open_alerts>0?'var(--warning)':'var(--text)'}}>{summary?.open_alerts||0}</div><div className="stat-label">Open Issues</div></div>
+            </div>
+
+            {/* Hours Delivered */}
+            {summary?.contracted_weekly > 0 && (
+              <div className="card" style={{marginBottom:'1.25rem'}}>
+                <div className="section-title" style={{marginBottom:'0.75rem'}}>Hours Delivered This Week</div>
+                <div style={{display:'flex',alignItems:'center',gap:'1rem',marginBottom:'0.5rem'}}>
+                  <div style={{flex:1,background:'#e2e8f0',borderRadius:'6px',height:'12px',overflow:'hidden'}}>
+                    <div style={{width:`${Math.min(100, (summary.hours_delivered_7d / summary.contracted_weekly) * 100)}%`,height:'100%',background: summary.hours_delivered_7d >= summary.contracted_weekly ? '#10b981' : '#3b82f6',borderRadius:'6px'}} />
+                  </div>
+                  <span style={{fontSize:'0.9375rem',fontWeight:700,whiteSpace:'nowrap'}}>{summary.hours_delivered_7d} / {summary.contracted_weekly} hrs</span>
+                </div>
+              </div>
+            )}
+
+            {/* Recent Patrols */}
+            {(summary?.recent_patrols||[]).length > 0 && (
+              <div className="card" style={{marginBottom:'1.25rem'}}>
+                <div className="section-title" style={{marginBottom:'0.75rem'}}>Recent Patrols</div>
+                <div style={{display:'flex',flexDirection:'column',gap:'0.375rem'}}>
+                  {summary.recent_patrols.map((p, i) => (
+                    <div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.5rem 0',borderBottom:'1px solid #e2e8f0'}}>
+                      <div>
+                        <div style={{fontSize:'0.875rem',fontWeight:500}}>{new Date(p.started_at).toLocaleString('en-GB',{weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}</div>
+                        <div style={{fontSize:'0.75rem',color:'var(--text-3)'}}>{p.checkpoints} checkpoint{p.checkpoints!==1?'s':''} · {p.duration_mins||'?'} mins</div>
+                      </div>
+                      <span className="badge badge-success">Completed</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Open Alerts */}
             {openAlerts.length > 0 && (
               <div className="card" style={{marginBottom:'1.25rem'}}>
-                <div className="section-title" style={{marginBottom:'0.75rem'}}>Open Alerts</div>
-                {openAlerts.slice(0,3).map(a => (
+                <div className="section-title" style={{marginBottom:'0.75rem'}}>Open Issues</div>
+                {openAlerts.slice(0,5).map(a => (
                   <div key={a.id} style={{padding:'0.625rem 0',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',gap:'0.75rem'}}>
                     <div style={{width:'8px',height:'8px',borderRadius:'50%',background:severityColor(a.severity),flexShrink:0}} />
                     <div style={{flex:1}}>
                       <div style={{fontSize:'0.875rem',fontWeight:500}}>{a.title}</div>
                       <div style={{fontSize:'0.75rem',color:'var(--text-2)'}}>{new Date(a.created_at).toLocaleDateString('en-GB')}</div>
                     </div>
+                    <span className={`badge ${a.status==='resolved'?'badge-success':'badge-warning'}`}>{a.status}</span>
                   </div>
                 ))}
               </div>
             )}
-            <div className="card">
-              <div className="section-title" style={{marginBottom:'0.75rem'}}>Recent Activity</div>
-              {logs.slice(0,5).map(l => (
-                <div key={l.id} style={{padding:'0.5rem 0',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',gap:'0.75rem'}}>
-                  <span className={`badge ${typeColors[l.log_type]||'badge-neutral'}`}>{l.log_type}</span>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:'0.875rem',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{l.title||'Log Entry'}</div>
-                    <div style={{fontSize:'0.75rem',color:'var(--text-2)'}}>{new Date(l.occurred_at).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
         ) : tab === 'issues' ? (
           <div>

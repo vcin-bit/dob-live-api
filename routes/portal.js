@@ -52,22 +52,52 @@ router.post('/auth', async (req, res, next) => {
 router.get('/summary', portalAuth, async (req, res, next) => {
   try {
     const { site_id, company_id } = req.portalSession;
-    const from = new Date(); from.setDate(from.getDate() - 7);
+    const from7d = new Date(); from7d.setDate(from7d.getDate() - 7);
+    const todayStart = new Date(); todayStart.setHours(0,0,0,0);
 
-    const [logsRes, alertsRes, tasksRes] = await Promise.all([
-      supabase.from('occurrence_logs').select('id, log_type, occurred_at').eq('site_id', site_id).gte('occurred_at', from.toISOString()),
+    const [logsRes, alertsRes, activeShiftRes, patrolsRes, siteRes] = await Promise.all([
+      supabase.from('occurrence_logs').select('id, log_type, occurred_at, client_reportable').eq('site_id', site_id).gte('occurred_at', from7d.toISOString()),
       supabase.from('client_alerts').select('id, status').eq('site_id', site_id).eq('status', 'open'),
-      supabase.from('tasks').select('id, status').eq('site_id', site_id).neq('status', 'COMPLETE'),
+      supabase.from('shifts').select('id, checked_in_at, officer:users!shifts_officer_id_fkey(first_name, last_name, sia_licence_number, sia_licence_type)').eq('site_id', site_id).eq('status', 'ACTIVE'),
+      supabase.from('patrol_sessions').select('id, started_at, ended_at, checkpoints_completed').eq('site_id', site_id).gte('started_at', from7d.toISOString()).eq('status', 'completed'),
+      supabase.from('sites').select('contracted_hours_weekly').eq('id', site_id).single(),
     ]);
 
     const logs = logsRes.data || [];
+    const activeShifts = activeShiftRes.data || [];
+    const patrols = patrolsRes.data || [];
+    const contractedWeekly = parseFloat(siteRes.data?.contracted_hours_weekly) || 0;
+
+    // Hours delivered this week
+    const weekShiftsRes = await supabase.from('shifts').select('start_time, end_time')
+      .eq('site_id', site_id).gte('start_time', from7d.toISOString());
+    const weekShifts = weekShiftsRes.data || [];
+    const hoursDelivered = weekShifts.reduce((t, s) => t + (s.end_time ? Math.max(0, (new Date(s.end_time) - new Date(s.start_time)) / 3600000) : 0), 0);
+
+    // On duty officer info
+    const onDuty = activeShifts.length > 0 ? activeShifts.map(s => ({
+      name: s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unknown',
+      sia_type: s.officer?.sia_licence_type || null,
+      sia_last4: s.officer?.sia_licence_number ? `••••${s.officer.sia_licence_number.slice(-4)}` : null,
+      since: s.checked_in_at,
+    })) : [];
+
     res.json({
       data: {
-        logs_7d:      logs.length,
-        incidents_7d: logs.filter(l => l.log_type === 'INCIDENT').length,
-        patrols_7d:   logs.filter(l => l.log_type === 'PATROL').length,
-        open_alerts:  (alertsRes.data || []).length,
-        open_tasks:   (tasksRes.data || []).length,
+        logs_7d: logs.length,
+        incidents_7d: logs.filter(l => ['INCIDENT','ALARM','FIRE_ALARM','EMERGENCY'].includes(l.log_type)).length,
+        patrols_7d: patrols.length,
+        patrols_today: patrols.filter(p => new Date(p.started_at) >= todayStart).length,
+        open_alerts: (alertsRes.data || []).length,
+        on_duty: onDuty,
+        hours_delivered_7d: Math.round(hoursDelivered * 10) / 10,
+        contracted_weekly: contractedWeekly,
+        recent_patrols: patrols.slice(0, 5).map(p => ({
+          started_at: p.started_at,
+          ended_at: p.ended_at,
+          checkpoints: (p.checkpoints_completed || []).length,
+          duration_mins: p.ended_at ? Math.round((new Date(p.ended_at) - new Date(p.started_at)) / 60000) : null,
+        })),
       }
     });
   } catch (err) { next(err); }
@@ -79,7 +109,7 @@ router.get('/logs', portalAuth, async (req, res, next) => {
     const { site_id } = req.portalSession;
     const { limit = 50, offset = 0, log_type } = req.query;
     let q = supabase.from('occurrence_logs')
-      .select('id, log_type, title, description, occurred_at, officer:users(first_name, last_name)')
+      .select('id, log_type, title, description, occurred_at, client_reportable, review_status, officer:users!occurrence_logs_officer_id_fkey(first_name, last_name)')
       .eq('site_id', site_id)
       .order('occurred_at', { ascending: false })
       .range(offset, offset + limit - 1);
