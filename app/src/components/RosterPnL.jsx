@@ -170,24 +170,27 @@ function ProfitLoss({ user }) {
     const byOfficer = {};
     ss.forEach(s => {
       const name = s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unassigned';
-      if (!byOfficer[name]) byOfficer[name] = { scheduledHrs: 0, scheduledPay: 0, actualHrs: 0, actualPay: 0 };
+      if (!byOfficer[name]) byOfficer[name] = { scheduledHrs: 0, scheduledPay: 0, actualHrs: 0, actualPay: 0, chargeRevenue: 0, avgChargeRate: 0, shiftIds: [] };
       const rate = getPayRate(s);
-      // Scheduled hours from roster (start_time → end_time)
+      const shiftChargeRate = parseFloat(s.charge_rate) || chargeRate;
       const sch = calcScheduledHours(s);
       byOfficer[name].scheduledHrs += sch;
       byOfficer[name].scheduledPay += sch * rate;
-      // Actual hours from check-in/out (only COMPLETED/ACTIVE)
+      byOfficer[name].chargeRevenue += sch * shiftChargeRate;
+      byOfficer[name].shiftIds.push(s.id);
       if (s.status === 'COMPLETED' || s.status === 'ACTIVE') {
         const actual = calcActualHours(s);
         byOfficer[name].actualHrs += actual;
         byOfficer[name].actualPay += actual * rate;
       }
     });
+    // Calculate avg charge rate per officer
+    Object.values(byOfficer).forEach(o => { o.avgChargeRate = o.scheduledHrs > 0 ? o.chargeRevenue / o.scheduledHrs : 0; });
 
     const scheduledHrs = Object.values(byOfficer).reduce((t, o) => t + o.scheduledHrs, 0);
     const actualHrs = Object.values(byOfficer).reduce((t, o) => t + o.actualHrs, 0);
     const actualPay = Object.values(byOfficer).reduce((t, o) => t + o.actualPay, 0);
-    const chargeRevenue = scheduledHrs * chargeRate;
+    const chargeRevenue = Object.values(byOfficer).reduce((t, o) => t + o.chargeRevenue, 0);
 
     const siteProducts = products.filter(p => p.site_id === site.id);
     let productCost = 0, productCharge = 0;
@@ -237,19 +240,11 @@ function ProfitLoss({ user }) {
               <div key={site.id} className="card" style={{marginBottom:'1.25rem',padding:'1rem',borderLeft:'3px solid #8b5cf6'}}>
                 <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.75rem',flexWrap:'wrap',gap:'0.5rem'}}>
                   <div style={{fontSize:'1.125rem',fontWeight:700,color:'#c4b5fd'}}>{site.name}</div>
-                  <div style={{display:'flex',alignItems:'center',gap:'1rem',fontSize:'0.8125rem',flexWrap:'wrap'}}>
-                    <div style={{display:'flex',alignItems:'center',gap:'0.375rem'}}>
-                      <span style={{color:'var(--text-3)'}}>Charge £/hr:</span>
-                      <input type="number" step="0.01" min="0" value={site.charge_rate || ''} style={{width:'80px',padding:'0.25rem 0.5rem',background:'var(--surface-2)',border:'1px solid var(--border)',borderRadius:'4px',fontSize:'0.8125rem',color:'var(--text)'}}
-                        onChange={e => setSites(prev => prev.map(s => s.id === site.id ? {...s, charge_rate: e.target.value} : s))}
-                        onBlur={e => saveSiteRate(site.id, 'charge_rate', e.target.value)} />
-                    </div>
-                    <div style={{display:'flex',alignItems:'center',gap:'0.375rem'}}>
-                      <span style={{color:'var(--text-3)'}}>Contract hrs/wk:</span>
-                      <input type="number" step="0.5" min="0" value={site.contracted_hours_weekly || ''} style={{width:'70px',padding:'0.25rem 0.5rem',background:'var(--surface-2)',border:'1px solid var(--border)',borderRadius:'4px',fontSize:'0.8125rem',color:'var(--text)'}}
-                        onChange={e => setSites(prev => prev.map(s => s.id === site.id ? {...s, contracted_hours_weekly: e.target.value} : s))}
-                        onBlur={e => saveSiteRate(site.id, 'contracted_hours_weekly', e.target.value)} />
-                    </div>
+                  <div style={{display:'flex',alignItems:'center',gap:'0.375rem',fontSize:'0.8125rem'}}>
+                    <span style={{color:'var(--text-3)'}}>Contract hrs/wk:</span>
+                    <input type="number" step="0.5" min="0" value={site.contracted_hours_weekly || ''} style={{width:'70px',padding:'0.25rem 0.5rem',background:'var(--surface-2)',border:'1px solid var(--border)',borderRadius:'4px',fontSize:'0.8125rem',color:'var(--text)'}}
+                      onChange={e => setSites(prev => prev.map(s => s.id === site.id ? {...s, contracted_hours_weekly: e.target.value} : s))}
+                      onBlur={e => saveSiteRate(site.id, 'contracted_hours_weekly', e.target.value)} />
                     {savingSite === site.id && <span style={{fontSize:'0.75rem',color:'var(--text-3)'}}>Saving...</span>}
                   </div>
                 </div>
@@ -259,9 +254,9 @@ function ProfitLoss({ user }) {
                   <thead><tr><th>Officer</th><th style={{textAlign:'right'}}>Set Hrs</th><th style={{textAlign:'right'}}>Actual</th><th style={{textAlign:'right'}}>Variance</th><th style={{textAlign:'right'}}>Pay Rate</th><th style={{textAlign:'right'}}>Charge Rate</th><th style={{textAlign:'right'}}>Gross Profit</th></tr></thead>
                   <tbody>
                     {Object.entries(byOfficer).sort((a,b) => b[1].scheduledHrs - a[1].scheduledHrs).map(([name, o]) => {
-                      const avgRate = o.actualHrs > 0 ? o.actualPay / o.actualHrs : (o.scheduledHrs > 0 ? o.scheduledPay / o.scheduledHrs : 0);
+                      const avgPayRate = o.actualHrs > 0 ? o.actualPay / o.actualHrs : (o.scheduledHrs > 0 ? o.scheduledPay / o.scheduledHrs : 0);
                       const variance = o.actualHrs - o.scheduledHrs;
-                      const gp = (chargeRate * o.scheduledHrs) - o.actualPay;
+                      const gp = o.chargeRevenue - o.actualPay;
                       return (
                         <tr key={name}>
                           <td style={{fontWeight:500}}>{name}</td>
@@ -270,8 +265,8 @@ function ProfitLoss({ user }) {
                           <td style={{textAlign:'right',fontWeight:700,color: variance === 0 ? 'var(--text-3)' : variance > 0 ? '#3b82f6' : '#ef4444'}}>
                             {o.actualHrs > 0 ? `${variance > 0 ? '+' : ''}${variance.toFixed(1)}` : '—'}
                           </td>
-                          <td style={{textAlign:'right',color:'#f59e0b',fontWeight:600}}>£{avgRate.toFixed(2)}</td>
-                          <td style={{textAlign:'right',color:'#10b981'}}>£{chargeRate.toFixed(2)}</td>
+                          <td style={{textAlign:'right',color:'#f59e0b',fontWeight:600}}>£{avgPayRate.toFixed(2)}</td>
+                          <td style={{textAlign:'right',color:'#10b981',fontWeight:600}}>£{o.avgChargeRate.toFixed(2)}</td>
                           <td style={{textAlign:'right',fontWeight:700,color: gp >= 0 ? '#10b981' : '#ef4444'}}>{fmt(gp)}</td>
                         </tr>
                       );
