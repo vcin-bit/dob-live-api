@@ -175,7 +175,13 @@ function OfficerApp({ user }) {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </div>
-      <OfficerNavigation onSignOut={signOut} />
+      <OfficerNavigation onSignOut={async () => {
+        // End active shift before signing out
+        if (activeShift) {
+          try { await api.shifts.checkout(activeShift.id); } catch {}
+        }
+        signOut();
+      }} />
 
       {/* Shift start modal */}
       {showShiftModal && (
