@@ -822,7 +822,7 @@ function LogReview({ user }) {
     PATROL: 'badge-blue', GENERAL: 'badge-neutral',
     ACCESS: 'badge-navy', VISITOR: 'badge-navy',
     HANDOVER: 'badge-success', MAINTENANCE: 'badge-neutral',
-    VEHICLE: 'badge-neutral', WELFARE: 'badge-blue', KEYHOLDING: 'badge-navy',
+    VEHICLE: 'badge-neutral', WELFARE: 'badge-blue', WELFARE_CHECK: 'badge-success', KEYHOLDING: 'badge-navy',
   };
 
   return (
@@ -866,7 +866,7 @@ function LogReview({ user }) {
             </thead>
             <tbody>
               {filtered.map(log => (
-                <tr key={log.id} onClick={() => setSelectedLog(log)} style={{cursor:'pointer'}}>
+                <tr key={log.id} onClick={() => setSelectedLog(log)} style={{cursor:'pointer', background: log.type_data?.check_call ? 'rgba(16,185,129,0.06)' : undefined}}>
                   <td style={{color:'var(--text-2)',whiteSpace:'nowrap',fontSize:'0.8125rem'}}>
                     {new Date(log.occurred_at).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'2-digit'})}
                     {' '}

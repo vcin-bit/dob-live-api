@@ -430,7 +430,7 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
         <div style={{display:'flex',gap:'0.5rem',marginBottom:'0.625rem'}}>
           <button onClick={() => { setShowCheckCall(true); setCheckPin(''); }}
             style={{flex:2,padding:'0.875rem',background: checkCallDue ? 'rgba(239,68,68,0.2)' : 'rgba(59,130,246,0.1)',border:`2px solid ${checkCallDue ? 'rgba(239,68,68,0.5)' : 'rgba(59,130,246,0.25)'}`,borderRadius:'10px',color: checkCallDue ? '#ef4444' : '#60a5fa',fontSize:'0.9375rem',fontWeight:700,cursor:'pointer',animation: checkCallDue ? 'pulse 1s infinite' : 'none'}}>
-            📞 {checkCallDue ? 'CHECK CALL DUE' : 'Check Call'}
+            📞 {checkCallDue ? 'SAFETY CHECK DUE' : 'Safety Check'}
           </button>
           <button onClick={async () => {
             if (!confirm('ACTIVATE PANIC ALERT? This will immediately alert the control room.')) return;
@@ -447,7 +447,7 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
       {showCheckCall && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:'1rem'}}>
           <div style={{background:'#0f1929',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'16px',padding:'1.5rem',width:'100%',maxWidth:'320px',textAlign:'center'}}>
-            <div style={{fontSize:'16px',fontWeight:700,color:'#fff',marginBottom:'4px'}}>Check Call</div>
+            <div style={{fontSize:'16px',fontWeight:700,color:'#fff',marginBottom:'4px'}}>Safety Check</div>
             <div style={{fontSize:'13px',color:'rgba(255,255,255,0.4)',marginBottom:'20px'}}>Enter your PIN to confirm</div>
             <input type="password" inputMode="numeric" maxLength={4} value={checkPin} onChange={e => setCheckPin(e.target.value.replace(/\D/g,''))}
               autoFocus placeholder="● ● ● ●"
