@@ -146,7 +146,7 @@ function PortalDashboard({ session, onLogout }) {
 
       {/* Tabs */}
       <div style={{background:'#fff',borderBottom:'1px solid #e2e8f0',display:'flex',padding:'0 1.25rem'}}>
-        {[['dashboard','Dashboard'],['issues','Issues'],['logs','Log Feed'],['docs','Documents']].map(([val,label]) => (
+        {[['dashboard','Dashboard'],['issues','Issues'],['incidents','Incident Reports'],['docs','Documents']].map(([val,label]) => (
           <button key={val} onClick={() => setTab(val)} style={{padding:'0.75rem 1rem',fontSize:'0.875rem',fontWeight:500,border:'none',borderBottom:`2px solid ${tab===val?'#1a52a8':'transparent'}`,color:tab===val?'#1a52a8':'#64748b',background:'none',cursor:'pointer',marginBottom:'-1px'}}>
             {label}
             {val==='issues' && openAlerts.length > 0 && <span style={{marginLeft:'0.375rem',background:'#dc2626',color:'#fff',borderRadius:'999px',fontSize:'0.6875rem',padding:'0 5px',fontWeight:700}}>{openAlerts.length}</span>}
@@ -217,33 +217,28 @@ function PortalDashboard({ session, onLogout }) {
               </div>
             )}
           </div>
-        ) : tab === 'logs' ? (
+        ) : tab === 'incidents' ? (
           <div>
-            <div style={{display:'flex',gap:'0.75rem',alignItems:'center',marginBottom:'1rem'}}>
-              <div className="section-title" style={{flex:1}}>Security Log</div>
-              <select className="input" style={{width:'160px'}} value={logTypeFilter} onChange={e => setLogTypeFilter(e.target.value)}>
-                <option value="">All types</option>
-                {['PATROL','INCIDENT','ALARM','ACCESS','VISITOR','HANDOVER','GENERAL'].map(t => <option key={t} value={t}>{t.charAt(0)+t.slice(1).toLowerCase()}</option>)}
-              </select>
-            </div>
-            {filteredLogs.length === 0 ? <div className="empty-state"><p>No logs</p></div> : (
-              <table className="table">
-                <thead><tr><th>Date/Time</th><th>Type</th><th>Entry</th><th>Officer</th></tr></thead>
-                <tbody>
-                  {filteredLogs.map(l => (
-                    <tr key={l.id}>
-                      <td style={{fontSize:'0.8125rem',color:'var(--text-2)',whiteSpace:'nowrap'}}>{new Date(l.occurred_at).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</td>
-                      <td><span className={`badge ${typeColors[l.log_type]||'badge-neutral'}`}>{l.log_type}</span></td>
-                      <td style={{fontWeight:500,maxWidth:'260px'}}>
-                        <div style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{l.title||'Log Entry'}</div>
-                        {l.description && <div style={{fontSize:'0.75rem',color:'var(--text-2)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{l.description}</div>}
-                      </td>
-                      <td style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>{l.officer?`${l.officer.first_name} ${l.officer.last_name}`:'—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+            <div className="section-title" style={{marginBottom:'1rem'}}>Incident Reports</div>
+            {(() => { const incidents = logs.filter(l => l.client_reportable); return incidents.length === 0 ? <div className="empty-state"><p>No incident reports</p></div> : (
+              <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
+                {incidents.map(l => (
+                  <div key={l.id} className="card" style={{borderLeft:'3px solid #dc2626'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+                      <div>
+                        <div style={{fontWeight:600,fontSize:'0.9375rem'}}>{l.title||'Incident'}</div>
+                        <div style={{fontSize:'0.875rem',color:'var(--text-2)',marginTop:'0.25rem',lineHeight:1.5}}>{l.description}</div>
+                        <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginTop:'0.5rem'}}>
+                          {new Date(l.occurred_at).toLocaleString('en-GB',{weekday:'short',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}
+                          {l.review_status && <span style={{marginLeft:'0.75rem',fontWeight:600,color: l.review_status === 'RESOLVED' ? '#10b981' : l.review_status === 'UNDER_REVIEW' ? '#3b82f6' : '#f59e0b'}}>{l.review_status.replace(/_/g,' ')}</span>}
+                        </div>
+                      </div>
+                      <span className={`badge ${typeColors[l.log_type]||'badge-danger'}`}>{l.log_type}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ); })()}
           </div>
         ) : tab === 'docs' ? (
           <div>
