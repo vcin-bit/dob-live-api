@@ -187,8 +187,7 @@ async function triggerEscalation(officer, siteId, type, message, lat, lng) {
 router.post('/cron-check', async (req, res) => {
   try {
     const secret = req.headers['x-cron-secret'];
-    const testMode = req.query.test === '1';
-    if (!testMode && secret !== process.env.CRON_SECRET && process.env.CRON_SECRET) {
+    if (secret !== process.env.CRON_SECRET && process.env.CRON_SECRET) {
       return res.status(401).json({ error: 'Unauthorised' });
     }
 
