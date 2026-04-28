@@ -397,6 +397,20 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
         </Link>
       </div>
 
+      {/* Check Call */}
+      {shift && (
+        <button onClick={async () => {
+          let lat, lng;
+          try { const p = await new Promise((r,j) => navigator.geolocation.getCurrentPosition(r,j,{timeout:5000})); lat = p.coords.latitude; lng = p.coords.longitude; } catch {}
+          try {
+            await api.logs.create({ site_id: site?.id, shift_id: shift?.id, log_type: 'WELFARE_CHECK', title: `Check Call — ${user.first_name} ${user.last_name}`, description: `Officer check call at ${new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}. All OK.`, occurred_at: new Date().toISOString(), latitude: lat, longitude: lng, type_data: { check_call: true } });
+            alert('Check call logged');
+          } catch (e) { alert('Failed: ' + e.message); }
+        }} className="officer-action-btn secondary" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',marginBottom:'0.625rem',background:'rgba(59,130,246,0.1)',borderColor:'rgba(59,130,246,0.25)',color:'#60a5fa',fontWeight:700}}>
+          📞 Check Call
+        </button>
+      )}
+
       {/* On Site Now */}
       <Link to="/visitors" className="officer-action-btn secondary" style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.625rem'}}>
         <span>👥 Visitors / Contractors On Site Now</span>
