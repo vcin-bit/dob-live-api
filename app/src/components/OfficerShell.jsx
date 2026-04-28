@@ -348,10 +348,6 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
       } else {
         setCheckCallDue(false);
       }
-      // If 10+ mins overdue, trigger missed check
-      if (elapsed >= 70) {
-        api.escalation.missedCheck({ site_id: site?.id, shift_id: shift?.id, minutes_overdue: Math.round(elapsed - 60) }).catch(() => {});
-      }
     };
     check();
     const t = setInterval(check, 60000);

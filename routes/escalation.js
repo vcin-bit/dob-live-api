@@ -183,6 +183,119 @@ async function triggerEscalation(officer, siteId, type, message, lat, lng) {
   } catch (e) { console.error('Escalation call failed:', e.message); }
 }
 
+// POST /api/escalation/cron-check — called by cron every 5 mins, checks all active shifts
+router.post('/cron-check', async (req, res) => {
+  try {
+    const secret = req.headers['x-cron-secret'];
+    if (secret !== process.env.CRON_SECRET && process.env.CRON_SECRET) {
+      return res.status(401).json({ error: 'Unauthorised' });
+    }
+
+    const twilio = getTwilio();
+    const now = new Date();
+    const results = { checked: 0, alerts: 0 };
+
+    // Get all active shifts with officer details
+    const { data: activeShifts } = await supabase
+      .from('shifts')
+      .select('*, officer:users!shifts_officer_id_fkey(id, first_name, last_name, phone, company_id), site:sites(id, name)')
+      .eq('status', 'ACTIVE');
+
+    if (!activeShifts || activeShifts.length === 0) return res.json({ ...results, message: 'No active shifts' });
+
+    for (const shift of activeShifts) {
+      if (!shift.officer) continue;
+      results.checked++;
+
+      // Find last safety check for this officer today
+      const { data: lastCheck } = await supabase
+        .from('occurrence_logs')
+        .select('occurred_at')
+        .eq('officer_id', shift.officer.id)
+        .eq('log_type', 'WELFARE_CHECK')
+        .gte('occurred_at', new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString())
+        .order('occurred_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const lastTime = lastCheck ? new Date(lastCheck.occurred_at) : new Date(shift.checked_in_at || shift.start_time);
+      const minsOverdue = Math.floor((now - lastTime) / 60000) - 60; // mins past the 1hr mark
+
+      if (minsOverdue < 5) continue; // Not overdue yet
+
+      const officerName = `${shift.officer.first_name} ${shift.officer.last_name}`;
+      const siteName = shift.site?.name || 'Unknown site';
+      const officerPhone = shift.officer.phone ? (shift.officer.phone.startsWith('+') ? shift.officer.phone : `+44${shift.officer.phone.replace(/^0/, '')}`) : null;
+
+      // Check if we already escalated recently (prevent spam)
+      const { data: recentAlert } = await supabase
+        .from('occurrence_logs')
+        .select('occurred_at')
+        .eq('officer_id', shift.officer.id)
+        .gte('occurred_at', new Date(now - 300000).toISOString()) // last 5 mins
+        .eq('log_type', 'WELFARE_CHECK')
+        .maybeSingle();
+      if (recentAlert) continue; // Already handled in last 5 mins
+
+      results.alerts++;
+
+      if (minsOverdue >= 5 && minsOverdue < 10 && twilio && officerPhone) {
+        // +5 mins: First call to officer
+        try {
+          await twilio.calls.create({
+            twiml: `<Response><Say voice="Polly.Amy" language="en-GB">This is Risk Secured national command centre. Your safety check is overdue. Please open the DOB Live app and complete your safety check. If you are safe, press 1.</Say><Gather numDigits="1" timeout="10"><Say voice="Polly.Amy" language="en-GB">Press 1 to confirm you are safe.</Say></Gather><Say voice="Polly.Amy" language="en-GB">No response received. We will call again shortly.</Say></Response>`,
+            from: process.env.TWILIO_PHONE_NUMBER,
+            to: officerPhone,
+          });
+          console.log(`Safety check call 1 to ${officerName}`);
+        } catch (e) { console.error(`Call to officer failed: ${e.message}`); }
+      } else if (minsOverdue >= 10 && minsOverdue < 15 && twilio && officerPhone) {
+        // +10 mins: Second call to officer
+        try {
+          await twilio.calls.create({
+            twiml: `<Response><Say voice="Polly.Amy" language="en-GB">This is Risk Secured national command centre. Second attempt. Your safety check is now ${minsOverdue} minutes overdue. Please respond immediately. Press 1 if you are safe.</Say><Gather numDigits="1" timeout="10"><Say voice="Polly.Amy" language="en-GB">Press 1 to confirm.</Say></Gather><Say voice="Polly.Amy" language="en-GB">No response. Escalating to control.</Say></Response>`,
+            from: process.env.TWILIO_PHONE_NUMBER,
+            to: officerPhone,
+          });
+          console.log(`Safety check call 2 to ${officerName}`);
+        } catch (e) { console.error(`Call 2 to officer failed: ${e.message}`); }
+      } else if (minsOverdue >= 15) {
+        // +15 mins: Escalate to manager
+        // Log missed check
+        await supabase.from('occurrence_logs').insert({
+          company_id: shift.officer.company_id,
+          site_id: shift.site_id, shift_id: shift.id,
+          officer_id: shift.officer.id, log_type: 'WELFARE_CHECK',
+          title: `⚠ Missed Safety Check — ${officerName}`,
+          description: `Officer safety check overdue by ${minsOverdue} minutes. Auto-escalated after 3 failed contact attempts.`,
+          occurred_at: now.toISOString(),
+          type_data: { missed_check: true, minutes_overdue: minsOverdue, auto_escalated: true },
+        });
+
+        // Escalate — call + SMS to manager
+        if (twilio) {
+          try {
+            await twilio.messages.create({
+              body: `Risk Secured NCC ALERT: ${officerName} at ${siteName} has failed safety check. ${minsOverdue} mins overdue. 3 contact attempts failed. Immediate welfare check required.`,
+              from: process.env.TWILIO_PHONE_NUMBER,
+              to: ESCALATION_PHONE,
+            });
+          } catch (e) { console.error(`Escalation SMS failed: ${e.message}`); }
+          try {
+            await twilio.calls.create({
+              twiml: `<Response><Say voice="Polly.Amy" language="en-GB">This is Risk Secured emergency national command centre. Officer ${officerName} at ${siteName} has failed to make their scheduled safety check. ${minsOverdue} minutes overdue. Three contact attempts have failed. Immediate welfare check required. Repeating. Officer ${officerName} at ${siteName}. Safety check overdue. Immediate action required.</Say></Response>`,
+              from: process.env.TWILIO_PHONE_NUMBER,
+              to: ESCALATION_PHONE,
+            });
+          } catch (e) { console.error(`Escalation call failed: ${e.message}`); }
+        }
+      }
+    }
+
+    res.json(results);
+  } catch (err) { console.error('Cron check error:', err); res.status(500).json({ error: err.message }); }
+});
+
 // POST /api/escalation/test — temporary test endpoint
 router.post('/test', async (req, res) => {
   try {
