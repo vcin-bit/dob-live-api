@@ -136,12 +136,8 @@ function OfficerApp({ user }) {
             <div style={{fontSize:'0.9375rem',color:'rgba(255,255,255,0.5)',marginBottom:'0.25rem'}}>{selectedSite.name}</div>
             <div style={{fontSize:'0.8125rem',color:'rgba(255,255,255,0.35)',marginBottom:'2rem'}}>You must go on duty before you can use the app</div>
             <button onClick={() => setShowShiftModal(true)}
-              style={{width:'100%',padding:'18px',background:'rgba(74,222,128,0.15)',border:'2px solid rgba(74,222,128,0.5)',borderRadius:'12px',color:'#4ade80',fontSize:'1.125rem',fontWeight:700,cursor:'pointer',marginBottom:'1rem'}}>
+              style={{width:'100%',padding:'18px',background:'rgba(74,222,128,0.15)',border:'2px solid rgba(74,222,128,0.5)',borderRadius:'12px',color:'#4ade80',fontSize:'1.125rem',fontWeight:700,cursor:'pointer'}}>
               GO ON DUTY
-            </button>
-            <button onClick={() => { setSelectedSite(null); }}
-              style={{width:'100%',padding:'12px',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'10px',color:'rgba(255,255,255,0.4)',fontSize:'0.875rem',cursor:'pointer'}}>
-              Change Site
             </button>
           </div>
         </div>
@@ -157,9 +153,10 @@ function OfficerApp({ user }) {
 
       <Routes>
         <Route path="/sites" element={
+          activeShift ? <Navigate to="/" replace /> :
           <SitePickerScreen
             sites={sites}
-            onSiteSelect={(site) => { setSelectedSite(site); if (!activeShift) setShowShiftModal(true); }}
+            onSiteSelect={(site) => { setSelectedSite(site); setShowShiftModal(true); }}
             user={user}
           />
         } />
