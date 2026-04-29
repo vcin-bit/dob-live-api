@@ -108,7 +108,7 @@ router.get('/sessions/active', authenticate, async (req, res, next) => {
       .from('patrol_sessions')
       .select('*')
       .eq('officer_id', req.user.id)
-      .eq('status', 'ACTIVE')
+      .in('status', ['ACTIVE', 'active'])
       .eq('site_id', site_id)
       .order('started_at', { ascending: false })
       .limit(1)
