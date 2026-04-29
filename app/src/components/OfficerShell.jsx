@@ -365,6 +365,9 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
         const done = new Set();
         (todayResponse.data || []).forEach(l => { if (l.type_data?.scheduled_task_id) done.add(l.type_data.scheduled_task_id); });
         setCompletedTaskIds(done);
+        // Set last check call from server data
+        const lastSafetyCheck = (todayResponse.data || []).find(l => l.type_data?.check_call === true && !l.type_data?.missed_check);
+        if (lastSafetyCheck) setLastCheckCall(new Date(lastSafetyCheck.occurred_at));
 
       } catch (err) {
         console.error('Failed to fetch dashboard data:', err);
