@@ -93,6 +93,9 @@ function OfficerApp({ user }) {
         if (activeShifts.length > 0) {
           setActiveShift(activeShifts[0]);
           setSelectedSite(activeShifts[0].site);
+        } else if ((sitesResponse.data || []).length === 1) {
+          // Only one site — auto-select it, go straight to lock screen
+          setSelectedSite(sitesResponse.data[0]);
         }
       } catch (err) {
         console.error('Failed to fetch officer data:', err);
@@ -227,10 +230,10 @@ function OfficerApp({ user }) {
               </div>
             </div>
             <div style={{display:'flex',gap:'8px'}}>
-              <button onClick={() => { setShowShiftModal(false); setPlannedEnd(''); }}
+              {activeShift && <button onClick={() => { setShowShiftModal(false); setPlannedEnd(''); }}
                 style={{flex:1,padding:'13px',background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'10px',color:'rgba(255,255,255,0.6)',fontSize:'14px',fontWeight:600,cursor:'pointer'}}>
                 Cancel
-              </button>
+              </button>}
               <button onClick={startShift} disabled={!plannedEnd}
                 style={{flex:2,padding:'13px',background:'rgba(74,222,128,0.15)',border:'1.5px solid rgba(74,222,128,0.4)',borderRadius:'10px',color:'#4ade80',fontSize:'14px',fontWeight:700,cursor:'pointer',opacity:plannedEnd?1:0.5}}>
                 Start Shift
