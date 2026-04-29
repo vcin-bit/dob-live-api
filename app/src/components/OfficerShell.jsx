@@ -129,12 +129,15 @@ function OfficerApp({ user }) {
         <OfficerHeader user={user} selectedSite={selectedSite} activeShift={null} />
         <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',padding:'1.5rem'}}>
           <div style={{width:'100%',maxWidth:'360px',textAlign:'center'}}>
-            <div style={{fontSize:'3rem',marginBottom:'1rem'}}>👮</div>
+            <div style={{width:56,height:56,borderRadius:'12px',background:'rgba(26,82,168,0.15)',border:'1px solid rgba(26,82,168,0.3)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 1.25rem'}}>
+              <span style={{fontSize:'1.5rem',fontWeight:800,color:'#1a52a8'}}>RS</span>
+            </div>
             <div style={{fontSize:'1.25rem',fontWeight:700,color:'#fff',marginBottom:'0.5rem'}}>
               Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {user.first_name}
             </div>
             <div style={{fontSize:'0.9375rem',color:'rgba(255,255,255,0.5)',marginBottom:'0.25rem'}}>{selectedSite.name}</div>
-            <div style={{fontSize:'0.8125rem',color:'rgba(255,255,255,0.35)',marginBottom:'2rem'}}>You must go on duty before you can use the app</div>
+            <div style={{fontSize:'0.8125rem',color:'rgba(255,255,255,0.35)',marginBottom:'0.75rem'}}>You must go on duty before you can use the app</div>
+            <div style={{fontSize:'0.8125rem',color:'rgba(74,222,128,0.6)',marginBottom:'2rem',fontStyle:'italic'}}>Have a safe shift</div>
             <button onClick={() => setShowShiftModal(true)}
               style={{width:'100%',padding:'18px',background:'rgba(74,222,128,0.15)',border:'2px solid rgba(74,222,128,0.5)',borderRadius:'12px',color:'#4ade80',fontSize:'1.125rem',fontWeight:700,cursor:'pointer'}}>
               GO ON DUTY
