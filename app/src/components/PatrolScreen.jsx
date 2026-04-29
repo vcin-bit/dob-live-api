@@ -124,12 +124,21 @@ export default function PatrolScreen({ user, site, shift }) {
           api.patrols.getRoutes(site.id),
           api.patrols.activeSession(site.id),
         ]);
-        if (activeRes.status === 'fulfilled' && activeRes.value?.data) {
-          setSession(activeRes.value.data);
-          setPatrolStarted(true);
-        }
         const routes = (routesRes.status === 'fulfilled' ? routesRes.value : null)?.data || [];
         setAllRoutes(routes);
+        if (activeRes.status === 'fulfilled' && activeRes.value?.data) {
+          const activeSession = activeRes.value.data;
+          setSession(activeSession);
+          setPatrolStarted(true);
+          // Restore completed checkpoints from session
+          const completed = (activeSession.checkpoints_completed || []).map(c => c.checkpoint_id).filter(Boolean);
+          setCompletedCps(completed);
+          // Restore route if session has one
+          if (activeSession.route_id) {
+            const matchedRoute = routes.find(r => r.id === activeSession.route_id);
+            if (matchedRoute) setRoute(matchedRoute);
+          }
+        }
         // Don't auto-select a route — let officer choose
         setIsRoutePlanner(user.is_route_planner || ['COMPANY','OPS_MANAGER','SUPER_ADMIN'].includes(user.role));
       } catch (e) { console.error(e); }
