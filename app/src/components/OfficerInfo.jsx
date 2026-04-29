@@ -92,8 +92,8 @@ function OfficerNavigation({ onSignOut }) {
 
   const nav = [
     { to: '/',        icon: HomeIcon,                   label: 'Home' },
+    { to: '/patrol',  icon: MapPinIcon,                 label: 'Patrol' },
     { to: '/logs',    icon: ClipboardDocumentListIcon,  label: 'History' },
-    { to: '/instructions', icon: ClipboardDocumentListIcon, label: 'Instructions' },
     { to: '/profile', icon: UserGroupIcon,              label: 'Profile' },
   ];
 

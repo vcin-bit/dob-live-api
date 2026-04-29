@@ -111,9 +111,8 @@ router.get('/sessions/active', authenticate, async (req, res, next) => {
       .in('status', ['ACTIVE', 'active'])
       .eq('site_id', site_id)
       .order('started_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    res.json({ data: data || null });
+      .limit(1);
+    res.json({ data: (data && data[0]) || null });
   } catch (err) {
     // Return null rather than crashing - patrol screen should still load
     res.json({ data: null });
