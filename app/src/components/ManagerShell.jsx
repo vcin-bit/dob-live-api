@@ -68,7 +68,6 @@ function ManagerSidebar({ user }) {
       label: 'Operations',
       items: [
         { to: '/logs',      icon: ClipboardDocumentListIcon, label: 'Log Review' },
-        { to: '/assignments', icon: ClipboardDocumentListIcon, label: 'Assignments' },
         { to: '/sites',     icon: BuildingOfficeIcon,        label: 'Sites' },
       ]
     },

@@ -541,13 +541,6 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
         <span>👥 Visitors / Contractors On Site Now</span>
       </Link>
 
-      {/* Task badge */}
-      {tasks.length > 0 && (
-        <Link to="/assignments" className="officer-action-btn secondary" style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'1.25rem'}}>
-          <span>Tasks</span>
-          <span style={{background:'var(--blue)',color:'#fff',borderRadius:'999px',padding:'2px 8px',fontSize:'0.8125rem',fontWeight:700}}>{tasks.length}</span>
-        </Link>
-      )}
 
       {/* Today's scheduled tasks */}
       {scheduledTasks.length > 0 && (
