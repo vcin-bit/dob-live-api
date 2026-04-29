@@ -493,7 +493,7 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
           <div style={{background:'#0f1929',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'16px',padding:'1.5rem',width:'100%',maxWidth:'320px',textAlign:'center'}}>
             <div style={{fontSize:'16px',fontWeight:700,color:'#fff',marginBottom:'4px'}}>Safety Check</div>
             <div style={{fontSize:'13px',color:'rgba(255,255,255,0.4)',marginBottom:'20px'}}>Enter your PIN to confirm</div>
-            <input type="password" inputMode="numeric" maxLength={4} value={checkPin} onChange={e => setCheckPin(e.target.value.replace(/\D/g,''))}
+            <input type="text" inputMode="numeric" maxLength={4} value={checkPin} onChange={e => setCheckPin(e.target.value.replace(/\D/g,''))}
               autoFocus placeholder="● ● ● ●"
               style={{width:'100%',background:'rgba(255,255,255,0.07)',border:'1.5px solid rgba(59,130,246,0.3)',borderRadius:'10px',padding:'16px',fontSize:'28px',color:'#fff',textAlign:'center',letterSpacing:'0.5em',boxSizing:'border-box',fontFamily:'monospace'}} />
             <div style={{display:'flex',gap:'8px',marginTop:'16px'}}>

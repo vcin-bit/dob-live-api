@@ -169,6 +169,7 @@ export default function OfficerProfile({ user }) {
 function PinSetup({ user }) {
   const [safePin, setSafePin] = useState('');
   const [duressPin, setDuressPin] = useState('');
+  const [showPins, setShowPins] = useState(false);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
   const inp = { width:'100%',background:'rgba(255,255,255,0.07)',border:'1.5px solid rgba(255,255,255,0.1)',borderRadius:'8px',padding:'12px',fontSize:'20px',color:'#fff',textAlign:'center',letterSpacing:'0.5em',boxSizing:'border-box',fontFamily:'monospace' };
@@ -191,12 +192,15 @@ function PinSetup({ user }) {
   return (
     <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
       <div>
-        <div style={{fontSize:'10px',fontWeight:600,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',marginBottom:'4px'}}>Safe PIN</div>
-        <input type="password" inputMode="numeric" maxLength={4} value={safePin} onChange={e => setSafePin(e.target.value.replace(/\D/g,''))} placeholder="● ● ● ●" style={inp} />
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'4px'}}>
+          <div style={{fontSize:'10px',fontWeight:600,color:'rgba(255,255,255,0.4)',textTransform:'uppercase'}}>Safe PIN</div>
+          <button type="button" onClick={() => setShowPins(!showPins)} style={{background:'none',border:'none',color:'rgba(255,255,255,0.3)',fontSize:'11px',cursor:'pointer',padding:0}}>{showPins ? 'Hide' : 'Show'}</button>
+        </div>
+        <input type={showPins ? 'text' : 'password'} inputMode="numeric" maxLength={4} value={safePin} onChange={e => setSafePin(e.target.value.replace(/\D/g,''))} placeholder="● ● ● ●" style={inp} />
       </div>
       <div>
         <div style={{fontSize:'10px',fontWeight:600,color:'rgba(239,68,68,0.7)',textTransform:'uppercase',marginBottom:'4px'}}>Duress PIN (silent alert)</div>
-        <input type="password" inputMode="numeric" maxLength={4} value={duressPin} onChange={e => setDuressPin(e.target.value.replace(/\D/g,''))} placeholder="● ● ● ●" style={{...inp, borderColor:'rgba(239,68,68,0.3)'}} />
+        <input type={showPins ? 'text' : 'password'} inputMode="numeric" maxLength={4} value={duressPin} onChange={e => setDuressPin(e.target.value.replace(/\D/g,''))} placeholder="● ● ● ●" style={{...inp, borderColor:'rgba(239,68,68,0.3)'}} />
       </div>
       <button onClick={save} disabled={saving} style={{width:'100%',padding:'12px',background:'rgba(59,130,246,0.2)',border:'1.5px solid rgba(59,130,246,0.4)',borderRadius:'8px',color:'#60a5fa',fontSize:'13px',fontWeight:700,cursor:'pointer'}}>
         {saving ? 'SAVING...' : 'SAVE PINS'}
