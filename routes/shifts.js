@@ -88,8 +88,23 @@ router.post('/expire', async (req, res, next) => {
       .eq('status', 'ACTIVE')
       .lt('end_time', new Date().toISOString())
       .not('end_time', 'is', null)
-      .select('id, officer_id, end_time');
+      .select('id, officer_id, end_time, site_id, company_id');
     if (error) throw error;
+    // Create auto off-duty log for each expired shift
+    for (const s of (data || [])) {
+      try {
+        const { data: officer } = await supabase.from('users').select('first_name, last_name').eq('id', s.officer_id).single();
+        const name = officer ? `${officer.first_name} ${officer.last_name}` : 'Unknown';
+        await supabase.from('occurrence_logs').insert({
+          company_id: s.company_id, site_id: s.site_id, shift_id: s.id,
+          officer_id: s.officer_id, log_type: 'GENERAL',
+          title: `${name} — Off Duty (Auto)`,
+          description: `Shift auto-expired at scheduled end time.`,
+          occurred_at: new Date().toISOString(),
+          type_data: { shift_event: 'OFF_DUTY', auto_expired: true },
+        });
+      } catch {}
+    }
     console.log(`Auto-expired ${data?.length || 0} shifts`);
     res.json({ expired: data?.length || 0, shifts: data });
   } catch (err) { next(err); }

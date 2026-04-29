@@ -122,15 +122,42 @@ function OfficerApp({ user }) {
     return <Navigate to="/sites" replace />;
   }
 
+  // LOCK SCREEN — must go on duty before accessing anything
+  if (selectedSite && !activeShift && !showShiftModal) {
+    return (
+      <div style={{minHeight:'100vh',background:'#0b1222',display:'flex',flexDirection:'column'}}>
+        <OfficerHeader user={user} selectedSite={selectedSite} activeShift={null} />
+        <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',padding:'1.5rem'}}>
+          <div style={{width:'100%',maxWidth:'360px',textAlign:'center'}}>
+            <div style={{fontSize:'3rem',marginBottom:'1rem'}}>👮</div>
+            <div style={{fontSize:'1.25rem',fontWeight:700,color:'#fff',marginBottom:'0.5rem'}}>
+              Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {user.first_name}
+            </div>
+            <div style={{fontSize:'0.9375rem',color:'rgba(255,255,255,0.5)',marginBottom:'0.25rem'}}>{selectedSite.name}</div>
+            <div style={{fontSize:'0.8125rem',color:'rgba(255,255,255,0.35)',marginBottom:'2rem'}}>You must go on duty before you can use the app</div>
+            <button onClick={() => setShowShiftModal(true)}
+              style={{width:'100%',padding:'18px',background:'rgba(74,222,128,0.15)',border:'2px solid rgba(74,222,128,0.5)',borderRadius:'12px',color:'#4ade80',fontSize:'1.125rem',fontWeight:700,cursor:'pointer',marginBottom:'1rem'}}>
+              GO ON DUTY
+            </button>
+            <button onClick={() => { setSelectedSite(null); }}
+              style={{width:'100%',padding:'12px',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'10px',color:'rgba(255,255,255,0.4)',fontSize:'0.875rem',cursor:'pointer'}}>
+              Change Site
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="officer-shell">
       <PlaybookAlerts user={user} site={selectedSite} shift={activeShift} lastPatrolTime={lastPatrolTime} onTaskDismissed={() => setLastPatrolTime(new Date().toISOString())} />
       <OfficerHeader user={user} selectedSite={selectedSite} activeShift={activeShift} />
       <div className="officer-content">
-      
+
       <Routes>
         <Route path="/sites" element={
-          <SitePickerScreen 
+          <SitePickerScreen
             sites={sites}
             onSiteSelect={(site) => { setSelectedSite(site); if (!activeShift) setShowShiftModal(true); }}
             user={user}
