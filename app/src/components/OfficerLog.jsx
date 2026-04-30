@@ -397,17 +397,10 @@ function LogEntryScreen({ user, site, shift }) {
     </div>
   );
 
-  // ── LOG OCCURRENCE (GENERAL): single page form, no steps ────────────────────
+  // ── LOG OCCURRENCE (GENERAL): single page form, dropdown category ───────────
   if (form.log_type === 'GENERAL') {
-    const SERIOUS = [
-      { key:'INCIDENT', label:'INCIDENT', sub:'Crime · Disturbance · Threat', color:'#ef4444', bg:'rgba(239,68,68,0.12)', border:'rgba(239,68,68,0.4)' },
-      { key:'FIRE_ALARM', label:'FIRE / EVACUATION', sub:'Fire alarm · Evacuation', color:'#ef4444', bg:'rgba(239,68,68,0.08)', border:'rgba(239,68,68,0.3)' },
-      { key:'ALARM', label:'ALARM ACTIVATION', sub:'Intruder · Technical', color:'#f59e0b', bg:'rgba(245,158,11,0.1)', border:'rgba(245,158,11,0.35)' },
-      { key:'SUSPICIOUS_PERSON', label:'SUSPICIOUS PERSON', sub:'Person of interest', color:'#f59e0b', bg:'rgba(245,158,11,0.08)', border:'rgba(245,158,11,0.3)' },
-    ];
-    const STANDARD = ['Abandoned Vehicle','Fly Tipping','H&S Hazard','Unsecured Building/Door','Criminal Damage','Trespass','Theft','Other'];
-    const occCategory = form.sub_type;
-    const setOccCategory = v => f('sub_type', v);
+    const CATEGORIES = ['Incident','Alarm','Fire / Evacuation','Suspicious Person','Fly Tipping','H&S Hazard','Unsecured Building/Door','Criminal Damage','Trespass','Theft','Other'];
+    const SERIOUS_KEYS = { 'Incident':'INCIDENT', 'Alarm':'ALARM', 'Fire / Evacuation':'FIRE_ALARM' };
 
     return (
       <div style={{padding:'1rem 1rem 5rem'}}>
@@ -424,27 +417,13 @@ function LogEntryScreen({ user, site, shift }) {
 
         {error && <div style={{background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:'8px',padding:'10px',fontSize:'13px',color:'#ef4444',marginBottom:'12px'}}>{error}</div>}
 
-        {/* Category — serious at top */}
-        <div style={{fontSize:'10px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'8px'}}>Category</div>
-        <div style={{display:'flex',flexDirection:'column',gap:'6px',marginBottom:'10px'}}>
-          {SERIOUS.map(c => (
-            <button key={c.key} type="button" onClick={() => setOccCategory(c.key)}
-              style={{width:'100%',padding:'10px 12px',background:occCategory===c.key?c.bg:'transparent',border:`1.5px solid ${occCategory===c.key?c.border:'rgba(255,255,255,0.08)'}`,borderRadius:'8px',cursor:'pointer',textAlign:'left',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-              <div>
-                <div style={{fontSize:'13px',fontWeight:700,color:occCategory===c.key?c.color:'rgba(255,255,255,0.6)'}}>{c.label}</div>
-                <div style={{fontSize:'10px',color:occCategory===c.key?c.color:'rgba(255,255,255,0.3)',opacity:0.7,marginTop:'1px'}}>{c.sub}</div>
-              </div>
-              {occCategory===c.key && <span style={{color:c.color,fontSize:'14px'}}>✓</span>}
-            </button>
-          ))}
-        </div>
-        <div style={{display:'flex',flexWrap:'wrap',gap:'6px',marginBottom:'14px'}}>
-          {STANDARD.map(c => (
-            <button key={c} type="button" onClick={() => setOccCategory(c)}
-              style={{padding:'7px 12px',background:occCategory===c?'rgba(59,130,246,0.15)':'rgba(255,255,255,0.04)',border:`1px solid ${occCategory===c?'rgba(59,130,246,0.4)':'rgba(255,255,255,0.08)'}`,borderRadius:'6px',fontSize:'12px',color:occCategory===c?'#60a5fa':'rgba(255,255,255,0.5)',fontWeight:occCategory===c?600:400,cursor:'pointer'}}>
-              {c}
-            </button>
-          ))}
+        {/* Category dropdown */}
+        <div style={{marginBottom:'14px'}}>
+          <div style={S.label}>CATEGORY *</div>
+          <select value={form.sub_type} onChange={e => f('sub_type', e.target.value)} style={S.input}>
+            <option value="">Select category...</option>
+            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
         </div>
 
         {/* Description */}
@@ -482,23 +461,24 @@ function LogEntryScreen({ user, site, shift }) {
 
         {/* Submit */}
         <button onClick={async () => {
+          if (!form.sub_type) { setError('Please select a category'); return; }
           if (!form.description.trim()) { setError('Description is required'); return; }
           setSubmitting(true); setError('');
           try {
-            const logType = SERIOUS.find(c => c.key === occCategory) ? occCategory : 'GENERAL';
+            const logType = SERIOUS_KEYS[form.sub_type] || 'GENERAL';
             await api.logs.create({
               site_id: site?.id, shift_id: shift?.id || null, log_type: logType,
-              title: occCategory || 'General Observation',
+              title: form.sub_type,
               description: form.description,
               occurred_at: new Date().toISOString(),
               latitude: form.latitude, longitude: form.longitude,
-              type_data: { category: occCategory, ...(form.media.length ? { media: form.media } : {}) },
+              type_data: { category: form.sub_type, ...(form.media.length ? { media: form.media } : {}) },
             });
             navigate('/', { state: { message: 'Occurrence logged' } });
           } catch (e) { setError(e.message); }
           finally { setSubmitting(false); }
-        }} disabled={submitting || !form.description.trim()}
-          style={S.btn(!form.description.trim() ? '#333' : '#1a52a8')}>
+        }} disabled={submitting || !form.description.trim() || !form.sub_type}
+          style={S.btn(!form.description.trim() || !form.sub_type ? '#333' : '#1a52a8')}>
           {submitting ? 'LOGGING...' : 'LOG OCCURRENCE'}
         </button>
       </div>
