@@ -424,6 +424,7 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
   const [checkCallDue, setCheckCallDue] = useState(false);
   const [lastCheckCall, setLastCheckCall] = useState(null);
   const [checkCallConfirmed, setCheckCallConfirmed] = useState(false);
+  const [activePatrol, setActivePatrol] = useState(false);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [historyDate, setHistoryDate] = useState('');
@@ -457,6 +458,11 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
         // Set last check call from server data
         const lastSafetyCheck = (todayResponse.data || []).find(l => l.type_data?.check_call === true && !l.type_data?.missed_check);
         if (lastSafetyCheck) setLastCheckCall(new Date(lastSafetyCheck.occurred_at));
+        // Check for active patrol
+        try {
+          const patrolRes = await api.patrols.activeSession(site.id);
+          setActivePatrol(!!patrolRes.data);
+        } catch { setActivePatrol(false); }
 
       } catch (err) {
         console.error('Failed to fetch dashboard data:', err);
@@ -534,9 +540,9 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
 
       {/* Primary actions */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.625rem',marginBottom:'0.625rem'}}>
-        <Link to="/patrol" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.9375rem',marginBottom:0,background:'rgba(74,222,128,0.12)',borderColor:'rgba(74,222,128,0.3)',color:'#4ade80'}}>
+        <Link to="/patrol" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.9375rem',marginBottom:0,background: activePatrol ? 'rgba(251,191,36,0.15)' : 'rgba(74,222,128,0.12)',borderColor: activePatrol ? 'rgba(251,191,36,0.4)' : 'rgba(74,222,128,0.3)',color: activePatrol ? '#fbbf24' : '#4ade80'}}>
           <MapPinIcon style={{width:'1.125rem',height:'1.125rem'}} />
-          Start Patrol
+          {activePatrol ? 'Resume Patrol' : 'Start Patrol'}
         </Link>
         <Link to="/patrol-history" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.875rem',marginBottom:0,background:'rgba(59,130,246,0.08)',borderColor:'rgba(59,130,246,0.25)',color:'#60a5fa'}}>
           <ClockIcon style={{width:'1rem',height:'1rem'}} />
