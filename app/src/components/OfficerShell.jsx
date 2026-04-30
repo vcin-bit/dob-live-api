@@ -29,6 +29,64 @@ function OfficerApp({ user }) {
 
   const [rosterShift, setRosterShift] = useState(null);
   const [noRosterShift, setNoRosterShift] = useState(false);
+  const [handover, setHandover] = useState(null);
+  const [handoverLoading, setHandoverLoading] = useState(false);
+  const [handoverAcked, setHandoverAcked] = useState(false);
+
+  async function loadHandover() {
+    if (!selectedSite) return;
+    setHandoverLoading(true);
+    try {
+      const now = new Date();
+      const yesterday = new Date(now); yesterday.setDate(yesterday.getDate() - 1);
+
+      // Get previous shift at this site (last COMPLETED shift)
+      const prevShiftsRes = await api.shifts.list({ site_id: selectedSite.id, status: 'COMPLETED' });
+      const prevShifts = (prevShiftsRes.data || []).sort((a,b) => new Date(b.checked_out_at || b.end_time) - new Date(a.checked_out_at || a.end_time));
+      const prevShift = prevShifts[0] || null;
+
+      // Get logs from previous shift period
+      let logs = [];
+      if (prevShift) {
+        const from = prevShift.checked_in_at || prevShift.start_time;
+        const to = prevShift.checked_out_at || prevShift.end_time || now.toISOString();
+        const logsRes = await api.logs.list({ site_id: selectedSite.id, from, to, limit: 200 });
+        logs = (logsRes.data || []).filter(l => !l.type_data?.checkpoint);
+      }
+
+      // Get visitors still on site
+      let visitors = [];
+      try {
+        const visRes = await api.visitors.list({ site_id: selectedSite.id, status: 'on_site' });
+        visitors = visRes.data || [];
+      } catch {}
+
+      // Get playbook tasks completion
+      let tasksDone = [];
+      try {
+        const pbRes = await api.playbooks.get(selectedSite.id);
+        tasksDone = (pbRes.tasks || []);
+      } catch {}
+
+      const incidents = logs.filter(l => ['INCIDENT','ALARM','FIRE_ALARM','EMERGENCY'].includes(l.log_type));
+      const genInfo = logs.filter(l => l.log_type === 'GENERAL' && !l.type_data?.shift_event && !l.type_data?.scheduled_task_id);
+      const openIncidents = incidents.filter(l => l.review_status !== 'RESOLVED');
+
+      setHandover({
+        prevShift,
+        prevOfficer: prevShift?.officer ? `${prevShift.officer.first_name} ${prevShift.officer.last_name}` : 'Unknown',
+        prevStart: prevShift?.checked_in_at || prevShift?.start_time,
+        prevEnd: prevShift?.checked_out_at || prevShift?.end_time,
+        incidents,
+        openIncidents,
+        genInfo,
+        visitors,
+        tasksDone,
+        logs,
+      });
+    } catch (e) { console.error('Handover load failed:', e); setHandover({ prevShift: null, prevOfficer: 'N/A', incidents: [], openIncidents: [], genInfo: [], visitors: [], tasksDone: [], logs: [] }); }
+    finally { setHandoverLoading(false); }
+  }
 
   async function startShift() {
     if (!selectedSite) return;
@@ -146,13 +204,76 @@ function OfficerApp({ user }) {
                 Your shift: {new Date(rosterShift.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})} – {rosterShift.end_time ? new Date(rosterShift.end_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'}) : '?'}
               </div>
             )}
-            <div style={{fontSize:'0.8125rem',color:'rgba(255,255,255,0.35)',marginBottom:'0.75rem'}}>You must go on duty before you can use the app</div>
-            <div style={{fontSize:'0.8125rem',color:'rgba(74,222,128,0.6)',marginBottom:'2rem',fontStyle:'italic'}}>Have a safe shift</div>
+            <div style={{fontSize:'0.8125rem',color:'rgba(74,222,128,0.6)',marginBottom:'1.5rem',fontStyle:'italic'}}>Have a safe shift</div>
             {noRosterShift && <div style={{padding:'0.75rem',background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:'8px',marginBottom:'1rem',fontSize:'0.8125rem',color:'#ef4444'}}>No shift scheduled for you at this site. Contact your manager.</div>}
-            <button onClick={startShift}
-              style={{width:'100%',padding:'18px',background:'rgba(74,222,128,0.15)',border:'2px solid rgba(74,222,128,0.5)',borderRadius:'12px',color:'#4ade80',fontSize:'1.125rem',fontWeight:700,cursor:'pointer'}}>
-              GO ON DUTY
-            </button>
+
+            {/* Step 1: Load handover */}
+            {!handover && !handoverLoading && (
+              <button onClick={loadHandover}
+                style={{width:'100%',padding:'18px',background:'rgba(74,222,128,0.15)',border:'2px solid rgba(74,222,128,0.5)',borderRadius:'12px',color:'#4ade80',fontSize:'1.125rem',fontWeight:700,cursor:'pointer'}}>
+                GO ON DUTY
+              </button>
+            )}
+            {handoverLoading && <div style={{padding:'1rem',color:'rgba(255,255,255,0.4)',fontSize:'0.875rem'}}>Loading handover...</div>}
+
+            {/* Step 2: Show handover */}
+            {handover && !handoverAcked && (
+              <div style={{textAlign:'left',width:'100%'}}>
+                <div style={{fontSize:'0.75rem',fontWeight:700,color:'#3b82f6',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.75rem'}}>Shift Handover</div>
+
+                {/* Previous shift */}
+                <div style={{padding:'0.75rem',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'8px',marginBottom:'0.625rem',fontSize:'0.8125rem'}}>
+                  <div style={{fontWeight:600,color:'#fff',marginBottom:'0.25rem'}}>Previous Shift</div>
+                  {handover.prevShift ? (
+                    <div style={{color:'rgba(255,255,255,0.5)'}}>
+                      {handover.prevOfficer} · {new Date(handover.prevStart).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}–{new Date(handover.prevEnd).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})} · {new Date(handover.prevStart).toLocaleDateString('en-GB',{day:'2-digit',month:'short',timeZone:'Europe/London'})}
+                    </div>
+                  ) : <div style={{color:'rgba(255,255,255,0.3)'}}>No previous shift data</div>}
+                </div>
+
+                {/* Incidents */}
+                <div style={{padding:'0.75rem',background: handover.incidents.length > 0 ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.04)',border:`1px solid ${handover.incidents.length > 0 ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.08)'}`,borderRadius:'8px',marginBottom:'0.625rem',fontSize:'0.8125rem'}}>
+                  <div style={{fontWeight:600,color: handover.incidents.length > 0 ? '#ef4444' : '#fff',marginBottom:'0.25rem'}}>Incidents ({handover.incidents.length})</div>
+                  {handover.incidents.length === 0 ? <div style={{color:'rgba(255,255,255,0.3)'}}>No incidents last shift</div> : (
+                    handover.incidents.map((l,i) => <div key={i} style={{color:'rgba(255,255,255,0.5)',marginTop:'0.25rem'}}>• {l.title} — {new Date(l.occurred_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}</div>)
+                  )}
+                  {handover.openIncidents.length > 0 && <div style={{color:'#ef4444',fontWeight:600,marginTop:'0.375rem'}}>⚠ {handover.openIncidents.length} unresolved</div>}
+                </div>
+
+                {/* Gen info */}
+                {handover.genInfo.length > 0 && (
+                  <div style={{padding:'0.75rem',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'8px',marginBottom:'0.625rem',fontSize:'0.8125rem'}}>
+                    <div style={{fontWeight:600,color:'#fff',marginBottom:'0.25rem'}}>General Info ({handover.genInfo.length})</div>
+                    {handover.genInfo.slice(0,5).map((l,i) => <div key={i} style={{color:'rgba(255,255,255,0.5)',marginTop:'0.25rem'}}>• {l.title || l.description?.slice(0,60)}</div>)}
+                  </div>
+                )}
+
+                {/* Visitors on site */}
+                {handover.visitors.length > 0 && (
+                  <div style={{padding:'0.75rem',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'8px',marginBottom:'0.625rem',fontSize:'0.8125rem'}}>
+                    <div style={{fontWeight:600,color:'#fff',marginBottom:'0.25rem'}}>Visitors On Site ({handover.visitors.length})</div>
+                    {handover.visitors.map((v,i) => <div key={i} style={{color:'rgba(255,255,255,0.5)',marginTop:'0.25rem'}}>• {v.visitor_name || v.name}</div>)}
+                  </div>
+                )}
+
+                {/* Acknowledge */}
+                <button onClick={() => {
+                  setHandoverAcked(true);
+                  // Log the acknowledgement
+                  api.logs.create({ site_id: selectedSite.id, log_type: 'GENERAL', title: `Handover Acknowledged — ${user.first_name} ${user.last_name}`, description: `Incoming officer acknowledged shift handover from ${handover.prevOfficer || 'previous shift'}.`, occurred_at: new Date().toISOString(), type_data: { shift_event: 'HANDOVER_ACK', prev_officer: handover.prevOfficer } }).catch(() => {});
+                }} style={{width:'100%',padding:'16px',background:'rgba(59,130,246,0.15)',border:'2px solid rgba(59,130,246,0.5)',borderRadius:'12px',color:'#60a5fa',fontSize:'1rem',fontWeight:700,cursor:'pointer',marginTop:'0.5rem'}}>
+                  I ACKNOWLEDGE THIS HANDOVER
+                </button>
+              </div>
+            )}
+
+            {/* Step 3: Go on duty */}
+            {handoverAcked && (
+              <button onClick={startShift}
+                style={{width:'100%',padding:'18px',background:'rgba(74,222,128,0.15)',border:'2px solid rgba(74,222,128,0.5)',borderRadius:'12px',color:'#4ade80',fontSize:'1.125rem',fontWeight:700,cursor:'pointer'}}>
+                GO ON DUTY
+              </button>
+            )}
           </div>
         </div>
       </div>
