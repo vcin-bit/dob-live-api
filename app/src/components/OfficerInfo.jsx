@@ -103,18 +103,12 @@ function OfficerNavigation({ onSignOut }) {
       {confirmingSignOut && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',zIndex:9999,display:'flex',alignItems:'flex-end',justifyContent:'center',padding:'1rem'}}>
           <div style={{background:'#0f1929',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'16px',padding:'1.5rem',width:'100%',maxWidth:'360px',textAlign:'center'}}>
-            <div style={{fontSize:'15px',fontWeight:700,color:'#fff',marginBottom:'8px'}}>Sign Out?</div>
-            <div style={{fontSize:'13px',color:'rgba(255,255,255,0.45)',marginBottom:'20px',lineHeight:1.5}}>Please ensure your handover is complete before signing out.</div>
-            <div style={{display:'flex',gap:'8px'}}>
-              <button onClick={() => setConfirmingSignOut(false)}
-                style={{flex:1,padding:'13px',background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'10px',color:'rgba(255,255,255,0.6)',fontSize:'14px',fontWeight:600,cursor:'pointer'}}>
-                Cancel
-              </button>
-              <button onClick={() => { setConfirmingSignOut(false); onSignOut?.(); }}
-                style={{flex:1,padding:'13px',background:'rgba(220,38,38,0.15)',border:'1.5px solid rgba(220,38,38,0.4)',borderRadius:'10px',color:'#ef4444',fontSize:'14px',fontWeight:700,cursor:'pointer'}}>
-                Sign Out
-              </button>
-            </div>
+            <div style={{fontSize:'15px',fontWeight:700,color:'#fff',marginBottom:'8px'}}>Go Off Duty</div>
+            <div style={{fontSize:'13px',color:'rgba(255,255,255,0.45)',marginBottom:'20px',lineHeight:1.5}}>Going off duty requires control room approval. Contact your manager or the Risk Secured NCC to request early sign off.</div>
+            <button onClick={() => setConfirmingSignOut(false)}
+              style={{width:'100%',padding:'13px',background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'10px',color:'rgba(255,255,255,0.6)',fontSize:'14px',fontWeight:600,cursor:'pointer'}}>
+              OK
+            </button>
           </div>
         </div>
       )}
@@ -136,7 +130,7 @@ function OfficerNavigation({ onSignOut }) {
           style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'0.25rem',padding:'0.5rem 0.375rem',background:'none',border:'none',cursor:'pointer',color:'rgba(255,90,90,0.8)',fontSize:'0.625rem',fontWeight:600,minWidth:0,flex:'0 0 auto'}}
         >
           <ArrowRightOnRectangleIcon style={{width:'1.25rem',height:'1.25rem'}} />
-          Sign Out
+          Off Duty
         </button>
         <div style={{display:'flex',flexDirection:'column',alignItems:'center',padding:'0.25rem 0',fontSize:'9px',color:'rgba(255,255,255,0.25)',minWidth:0,flex:'0 0 auto'}}>{typeof __APP_VERSION__ !== 'undefined' ? `v${__APP_VERSION__}` : ''}</div>
       </nav>
