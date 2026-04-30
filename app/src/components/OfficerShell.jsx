@@ -23,48 +23,38 @@ function OfficerApp({ user }) {
   const { signOut } = useAuth();
   const [activeShift, setActiveShift] = useState(null);
   const [lastPatrolTime, setLastPatrolTime] = useState(null);
-  const [showShiftModal, setShowShiftModal] = useState(false);
-  const [plannedEnd, setPlannedEnd] = useState('');
   const [selectedSite, setSelectedSite] = useState(null);
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const [rosterShift, setRosterShift] = useState(null);
+  const [noRosterShift, setNoRosterShift] = useState(false);
+
   async function startShift() {
     if (!selectedSite) return;
-    if (!plannedEnd) { setShowShiftModal(true); return; }
     try {
       let lat, lng;
       try {
         const pos = await new Promise((res,rej) => navigator.geolocation.getCurrentPosition(res,rej,{timeout:8000}));
         lat = pos.coords.latitude; lng = pos.coords.longitude;
       } catch {}
-      // Build planned end datetime (today or tomorrow if time is earlier than now)
+
+      // Find the SCHEDULED roster shift for this officer at this site (today or tonight)
       const now = new Date();
-      const [h, m] = plannedEnd.split(':').map(Number);
-      const end = new Date(now);
-      end.setHours(h, m, 0, 0);
-      if (end <= now) end.setDate(end.getDate() + 1); // next day
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+      const tomorrowEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2).toISOString();
+      const scheduled = await api.shifts.list({ officer_id: user.id, status: 'SCHEDULED', site_id: selectedSite.id });
+      const rShift = (scheduled.data || []).find(s => s.start_time >= todayStart && s.start_time < tomorrowEnd);
 
-      // Check for existing SCHEDULED shift today at this site
-      let existingShift = null;
-      try {
-        const scheduled = await api.shifts.list({ officer_id: user.id, status: 'SCHEDULED', site_id: selectedSite.id });
-        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-        const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
-        existingShift = (scheduled.data || []).find(s => s.start_time >= todayStart && s.start_time < todayEnd);
-      } catch {}
-
-      let r;
-      if (existingShift) {
-        // Activate the existing roster shift instead of creating a duplicate
-        r = await api.shifts.checkin(existingShift.id, { lat, lng });
-      } else {
-        // Ad-hoc shift — no roster entry for today
-        r = await api.shifts.start({ site_id: selectedSite.id, lat, lng, end_time: end.toISOString() });
+      if (!rShift) {
+        setNoRosterShift(true);
+        return;
       }
+
+      // Activate the roster shift
+      const r = await api.shifts.checkin(rShift.id, { lat, lng });
       setActiveShift(r.data);
-      setShowShiftModal(false);
-      setPlannedEnd('');
+      setRosterShift(rShift);
     } catch (err) { alert(err.message); }
   }
 
@@ -103,6 +93,7 @@ function OfficerApp({ user }) {
             const todayShift = (schedRes.data || []).find(s => s.start_time >= todayStart && s.start_time < todayEnd);
             if (todayShift?.site) {
               setSelectedSite(todayShift.site);
+              setRosterShift(todayShift);
             } else if ((sitesResponse.data || []).length === 1) {
               setSelectedSite(sitesResponse.data[0]);
             }
@@ -137,7 +128,7 @@ function OfficerApp({ user }) {
   }
 
   // LOCK SCREEN — must go on duty before accessing anything
-  if (selectedSite && !activeShift && !showShiftModal) {
+  if (selectedSite && !activeShift) {
     return (
       <div style={{minHeight:'100vh',background:'#0b1222',display:'flex',flexDirection:'column'}}>
         <OfficerHeader user={user} selectedSite={selectedSite} activeShift={null} />
@@ -150,9 +141,15 @@ function OfficerApp({ user }) {
               Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {user.first_name}
             </div>
             <div style={{fontSize:'0.9375rem',color:'rgba(255,255,255,0.5)',marginBottom:'0.25rem'}}>{selectedSite.name}</div>
+            {rosterShift && (
+              <div style={{fontSize:'0.9375rem',color:'#fff',marginBottom:'0.5rem',fontWeight:600}}>
+                Your shift: {new Date(rosterShift.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})} – {rosterShift.end_time ? new Date(rosterShift.end_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'}) : '?'}
+              </div>
+            )}
             <div style={{fontSize:'0.8125rem',color:'rgba(255,255,255,0.35)',marginBottom:'0.75rem'}}>You must go on duty before you can use the app</div>
             <div style={{fontSize:'0.8125rem',color:'rgba(74,222,128,0.6)',marginBottom:'2rem',fontStyle:'italic'}}>Have a safe shift</div>
-            <button onClick={() => setShowShiftModal(true)}
+            {noRosterShift && <div style={{padding:'0.75rem',background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:'8px',marginBottom:'1rem',fontSize:'0.8125rem',color:'#ef4444'}}>No shift scheduled for you at this site. Contact your manager.</div>}
+            <button onClick={startShift}
               style={{width:'100%',padding:'18px',background:'rgba(74,222,128,0.15)',border:'2px solid rgba(74,222,128,0.5)',borderRadius:'12px',color:'#4ade80',fontSize:'1.125rem',fontWeight:700,cursor:'pointer'}}>
               GO ON DUTY
             </button>
@@ -173,7 +170,7 @@ function OfficerApp({ user }) {
           activeShift ? <Navigate to="/" replace /> :
           <SitePickerScreen
             sites={sites}
-            onSiteSelect={(site) => { setSelectedSite(site); setShowShiftModal(true); }}
+            onSiteSelect={(site) => { setSelectedSite(site); }}
             user={user}
           />
         } />
@@ -217,42 +214,13 @@ function OfficerApp({ user }) {
       </Routes>
       </div>
       <OfficerNavigation onSignOut={async () => {
-        // End active shift before signing out
         if (activeShift) {
-          try { await api.shifts.checkout(activeShift.id); } catch {}
+          alert('You are on duty. Your shift will remain active. Contact control if you need to end your shift early.');
+          return;
         }
         signOut();
       }} />
 
-      {/* Shift start modal */}
-      {showShiftModal && (
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',zIndex:9998,display:'flex',alignItems:'flex-end',justifyContent:'center',padding:'1rem'}}>
-          <div style={{background:'#0f1929',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'16px',padding:'1.5rem',width:'100%',maxWidth:'360px',boxSizing:'border-box'}}>
-            <div style={{fontSize:'16px',fontWeight:700,color:'#fff',marginBottom:'4px'}}>Start Shift</div>
-            <div style={{fontSize:'13px',color:'rgba(255,255,255,0.4)',marginBottom:'20px'}}>{selectedSite?.name}</div>
-            <div style={{marginBottom:'16px'}}>
-              <label style={{fontSize:'11px',fontWeight:600,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:'8px'}}>
-                Planned Finish Time
-              </label>
-              <input type="time" value={plannedEnd} onChange={e => setPlannedEnd(e.target.value)}
-                style={{width:'100%',background:'rgba(255,255,255,0.07)',border:'1.5px solid rgba(74,222,128,0.3)',borderRadius:'10px',padding:'14px',fontSize:'24px',color:'#fff',textAlign:'center',boxSizing:'border-box',fontFamily:'monospace',WebkitAppearance:'none'}} />
-              <div style={{fontSize:'11px',color:'rgba(255,255,255,0.3)',marginTop:'6px',textAlign:'center'}}>
-                You will be automatically signed out at this time
-              </div>
-            </div>
-            <div style={{display:'flex',gap:'8px'}}>
-              {activeShift && <button onClick={() => { setShowShiftModal(false); setPlannedEnd(''); }}
-                style={{flex:1,padding:'13px',background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'10px',color:'rgba(255,255,255,0.6)',fontSize:'14px',fontWeight:600,cursor:'pointer'}}>
-                Cancel
-              </button>}
-              <button onClick={startShift} disabled={!plannedEnd}
-                style={{flex:2,padding:'13px',background:'rgba(74,222,128,0.15)',border:'1.5px solid rgba(74,222,128,0.4)',borderRadius:'10px',color:'#4ade80',fontSize:'14px',fontWeight:700,cursor:'pointer',opacity:plannedEnd?1:0.5}}>
-                Start Shift
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -385,23 +353,24 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
     }
   }, [site, user]);
 
-  // Hourly check call timer
+  // Hourly check call timer — uses lastCheckCall from server data (set in dashboard fetch)
   useEffect(() => {
     if (!shift) { setCheckCallDue(false); return; }
     const check = () => {
-      const last = lastCheckCall || new Date(shift.checked_in_at || shift.start_time);
-      const elapsed = (Date.now() - new Date(last).getTime()) / 60000;
-      if (elapsed >= 55) { // Due at 55 mins, overdue at 60
+      // Use server-loaded lastCheckCall, or shift checked_in_at from current active shift
+      const last = lastCheckCall || (shift.checked_in_at ? new Date(shift.checked_in_at) : new Date());
+      const elapsed = (Date.now() - last.getTime()) / 60000;
+      if (elapsed >= 55 && elapsed < 40000) { // Due at 55 mins, cap at ~28 days to catch stale data
         setCheckCallDue(true);
-        // Play audible alert
         try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); const o = ctx.createOscillator(); o.frequency.value = 800; o.connect(ctx.destination); o.start(); setTimeout(() => o.stop(), 500); } catch {}
       } else {
         setCheckCallDue(false);
       }
     };
-    check();
+    // Don't run timer until dashboard has loaded (lastCheckCall will be set from server)
+    const delay = setTimeout(check, 3000);
     const t = setInterval(check, 60000);
-    return () => clearInterval(t);
+    return () => { clearTimeout(delay); clearInterval(t); };
   }, [shift, lastCheckCall]);
 
   // Fetch logs for selected history date
@@ -426,23 +395,19 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
       {shift ? (
         <div style={{background:'rgba(74,222,128,0.1)',border:'1px solid rgba(74,222,128,0.25)',borderRadius:'10px',padding:'0.875rem 1rem',display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.75rem'}}>
           <div>
-            <div style={{fontSize:'0.6875rem',fontWeight:600,color:'#4ade80',textTransform:'uppercase',letterSpacing:'0.06em'}}>Shift Active</div>
-            <div style={{fontSize:'0.8125rem',color:'rgba(255,255,255,0.5)',marginTop:'0.125rem'}}>
-              Since {new Date(shift.checked_in_at||shift.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}
+            <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
+              <span style={{width:8,height:8,borderRadius:'50%',background:'#4ade80',animation:'pulse 2s infinite'}} />
+              <span style={{fontSize:'0.8125rem',fontWeight:700,color:'#4ade80'}}>On Duty</span>
+              <span style={{color:'rgba(255,255,255,0.3)'}}>—</span>
+              <span style={{fontSize:'0.8125rem',color:'rgba(255,255,255,0.6)'}}>{site?.name}</span>
+            </div>
+            <div style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.35)',marginTop:'0.25rem'}}>
+              {new Date().toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',timeZone:'Europe/London'})}
             </div>
           </div>
-          <Link to="/handover" style={{padding:'0.5rem 0.875rem',background:'rgba(220,38,38,0.2)',border:'1px solid rgba(220,38,38,0.3)',borderRadius:'6px',color:'#fca5a5',fontSize:'0.8125rem',fontWeight:600,cursor:'pointer',textDecoration:'none',display:'inline-flex',alignItems:'center'}}>
-            End Shift / Handover
-          </Link>
         </div>
       ) : (
-        <div style={{display:'flex',gap:'0.5rem',marginBottom:'0.75rem'}}>
-          <button onClick={onStartShift} style={{flex:2,padding:'0.875rem',background:'rgba(74,222,128,0.12)',border:'1px solid rgba(74,222,128,0.2)',borderRadius:'10px',color:'#4ade80',fontSize:'0.9375rem',fontWeight:700,cursor:'pointer'}}>
-            Start Shift
-          </button>
-          <Link to="/handover" style={{flex:1,padding:'0.875rem',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'10px',color:'rgba(255,255,255,0.5)',fontSize:'0.8125rem',fontWeight:600,cursor:'pointer',textDecoration:'none',display:'inline-flex',alignItems:'center',justifyContent:'center'}}>
-            Handover
-          </Link>
+        <div style={{marginBottom:'0.75rem'}}>
         </div>
       )}
 
