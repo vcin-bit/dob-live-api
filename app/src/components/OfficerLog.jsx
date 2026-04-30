@@ -446,6 +446,89 @@ function LogEntryScreen({ user, site, shift }) {
         <textarea value={form.description} onChange={e=>f('description',e.target.value)} rows={3} placeholder="Describe what you found..."
           style={S.input} />
 
+        {/* Police — only for Incident */}
+        {form.sub_type === 'Incident' && (
+          <div style={{marginBottom:'14px',padding:'12px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'10px'}}>
+            <div style={S.label}>REPORTED TO POLICE?</div>
+            <div style={{display:'flex',gap:'8px',marginBottom: form.police_reported ? '12px' : '0'}}>
+              <button type="button" onClick={() => f('police_reported', true)}
+                style={{flex:1,padding:'12px',background:form.police_reported?'rgba(59,130,246,0.12)':'rgba(255,255,255,0.03)',border:`1.5px solid ${form.police_reported?'rgba(59,130,246,0.4)':'rgba(255,255,255,0.08)'}`,borderRadius:'8px',fontSize:'13px',fontWeight:700,color:form.police_reported?'#60a5fa':'rgba(255,255,255,0.45)',cursor:'pointer'}}>
+                {form.police_reported?'✓ ':''}Yes
+              </button>
+              <button type="button" onClick={() => { f('police_reported', false); f('police_force',''); f('police_incident_number',''); }}
+                style={{flex:1,padding:'12px',background:!form.police_reported?'rgba(255,255,255,0.06)':'rgba(255,255,255,0.03)',border:`1.5px solid ${!form.police_reported?'rgba(255,255,255,0.15)':'rgba(255,255,255,0.08)'}`,borderRadius:'8px',fontSize:'13px',fontWeight:700,color:!form.police_reported?'rgba(255,255,255,0.6)':'rgba(255,255,255,0.45)',cursor:'pointer'}}>
+                No
+              </button>
+            </div>
+            {form.police_reported && (
+              <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
+                <div>
+                  <div style={S.label}>POLICE FORCE</div>
+                  <select value={form.police_force||''} onChange={e => f('police_force', e.target.value)} style={S.input}>
+                    <option value="">Select force...</option>
+                    {['Avon and Somerset','Bedfordshire','Cambridgeshire','Cheshire','City of London','Cleveland','Cumbria','Derbyshire','Devon and Cornwall','Dorset','Durham','Dyfed-Powys','Essex','Gloucestershire','Greater Manchester','Gwent','Hampshire','Hertfordshire','Humberside','Kent','Lancashire','Leicestershire','Lincolnshire','Merseyside','Metropolitan Police','Norfolk','North Wales','North Yorkshire','Northamptonshire','Northumbria','Nottinghamshire','South Wales','South Yorkshire','Staffordshire','Suffolk','Surrey','Sussex','Thames Valley','Warwickshire','West Mercia','West Midlands','West Yorkshire','Wiltshire','Police Scotland','PSNI'].map(f=><option key={f} value={f}>{f}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <div style={S.label}>INCIDENT / CRIME NUMBER</div>
+                  <input value={form.police_incident_number||''} onChange={e => f('police_incident_number', e.target.value)} placeholder="e.g. 4100123456" style={S.input} />
+                </div>
+                <div>
+                  <div style={S.label}>REPORTED VIA</div>
+                  <div style={{display:'flex',gap:'8px'}}>
+                    <button type="button" onClick={() => f('police_reported_via','999')}
+                      style={{flex:1,padding:'10px',background:form.police_reported_via==='999'?'rgba(239,68,68,0.15)':'rgba(255,255,255,0.03)',border:`1.5px solid ${form.police_reported_via==='999'?'rgba(239,68,68,0.4)':'rgba(255,255,255,0.08)'}`,borderRadius:'8px',fontSize:'13px',fontWeight:700,color:form.police_reported_via==='999'?'#ef4444':'rgba(255,255,255,0.45)',cursor:'pointer'}}>
+                      999
+                    </button>
+                    <button type="button" onClick={() => f('police_reported_via','101')}
+                      style={{flex:1,padding:'10px',background:form.police_reported_via==='101'?'rgba(59,130,246,0.12)':'rgba(255,255,255,0.03)',border:`1.5px solid ${form.police_reported_via==='101'?'rgba(59,130,246,0.4)':'rgba(255,255,255,0.08)'}`,borderRadius:'8px',fontSize:'13px',fontWeight:700,color:form.police_reported_via==='101'?'#60a5fa':'rgba(255,255,255,0.45)',cursor:'pointer'}}>
+                      101
+                    </button>
+                  </div>
+                </div>
+
+                {/* Emergency services attended */}
+                <div style={{borderTop:'1px solid rgba(255,255,255,0.06)',paddingTop:'10px',marginTop:'4px'}}>
+                  <div style={S.label}>EMERGENCY SERVICES ATTENDED?</div>
+                  <div style={{display:'flex',gap:'6px',flexWrap:'wrap',marginBottom:'8px'}}>
+                    {['Police','Fire','Ambulance'].map(svc => (
+                      <button key={svc} type="button" onClick={() => {
+                        const current = form.services_attended || [];
+                        f('services_attended', current.includes(svc) ? current.filter(s => s !== svc) : [...current, svc]);
+                      }} style={{padding:'8px 14px',background:(form.services_attended||[]).includes(svc)?'rgba(59,130,246,0.15)':'rgba(255,255,255,0.03)',border:`1.5px solid ${(form.services_attended||[]).includes(svc)?'rgba(59,130,246,0.4)':'rgba(255,255,255,0.08)'}`,borderRadius:'6px',fontSize:'12px',fontWeight:700,color:(form.services_attended||[]).includes(svc)?'#60a5fa':'rgba(255,255,255,0.45)',cursor:'pointer'}}>
+                        {(form.services_attended||[]).includes(svc)?'✓ ':''}{svc}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {(form.services_attended||[]).length > 0 && (
+                  <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px'}}>
+                      <div>
+                        <div style={S.label}>TIME ON SITE</div>
+                        <input type="time" value={form.services_time_on||''} onChange={e => f('services_time_on', e.target.value)} style={S.input} />
+                      </div>
+                      <div>
+                        <div style={S.label}>TIME OFF SITE</div>
+                        <input type="time" value={form.services_time_off||''} onChange={e => f('services_time_off', e.target.value)} style={S.input} />
+                      </div>
+                    </div>
+                    <div>
+                      <div style={S.label}>OFFICER NAME(S) & SHOULDER NUMBER(S)</div>
+                      <input value={form.police_officer_name||''} onChange={e => f('police_officer_name', e.target.value)} placeholder="e.g. PC Smith 1234, PC Jones 5678" style={S.input} />
+                    </div>
+                    <div>
+                      <div style={S.label}>ACTIONS TAKEN BY EMERGENCY SERVICES</div>
+                      <textarea value={form.services_actions||''} onChange={e => f('services_actions', e.target.value)} rows={2} placeholder="e.g. Suspect arrested, area cordoned off..." style={{...S.input, resize:'none'}} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Location */}
         <div style={{margin:'14px 0',padding:'8px 10px',background:'rgba(255,255,255,0.03)',borderRadius:'6px',border:'1px solid rgba(255,255,255,0.06)'}}>
           <div style={{fontSize:'10px',color:'rgba(255,255,255,0.3)'}}>
@@ -489,7 +572,7 @@ function LogEntryScreen({ user, site, shift }) {
               description: form.description,
               occurred_at: new Date().toISOString(),
               latitude: form.latitude, longitude: form.longitude,
-              type_data: { category: form.sub_type, sub_type: form.actions_taken || null, ...(form.media.length ? { media: form.media } : {}) },
+              type_data: { category: form.sub_type, sub_type: form.actions_taken || null, ...(form.media.length ? { media: form.media } : {}), ...(form.police_reported ? { police_reported: true, police_force: form.police_force, police_incident_number: form.police_incident_number, police_reported_via: form.police_reported_via, services_attended: form.services_attended, services_time_on: form.services_time_on, services_time_off: form.services_time_off, police_officer_name: form.police_officer_name, services_actions: form.services_actions } : {}) },
             });
             navigate('/', { state: { message: 'Occurrence logged' } });
           } catch (e) { setError(e.message); }
