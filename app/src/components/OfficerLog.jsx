@@ -402,7 +402,7 @@ function LogEntryScreen({ user, site, shift }) {
     const CATEGORIES = ['Incident','Alarm','Fire / Evacuation','Suspicious Person','Fly Tipping','H&S Hazard','Unsecured Building/Door','Criminal Damage','Trespass','Theft','Other'];
     const SERIOUS_KEYS = { 'Incident':'INCIDENT', 'Alarm':'ALARM', 'Fire / Evacuation':'FIRE_ALARM' };
     const SUB_TYPES = {
-      'Incident': ['Theft','Fight/Assault','Trespass','Vandalism','Suspicious Person','Drug-Related','Verbal Abuse','Other'],
+      'Incident': ['Theft','Fight/Assault','Trespass','Criminal Damage','Suspicious Person','Drug-Related','Verbal Abuse','Hostile Recon','Fire','Fly Tipping','Other'],
       'Alarm': ['Intruder','Fire','Panic','Technical Fault','False Alarm','Other'],
     };
 
