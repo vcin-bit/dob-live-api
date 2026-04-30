@@ -458,11 +458,17 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
         // Set last check call from server data
         const lastSafetyCheck = (todayResponse.data || []).find(l => l.type_data?.check_call === true && !l.type_data?.missed_check);
         if (lastSafetyCheck) setLastCheckCall(new Date(lastSafetyCheck.occurred_at));
-        // Check for active patrol
+        // Check for active patrol + last completed patrol time
         try {
           const patrolRes = await api.patrols.activeSession(site.id);
           setActivePatrol(!!patrolRes.data);
         } catch { setActivePatrol(false); }
+        // Load last completed patrol session time
+        try {
+          const sessionsRes = await api.patrols.listSessions({ site_id: site.id, status: 'completed', limit: 1 });
+          const lastSession = (sessionsRes.data || [])[0];
+          if (lastSession?.ended_at) setLastPatrolTime(lastSession.ended_at);
+        } catch {}
 
       } catch (err) {
         console.error('Failed to fetch dashboard data:', err);

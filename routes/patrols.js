@@ -83,7 +83,7 @@ router.delete('/routes/:id', authenticate, requireRole('SUPER_ADMIN','COMPANY','
 // GET /api/patrols/sessions — list sessions for company (ops) or officer (officer)
 router.get('/sessions', authenticate, async (req, res, next) => {
   try {
-    const { site_id, officer_id, limit = 50, offset = 0 } = req.query;
+    const { site_id, officer_id, status, limit = 50, offset = 0 } = req.query;
     let query = supabase
       .from('patrol_sessions')
       .select('*, officer:users(id, first_name, last_name), site:sites(id, name)')
@@ -93,6 +93,7 @@ router.get('/sessions', authenticate, async (req, res, next) => {
     if (req.user.role === 'OFFICER') query = query.eq('officer_id', req.user.id);
     else if (officer_id) query = query.eq('officer_id', officer_id);
     if (site_id) query = query.eq('site_id', site_id);
+    if (status) query = query.eq('status', status);
     const { data, error } = await query;
     if (error) throw error;
     res.json({ data });
