@@ -105,10 +105,16 @@ function OfficerNavigation({ onSignOut }) {
           <div style={{background:'#0f1929',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'16px',padding:'1.5rem',width:'100%',maxWidth:'360px',textAlign:'center'}}>
             <div style={{fontSize:'15px',fontWeight:700,color:'#fff',marginBottom:'8px'}}>Go Off Duty</div>
             <div style={{fontSize:'13px',color:'rgba(255,255,255,0.45)',marginBottom:'20px',lineHeight:1.5}}>Going off duty requires control room approval. Contact your manager or the Risk Secured NCC to request early sign off.</div>
-            <button onClick={() => setConfirmingSignOut(false)}
-              style={{width:'100%',padding:'13px',background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'10px',color:'rgba(255,255,255,0.6)',fontSize:'14px',fontWeight:600,cursor:'pointer'}}>
-              OK
-            </button>
+            <div style={{display:'flex',gap:'8px'}}>
+              <button onClick={() => setConfirmingSignOut(false)}
+                style={{flex:1,padding:'13px',background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'10px',color:'rgba(255,255,255,0.6)',fontSize:'14px',fontWeight:600,cursor:'pointer'}}>
+                Cancel
+              </button>
+              <button onClick={() => { setConfirmingSignOut(false); onSignOut?.(); }}
+                style={{flex:1,padding:'13px',background:'rgba(59,130,246,0.15)',border:'1.5px solid rgba(59,130,246,0.4)',borderRadius:'10px',color:'#60a5fa',fontSize:'14px',fontWeight:600,cursor:'pointer'}}>
+                Check Status
+              </button>
+            </div>
           </div>
         </div>
       )}

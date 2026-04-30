@@ -185,6 +185,20 @@ function OfficerApp({ user }) {
     return <Navigate to="/sites" replace />;
   }
 
+  // Check for roster shift on lock screen
+  useEffect(() => {
+    if (!selectedSite || activeShift) return;
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+    const tomorrowEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2).toISOString();
+    api.shifts.list({ officer_id: user.id, status: 'SCHEDULED', site_id: selectedSite.id })
+      .then(res => {
+        const rShift = (res.data || []).find(s => s.start_time >= todayStart && s.start_time < tomorrowEnd);
+        if (rShift) { setRosterShift(rShift); setNoRosterShift(false); }
+        else { setRosterShift(null); setNoRosterShift(true); }
+      }).catch(() => setNoRosterShift(true));
+  }, [selectedSite, activeShift]);
+
   // LOCK SCREEN — must go on duty before accessing anything
   if (selectedSite && !activeShift) {
     return (
@@ -208,7 +222,7 @@ function OfficerApp({ user }) {
             {noRosterShift && <div style={{padding:'0.75rem',background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:'8px',marginBottom:'1rem',fontSize:'0.8125rem',color:'#ef4444'}}>No shift scheduled for you at this site. Contact your manager.</div>}
 
             {/* Step 1: Load handover */}
-            {!handover && !handoverLoading && (
+            {!handover && !handoverLoading && !noRosterShift && (
               <button onClick={loadHandover}
                 style={{width:'100%',padding:'18px',background:'rgba(74,222,128,0.15)',border:'2px solid rgba(74,222,128,0.5)',borderRadius:'12px',color:'#4ade80',fontSize:'1.125rem',fontWeight:700,cursor:'pointer'}}>
                 GO ON DUTY
