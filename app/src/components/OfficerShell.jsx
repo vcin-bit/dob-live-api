@@ -180,11 +180,6 @@ function OfficerApp({ user }) {
     );
   }
 
-  // If no site selected and not on site picker page, redirect to site picker
-  if (!selectedSite && location.pathname !== '/sites') {
-    return <Navigate to="/sites" replace />;
-  }
-
   // Check for roster shift on lock screen
   useEffect(() => {
     if (!selectedSite || activeShift) return;
@@ -198,6 +193,11 @@ function OfficerApp({ user }) {
         else { setRosterShift(null); setNoRosterShift(true); }
       }).catch(() => setNoRosterShift(true));
   }, [selectedSite, activeShift]);
+
+  // If no site selected and not on site picker page, redirect to site picker
+  if (!selectedSite && location.pathname !== '/sites') {
+    return <Navigate to="/sites" replace />;
+  }
 
   // LOCK SCREEN — must go on duty before accessing anything
   if (selectedSite && !activeShift) {
