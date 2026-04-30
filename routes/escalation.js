@@ -37,6 +37,11 @@ router.post('/check-call', authenticate, async (req, res, next) => {
       type_data: { check_call: true, duress: isDuress },
     });
 
+    // Reset safety alert level on the active shift
+    if (req.body.shift_id) {
+      await supabase.from('shifts').update({ safety_alert_level: 0, last_safety_alert_at: null }).eq('id', req.body.shift_id);
+    }
+
     // If duress — silently trigger escalation
     if (isDuress) {
       await triggerEscalation(officer, req.body.site_id, 'DURESS', `DURESS PIN entered by ${officer.first_name} ${officer.last_name}`, lat, lng);
@@ -183,16 +188,15 @@ async function triggerEscalation(officer, siteId, type, message, lat, lng) {
   } catch (e) { console.error('Escalation call failed:', e.message); }
 }
 
-// POST /api/escalation/cron-check — called by cron every 5 mins, checks all active shifts
+// POST /api/escalation/cron-check — called by cron every 5 mins
+// State machine: safety_alert_level on shift record
+// 0=clear, 1=SMS to officer, 2=call officer, 3=call officer again, 4=escalated to manager
 router.post('/cron-check', async (req, res) => {
   try {
-    // No auth required — this endpoint only reads shifts and triggers alerts
-
     const twilio = getTwilio();
     const now = new Date();
-    const results = { checked: 0, alerts: 0 };
+    const results = { checked: 0, alerts: 0, details: [] };
 
-    // Get all active shifts with officer details
     const { data: activeShifts } = await supabase
       .from('shifts')
       .select('*, officer:users!shifts_officer_id_fkey(id, first_name, last_name, phone, company_id), site:sites(id, name)')
@@ -204,92 +208,117 @@ router.post('/cron-check', async (req, res) => {
       if (!shift.officer) continue;
       results.checked++;
 
-      // Find last ACTUAL safety check (not missed check alerts) for this officer today
-      const { data: lastCheck } = await supabase
+      const officerName = `${shift.officer.first_name} ${shift.officer.last_name}`;
+      const siteName = shift.site?.name || 'Unknown site';
+      const officerPhone = shift.officer.phone ? (shift.officer.phone.startsWith('+') ? shift.officer.phone : `+44${shift.officer.phone.replace(/^0/, '')}`) : null;
+      const level = shift.safety_alert_level || 0;
+
+      // Fixed hourly intervals from shift start
+      const shiftStart = new Date(shift.checked_in_at || shift.start_time);
+      const minsSinceStart = (now - shiftStart) / 60000;
+
+      // Which hourly check are we on? (1st due at 60 mins, 2nd at 120, etc)
+      const currentCheckNumber = Math.floor(minsSinceStart / 60);
+      if (currentCheckNumber < 1) continue; // First hour not up yet
+
+      // When was this check due?
+      const checkDueAt = new Date(shiftStart.getTime() + currentCheckNumber * 60 * 60000);
+      const minsOverdue = Math.floor((now - checkDueAt) / 60000);
+
+      // Has officer made a check call AFTER this check was due?
+      const { data: checks } = await supabase
         .from('occurrence_logs')
         .select('occurred_at, type_data')
         .eq('officer_id', shift.officer.id)
         .eq('log_type', 'WELFARE_CHECK')
-        .gte('occurred_at', new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString())
+        .gte('occurred_at', checkDueAt.toISOString())
         .order('occurred_at', { ascending: false })
-        .limit(10);
-      const actualCheck = (lastCheck || []).find(l => l.type_data?.check_call === true && !l.type_data?.missed_check);
+        .limit(5);
+      const madeCheck = (checks || []).some(l => l.type_data?.check_call === true && !l.type_data?.missed_check);
 
-      const lastTime = actualCheck ? new Date(actualCheck.occurred_at) : new Date(shift.checked_in_at || shift.start_time);
-      const minsOverdue = Math.floor((now - lastTime) / 60000) - 60; // mins past the 1hr mark
+      // If they've checked in for this period, reset and move on
+      if (madeCheck) {
+        if (level > 0) {
+          await supabase.from('shifts').update({ safety_alert_level: 0, last_safety_alert_at: null }).eq('id', shift.id);
+        }
+        continue;
+      }
 
-      if (minsOverdue < 5) continue; // Not overdue yet
+      // Not overdue enough yet
+      if (minsOverdue < 5) continue;
 
-      const officerName = `${shift.officer.first_name} ${shift.officer.last_name}`;
-      const siteName = shift.site?.name || 'Unknown site';
-      const officerPhone = shift.officer.phone ? (shift.officer.phone.startsWith('+') ? shift.officer.phone : `+44${shift.officer.phone.replace(/^0/, '')}`) : null;
+      results.details.push({ officer: officerName, site: siteName, minsOverdue, level, checkNumber: currentCheckNumber, checkDueAt: checkDueAt.toISOString() });
 
-      // Check if we already escalated recently (prevent spam)
-      const { data: recentAlert } = await supabase
-        .from('occurrence_logs')
-        .select('occurred_at')
-        .eq('officer_id', shift.officer.id)
-        .gte('occurred_at', new Date(now - 300000).toISOString()) // last 5 mins
-        .eq('log_type', 'WELFARE_CHECK')
-        .maybeSingle();
-      if (recentAlert) continue; // Already handled in last 5 mins
-
-      results.alerts++;
-
-      // Always SMS the officer first
-      if (twilio && officerPhone) {
+      // Level 0 → 1: SMS to officer (at +5 mins)
+      if (minsOverdue >= 5 && level < 1 && twilio && officerPhone) {
         try {
           await twilio.messages.create({
-            body: `Risk Secured NCC: Your safety check is ${minsOverdue} mins overdue. Please open the DOB Live app and complete your safety check immediately.`,
-            from: process.env.TWILIO_PHONE_NUMBER,
-            to: officerPhone,
+            body: `Risk Secured NCC: ${officerName}, your safety check is overdue. Please open the DOB Live app and complete your safety check now.`,
+            from: process.env.TWILIO_PHONE_NUMBER, to: officerPhone,
           });
-          console.log(`Safety SMS sent to ${officerName}`);
+          console.log(`[Level 1] SMS to ${officerName} — ${minsOverdue}m overdue`);
         } catch (e) { console.error(`SMS to officer failed: ${e.message}`); }
+        await supabase.from('shifts').update({ safety_alert_level: 1, last_safety_alert_at: now.toISOString() }).eq('id', shift.id);
+        results.alerts++;
       }
 
-      // Always call the officer
-      if (twilio && officerPhone) {
+      // Level 1 → 2: Call officer (at +10 mins)
+      else if (minsOverdue >= 10 && level < 2 && twilio && officerPhone) {
         try {
           await twilio.calls.create({
-            twiml: `<Response><Say voice="Polly.Amy" language="en-GB">This is Risk Secured national command centre. Your safety check is ${minsOverdue} minutes overdue. Please open the DOB Live app and complete your safety check immediately.</Say></Response>`,
-            from: process.env.TWILIO_PHONE_NUMBER,
-            to: officerPhone,
+            twiml: `<Response><Say voice="Polly.Amy" language="en-GB">This is Risk Secured national command centre. ${officerName}, your safety check is ${minsOverdue} minutes overdue. Please open the DOB Live app and complete your safety check immediately.</Say></Response>`,
+            from: process.env.TWILIO_PHONE_NUMBER, to: officerPhone,
           });
-          console.log(`Safety call to ${officerName}`);
+          console.log(`[Level 2] Call to ${officerName} — ${minsOverdue}m overdue`);
         } catch (e) { console.error(`Call to officer failed: ${e.message}`); }
+        await supabase.from('shifts').update({ safety_alert_level: 2, last_safety_alert_at: now.toISOString() }).eq('id', shift.id);
+        results.alerts++;
       }
 
-      // After 15 mins overdue — ALSO escalate to manager
-      if (minsOverdue >= 15) {
+      // Level 2 → 3: Second call to officer (at +15 mins)
+      else if (minsOverdue >= 15 && level < 3 && twilio && officerPhone) {
+        try {
+          await twilio.calls.create({
+            twiml: `<Response><Say voice="Polly.Amy" language="en-GB">This is Risk Secured national command centre. Final attempt. ${officerName}, your safety check is now ${minsOverdue} minutes overdue. If you do not respond, your manager will be contacted immediately.</Say></Response>`,
+            from: process.env.TWILIO_PHONE_NUMBER, to: officerPhone,
+          });
+          console.log(`[Level 3] Final call to ${officerName} — ${minsOverdue}m overdue`);
+        } catch (e) { console.error(`Call 2 to officer failed: ${e.message}`); }
+        await supabase.from('shifts').update({ safety_alert_level: 3, last_safety_alert_at: now.toISOString() }).eq('id', shift.id);
+        results.alerts++;
+      }
+
+      // Level 3 → 4: Escalate to manager (at +20 mins)
+      else if (minsOverdue >= 20 && level < 4) {
         // Log missed check
         await supabase.from('occurrence_logs').insert({
           company_id: shift.officer.company_id,
           site_id: shift.site_id, shift_id: shift.id,
           officer_id: shift.officer.id, log_type: 'WELFARE_CHECK',
           title: `⚠ Missed Safety Check — ${officerName}`,
-          description: `Officer safety check overdue by ${minsOverdue} minutes. Escalated to control.`,
+          description: `Officer safety check overdue by ${minsOverdue} minutes. 3 contact attempts failed. Escalated to control.`,
           occurred_at: now.toISOString(),
           type_data: { missed_check: true, minutes_overdue: minsOverdue, auto_escalated: true },
         });
 
-        // Escalate — call + SMS to manager
         if (twilio) {
           try {
             await twilio.messages.create({
-              body: `Risk Secured NCC ALERT: ${officerName} at ${siteName} has failed safety check. ${minsOverdue} mins overdue. 3 contact attempts failed. Immediate welfare check required.`,
-              from: process.env.TWILIO_PHONE_NUMBER,
-              to: ESCALATION_PHONE,
+              body: `Risk Secured NCC ALERT: ${officerName} at ${siteName} — safety check ${minsOverdue} mins overdue. 3 contact attempts failed. Immediate welfare check required.`,
+              from: process.env.TWILIO_PHONE_NUMBER, to: ESCALATION_PHONE,
             });
           } catch (e) { console.error(`Escalation SMS failed: ${e.message}`); }
           try {
             await twilio.calls.create({
-              twiml: `<Response><Say voice="Polly.Amy" language="en-GB">This is Risk Secured emergency national command centre. Officer ${officerName} at ${siteName} has failed to make their scheduled safety check. ${minsOverdue} minutes overdue. Three contact attempts have failed. Immediate welfare check required. Repeating. Officer ${officerName} at ${siteName}. Safety check overdue. Immediate action required.</Say></Response>`,
-              from: process.env.TWILIO_PHONE_NUMBER,
-              to: ESCALATION_PHONE,
+              twiml: `<Response><Say voice="Polly.Amy" language="en-GB">This is Risk Secured emergency national command centre. Officer ${officerName} at ${siteName} has failed to make their scheduled safety check. ${minsOverdue} minutes overdue. Three contact attempts have failed. Immediate welfare check required. Repeating. Officer ${officerName} at ${siteName}. Immediate action required.</Say></Response>`,
+              from: process.env.TWILIO_PHONE_NUMBER, to: ESCALATION_PHONE,
             });
           } catch (e) { console.error(`Escalation call failed: ${e.message}`); }
         }
+
+        await supabase.from('shifts').update({ safety_alert_level: 4, last_safety_alert_at: now.toISOString() }).eq('id', shift.id);
+        results.alerts++;
+        console.log(`[Level 4] ESCALATED ${officerName} at ${siteName} — ${minsOverdue}m overdue`);
       }
     }
 
