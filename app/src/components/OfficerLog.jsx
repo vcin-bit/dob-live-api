@@ -401,6 +401,10 @@ function LogEntryScreen({ user, site, shift }) {
   if (form.log_type === 'GENERAL') {
     const CATEGORIES = ['Incident','Alarm','Fire / Evacuation','Suspicious Person','Fly Tipping','H&S Hazard','Unsecured Building/Door','Criminal Damage','Trespass','Theft','Other'];
     const SERIOUS_KEYS = { 'Incident':'INCIDENT', 'Alarm':'ALARM', 'Fire / Evacuation':'FIRE_ALARM' };
+    const SUB_TYPES = {
+      'Incident': ['Theft','Fight/Assault','Trespass','Vandalism','Suspicious Person','Drug-Related','Verbal Abuse','Other'],
+      'Alarm': ['Intruder','Fire','Panic','Technical Fault','False Alarm','Other'],
+    };
 
     return (
       <div style={{padding:'1rem 1rem 5rem'}}>
@@ -425,6 +429,17 @@ function LogEntryScreen({ user, site, shift }) {
             {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
+
+        {/* Sub-type dropdown for Incident and Alarm */}
+        {SUB_TYPES[form.sub_type] && (
+          <div style={{marginBottom:'14px'}}>
+            <div style={S.label}>{form.sub_type.toUpperCase()} TYPE *</div>
+            <select value={form.actions_taken || ''} onChange={e => f('actions_taken', e.target.value)} style={S.input}>
+              <option value="">Select type...</option>
+              {SUB_TYPES[form.sub_type].map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+        )}
 
         {/* Description */}
         <div style={{fontSize:'10px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'6px'}}>Description *</div>
@@ -462,17 +477,19 @@ function LogEntryScreen({ user, site, shift }) {
         {/* Submit */}
         <button onClick={async () => {
           if (!form.sub_type) { setError('Please select a category'); return; }
+          if (SUB_TYPES[form.sub_type] && !form.actions_taken) { setError(`Please select ${form.sub_type.toLowerCase()} type`); return; }
           if (!form.description.trim()) { setError('Description is required'); return; }
           setSubmitting(true); setError('');
           try {
             const logType = SERIOUS_KEYS[form.sub_type] || 'GENERAL';
+            const title = form.actions_taken ? `${form.sub_type} — ${form.actions_taken}` : form.sub_type;
             await api.logs.create({
               site_id: site?.id, shift_id: shift?.id || null, log_type: logType,
-              title: form.sub_type,
+              title,
               description: form.description,
               occurred_at: new Date().toISOString(),
               latitude: form.latitude, longitude: form.longitude,
-              type_data: { category: form.sub_type, ...(form.media.length ? { media: form.media } : {}) },
+              type_data: { category: form.sub_type, sub_type: form.actions_taken || null, ...(form.media.length ? { media: form.media } : {}) },
             });
             navigate('/', { state: { message: 'Occurrence logged' } });
           } catch (e) { setError(e.message); }
