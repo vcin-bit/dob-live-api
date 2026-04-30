@@ -336,7 +336,17 @@ function OfficerApp({ user }) {
       </div>
       <OfficerNavigation onSignOut={async () => {
         if (activeShift) {
-          alert('You are on duty. Your shift will remain active. Contact control if you need to end your shift early.');
+          // Check if shift was already expired by cron
+          try {
+            const check = await api.shifts.list({ officer_id: user.id, status: 'ACTIVE' });
+            if (!check.data || check.data.length === 0) {
+              // Shift was expired — allow sign out
+              setActiveShift(null);
+              signOut();
+              return;
+            }
+          } catch {}
+          // Still active — block
           return;
         }
         signOut();
