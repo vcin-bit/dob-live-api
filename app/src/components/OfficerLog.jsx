@@ -441,6 +441,17 @@ function LogEntryScreen({ user, site, shift }) {
           </div>
         )}
 
+        {/* Time of incident */}
+        {form.sub_type === 'Incident' && (
+          <div style={{marginBottom:'14px'}}>
+            <div style={S.label}>TIME OF INCIDENT</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px'}}>
+              <input type="date" value={form.incident_date || new Date().toLocaleDateString('en-CA',{timeZone:'Europe/London'})} onChange={e => f('incident_date', e.target.value)} style={S.input} />
+              <input type="time" value={form.incident_time || ''} onChange={e => f('incident_time', e.target.value)} style={S.input} placeholder="HH:MM" />
+            </div>
+          </div>
+        )}
+
         {/* Description */}
         <div style={{fontSize:'10px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'6px'}}>Description *</div>
         <textarea value={form.description} onChange={e=>f('description',e.target.value)} rows={3} placeholder="Describe what you found..."
@@ -456,8 +467,8 @@ function LogEntryScreen({ user, site, shift }) {
                 {form.police_reported?'✓ ':''}Yes
               </button>
               <button type="button" onClick={() => { f('police_reported', false); f('police_force',''); f('police_incident_number',''); }}
-                style={{flex:1,padding:'12px',background:!form.police_reported?'rgba(255,255,255,0.06)':'rgba(255,255,255,0.03)',border:`1.5px solid ${!form.police_reported?'rgba(255,255,255,0.15)':'rgba(255,255,255,0.08)'}`,borderRadius:'8px',fontSize:'13px',fontWeight:700,color:!form.police_reported?'rgba(255,255,255,0.6)':'rgba(255,255,255,0.45)',cursor:'pointer'}}>
-                No
+                style={{flex:1,padding:'12px',background:form.police_reported===false?'rgba(239,68,68,0.12)':'rgba(255,255,255,0.03)',border:`1.5px solid ${form.police_reported===false?'rgba(239,68,68,0.4)':'rgba(255,255,255,0.08)'}`,borderRadius:'8px',fontSize:'13px',fontWeight:700,color:form.police_reported===false?'#ef4444':'rgba(255,255,255,0.45)',cursor:'pointer'}}>
+                {form.police_reported===false?'✗ ':''}No
               </button>
             </div>
             {form.police_reported && (
@@ -572,7 +583,7 @@ function LogEntryScreen({ user, site, shift }) {
               description: form.description,
               occurred_at: new Date().toISOString(),
               latitude: form.latitude, longitude: form.longitude,
-              type_data: { category: form.sub_type, sub_type: form.actions_taken || null, ...(form.media.length ? { media: form.media } : {}), ...(form.police_reported ? { police_reported: true, police_force: form.police_force, police_incident_number: form.police_incident_number, police_reported_via: form.police_reported_via, services_attended: form.services_attended, services_time_on: form.services_time_on, services_time_off: form.services_time_off, police_officer_name: form.police_officer_name, services_actions: form.services_actions } : {}) },
+              type_data: { category: form.sub_type, sub_type: form.actions_taken || null, incident_date: form.incident_date || null, incident_time: form.incident_time || null, ...(form.media.length ? { media: form.media } : {}), ...(form.police_reported ? { police_reported: true, police_force: form.police_force, police_incident_number: form.police_incident_number, police_reported_via: form.police_reported_via, services_attended: form.services_attended, services_time_on: form.services_time_on, services_time_off: form.services_time_off, police_officer_name: form.police_officer_name, services_actions: form.services_actions } : { police_reported: false }) },
             });
             navigate('/', { state: { message: 'Occurrence logged' } });
           } catch (e) { setError(e.message); }
