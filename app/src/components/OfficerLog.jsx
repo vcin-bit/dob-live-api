@@ -315,6 +315,16 @@ function LogEntryScreen({ user, site, shift }) {
         </div>
       )}
 
+      {/* Client reportable */}
+      <div onClick={() => f('client_reportable',!form.client_reportable)}
+        style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 14px',background:form.client_reportable?'rgba(59,130,246,0.07)':'rgba(255,255,255,0.03)',border:`1.5px solid ${form.client_reportable?'rgba(59,130,246,0.2)':'rgba(255,255,255,0.08)'}`,borderRadius:'10px',cursor:'pointer',marginBottom:'14px'}}>
+        <div>
+          <div style={{fontSize:'12px',fontWeight:700,color:'#fff',letterSpacing:'0.02em'}}>REPORT TO CLIENT</div>
+          <div style={{fontSize:'10px',color:'rgba(255,255,255,0.35)',marginTop:'1px'}}>{form.client_reportable?'Visible in client portal + ops manager':'Ops manager only'}</div>
+        </div>
+        <div style={S.toggle(form.client_reportable)}><div style={S.toggleDot(form.client_reportable)}/></div>
+      </div>
+
       <button onClick={async () => {
         if (!form.sub_type) { setError('Please select a category'); return; }
         if (!form.welfare_outcome) { setError('Please select severity'); return; }
@@ -326,6 +336,7 @@ function LogEntryScreen({ user, site, shift }) {
             title: `H&S — ${form.sub_type}`,
             description: form.description.trim(),
             occurred_at: new Date().toISOString(),
+            client_reportable: form.client_reportable,
             type_data: {
               category: form.sub_type,
               severity: form.welfare_outcome,
