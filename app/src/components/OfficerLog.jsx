@@ -244,6 +244,106 @@ function LogEntryScreen({ user, site, shift }) {
     </div>
   );
 
+  // ── ENVIRONMENTAL HEALTH & SAFETY ───────────────────────────────────────────
+  if (form.log_type === 'EHS') return (
+    <div style={{padding:'1rem 1rem 5rem'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'1.25rem'}}>
+        <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
+          <div style={{width:'3px',height:'24px',background:'#f59e0b',borderRadius:'2px'}} />
+          <div>
+            <div style={{fontSize:'14px',fontWeight:700,color:'#f59e0b',letterSpacing:'0.02em'}}>HEALTH & SAFETY</div>
+            <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)',marginTop:'1px'}}>{site?.name}</div>
+          </div>
+        </div>
+        <button onClick={() => navigate('/')} style={{background:'none',border:'none',color:'rgba(255,255,255,0.4)',fontSize:'0.8125rem',cursor:'pointer'}}>Cancel</button>
+      </div>
+
+      {error && <div style={{background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:'8px',padding:'10px',fontSize:'13px',color:'#ef4444',marginBottom:'12px'}}>{error}</div>}
+
+      <div style={{marginBottom:'14px'}}>
+        <div style={S.label}>CATEGORY *</div>
+        <select value={form.sub_type||''} onChange={e=>f('sub_type',e.target.value)} style={S.input}>
+          <option value="">Select category...</option>
+          {['Slip / Trip / Fall','Hazardous Substance','Unsafe Condition','Fire Safety Issue','Water Leak / Flooding','Electrical Hazard','Broken Equipment','Poor Lighting','Asbestos Concern','Pest Sighting','Other'].map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+      </div>
+
+      <div style={{marginBottom:'14px'}}>
+        <div style={S.label}>SEVERITY *</div>
+        <div style={{display:'flex',gap:'6px'}}>
+          {[{k:'Low',c:'#10b981'},{k:'Medium',c:'#f59e0b'},{k:'High',c:'#ef4444'},{k:'Critical',c:'#7f1d1d'}].map(({k,c}) => (
+            <button key={k} type="button" onClick={() => f('welfare_outcome',k)}
+              style={{flex:1,padding:'10px',background:form.welfare_outcome===k?`${c}20`:'rgba(255,255,255,0.03)',border:`1.5px solid ${form.welfare_outcome===k?c:'rgba(255,255,255,0.08)'}`,borderRadius:'8px',fontSize:'12px',fontWeight:700,color:form.welfare_outcome===k?c:'rgba(255,255,255,0.45)',cursor:'pointer'}}>
+              {k}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{marginBottom:'14px'}}>
+        <div style={S.label}>LOCATION ON SITE</div>
+        <input value={form.location_detail||''} onChange={e=>f('location_detail',e.target.value)} placeholder="e.g. Warehouse B, entrance lobby" style={S.input} />
+      </div>
+
+      <div style={{marginBottom:'14px'}}>
+        <div style={S.label}>DESCRIPTION *</div>
+        <textarea value={form.description} onChange={e=>f('description',e.target.value)} rows={3} placeholder="Describe the hazard or issue..." style={S.input} />
+      </div>
+
+      <div style={{marginBottom:'14px'}}>
+        <div style={S.label}>ACTION TAKEN</div>
+        <textarea value={form.actions_taken||''} onChange={e=>f('actions_taken',e.target.value)} rows={2} placeholder="What action was taken to mitigate..." style={{...S.input,resize:'none'}} />
+      </div>
+
+      {/* Photos */}
+      <div style={{fontSize:'10px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'8px'}}>Photos (optional)</div>
+      <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'8px'}}>
+        {form.media.map((m, i) => (
+          <div key={i} style={{width:56,height:56,borderRadius:'8px',background:'#1a2535',border:'1px solid rgba(255,255,255,0.1)',overflow:'hidden',position:'relative'}}>
+            {m.type?.startsWith('image') ? <img src={m.url} style={{width:'100%',height:'100%',objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'10px',color:'rgba(255,255,255,0.4)'}}>video</div>}
+            <button onClick={() => f('media', form.media.filter((_,j)=>j!==i))} style={{position:'absolute',top:1,right:1,width:16,height:16,background:'rgba(239,68,68,0.9)',borderRadius:'50%',border:'none',color:'#fff',fontSize:10,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>x</button>
+          </div>
+        ))}
+      </div>
+      {form.media.length < 5 && (
+        <div style={{marginBottom:'20px'}}>
+          {createPortal(<input ref={mediaInputRef} type="file" accept="image/*,video/*" multiple style={{position:'absolute',top:0,left:0,width:'1px',height:'1px',opacity:0,pointerEvents:'none'}} onChange={uploadMedia} />, document.body)}
+          <button type="button" onClick={() => mediaInputRef.current?.click()} style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>
+            <div style={{fontSize:'18px',color:'rgba(59,130,246,0.5)',lineHeight:1}}>+</div>
+            <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)'}}>Photo</div>
+          </button>
+        </div>
+      )}
+
+      <button onClick={async () => {
+        if (!form.sub_type) { setError('Please select a category'); return; }
+        if (!form.welfare_outcome) { setError('Please select severity'); return; }
+        if (!form.description.trim()) { setError('Description is required'); return; }
+        setSubmitting(true); setError('');
+        try {
+          await api.logs.create({
+            site_id: site?.id, shift_id: shift?.id || null, log_type: 'HEALTH_SAFETY',
+            title: `H&S — ${form.sub_type}`,
+            description: form.description.trim(),
+            occurred_at: new Date().toISOString(),
+            type_data: {
+              category: form.sub_type,
+              severity: form.welfare_outcome,
+              location: form.location_detail || null,
+              action_taken: form.actions_taken || null,
+              ...(form.media.length ? { media: form.media } : {}),
+            },
+          });
+          navigate('/', { state: { message: 'H&S report submitted' } });
+        } catch (e) { setError(e.message); }
+        finally { setSubmitting(false); }
+      }} disabled={submitting || !form.sub_type || !form.welfare_outcome || !form.description.trim()}
+        style={S.btn(!form.sub_type || !form.welfare_outcome || !form.description.trim() ? '#333' : '#f59e0b')}>
+        {submitting ? 'SUBMITTING...' : 'SUBMIT H&S REPORT'}
+      </button>
+    </div>
+  );
+
   // ── VEHICLE REPORT ──────────────────────────────────────────────────────────
   if (form.log_type === 'VEHICLE') return (
     <div style={{padding:'1rem 1rem 5rem'}}>

@@ -449,6 +449,7 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
   const [lastCheckCall, setLastCheckCall] = useState(null);
   const [checkCallConfirmed, setCheckCallConfirmed] = useState(false);
   const [activePatrol, setActivePatrol] = useState(false);
+  const [showLogMenu, setShowLogMenu] = useState(false);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [historyDate, setHistoryDate] = useState('');
@@ -574,27 +575,36 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
           <MapPinIcon style={{width:'1.125rem',height:'1.125rem'}} />
           {activePatrol ? 'Resume Patrol' : 'Start Patrol'}
         </Link>
-        <Link to="/patrol-history" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.875rem',marginBottom:0,background:'rgba(59,130,246,0.08)',borderColor:'rgba(59,130,246,0.25)',color:'#60a5fa'}}>
-          <ClockIcon style={{width:'1rem',height:'1rem'}} />
-          Patrol History
-        </Link>
         <Link to="/log?type=GENERAL" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.9375rem',marginBottom:0,background:'rgba(239,68,68,0.12)',borderColor:'rgba(239,68,68,0.3)',color:'#ef4444'}}>
           Log an Incident
         </Link>
-        <Link to="/log?type=VEHICLE" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.875rem',marginBottom:0,background:'rgba(139,92,246,0.12)',borderColor:'rgba(139,92,246,0.3)',color:'#a78bfa'}}>
-          Vehicle Report
-        </Link>
-        <Link to="/log?type=GENERAL_INFO" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.875rem',marginBottom:0}}>
+        <button onClick={() => setShowLogMenu(!showLogMenu)} className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.9375rem',marginBottom:0,background: showLogMenu ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.08)',borderColor:'rgba(59,130,246,0.25)',color:'#60a5fa',cursor:'pointer'}}>
+          <ClipboardDocumentListIcon style={{width:'1.125rem',height:'1.125rem'}} />
+          Log
+        </button>
+        <Link to="/log?type=GENERAL_INFO" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.9375rem',marginBottom:0}}>
           <PlusIcon style={{width:'1rem',height:'1rem'}} />
           Gen Info
         </Link>
-        <Link to="/log?type=CCTV_CHECK" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.875rem',marginBottom:0}}>
-          CCTV Patrol
-        </Link>
-        <Link to="/log?type=VISITOR" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.875rem',marginBottom:0}}>
-          Visitor / Contractor
-        </Link>
       </div>
+
+      {/* Log menu */}
+      {showLogMenu && (
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.5rem',marginBottom:'0.625rem',padding:'0.75rem',background:'rgba(59,130,246,0.05)',border:'1px solid rgba(59,130,246,0.15)',borderRadius:'10px'}}>
+          <Link to="/log?type=VEHICLE" onClick={() => setShowLogMenu(false)} style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',padding:'0.75rem',background:'rgba(139,92,246,0.12)',border:'1px solid rgba(139,92,246,0.3)',borderRadius:'8px',color:'#a78bfa',fontSize:'0.8125rem',fontWeight:700,textDecoration:'none'}}>
+            Vehicle Report
+          </Link>
+          <Link to="/log?type=EHS" onClick={() => setShowLogMenu(false)} style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',padding:'0.75rem',background:'rgba(245,158,11,0.12)',border:'1px solid rgba(245,158,11,0.3)',borderRadius:'8px',color:'#f59e0b',fontSize:'0.8125rem',fontWeight:700,textDecoration:'none'}}>
+            Health & Safety
+          </Link>
+          <Link to="/log?type=CCTV_CHECK" onClick={() => setShowLogMenu(false)} style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',padding:'0.75rem',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',color:'rgba(255,255,255,0.6)',fontSize:'0.8125rem',fontWeight:700,textDecoration:'none'}}>
+            CCTV Patrol
+          </Link>
+          <Link to="/log?type=VISITOR" onClick={() => setShowLogMenu(false)} style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',padding:'0.75rem',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',color:'rgba(255,255,255,0.6)',fontSize:'0.8125rem',fontWeight:700,textDecoration:'none'}}>
+            Visitor / Contractor
+          </Link>
+        </div>
+      )}
 
       {/* Check Call + Panic */}
       {shift && (
