@@ -1011,7 +1011,7 @@ function LogDetailModal({ log, onClose }) {
         {/* H&S Report details */}
         {log.log_type === 'HEALTH_SAFETY' && (
           <div style={{marginBottom:'1rem',padding:'0.75rem',background:'var(--surface-2)',borderRadius:'8px',border:'1px solid var(--border)'}}>
-            <div style={{fontSize:'0.75rem',fontWeight:700,color:'var(--text-3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.5rem'}}>Health & Safety Details</div>
+            <div style={{fontSize:'0.75rem',fontWeight:700,color:'var(--text-3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.5rem'}}>Environmental Health & Safety</div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.5rem'}}>
               {td.category && <div><div style={{fontSize:'0.6875rem',color:'var(--text-3)',textTransform:'uppercase'}}>Category</div><div style={{fontWeight:600,fontSize:'0.875rem'}}>{td.category}</div></div>}
               {td.severity && <div><div style={{fontSize:'0.6875rem',color:'var(--text-3)',textTransform:'uppercase'}}>Severity</div><div style={{fontWeight:600,fontSize:'0.875rem',color: td.severity === 'CRITICAL' ? '#ef4444' : td.severity === 'HIGH' ? '#f59e0b' : td.severity === 'MEDIUM' ? '#eab308' : 'var(--text-1)'}}>{td.severity}</div></div>}
@@ -1047,7 +1047,7 @@ function LogDetailModal({ log, onClose }) {
                   <div key={i} onClick={() => isImg && setLightbox(m.url)}
                     style={{width:80,height:80,borderRadius:'8px',overflow:'hidden',border:'1px solid var(--border)',cursor:isImg?'zoom-in':'default',flexShrink:0}}>
                     {isImg
-                      ? <img src={m.url} style={{width:'100%',height:'100%',objectFit:'cover'}} alt={m.name||'photo'} crossOrigin="anonymous" />
+                      ? <img src={m.url} style={{width:'100%',height:'100%',objectFit:'cover'}} alt={m.name||'photo'} />
                       : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--surface-2)',fontSize:'0.75rem',color:'var(--text-3)'}}>video</div>}
                   </div>
                 );

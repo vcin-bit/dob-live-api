@@ -591,7 +591,7 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
       {showLogMenu && (
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.5rem',marginBottom:'0.625rem',padding:'0.75rem',background:'rgba(59,130,246,0.05)',border:'1px solid rgba(59,130,246,0.15)',borderRadius:'10px'}}>
           <Link to="/log?type=EHS" onClick={() => setShowLogMenu(false)} style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',padding:'0.75rem',background:'rgba(245,158,11,0.12)',border:'1px solid rgba(245,158,11,0.3)',borderRadius:'8px',color:'#f59e0b',fontSize:'0.8125rem',fontWeight:700,textDecoration:'none'}}>
-            Health & Safety
+            EH&S
           </Link>
           <Link to="/log?type=CCTV_CHECK" onClick={() => setShowLogMenu(false)} style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',padding:'0.75rem',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',color:'rgba(255,255,255,0.6)',fontSize:'0.8125rem',fontWeight:700,textDecoration:'none'}}>
             CCTV Patrol
