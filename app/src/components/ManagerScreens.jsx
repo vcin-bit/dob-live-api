@@ -985,6 +985,43 @@ function LogDetailModal({ log, onClose }) {
           {log.client_reportable && <div style={{alignSelf:'center'}}><span className="badge badge-blue">Client Reportable</span></div>}
         </div>
 
+        {/* Incident details */}
+        {log.log_type === 'INCIDENT' && (
+          <div style={{marginBottom:'1rem',padding:'0.75rem',background:'var(--surface-2)',borderRadius:'8px',border:'1px solid rgba(239,68,68,0.2)'}}>
+            <div style={{fontSize:'0.75rem',fontWeight:700,color:'#ef4444',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.5rem'}}>Incident Details</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.5rem'}}>
+              {td.incident_type && <div><div style={{fontSize:'0.6875rem',color:'var(--text-3)',textTransform:'uppercase'}}>Type</div><div style={{fontWeight:700,fontSize:'0.9375rem',color:'#ef4444'}}>{td.incident_type}</div></div>}
+              {(td.incident_date || td.incident_time) && <div><div style={{fontSize:'0.6875rem',color:'var(--text-3)',textTransform:'uppercase'}}>Time of Incident</div><div style={{fontWeight:600,fontSize:'0.875rem'}}>{td.incident_date ? new Date(td.incident_date+'T12:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : ''}{td.incident_time ? ` at ${td.incident_time}` : ''}</div></div>}
+            </div>
+            {td.police_reported && (
+              <div style={{marginTop:'0.5rem',padding:'0.5rem',background:'rgba(239,68,68,0.08)',borderRadius:'6px',border:'1px solid rgba(239,68,68,0.2)'}}>
+                <div style={{fontSize:'0.6875rem',fontWeight:700,color:'#ef4444',textTransform:'uppercase',marginBottom:'0.25rem'}}>Reported to Police {td.police_reported_via ? `via ${td.police_reported_via}` : ''}</div>
+                <div style={{display:'flex',gap:'1rem',fontSize:'0.8125rem',flexWrap:'wrap'}}>
+                  {td.police_force && <span><span style={{color:'var(--text-3)'}}>Force:</span> <span style={{fontWeight:600}}>{td.police_force}</span></span>}
+                  {td.police_incident_number && <span><span style={{color:'var(--text-3)'}}>Ref:</span> <span style={{fontWeight:600}}>{td.police_incident_number}</span></span>}
+                </div>
+              </div>
+            )}
+            {td.police_reported === false && (
+              <div style={{marginTop:'0.5rem',padding:'0.375rem 0.5rem',background:'rgba(255,255,255,0.03)',borderRadius:'6px',fontSize:'0.8125rem',color:'var(--text-3)'}}>Not reported to police</div>
+            )}
+            {td.services_attended?.length > 0 && (
+              <div style={{marginTop:'0.5rem',padding:'0.5rem',background:'rgba(59,130,246,0.08)',borderRadius:'6px',border:'1px solid rgba(59,130,246,0.2)'}}>
+                <div style={{fontSize:'0.6875rem',fontWeight:700,color:'#60a5fa',textTransform:'uppercase',marginBottom:'0.25rem'}}>Emergency Services Attended</div>
+                <div style={{display:'flex',gap:'0.375rem',marginBottom:'0.375rem'}}>
+                  {td.services_attended.map(s => <span key={s} style={{padding:'2px 8px',background:'rgba(59,130,246,0.12)',border:'1px solid rgba(59,130,246,0.3)',borderRadius:'4px',fontSize:'0.75rem',fontWeight:600,color:'#60a5fa'}}>{s}</span>)}
+                </div>
+                <div style={{display:'flex',gap:'1rem',fontSize:'0.8125rem',flexWrap:'wrap'}}>
+                  {td.services_time_on && <span><span style={{color:'var(--text-3)'}}>On site:</span> <span style={{fontWeight:600}}>{td.services_time_on}</span></span>}
+                  {td.services_time_off && <span><span style={{color:'var(--text-3)'}}>Off site:</span> <span style={{fontWeight:600}}>{td.services_time_off}</span></span>}
+                </div>
+                {td.police_officer_name && <div style={{fontSize:'0.8125rem',marginTop:'0.25rem'}}><span style={{color:'var(--text-3)'}}>Officers:</span> <span style={{fontWeight:600}}>{td.police_officer_name}</span></div>}
+                {td.services_actions && <div style={{fontSize:'0.8125rem',marginTop:'0.25rem'}}><span style={{color:'var(--text-3)'}}>Actions:</span> <span style={{fontWeight:500}}>{td.services_actions}</span></div>}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Vehicle Report details */}
         {log.log_type === 'VEHICLE_CHECK' && (
           <div style={{marginBottom:'1rem',padding:'0.75rem',background:'var(--surface-2)',borderRadius:'8px',border:'1px solid var(--border)'}}>
@@ -1074,11 +1111,11 @@ function LogDetailModal({ log, onClose }) {
         )}
 
         {/* Extra type_data fields (skip fields already shown above) */}
-        {extraFields.filter(([k]) => !['vehicle_type','registration','make_model','colour','location','police_reported','police_force','police_incident_number','category','severity','action_taken','actions_taken','sub_type'].includes(k)).length > 0 && (
+        {(() => { const shownKeys = ['vehicle_type','registration','make_model','colour','location','police_reported','police_force','police_incident_number','police_reported_via','category','severity','action_taken','actions_taken','sub_type','incident_type','incident_date','incident_time','services_attended','services_time_on','services_time_off','police_officer_name','services_actions','ai_generated','shift_event']; return extraFields.filter(([k]) => !shownKeys.includes(k)); })().length > 0 && (
           <div style={{marginBottom:'1rem'}}>
             <div style={{fontSize:'0.75rem',fontWeight:700,color:'var(--text-3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.5rem'}}>Additional Details</div>
             <div style={{display:'flex',flexDirection:'column',gap:'0.375rem'}}>
-              {extraFields.filter(([k]) => !['vehicle_type','registration','make_model','colour','location','police_reported','police_force','police_incident_number','category','severity','action_taken','actions_taken','sub_type'].includes(k)).map(([k, v]) => (
+              {(() => { const shownKeys = ['vehicle_type','registration','make_model','colour','location','police_reported','police_force','police_incident_number','police_reported_via','category','severity','action_taken','actions_taken','sub_type','incident_type','incident_date','incident_time','services_attended','services_time_on','services_time_off','police_officer_name','services_actions','ai_generated','shift_event']; return extraFields.filter(([k]) => !shownKeys.includes(k)); })().map(([k, v]) => (
                 <div key={k} style={{display:'flex',gap:'0.5rem',fontSize:'0.8125rem'}}>
                   <span style={{color:'var(--text-3)',minWidth:'140px',textTransform:'capitalize'}}>{k.replace(/_/g,' ')}</span>
                   <span style={{color:'var(--text-1)',fontWeight:500}}>{typeof v === 'object' ? JSON.stringify(v) : String(v)}</span>
