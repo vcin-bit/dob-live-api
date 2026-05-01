@@ -266,6 +266,10 @@ export default function PatrolScreen({ user, site, shift }) {
               🗺 Create / Edit Patrol Route
             </button>
           )}
+          <button onClick={() => navigate('/patrol-history')}
+            style={{width:'100%',padding:'12px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'10px',color:'rgba(255,255,255,0.5)',fontSize:'13px',fontWeight:600,cursor:'pointer'}}>
+            Patrol History
+          </button>
         </div>
       )}
 
