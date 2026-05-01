@@ -580,7 +580,7 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
         </Link>
         <button onClick={() => setShowLogMenu(!showLogMenu)} className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.9375rem',marginBottom:0,background: showLogMenu ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.08)',borderColor:'rgba(59,130,246,0.25)',color:'#60a5fa',cursor:'pointer'}}>
           <ClipboardDocumentListIcon style={{width:'1.125rem',height:'1.125rem'}} />
-          Log
+          Occurrence Log
         </button>
         <Link to="/log?type=GENERAL_INFO" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.9375rem',marginBottom:0}}>
           <PlusIcon style={{width:'1rem',height:'1rem'}} />
