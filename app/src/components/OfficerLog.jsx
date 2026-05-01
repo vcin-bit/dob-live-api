@@ -397,22 +397,17 @@ function LogEntryScreen({ user, site, shift }) {
     </div>
   );
 
-  // ── LOG OCCURRENCE (GENERAL): single page form, dropdown category ───────────
+  // ── LOG OCCURRENCE (GENERAL): Incident form ────────────────────────────────
   if (form.log_type === 'GENERAL') {
-    const CATEGORIES = ['Incident','Alarm','Fire / Evacuation','Suspicious Person','Fly Tipping','H&S Hazard','Unsecured Building/Door','Criminal Damage','Trespass','Theft','Other'];
-    const SERIOUS_KEYS = { 'Incident':'INCIDENT', 'Alarm':'ALARM', 'Fire / Evacuation':'FIRE_ALARM' };
-    const SUB_TYPES = {
-      'Incident': ['Theft','Fight/Assault','Trespass','Criminal Damage','Suspicious Person','Drug-Related','Verbal Abuse','Hostile Recon','Fire','Fly Tipping','Other'],
-      'Alarm': ['Intruder','Fire','Panic','Technical Fault','False Alarm','Other'],
-    };
+    const INCIDENT_TYPES = ['Theft','Fight/Assault','Trespass','Criminal Damage','Suspicious Person','Drug-Related','Verbal Abuse','Hostile Recon','Fire','Fly Tipping','Alarm','Other'];
 
     return (
       <div style={{padding:'1rem 1rem 5rem'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'1.25rem'}}>
           <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
-            <div style={{width:'3px',height:'24px',background:'#3b82f6',borderRadius:'2px'}} />
+            <div style={{width:'3px',height:'24px',background:'#ef4444',borderRadius:'2px'}} />
             <div>
-              <div style={{fontSize:'14px',fontWeight:700,color:'#3b82f6',letterSpacing:'0.02em'}}>LOG OCCURRENCE</div>
+              <div style={{fontSize:'14px',fontWeight:700,color:'#ef4444',letterSpacing:'0.02em'}}>INCIDENT</div>
               <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)',marginTop:'1px'}}>{site?.name}</div>
             </div>
           </div>
@@ -421,28 +416,17 @@ function LogEntryScreen({ user, site, shift }) {
 
         {error && <div style={{background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:'8px',padding:'10px',fontSize:'13px',color:'#ef4444',marginBottom:'12px'}}>{error}</div>}
 
-        {/* Category dropdown */}
+        {/* Incident type */}
         <div style={{marginBottom:'14px'}}>
-          <div style={S.label}>CATEGORY *</div>
-          <select value={form.sub_type} onChange={e => f('sub_type', e.target.value)} style={S.input}>
-            <option value="">Select category...</option>
-            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+          <div style={S.label}>INCIDENT TYPE *</div>
+          <select value={form.actions_taken || ''} onChange={e => f('actions_taken', e.target.value)} style={S.input}>
+            <option value="">Select type...</option>
+            {INCIDENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
 
-        {/* Sub-type dropdown for Incident and Alarm */}
-        {SUB_TYPES[form.sub_type] && (
-          <div style={{marginBottom:'14px'}}>
-            <div style={S.label}>{form.sub_type.toUpperCase()} TYPE *</div>
-            <select value={form.actions_taken || ''} onChange={e => f('actions_taken', e.target.value)} style={S.input}>
-              <option value="">Select type...</option>
-              {SUB_TYPES[form.sub_type].map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-        )}
-
         {/* Time of incident */}
-        {form.sub_type === 'Incident' && (
+        {form.actions_taken && (
           <div style={{marginBottom:'14px'}}>
             <div style={S.label}>TIME OF INCIDENT</div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px'}}>
@@ -457,8 +441,8 @@ function LogEntryScreen({ user, site, shift }) {
         <textarea value={form.description} onChange={e=>f('description',e.target.value)} rows={3} placeholder="Describe what you found..."
           style={S.input} />
 
-        {/* Police — only for Incident */}
-        {form.sub_type === 'Incident' && (
+        {/* Police */}
+        {form.actions_taken && (
           <div style={{marginBottom:'14px',padding:'12px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'10px'}}>
             <div style={S.label}>REPORTED TO POLICE?</div>
             <div style={{display:'flex',gap:'8px',marginBottom: form.police_reported ? '12px' : '0'}}>
@@ -570,26 +554,25 @@ function LogEntryScreen({ user, site, shift }) {
 
         {/* Submit */}
         <button onClick={async () => {
-          if (!form.sub_type) { setError('Please select a category'); return; }
-          if (SUB_TYPES[form.sub_type] && !form.actions_taken) { setError(`Please select ${form.sub_type.toLowerCase()} type`); return; }
+          if (!form.actions_taken) { setError('Please select incident type'); return; }
           if (!form.description.trim()) { setError('Description is required'); return; }
           setSubmitting(true); setError('');
           try {
-            const logType = SERIOUS_KEYS[form.sub_type] || 'GENERAL';
-            const title = form.actions_taken ? `${form.sub_type} — ${form.actions_taken}` : form.sub_type;
+            const logType = 'INCIDENT';
+            const title = `Incident — ${form.actions_taken}`;
             await api.logs.create({
               site_id: site?.id, shift_id: shift?.id || null, log_type: logType,
               title,
               description: form.description,
               occurred_at: new Date().toISOString(),
               latitude: form.latitude, longitude: form.longitude,
-              type_data: { category: form.sub_type, sub_type: form.actions_taken || null, incident_date: form.incident_date || null, incident_time: form.incident_time || null, ...(form.media.length ? { media: form.media } : {}), ...(form.police_reported ? { police_reported: true, police_force: form.police_force, police_incident_number: form.police_incident_number, police_reported_via: form.police_reported_via, services_attended: form.services_attended, services_time_on: form.services_time_on, services_time_off: form.services_time_off, police_officer_name: form.police_officer_name, services_actions: form.services_actions } : { police_reported: false }) },
+              type_data: { category: 'Incident', incident_type: form.actions_taken, incident_date: form.incident_date || null, incident_time: form.incident_time || null, ...(form.media.length ? { media: form.media } : {}), ...(form.police_reported ? { police_reported: true, police_force: form.police_force, police_incident_number: form.police_incident_number, police_reported_via: form.police_reported_via, services_attended: form.services_attended, services_time_on: form.services_time_on, services_time_off: form.services_time_off, police_officer_name: form.police_officer_name, services_actions: form.services_actions } : { police_reported: false }) },
             });
             navigate('/', { state: { message: 'Occurrence logged' } });
           } catch (e) { setError(e.message); }
           finally { setSubmitting(false); }
-        }} disabled={submitting || !form.description.trim() || !form.sub_type}
-          style={S.btn(!form.description.trim() || !form.sub_type ? '#333' : '#1a52a8')}>
+        }} disabled={submitting || !form.description.trim() || !form.actions_taken}
+          style={S.btn(!form.description.trim() || !form.actions_taken ? '#333' : '#1a52a8')}>
           {submitting ? 'LOGGING...' : 'LOG OCCURRENCE'}
         </button>
       </div>
