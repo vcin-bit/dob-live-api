@@ -165,6 +165,25 @@ export const api = {
     }),
   },
 
+  // HR
+  hr: {
+    get: () => request('/api/hr'),
+    getForUser: (userId) => request(`/api/hr/${userId}`),
+    save: (data) => request('/api/hr', { method: 'PUT', body: JSON.stringify(data) }),
+    getDocUrl: (docType, userId) => request(`/api/hr/documents/${docType}${userId ? `?user_id=${userId}` : ''}`),
+    deleteDoc: (docType) => request(`/api/hr/documents/${docType}`, { method: 'DELETE' }),
+    uploadDoc: async (docType, file) => {
+      const API = import.meta.env.VITE_API_URL || 'https://dob-live-api.onrender.com';
+      const token = await window.__clerkGetToken?.() || '';
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('doc_type', docType);
+      const r = await fetch(`${API}/api/hr/documents`, { method: 'POST', body: fd, headers: { Authorization: `Bearer ${token}` } });
+      if (!r.ok) throw new Error(await r.text());
+      return r.json();
+    },
+  },
+
   // Tasks
   tasks: {
     list: (params = {}) => request(`/api/tasks?${new URLSearchParams(params)}`),
