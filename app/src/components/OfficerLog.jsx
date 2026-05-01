@@ -1210,22 +1210,48 @@ function LogHistoryScreen({ user, site }) {
 
 function LogHistoryCard({ log }) {
   const [expanded, setExpanded] = useState(false);
+  const [comments, setComments] = useState([]);
+  const [commentsLoaded, setCommentsLoaded] = useState(false);
+  const [newComment, setNewComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const config = LOG_TYPE_CONFIG[log.log_type] || LOG_TYPE_CONFIG.OTHER;
   const typeMap = {
     PATROL:'PAT',INCIDENT:'INC',ALARM:'ALM',ACCESS:'ACC',VISITOR:'VIS',
     HANDOVER:'HND',MAINTENANCE:'MNT',VEHICLE:'VEH',KEYHOLDING:'KEY',GENERAL:'GEN',
     SHIFT_START:'ON',SHIFT_END:'OFF',BREAK:'BRK',TRAINING:'TRN',
     EMERGENCY:'SOS',FIRE_ALARM:'FIR',EVACUATION:'EVC',ADMIN:'ADM',OTHER:'OTH',
+    VEHICLE_CHECK:'VEH',HEALTH_SAFETY:'H&S',CCTV_CHECK:'CCTV',
   };
   const code = typeMap[log.log_type] || log.log_type?.slice(0,3) || 'LOG';
+  const isIncident = ['INCIDENT','ALARM','FIRE_ALARM','EMERGENCY','VEHICLE_CHECK','HEALTH_SAFETY'].includes(log.log_type);
+
+  async function loadComments() {
+    if (commentsLoaded) return;
+    try {
+      const res = await api.logs.comments(log.id);
+      setComments(res.data || []);
+    } catch {}
+    setCommentsLoaded(true);
+  }
+
+  async function submitComment() {
+    if (!newComment.trim()) return;
+    setSubmitting(true);
+    try {
+      const res = await api.logs.addComment(log.id, newComment.trim());
+      setComments(prev => [...prev, res.data]);
+      setNewComment('');
+    } catch {}
+    setSubmitting(false);
+  }
 
   return (
     <div
-      onClick={() => setExpanded(!expanded)}
+      onClick={() => { if (!expanded) { setExpanded(true); if (isIncident) loadComments(); } }}
       className="officer-log-item"
       style={{cursor:'pointer',flexDirection:'column',gap:0}}
     >
-      <div style={{display:'flex',alignItems:'flex-start',gap:'0.75rem',width:'100%'}}>
+      <div style={{display:'flex',alignItems:'flex-start',gap:'0.75rem',width:'100%'}} onClick={expanded ? () => setExpanded(false) : undefined}>
         <div className="officer-log-type">{code}</div>
         <div style={{flex:1,minWidth:0}}>
           <div className="officer-log-title">{log.title || config.label}</div>
@@ -1236,16 +1262,47 @@ function LogHistoryCard({ log }) {
         <div style={{color:'rgba(255,255,255,0.3)',fontSize:'0.75rem',flexShrink:0,marginTop:'2px'}}>{expanded ? '▲' : '▼'}</div>
       </div>
       {expanded && (
-        <div style={{marginTop:'0.75rem',paddingTop:'0.75rem',borderTop:'1px solid rgba(255,255,255,0.08)',width:'100%'}}>
+        <div style={{marginTop:'0.75rem',paddingTop:'0.75rem',borderTop:'1px solid rgba(255,255,255,0.08)',width:'100%'}} onClick={e => e.stopPropagation()}>
           {log.description && <p style={{fontSize:'0.875rem',color:'rgba(255,255,255,0.7)',marginBottom:'0.5rem',lineHeight:1.5}}>{log.description}</p>}
           {log.type_data && Object.keys(log.type_data).length > 0 && (
-            <div style={{display:'flex',flexDirection:'column',gap:'0.25rem'}}>
-              {Object.entries(log.type_data).filter(([key, value]) => value && typeof value !== 'object' && key !== 'ai_generated').map(([key, value]) => (
+            <div style={{display:'flex',flexDirection:'column',gap:'0.25rem',marginBottom:'0.5rem'}}>
+              {Object.entries(log.type_data).filter(([key, value]) => value && typeof value !== 'object' && key !== 'ai_generated' && key !== 'shift_event').map(([key, value]) => (
                 <div key={key} style={{display:'flex',gap:'0.5rem',fontSize:'0.8125rem'}}>
                   <span style={{color:'rgba(255,255,255,0.35)',textTransform:'capitalize',minWidth:'6rem'}}>{key.replace(/_/g,' ')}:</span>
                   <span style={{color:'rgba(255,255,255,0.7)'}}>{String(value)}</span>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Follow-up updates for incidents */}
+          {isIncident && (
+            <div style={{marginTop:'0.5rem',paddingTop:'0.5rem',borderTop:'1px solid rgba(255,255,255,0.06)'}}>
+              <div style={{fontSize:'0.6875rem',fontWeight:700,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.375rem'}}>Updates</div>
+              {comments.length > 0 && (
+                <div style={{display:'flex',flexDirection:'column',gap:'0.375rem',marginBottom:'0.5rem'}}>
+                  {comments.map(c => (
+                    <div key={c.id} style={{padding:'0.375rem 0.5rem',background:'rgba(255,255,255,0.03)',borderRadius:'6px',border:'1px solid rgba(255,255,255,0.06)'}}>
+                      <div style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.6)',lineHeight:1.4}}>{c.comment}</div>
+                      <div style={{fontSize:'0.625rem',color:'rgba(255,255,255,0.25)',marginTop:'2px'}}>{c.user ? `${c.user.first_name} ${c.user.last_name}` : ''} · {new Date(c.created_at).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {!commentsLoaded && <div style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.3)',marginBottom:'0.375rem'}}>Loading...</div>}
+              <div style={{display:'flex',gap:'0.375rem'}}>
+                <input
+                  value={newComment}
+                  onChange={e => setNewComment(e.target.value)}
+                  placeholder="Add follow-up update..."
+                  style={{flex:1,padding:'0.5rem 0.625rem',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'6px',color:'#fff',fontSize:'0.8125rem',outline:'none'}}
+                  onKeyDown={e => e.key === 'Enter' && submitComment()}
+                />
+                <button onClick={submitComment} disabled={submitting || !newComment.trim()}
+                  style={{padding:'0.5rem 0.75rem',background:'rgba(59,130,246,0.15)',border:'1px solid rgba(59,130,246,0.3)',borderRadius:'6px',color:'#60a5fa',fontSize:'0.75rem',fontWeight:700,cursor:'pointer',opacity:(!newComment.trim()||submitting)?0.4:1}}>
+                  {submitting ? '...' : 'Send'}
+                </button>
+              </div>
             </div>
           )}
         </div>

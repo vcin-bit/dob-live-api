@@ -158,6 +158,11 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+    comments: (id) => request(`/api/logs/${id}/comments`),
+    addComment: (id, comment) => request(`/api/logs/${id}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ comment }),
+    }),
   },
 
   // Tasks
