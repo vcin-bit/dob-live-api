@@ -602,7 +602,7 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
 // ── Shift Modal ──────────────────────────────────────────────────────────────
 
 function ShiftModal({ shift, prefillDate, officers, allOfficers, sites, rates, siteId, user, onClose, onSaved }) {
-  const hasActuals = shift && (shift.status === 'COMPLETED' || shift.status === 'ACTIVE');
+  const isExisting = !!shift;
   const [form, setForm] = useState({
     site_id: shift?.site_id || siteId || '', officer_id: shift?.officer_id || '',
     date: shift ? isoDate(new Date(shift.start_time)) : (prefillDate || ''),
@@ -644,16 +644,17 @@ function ShiftModal({ shift, prefillDate, officers, allOfficers, sites, rates, s
         pay_rate: form.pay_rate !== '' ? parseFloat(form.pay_rate) : null,
         charge_rate: form.charge_rate !== '' ? parseFloat(form.charge_rate) : null,
       };
-      if (hasActuals && form.actual_start) {
+      if (isExisting && form.actual_start) {
         payload.checked_in_at = localISOString(form.date, form.actual_start);
       }
-      if (hasActuals && form.actual_end) {
+      if (isExisting && form.actual_end) {
         let actEnd = localISOString(form.date, form.actual_end);
         if (form.actual_start && new Date(actEnd) <= new Date(localISOString(form.date, form.actual_start))) {
           actEnd = localISOString(isoDate(addDays(new Date(form.date), 1)), form.actual_end);
         }
         payload.checked_out_at = actEnd;
       }
+      if (form.status) payload.status = form.status;
       if (shift) await api.shifts.update(shift.id, payload);
       else await api.shifts.create(payload);
       onSaved();
@@ -676,11 +677,26 @@ function ShiftModal({ shift, prefillDate, officers, allOfficers, sites, rates, s
           {siteId && <div className="field"><label className="label">Site</label><select className="input" value={form.site_id} disabled>{sites.filter(s => s.id === siteId).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>}
           <div className="field"><label className="label">Start Time</label><input type="time" className="input" value={form.start_time} onChange={e => f('start_time', e.target.value)} /></div>
           <div className="field"><label className="label">End Time</label><input type="time" className="input" value={form.end_time} onChange={e => f('end_time', e.target.value)} /></div>
-          {hasActuals && (
+          {isExisting && (
             <>
-              <div className="field" style={{gridColumn:'1/-1',borderTop:'1px solid var(--border)',paddingTop:'0.75rem',marginTop:'0.25rem'}}><div className="section-title" style={{margin:0,color:'#10b981'}}>Actual Times (editable)</div></div>
+              <div className="field" style={{gridColumn:'1/-1',borderTop:'1px solid var(--border)',paddingTop:'0.75rem',marginTop:'0.25rem'}}>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                  <div className="section-title" style={{margin:0,color:'#10b981'}}>Actual Times</div>
+                  <button type="button" onClick={() => { f('actual_start', form.start_time); f('actual_end', form.end_time); f('status', 'COMPLETED'); }}
+                    style={{fontSize:'0.75rem',padding:'0.25rem 0.625rem',background:'rgba(16,185,129,0.1)',border:'1px solid rgba(16,185,129,0.3)',borderRadius:'4px',color:'#10b981',cursor:'pointer',fontWeight:600}}>
+                    Set Actual = Scheduled
+                  </button>
+                </div>
+              </div>
               <div className="field"><label className="label">Checked In</label><input type="time" className="input" value={form.actual_start} onChange={e => f('actual_start', e.target.value)} /></div>
               <div className="field"><label className="label">Checked Out</label><input type="time" className="input" value={form.actual_end} onChange={e => f('actual_end', e.target.value)} /></div>
+              <div className="field" style={{gridColumn:'1/-1'}}>
+                <label className="label">Status</label>
+                <select className="input" value={form.status || shift?.status || 'SCHEDULED'} onChange={e => f('status', e.target.value)}>
+                  <option value="SCHEDULED">Scheduled</option>
+                  <option value="COMPLETED">Completed</option>
+                </select>
+              </div>
             </>
           )}
           <div className="field" style={{gridColumn:'1/-1'}}><label className="label">Notes</label><input className="input" value={form.notes} onChange={e => f('notes', e.target.value)} placeholder="Optional notes" /></div>
