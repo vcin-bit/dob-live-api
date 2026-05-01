@@ -584,7 +584,7 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
         </button>
         <Link to="/log?type=GENERAL_INFO" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.9375rem',marginBottom:0}}>
           <PlusIcon style={{width:'1rem',height:'1rem'}} />
-          Gen Info
+          Log Gen Info
         </Link>
       </div>
 
