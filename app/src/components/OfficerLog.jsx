@@ -244,6 +244,137 @@ function LogEntryScreen({ user, site, shift }) {
     </div>
   );
 
+  // ── VEHICLE REPORT ──────────────────────────────────────────────────────────
+  if (form.log_type === 'VEHICLE') return (
+    <div style={{padding:'1rem 1rem 5rem'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'1.25rem'}}>
+        <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
+          <div style={{width:'3px',height:'24px',background:'#a78bfa',borderRadius:'2px'}} />
+          <div>
+            <div style={{fontSize:'14px',fontWeight:700,color:'#a78bfa',letterSpacing:'0.02em'}}>VEHICLE REPORT</div>
+            <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)',marginTop:'1px'}}>{site?.name}</div>
+          </div>
+        </div>
+        <button onClick={() => navigate('/')} style={{background:'none',border:'none',color:'rgba(255,255,255,0.4)',fontSize:'0.8125rem',cursor:'pointer'}}>Cancel</button>
+      </div>
+
+      {error && <div style={{background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:'8px',padding:'10px',fontSize:'13px',color:'#ef4444',marginBottom:'12px'}}>{error}</div>}
+
+      <div style={{marginBottom:'14px'}}>
+        <div style={S.label}>TYPE *</div>
+        <select value={form.sub_type||''} onChange={e=>f('sub_type',e.target.value)} style={S.input}>
+          <option value="">Select type...</option>
+          {['Abandoned','Suspicious','Parking Violation','Damaged','Untaxed','Other'].map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+      </div>
+
+      <div style={{marginBottom:'14px'}}>
+        <div style={S.label}>REGISTRATION *</div>
+        <input value={form.visitor_vehicle_reg||''} onChange={e=>f('visitor_vehicle_reg',e.target.value.toUpperCase())} placeholder="e.g. AB12 CDE" style={{...S.input,textTransform:'uppercase',letterSpacing:'0.1em',fontSize:'1.125rem'}} />
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',marginBottom:'14px'}}>
+        <div>
+          <div style={S.label}>MAKE / MODEL</div>
+          <input value={form.visitor_name||''} onChange={e=>f('visitor_name',e.target.value)} placeholder="e.g. Ford Focus" style={S.input} />
+        </div>
+        <div>
+          <div style={S.label}>COLOUR</div>
+          <input value={form.visitor_pass_number||''} onChange={e=>f('visitor_pass_number',e.target.value)} placeholder="e.g. Silver" style={S.input} />
+        </div>
+      </div>
+
+      <div style={{marginBottom:'14px'}}>
+        <div style={S.label}>LOCATION ON SITE</div>
+        <input value={form.location_detail||''} onChange={e=>f('location_detail',e.target.value)} placeholder="e.g. Car park north, bay 12" style={S.input} />
+      </div>
+
+      <div style={{marginBottom:'14px'}}>
+        <div style={S.label}>DESCRIPTION *</div>
+        <textarea value={form.description} onChange={e=>f('description',e.target.value)} rows={3} placeholder="Describe the issue..." style={S.input} />
+      </div>
+
+      {/* Police reported */}
+      <div style={{marginBottom:'14px',padding:'12px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'10px'}}>
+        <div style={S.label}>REPORTED TO POLICE?</div>
+        <div style={{display:'flex',gap:'8px'}}>
+          <button type="button" onClick={() => f('police_reported', true)}
+            style={{flex:1,padding:'12px',background:form.police_reported?'rgba(59,130,246,0.12)':'rgba(255,255,255,0.03)',border:`1.5px solid ${form.police_reported?'rgba(59,130,246,0.4)':'rgba(255,255,255,0.08)'}`,borderRadius:'8px',fontSize:'13px',fontWeight:700,color:form.police_reported?'#60a5fa':'rgba(255,255,255,0.45)',cursor:'pointer'}}>
+            {form.police_reported?'✓ ':''}Yes
+          </button>
+          <button type="button" onClick={() => f('police_reported', false)}
+            style={{flex:1,padding:'12px',background:form.police_reported===false?'rgba(239,68,68,0.12)':'rgba(255,255,255,0.03)',border:`1.5px solid ${form.police_reported===false?'rgba(239,68,68,0.4)':'rgba(255,255,255,0.08)'}`,borderRadius:'8px',fontSize:'13px',fontWeight:700,color:form.police_reported===false?'#ef4444':'rgba(255,255,255,0.45)',cursor:'pointer'}}>
+            {form.police_reported===false?'✗ ':''}No
+          </button>
+        </div>
+        {form.police_reported && (
+          <div style={{display:'flex',flexDirection:'column',gap:'8px',marginTop:'10px'}}>
+            <div>
+              <div style={S.label}>POLICE FORCE</div>
+              <select value={form.police_force||''} onChange={e => f('police_force', e.target.value)} style={S.input}>
+                <option value="">Select force...</option>
+                {['Avon and Somerset','Bedfordshire','Cambridgeshire','Cheshire','City of London','Cleveland','Cumbria','Derbyshire','Devon and Cornwall','Dorset','Durham','Dyfed-Powys','Essex','Gloucestershire','Greater Manchester','Gwent','Hampshire','Hertfordshire','Humberside','Kent','Lancashire','Leicestershire','Lincolnshire','Merseyside','Metropolitan Police','Norfolk','North Wales','North Yorkshire','Northamptonshire','Northumbria','Nottinghamshire','South Wales','South Yorkshire','Staffordshire','Suffolk','Surrey','Sussex','Thames Valley','Warwickshire','West Mercia','West Midlands','West Yorkshire','Wiltshire','Police Scotland','PSNI'].map(f=><option key={f} value={f}>{f}</option>)}
+              </select>
+            </div>
+            <div>
+              <div style={S.label}>INCIDENT / CRIME NUMBER</div>
+              <input value={form.police_incident_number||''} onChange={e => f('police_incident_number', e.target.value)} placeholder="e.g. 4100123456" style={S.input} />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Photos */}
+      <div style={{fontSize:'10px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'8px'}}>Photos (optional)</div>
+      <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'8px'}}>
+        {form.media.map((m, i) => (
+          <div key={i} style={{width:56,height:56,borderRadius:'8px',background:'#1a2535',border:'1px solid rgba(255,255,255,0.1)',overflow:'hidden',position:'relative'}}>
+            {m.type?.startsWith('image') ? <img src={m.url} style={{width:'100%',height:'100%',objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'10px',color:'rgba(255,255,255,0.4)'}}>video</div>}
+            <button onClick={() => f('media', form.media.filter((_,j)=>j!==i))} style={{position:'absolute',top:1,right:1,width:16,height:16,background:'rgba(239,68,68,0.9)',borderRadius:'50%',border:'none',color:'#fff',fontSize:10,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>x</button>
+          </div>
+        ))}
+      </div>
+      {form.media.length < 5 && (
+        <div style={{marginBottom:'20px'}}>
+          {createPortal(<input ref={mediaInputRef} type="file" accept="image/*,video/*" multiple style={{position:'absolute',top:0,left:0,width:'1px',height:'1px',opacity:0,pointerEvents:'none'}} onChange={uploadMedia} />, document.body)}
+          <button type="button" onClick={() => mediaInputRef.current?.click()} style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>
+            <div style={{fontSize:'18px',color:'rgba(59,130,246,0.5)',lineHeight:1}}>+</div>
+            <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)'}}>Photo</div>
+          </button>
+        </div>
+      )}
+
+      <button onClick={async () => {
+        if (!form.sub_type) { setError('Please select vehicle type'); return; }
+        if (!form.visitor_vehicle_reg?.trim()) { setError('Registration is required'); return; }
+        if (!form.description.trim()) { setError('Description is required'); return; }
+        setSubmitting(true); setError('');
+        try {
+          await api.logs.create({
+            site_id: site?.id, shift_id: shift?.id || null, log_type: 'VEHICLE_CHECK',
+            title: `Vehicle — ${form.sub_type} — ${form.visitor_vehicle_reg.trim()}`,
+            description: form.description.trim(),
+            occurred_at: new Date().toISOString(),
+            type_data: {
+              vehicle_type: form.sub_type,
+              registration: form.visitor_vehicle_reg.trim(),
+              make_model: form.visitor_name || null,
+              colour: form.visitor_pass_number || null,
+              location: form.location_detail || null,
+              ...(form.media.length ? { media: form.media } : {}),
+              ...(form.police_reported ? { police_reported: true, police_force: form.police_force, police_incident_number: form.police_incident_number } : { police_reported: false }),
+            },
+          });
+          navigate('/', { state: { message: 'Vehicle report submitted' } });
+        } catch (e) { setError(e.message); }
+        finally { setSubmitting(false); }
+      }} disabled={submitting || !form.sub_type || !form.visitor_vehicle_reg?.trim() || !form.description.trim()}
+        style={S.btn(!form.sub_type || !form.visitor_vehicle_reg?.trim() || !form.description.trim() ? '#333' : '#a78bfa')}>
+        {submitting ? 'SUBMITTING...' : 'SUBMIT VEHICLE REPORT'}
+      </button>
+    </div>
+  );
+
   // ── CCTV PATROL: single page form, no steps ─────────────────────────────────
   if (form.log_type === 'CCTV_CHECK') return (
     <div style={{padding:'1rem 1rem 5rem'}}>
