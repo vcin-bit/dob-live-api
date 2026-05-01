@@ -582,18 +582,14 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
           <ClipboardDocumentListIcon style={{width:'1.125rem',height:'1.125rem'}} />
           Occurrence Log
         </button>
-        <Link to="/log?type=GENERAL_INFO" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.9375rem',marginBottom:0}}>
-          <PlusIcon style={{width:'1rem',height:'1rem'}} />
-          Log Gen Info
+        <Link to="/log?type=VEHICLE" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.9375rem',marginBottom:0,background:'rgba(139,92,246,0.12)',borderColor:'rgba(139,92,246,0.3)',color:'#a78bfa'}}>
+          Vehicle Report
         </Link>
       </div>
 
-      {/* Log menu */}
+      {/* Occurrence Log menu */}
       {showLogMenu && (
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.5rem',marginBottom:'0.625rem',padding:'0.75rem',background:'rgba(59,130,246,0.05)',border:'1px solid rgba(59,130,246,0.15)',borderRadius:'10px'}}>
-          <Link to="/log?type=VEHICLE" onClick={() => setShowLogMenu(false)} style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',padding:'0.75rem',background:'rgba(139,92,246,0.12)',border:'1px solid rgba(139,92,246,0.3)',borderRadius:'8px',color:'#a78bfa',fontSize:'0.8125rem',fontWeight:700,textDecoration:'none'}}>
-            Vehicle Report
-          </Link>
           <Link to="/log?type=EHS" onClick={() => setShowLogMenu(false)} style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',padding:'0.75rem',background:'rgba(245,158,11,0.12)',border:'1px solid rgba(245,158,11,0.3)',borderRadius:'8px',color:'#f59e0b',fontSize:'0.8125rem',fontWeight:700,textDecoration:'none'}}>
             Health & Safety
           </Link>
@@ -602,6 +598,9 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
           </Link>
           <Link to="/log?type=VISITOR" onClick={() => setShowLogMenu(false)} style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',padding:'0.75rem',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',color:'rgba(255,255,255,0.6)',fontSize:'0.8125rem',fontWeight:700,textDecoration:'none'}}>
             Visitor / Contractor
+          </Link>
+          <Link to="/log?type=GENERAL_INFO" onClick={() => setShowLogMenu(false)} style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',padding:'0.75rem',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',color:'rgba(255,255,255,0.6)',fontSize:'0.8125rem',fontWeight:700,textDecoration:'none'}}>
+            Gen Info
           </Link>
         </div>
       )}
