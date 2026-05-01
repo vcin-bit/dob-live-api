@@ -249,9 +249,26 @@ function OfficerApp({ user }) {
                 <div style={{padding:'0.75rem',background: handover.incidents.length > 0 ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.04)',border:`1px solid ${handover.incidents.length > 0 ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.08)'}`,borderRadius:'8px',marginBottom:'0.625rem',fontSize:'0.8125rem'}}>
                   <div style={{fontWeight:600,color: handover.incidents.length > 0 ? '#ef4444' : '#fff',marginBottom:'0.25rem'}}>Incidents ({handover.incidents.length})</div>
                   {handover.incidents.length === 0 ? <div style={{color:'rgba(255,255,255,0.3)'}}>No incidents last shift</div> : (
-                    handover.incidents.map((l,i) => <div key={i} style={{color:'rgba(255,255,255,0.5)',marginTop:'0.25rem'}}>• {l.title} — {new Date(l.occurred_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}</div>)
+                    handover.incidents.map((l,i) => {
+                      const td = l.type_data || {};
+                      return (
+                        <div key={i} style={{padding:'0.5rem',background:'rgba(239,68,68,0.05)',border:'1px solid rgba(239,68,68,0.12)',borderRadius:'6px',marginTop:'0.375rem'}}>
+                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.25rem'}}>
+                            <div style={{fontWeight:700,color:'#ef4444',fontSize:'0.8125rem'}}>{td.incident_type || l.title}</div>
+                            <div style={{fontSize:'0.6875rem',color:'rgba(255,255,255,0.35)'}}>{new Date(l.occurred_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}</div>
+                          </div>
+                          {l.description && <div style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.55)',lineHeight:1.4,marginBottom:'0.25rem'}}>{l.description.length > 200 ? l.description.slice(0,200) + '...' : l.description}</div>}
+                          <div style={{display:'flex',gap:'0.5rem',flexWrap:'wrap',fontSize:'0.6875rem'}}>
+                            {td.police_reported && <span style={{padding:'1px 6px',background:'rgba(239,68,68,0.15)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:'3px',color:'#ef4444',fontWeight:600}}>Police{td.police_reported_via ? ` ${td.police_reported_via}` : ''}{td.police_force ? ` — ${td.police_force}` : ''}</span>}
+                            {td.police_incident_number && <span style={{color:'rgba(255,255,255,0.4)'}}>Ref: {td.police_incident_number}</span>}
+                            {td.services_attended?.length > 0 && td.services_attended.map(s => <span key={s} style={{padding:'1px 6px',background:'rgba(59,130,246,0.12)',border:'1px solid rgba(59,130,246,0.25)',borderRadius:'3px',color:'#60a5fa',fontWeight:600}}>{s}</span>)}
+                          </div>
+                          {l.review_status && l.review_status !== 'RESOLVED' && <div style={{fontSize:'0.6875rem',color:'#f59e0b',fontWeight:600,marginTop:'0.25rem'}}>Status: {l.review_status}</div>}
+                        </div>
+                      );
+                    })
                   )}
-                  {handover.openIncidents.length > 0 && <div style={{color:'#ef4444',fontWeight:600,marginTop:'0.375rem'}}>⚠ {handover.openIncidents.length} unresolved</div>}
+                  {handover.openIncidents.length > 0 && <div style={{color:'#ef4444',fontWeight:600,marginTop:'0.375rem',fontSize:'0.8125rem'}}>⚠ {handover.openIncidents.length} unresolved incident{handover.openIncidents.length !== 1 ? 's' : ''}</div>}
                 </div>
 
                 {/* Gen info */}
