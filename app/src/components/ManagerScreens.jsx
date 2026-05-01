@@ -985,6 +985,41 @@ function LogDetailModal({ log, onClose }) {
           {log.client_reportable && <div style={{alignSelf:'center'}}><span className="badge badge-blue">Client Reportable</span></div>}
         </div>
 
+        {/* Vehicle Report details */}
+        {log.log_type === 'VEHICLE_CHECK' && (
+          <div style={{marginBottom:'1rem',padding:'0.75rem',background:'var(--surface-2)',borderRadius:'8px',border:'1px solid var(--border)'}}>
+            <div style={{fontSize:'0.75rem',fontWeight:700,color:'var(--text-3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.5rem'}}>Vehicle Details</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.5rem'}}>
+              {td.registration && <div><div style={{fontSize:'0.6875rem',color:'var(--text-3)',textTransform:'uppercase'}}>Registration</div><div style={{fontWeight:700,fontSize:'1rem',color:'var(--text-1)',letterSpacing:'0.05em'}}>{td.registration}</div></div>}
+              {td.vehicle_type && <div><div style={{fontSize:'0.6875rem',color:'var(--text-3)',textTransform:'uppercase'}}>Type</div><div style={{fontWeight:600,fontSize:'0.875rem'}}>{td.vehicle_type}</div></div>}
+              {td.make_model && <div><div style={{fontSize:'0.6875rem',color:'var(--text-3)',textTransform:'uppercase'}}>Make / Model</div><div style={{fontWeight:600,fontSize:'0.875rem'}}>{td.make_model}</div></div>}
+              {td.colour && <div><div style={{fontSize:'0.6875rem',color:'var(--text-3)',textTransform:'uppercase'}}>Colour</div><div style={{fontWeight:600,fontSize:'0.875rem'}}>{td.colour}</div></div>}
+              {td.location && <div style={{gridColumn:'1 / -1'}}><div style={{fontSize:'0.6875rem',color:'var(--text-3)',textTransform:'uppercase'}}>Location</div><div style={{fontWeight:600,fontSize:'0.875rem'}}>{td.location}</div></div>}
+            </div>
+            {td.police_reported && (
+              <div style={{marginTop:'0.5rem',padding:'0.5rem',background:'rgba(239,68,68,0.08)',borderRadius:'6px',border:'1px solid rgba(239,68,68,0.2)'}}>
+                <div style={{fontSize:'0.6875rem',fontWeight:700,color:'#ef4444',textTransform:'uppercase',marginBottom:'0.25rem'}}>Reported to Police</div>
+                <div style={{display:'flex',gap:'1rem',fontSize:'0.8125rem'}}>
+                  {td.police_force && <span><span style={{color:'var(--text-3)'}}>Force:</span> <span style={{fontWeight:600}}>{td.police_force}</span></span>}
+                  {td.police_incident_number && <span><span style={{color:'var(--text-3)'}}>Ref:</span> <span style={{fontWeight:600}}>{td.police_incident_number}</span></span>}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* H&S Report details */}
+        {log.log_type === 'HEALTH_SAFETY' && (
+          <div style={{marginBottom:'1rem',padding:'0.75rem',background:'var(--surface-2)',borderRadius:'8px',border:'1px solid var(--border)'}}>
+            <div style={{fontSize:'0.75rem',fontWeight:700,color:'var(--text-3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.5rem'}}>Health & Safety Details</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.5rem'}}>
+              {td.category && <div><div style={{fontSize:'0.6875rem',color:'var(--text-3)',textTransform:'uppercase'}}>Category</div><div style={{fontWeight:600,fontSize:'0.875rem'}}>{td.category}</div></div>}
+              {td.severity && <div><div style={{fontSize:'0.6875rem',color:'var(--text-3)',textTransform:'uppercase'}}>Severity</div><div style={{fontWeight:600,fontSize:'0.875rem',color: td.severity === 'CRITICAL' ? '#ef4444' : td.severity === 'HIGH' ? '#f59e0b' : td.severity === 'MEDIUM' ? '#eab308' : 'var(--text-1)'}}>{td.severity}</div></div>}
+              {td.location && <div style={{gridColumn:'1 / -1'}}><div style={{fontSize:'0.6875rem',color:'var(--text-3)',textTransform:'uppercase'}}>Location</div><div style={{fontWeight:600,fontSize:'0.875rem'}}>{td.location}</div></div>}
+            </div>
+          </div>
+        )}
+
         {/* Description */}
         {log.description && (
           <div style={{marginBottom:'1rem'}}>
@@ -994,10 +1029,10 @@ function LogDetailModal({ log, onClose }) {
         )}
 
         {/* Actions taken */}
-        {td.actions_taken && (
+        {(td.actions_taken || td.action_taken) && (
           <div style={{marginBottom:'1rem'}}>
             <div style={{fontSize:'0.75rem',fontWeight:700,color:'var(--text-3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.375rem'}}>Actions Taken</div>
-            <p style={{fontSize:'0.875rem',lineHeight:1.6,color:'var(--text-1)',whiteSpace:'pre-wrap',margin:0}}>{td.actions_taken}</p>
+            <p style={{fontSize:'0.875rem',lineHeight:1.6,color:'var(--text-1)',whiteSpace:'pre-wrap',margin:0}}>{td.actions_taken || td.action_taken}</p>
           </div>
         )}
 
@@ -1006,14 +1041,17 @@ function LogDetailModal({ log, onClose }) {
           <div style={{marginBottom:'1rem'}}>
             <div style={{fontSize:'0.75rem',fontWeight:700,color:'var(--text-3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.5rem'}}>Photos / Video ({media.length})</div>
             <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
-              {media.map((m, i) => (
-                <div key={i} onClick={() => m.type?.startsWith('image') && setLightbox(m.url)}
-                  style={{width:80,height:80,borderRadius:'8px',overflow:'hidden',border:'1px solid var(--border)',cursor:m.type?.startsWith('image')?'zoom-in':'default',flexShrink:0}}>
-                  {m.type?.startsWith('image')
-                    ? <img src={m.url} style={{width:'100%',height:'100%',objectFit:'cover'}} alt={m.name||'photo'} />
-                    : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--surface-2)',fontSize:'0.75rem',color:'var(--text-3)'}}>video</div>}
-                </div>
-              ))}
+              {media.map((m, i) => {
+                const isImg = !m.type || m.type?.startsWith('image') || m.url?.match(/\.(jpg|jpeg|png|gif|webp)/i);
+                return (
+                  <div key={i} onClick={() => isImg && setLightbox(m.url)}
+                    style={{width:80,height:80,borderRadius:'8px',overflow:'hidden',border:'1px solid var(--border)',cursor:isImg?'zoom-in':'default',flexShrink:0}}>
+                    {isImg
+                      ? <img src={m.url} style={{width:'100%',height:'100%',objectFit:'cover'}} alt={m.name||'photo'} crossOrigin="anonymous" />
+                      : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--surface-2)',fontSize:'0.75rem',color:'var(--text-3)'}}>video</div>}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -1035,12 +1073,12 @@ function LogDetailModal({ log, onClose }) {
           </div>
         )}
 
-        {/* Extra type_data fields */}
-        {extraFields.length > 0 && (
+        {/* Extra type_data fields (skip fields already shown above) */}
+        {extraFields.filter(([k]) => !['vehicle_type','registration','make_model','colour','location','police_reported','police_force','police_incident_number','category','severity','action_taken','actions_taken','sub_type'].includes(k)).length > 0 && (
           <div style={{marginBottom:'1rem'}}>
             <div style={{fontSize:'0.75rem',fontWeight:700,color:'var(--text-3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.5rem'}}>Additional Details</div>
             <div style={{display:'flex',flexDirection:'column',gap:'0.375rem'}}>
-              {extraFields.map(([k, v]) => (
+              {extraFields.filter(([k]) => !['vehicle_type','registration','make_model','colour','location','police_reported','police_force','police_incident_number','category','severity','action_taken','actions_taken','sub_type'].includes(k)).map(([k, v]) => (
                 <div key={k} style={{display:'flex',gap:'0.5rem',fontSize:'0.8125rem'}}>
                   <span style={{color:'var(--text-3)',minWidth:'140px',textTransform:'capitalize'}}>{k.replace(/_/g,' ')}</span>
                   <span style={{color:'var(--text-1)',fontWeight:500}}>{typeof v === 'object' ? JSON.stringify(v) : String(v)}</span>
