@@ -264,7 +264,7 @@ function LogEntryScreen({ user, site, shift }) {
         <div style={S.label}>TYPE *</div>
         <select value={form.sub_type||''} onChange={e=>f('sub_type',e.target.value)} style={S.input}>
           <option value="">Select type...</option>
-          {['Abandoned','Suspicious','Parking Violation','Damaged','Untaxed','Other'].map(t => <option key={t} value={t}>{t}</option>)}
+          {['Abandoned','Suspicious','Parked Causing Obstruction','Damaged','Untaxed','Dangerous Driving','Other'].map(t => <option key={t} value={t}>{t}</option>)}
         </select>
       </div>
 
