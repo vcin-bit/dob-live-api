@@ -578,9 +578,8 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
           <ClockIcon style={{width:'1rem',height:'1rem'}} />
           Patrol History
         </Link>
-        <Link to="/log?type=GENERAL" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.9375rem',marginBottom:0}}>
-          <PlusIcon style={{width:'1.125rem',height:'1.125rem'}} />
-          Incident
+        <Link to="/log?type=GENERAL" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.9375rem',marginBottom:0,background:'rgba(239,68,68,0.12)',borderColor:'rgba(239,68,68,0.3)',color:'#ef4444'}}>
+          Log an Incident
         </Link>
         <Link to="/log?type=GENERAL_INFO" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.875rem',marginBottom:0}}>
           <PlusIcon style={{width:'1rem',height:'1rem'}} />
