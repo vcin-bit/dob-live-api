@@ -105,10 +105,6 @@ function ManagerDashboard({ user }) {
 
   // Compliance alerts — things wrong right now
   const alerts = [];
-  data.shifts.forEach(s => {
-    const hrs = (Date.now() - new Date(s.checked_in_at||s.start_time).getTime()) / 3600000;
-    if (hrs > 3) alerts.push({ level:'warn', msg:`${s.officer?.first_name} ${s.officer?.last_name} — no patrol logged in ${Math.round(hrs)}h`, site: s.site?.name });
-  });
   if (data.incidents.length > 0) {
     const unacked = data.incidents.filter(i => !i.client_reportable);
     if (unacked.length) alerts.push({ level:'info', msg:`${unacked.length} incident${unacked.length>1?'s':''} recorded tonight — review required`, site: null });
