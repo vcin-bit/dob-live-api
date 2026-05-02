@@ -15,7 +15,7 @@ function getSg() {
   return sg;
 }
 
-const ALDI_EMAIL = process.env.ALDI_INSPECTION_EMAIL || 'david@risksecured.co.uk';
+const ALDI_EMAIL = process.env.ALDI_INSPECTION_EMAIL || 'davidfoster7841@gmail.com';
 const RS_EMAIL = process.env.RS_INSPECTION_FROM_EMAIL || 'reports@risksecured.co.uk';
 
 function downloadImage(url) {
@@ -116,32 +116,32 @@ async function generatePDF(inspection, site, logoBuffer, photoBuffers, mapBuffer
     // ════════════════════════════════════════════════════════════════════
     // HEADER — navy band with logo and report title
     // ════════════════════════════════════════════════════════════════════
-    // HEADER — light navy, professional
-    doc.rect(0, 0, W, 3).fill('#1a52a8');
-    doc.rect(0, 3, W, 72).fill('#162a50');
+    // HEADER — white, clean, minimal
+    doc.rect(0, 0, W, 2).fill('#1a52a8');
+    doc.rect(0, 2, W, 60).fill('#ffffff');
 
-    // Both logos at same height (38px) for balance
+    // Both logos at same height (34px)
     if (logoBuffer) {
-      try { doc.image(logoBuffer, M, 14, { height: 38 }); } catch {}
+      try { doc.image(logoBuffer, M, 12, { height: 34 }); } catch {}
     } else {
-      doc.fontSize(18).fillColor('#ffffff').font('Helvetica-Bold').text('RISK SECURED', M, 24);
+      doc.fontSize(16).fillColor('#0b1a3e').font('Helvetica-Bold').text('RISK SECURED', M, 20);
     }
     if (aldiLogoBuffer) {
-      try { doc.image(aldiLogoBuffer, W - M - 45, 14, { height: 38 }); } catch {}
+      try { doc.image(aldiLogoBuffer, W - M - 40, 12, { height: 34 }); } catch {}
     }
 
     // Report title + ref (centre)
-    doc.fontSize(11).fillColor('#ffffff').font('Helvetica-Bold')
-      .text('Property Inspection Report', 180, 16, { width: 240, align: 'center' });
-    doc.fontSize(7).fillColor('#8899bb').font('Helvetica')
-      .text(`Ref: ${refNo}  |  ${dateStr}  |  ${timeStr}`, 180, 32, { width: 240, align: 'center' });
+    doc.fontSize(10).fillColor('#0b1a3e').font('Helvetica-Bold')
+      .text('Property Inspection Report', 180, 12, { width: 240, align: 'center' });
+    doc.fontSize(7).fillColor('#6b7280').font('Helvetica')
+      .text(`Ref: ${refNo}  |  ${dateStr}  |  ${timeStr}`, 180, 26, { width: 240, align: 'center' });
+    doc.fontSize(7).fillColor('#9ca3af').font('Helvetica')
+      .text('Risk Secured Ltd — Bespoke Security Solutions for Aldi Stores Ltd', 180, 38, { width: 240, align: 'center' });
 
-    // Tagline strip
-    doc.rect(0, 56, W, 19).fill('#1e3460');
-    doc.fontSize(7).fillColor('#8899bb').font('Helvetica')
-      .text('Risk Secured Ltd — Bespoke Security Solutions for Aldi Stores Ltd', M, 62, { width: CW, align: 'center' });
+    // Separator
+    doc.rect(0, 62, W, 1).fill('#e2e8f0');
 
-    let y = 86;
+    let y = 72;
 
     // ════════════════════════════════════════════════════════════════════
     // HELPER: boxed section with title bar
