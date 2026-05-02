@@ -103,6 +103,7 @@ function PortalDashboard({ session, onLogout }) {
   const [loading, setLoading] = useState(true);
   const [showRaiseAlert, setShowRaiseAlert] = useState(false);
   const [editTask, setEditTask] = useState(null);
+  const [taskStatusFilter, setTaskStatusFilter] = useState('');
   const [logTypeFilter, setLogTypeFilter] = useState('');
   const [dateFrom, setDateFrom] = useState(() => { const d = new Date(); d.setDate(d.getDate() - d.getDay() + 1); return d.toLocaleDateString('en-CA', {timeZone:'Europe/London'}); });
   const [dateTo, setDateTo] = useState(() => new Date().toLocaleDateString('en-CA', {timeZone:'Europe/London'}));
@@ -267,15 +268,33 @@ function PortalDashboard({ session, onLogout }) {
           </div>
         ) : tab === 'tasks' ? (
           <div>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1rem'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.75rem'}}>
               <div className="section-title">Tasks</div>
               <button className="btn btn-primary btn-sm" onClick={() => setShowRaiseAlert(true)}>+ Raise a Task</button>
             </div>
+            {/* Status indicators */}
+            {alerts.length > 0 && (
+              <div style={{display:'flex',gap:'0.5rem',marginBottom:'1rem',flexWrap:'wrap'}}>
+                {[
+                  { label:'All', value:'', count: alerts.length },
+                  { label:'Open', value:'open', count: alerts.filter(a=>a.status==='open').length, color:'#1a52a8' },
+                  { label:'Complete', value:'resolved', count: alerts.filter(a=>a.status==='resolved').length, color:'#10b981' },
+                  { label:'Unsuccessful', value:'unsuccessful', count: alerts.filter(a=>a.status==='unsuccessful').length, color:'#dc2626' },
+                ].map(f => (
+                  <button key={f.value} onClick={() => setTaskStatusFilter(f.value)}
+                    style={{padding:'0.25rem 0.75rem',borderRadius:'999px',border:`1px solid ${taskStatusFilter===f.value ? (f.color||'#374151') : '#d1d5db'}`,
+                      background:taskStatusFilter===f.value ? (f.color||'#374151') : '#fff',
+                      color:taskStatusFilter===f.value ? '#fff' : '#6b7280',fontSize:'0.75rem',fontWeight:600,cursor:'pointer'}}>
+                    {f.label} {f.count > 0 && <span style={{marginLeft:'0.25rem',opacity:0.7}}>({f.count})</span>}
+                  </button>
+                ))}
+              </div>
+            )}
             {alerts.length === 0 ? (
               <div className="empty-state"><p>No tasks raised yet. Use the button above to request an action from the security team.</p></div>
             ) : (
               <div style={{display:'flex',flexDirection:'column',gap:'0.625rem'}}>
-                {alerts.map(a => {
+                {alerts.filter(a => !taskStatusFilter || a.status === taskStatusFilter).map(a => {
                   let responses = [];
                   try { const parsed = JSON.parse(a.description); if (Array.isArray(parsed)) responses = parsed; } catch {}
                   const descText = responses.length > 0 ? null : a.description;
@@ -301,14 +320,29 @@ function PortalDashboard({ session, onLogout }) {
                           ))}
                         </div>
                       )}
-                      {/* Edit / Delete — only for open tasks */}
-                      {a.status === 'open' && (
+                      {/* Actions */}
+                      {(a.status === 'open' || a.status === 'unsuccessful') && (
                         <div style={{display:'flex',gap:'0.5rem',marginTop:'0.75rem',paddingTop:'0.75rem',borderTop:'1px solid var(--border)'}}>
-                          <button onClick={() => setEditTask(a)} style={{fontSize:'0.75rem',color:'#1a52a8',background:'none',border:'1px solid #dbeafe',borderRadius:'6px',padding:'0.25rem 0.625rem',cursor:'pointer',fontWeight:600}}>Edit</button>
-                          <button onClick={async () => {
-                            if (!window.confirm('Delete this task?')) return;
-                            try { await api.portal.deleteAlert(token, a.id); setAlerts(prev => prev.filter(x => x.id !== a.id)); } catch {}
-                          }} style={{fontSize:'0.75rem',color:'#dc2626',background:'none',border:'1px solid #fecaca',borderRadius:'6px',padding:'0.25rem 0.625rem',cursor:'pointer',fontWeight:600}}>Delete</button>
+                          {a.status === 'open' && (
+                            <>
+                              <button onClick={() => setEditTask(a)} style={{fontSize:'0.75rem',color:'#1a52a8',background:'none',border:'1px solid #dbeafe',borderRadius:'6px',padding:'0.25rem 0.625rem',cursor:'pointer',fontWeight:600}}>Edit</button>
+                              <button onClick={async () => {
+                                if (!window.confirm('Delete this task?')) return;
+                                try { await api.portal.deleteAlert(token, a.id); setAlerts(prev => prev.filter(x => x.id !== a.id)); } catch {}
+                              }} style={{fontSize:'0.75rem',color:'#dc2626',background:'none',border:'1px solid #fecaca',borderRadius:'6px',padding:'0.25rem 0.625rem',cursor:'pointer',fontWeight:600}}>Delete</button>
+                            </>
+                          )}
+                          {a.status === 'unsuccessful' && (
+                            <button onClick={async () => {
+                              try {
+                                await api.portal.updateAlert(token, a.id, { status: 'open' });
+                                const r = await api.portal.alerts(token);
+                                setAlerts(r.data || []);
+                              } catch {}
+                            }} style={{fontSize:'0.75rem',color:'#1a52a8',background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:'6px',padding:'0.375rem 0.75rem',cursor:'pointer',fontWeight:700}}>
+                              Re-issue Task
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>

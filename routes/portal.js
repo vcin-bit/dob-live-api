@@ -168,10 +168,11 @@ router.post('/alerts', portalAuth, async (req, res, next) => {
 router.patch('/alerts/:id', portalAuth, async (req, res, next) => {
   try {
     const { site_id } = req.portalSession;
-    const { title, description } = req.body;
+    const { title, description, status } = req.body;
     const updates = {};
     if (title) updates.title = title;
     if (description !== undefined) updates.description = description;
+    if (status) updates.status = status;
     const { data, error } = await supabase.from('client_alerts').update(updates).eq('id', req.params.id).eq('site_id', site_id).select().single();
     if (error) throw error;
     res.json({ data });
