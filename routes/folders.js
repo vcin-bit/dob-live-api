@@ -58,13 +58,11 @@ router.get('/documents/:id/signed', authenticate, async (req, res, next) => {
   try {
     const { data: doc, error } = await supabase.from('site_documents').select('storage_path').eq('id', req.params.id).eq('company_id', req.user.company_id).single();
     if (error || !doc?.storage_path) return res.status(404).json({ error: 'Document not found' });
-    // Try hr-documents bucket first (inspections), then patrol-media
+    // Try each bucket until we find the file
     let signed;
-    const { data: s1, error: e1 } = await supabase.storage.from('hr-documents').createSignedUrl(doc.storage_path, 300);
-    if (!e1 && s1?.signedUrl) { signed = s1; }
-    else {
-      const { data: s2, error: e2 } = await supabase.storage.from('patrol-media').createSignedUrl(doc.storage_path, 300);
-      if (!e2 && s2?.signedUrl) signed = s2;
+    for (const bucket of ['documents', 'hr-documents', 'patrol-media']) {
+      const { data: s, error: e } = await supabase.storage.from(bucket).createSignedUrl(doc.storage_path, 300);
+      if (!e && s?.signedUrl) { signed = s; break; }
     }
     if (!signed) return res.status(404).json({ error: 'File not found in storage' });
     res.json({ data: { url: signed.signedUrl } });

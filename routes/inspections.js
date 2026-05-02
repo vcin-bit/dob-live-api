@@ -180,12 +180,12 @@ router.post('/', authenticate, async (req, res, next) => {
     const photoUrls = (media || []).map(m => m.url).filter(Boolean);
     const pdfBuffer = await generatePDF(data, photoUrls);
 
-    // Upload PDF to Supabase storage
+    // Upload PDF to Supabase storage (documents bucket is public)
     const pdfPath = `${req.user.company_id}/inspections/${data.id}.pdf`;
-    await supabase.storage.from('hr-documents').upload(pdfPath, pdfBuffer, {
+    await supabase.storage.from('documents').upload(pdfPath, pdfBuffer, {
       contentType: 'application/pdf', upsert: true
     });
-    const { data: { publicUrl } } = supabase.storage.from('hr-documents').getPublicUrl(pdfPath);
+    const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(pdfPath);
 
     // Update record with PDF path
     await supabase.from('property_inspections').update({ pdf_path: pdfPath }).eq('id', data.id);
@@ -268,7 +268,7 @@ router.get('/:id/pdf', authenticate, async (req, res, next) => {
     const { data: insp } = await supabase.from('property_inspections')
       .select('pdf_path').eq('id', req.params.id).eq('company_id', req.user.company_id).single();
     if (!insp?.pdf_path) return res.status(404).json({ error: 'PDF not found' });
-    const { data: signed, error } = await supabase.storage.from('hr-documents').createSignedUrl(insp.pdf_path, 300);
+    const { data: signed, error } = await supabase.storage.from('documents').createSignedUrl(insp.pdf_path, 300);
     if (error) throw error;
     res.json({ url: signed.signedUrl });
   } catch (err) { next(err); }
