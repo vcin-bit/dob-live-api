@@ -148,10 +148,10 @@ function PortalDashboard({ session, onLogout }) {
 
       {/* Tabs */}
       <div style={{background:'#fff',borderBottom:'1px solid #e2e8f0',display:'flex',padding:'0 1.25rem'}}>
-        {[['dashboard','Dashboard'],['issues','Issues'],['incidents','Occurrences'],['docs','Documents']].map(([val,label]) => (
+        {[['dashboard','Dashboard'],['tasks','Tasks'],['incidents','Occurrences'],['docs','Documents']].map(([val,label]) => (
           <button key={val} onClick={() => setTab(val)} style={{padding:'0.75rem 1rem',fontSize:'0.875rem',fontWeight:500,border:'none',borderBottom:`2px solid ${tab===val?'#1a52a8':'transparent'}`,color:tab===val?'#1a52a8':'#64748b',background:'none',cursor:'pointer',marginBottom:'-1px'}}>
             {label}
-            {val==='issues' && openAlerts.length > 0 && <span style={{marginLeft:'0.375rem',background:'#dc2626',color:'#fff',borderRadius:'999px',fontSize:'0.6875rem',padding:'0 5px',fontWeight:700}}>{openAlerts.length}</span>}
+            {val==='tasks' && openAlerts.length > 0 && <span style={{marginLeft:'0.375rem',background:'#1a52a8',color:'#fff',borderRadius:'999px',fontSize:'0.6875rem',padding:'0 5px',fontWeight:700}}>{openAlerts.length}</span>}
           </button>
         ))}
       </div>
@@ -244,31 +244,34 @@ function PortalDashboard({ session, onLogout }) {
               </div>
             )}
 
-            {/* Open Alerts */}
+            {/* Open Tasks */}
             {openAlerts.length > 0 && (
               <div className="card" style={{marginBottom:'1.25rem'}}>
-                <div className="section-title" style={{marginBottom:'0.75rem'}}>Open Issues</div>
-                {openAlerts.slice(0,5).map(a => (
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.75rem'}}>
+                  <div className="section-title" style={{margin:0}}>Open Tasks</div>
+                  <button onClick={() => setTab('tasks')} style={{fontSize:'0.75rem',color:'#1a52a8',background:'none',border:'none',cursor:'pointer',fontWeight:600}}>View all &rarr;</button>
+                </div>
+                {openAlerts.slice(0,3).map(a => (
                   <div key={a.id} style={{padding:'0.625rem 0',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',gap:'0.75rem'}}>
-                    <div style={{width:'8px',height:'8px',borderRadius:'50%',background:severityColor(a.severity),flexShrink:0}} />
+                    <div style={{width:'8px',height:'8px',borderRadius:'50%',background:'#1a52a8',flexShrink:0}} />
                     <div style={{flex:1}}>
                       <div style={{fontSize:'0.875rem',fontWeight:500}}>{a.title}</div>
                       <div style={{fontSize:'0.75rem',color:'var(--text-2)'}}>{new Date(a.created_at).toLocaleDateString('en-GB')}</div>
                     </div>
-                    <span className={`badge ${a.status==='resolved'?'badge-success':'badge-warning'}`}>{a.status}</span>
+                    <span className={`badge ${a.status==='resolved'?'badge-success':'badge-warning'}`}>{a.status === 'resolved' ? 'Complete' : 'Open'}</span>
                   </div>
                 ))}
               </div>
             )}
           </div>
-        ) : tab === 'issues' ? (
+        ) : tab === 'tasks' ? (
           <div>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1rem'}}>
-              <div className="section-title">Alerts & Issues</div>
-              <button className="btn btn-primary btn-sm" onClick={() => setShowRaiseAlert(true)}>+ Raise Alert</button>
+              <div className="section-title">Tasks</div>
+              <button className="btn btn-primary btn-sm" onClick={() => setShowRaiseAlert(true)}>+ Raise a Task</button>
             </div>
             {alerts.length === 0 ? (
-              <div className="empty-state"><p>No alerts</p></div>
+              <div className="empty-state"><p>No tasks raised yet. Use the button above to request an action from the security team.</p></div>
             ) : (
               <div style={{display:'flex',flexDirection:'column',gap:'0.625rem'}}>
                 {alerts.map(a => {
@@ -276,17 +279,18 @@ function PortalDashboard({ session, onLogout }) {
                   try { const parsed = JSON.parse(a.description); if (Array.isArray(parsed)) responses = parsed; } catch {}
                   const descText = responses.length > 0 ? null : a.description;
                   return (
-                    <div key={a.id} className="card" style={{borderLeft:`3px solid ${severityColor(a.severity)}`}}>
+                    <div key={a.id} className="card" style={{borderLeft:`3px solid ${a.status==='resolved'?'#10b981':'#1a52a8'}`}}>
                       <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
                         <div style={{flex:1}}>
                           <div style={{fontWeight:600,fontSize:'0.9375rem'}}>{a.title}</div>
                           {descText && <div style={{fontSize:'0.875rem',color:'var(--text-2)',marginTop:'0.25rem'}}>{descText}</div>}
-                          <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginTop:'0.25rem'}}>{new Date(a.created_at).toLocaleDateString('en-GB')}</div>
+                          <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginTop:'0.25rem'}}>{new Date(a.created_at).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}</div>
                         </div>
-                        <span className={`badge ${a.status==='resolved'?'badge-success':'badge-warning'}`}>{a.status}</span>
+                        <span className={`badge ${a.status==='resolved'?'badge-success':'badge-blue'}`}>{a.status === 'resolved' ? 'Complete' : 'Open'}</span>
                       </div>
                       {responses.length > 0 && (
                         <div style={{marginTop:'0.75rem',paddingTop:'0.75rem',borderTop:'1px solid var(--border)'}}>
+                          <div style={{fontSize:'0.6875rem',fontWeight:600,color:'var(--text-3)',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:'0.375rem'}}>Updates</div>
                           {responses.map((r, i) => (
                             <div key={i} style={{padding:'0.375rem 0',fontSize:'0.8125rem',color:'var(--text-2)'}}>
                               <span style={{fontWeight:600,color:'var(--text-1)'}}>{r.name || r.from}</span>
@@ -437,7 +441,7 @@ function PortalRaiseAlertModal({ token, onClose, onSaved }) {
   const [error, setError] = useState(null);
 
   async function send() {
-    if (!form.title.trim()) { setError('Title required'); return; }
+    if (!form.title.trim()) { setError('Please describe the task'); return; }
     try {
       setSaving(true);
       await api.portal.raiseAlert(token, form);
@@ -448,13 +452,13 @@ function PortalRaiseAlertModal({ token, onClose, onSaved }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e=>e.stopPropagation()}>
-        <div className="modal-header"><div className="modal-title">Raise an Alert</div><button className="modal-close" onClick={onClose}>x</button></div>
+        <div className="modal-header"><div className="modal-title">Raise a Task</div><button className="modal-close" onClick={onClose}>x</button></div>
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
-        <div className="field"><label className="label">Subject</label><input className="input" value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder="Brief description of the issue" /></div>
-        <div className="field"><label className="label">Details</label><textarea className="input" rows={4} value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))} placeholder="Additional details..." /></div>
+        <div className="field"><label className="label">What do you need us to do?</label><input className="input" value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder="e.g. Check the back fence tonight" /></div>
+        <div className="field"><label className="label">Additional details (optional)</label><textarea className="input" rows={4} value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))} placeholder="Any extra information that will help the team..." /></div>
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={send} disabled={saving}>{saving?'Sending...':'Send Alert'}</button>
+          <button className="btn btn-primary" onClick={send} disabled={saving}>{saving?'Sending...':'Submit Task'}</button>
         </div>
       </div>
     </div>
