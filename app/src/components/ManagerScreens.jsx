@@ -659,6 +659,7 @@ function SiteFormModal({ site, onClose, onSaved }) {
     geofence_radius:         site?.geofence_radius || 500,
     notes:                   site?.notes || '',
     active:                  site?.active !== false,
+    client_name:             site?.client_name || '',
     contract_start_date:     site?.contract_start_date || '',
     client_company_address:  site?.client_company_address || '',
   });
@@ -708,6 +709,11 @@ function SiteFormModal({ site, onClose, onSaved }) {
           <div className="field">
             <label className="label">Postcode</label>
             <input className="input" value={form.postcode} onChange={e=>f('postcode',e.target.value)} />
+          </div>
+
+          <div className="field" style={{gridColumn:'1/-1'}}>
+            <label className="label">Client / Group Name</label>
+            <input className="input" value={form.client_name} onChange={e=>f('client_name',e.target.value)} placeholder="e.g. Aldi Stores Ltd — leave blank for ungrouped" />
           </div>
 
           <div className="field" style={{gridColumn:'1/-1',borderTop:'1px solid var(--border)',paddingTop:'0.75rem',marginTop:'0.25rem'}}>
