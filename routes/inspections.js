@@ -116,34 +116,32 @@ async function generatePDF(inspection, site, logoBuffer, photoBuffers, mapBuffer
     // ════════════════════════════════════════════════════════════════════
     // HEADER — navy band with logo and report title
     // ════════════════════════════════════════════════════════════════════
-    // HEADER — clean white with thin accent
-    doc.rect(0, 0, W, 2).fill('#1a52a8');
-    doc.rect(0, 2, W, 88).fill('#ffffff');
-    doc.rect(0, 90, W, 1).fill('#e2e8f0');
+    // HEADER — light navy, professional
+    doc.rect(0, 0, W, 3).fill('#1a52a8');
+    doc.rect(0, 3, W, 72).fill('#162a50');
 
-    // Risk Secured logo (left)
+    // Both logos at same height (38px) for balance
     if (logoBuffer) {
-      try { doc.image(logoBuffer, M, 12, { height: 42 }); } catch {}
+      try { doc.image(logoBuffer, M, 14, { height: 38 }); } catch {}
     } else {
-      doc.fontSize(18).fillColor('#0b1a3e').font('Helvetica-Bold').text('RISK SECURED', M, 22);
+      doc.fontSize(18).fillColor('#ffffff').font('Helvetica-Bold').text('RISK SECURED', M, 24);
     }
-
-    // Aldi logo (right)
     if (aldiLogoBuffer) {
-      try { doc.image(aldiLogoBuffer, W - M - 55, 10, { height: 45 }); } catch {}
+      try { doc.image(aldiLogoBuffer, W - M - 45, 14, { height: 38 }); } catch {}
     }
 
     // Report title + ref (centre)
-    doc.fontSize(11).fillColor('#0b1a3e').font('Helvetica-Bold')
-      .text('Property Inspection Report', 200, 14, { width: 200, align: 'center' });
-    doc.fontSize(7).fillColor('#6b7280').font('Helvetica')
-      .text(`Ref: ${refNo}  |  ${dateStr}  |  ${timeStr}`, 180, 30, { width: 240, align: 'center' });
+    doc.fontSize(11).fillColor('#ffffff').font('Helvetica-Bold')
+      .text('Property Inspection Report', 180, 16, { width: 240, align: 'center' });
+    doc.fontSize(7).fillColor('#8899bb').font('Helvetica')
+      .text(`Ref: ${refNo}  |  ${dateStr}  |  ${timeStr}`, 180, 32, { width: 240, align: 'center' });
 
-    // Tagline
-    doc.fontSize(7).fillColor('#9ca3af').font('Helvetica')
-      .text('Risk Secured Ltd — Bespoke Security Solutions for Aldi Stores Ltd', M, 76, { width: CW, align: 'center' });
+    // Tagline strip
+    doc.rect(0, 56, W, 19).fill('#1e3460');
+    doc.fontSize(7).fillColor('#8899bb').font('Helvetica')
+      .text('Risk Secured Ltd — Bespoke Security Solutions for Aldi Stores Ltd', M, 62, { width: CW, align: 'center' });
 
-    let y = 100;
+    let y = 86;
 
     // ════════════════════════════════════════════════════════════════════
     // HELPER: boxed section with title bar
