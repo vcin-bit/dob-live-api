@@ -289,7 +289,7 @@ function ManagerDashboard({ user }) {
                           ? `✓ Task completed${ctNotes.trim() ? ': ' + ctNotes.trim() : ''}`
                           : `✗ Unsuccessful: ${ctNotes.trim()}`,
                       });
-                      await api.alerts.update(ctModal.task.id, { status: 'resolved', description: JSON.stringify(responses) });
+                      await api.alerts.update(ctModal.task.id, { status: ctModal.outcome==='complete' ? 'resolved' : 'unsuccessful', description: JSON.stringify(responses) });
                       setClientTasks(prev => prev.filter(x => x.id !== ctModal.task.id));
                       setCtModal(null);
                     } catch {}

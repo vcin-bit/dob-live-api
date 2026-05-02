@@ -102,6 +102,7 @@ function PortalDashboard({ session, onLogout }) {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showRaiseAlert, setShowRaiseAlert] = useState(false);
+  const [editTask, setEditTask] = useState(null);
   const [logTypeFilter, setLogTypeFilter] = useState('');
   const [dateFrom, setDateFrom] = useState(() => { const d = new Date(); d.setDate(d.getDate() - d.getDay() + 1); return d.toLocaleDateString('en-CA', {timeZone:'Europe/London'}); });
   const [dateTo, setDateTo] = useState(() => new Date().toLocaleDateString('en-CA', {timeZone:'Europe/London'}));
@@ -258,7 +259,7 @@ function PortalDashboard({ session, onLogout }) {
                       <div style={{fontSize:'0.875rem',fontWeight:500}}>{a.title}</div>
                       <div style={{fontSize:'0.75rem',color:'var(--text-2)'}}>{new Date(a.created_at).toLocaleDateString('en-GB')}</div>
                     </div>
-                    <span className={`badge ${a.status==='resolved'?'badge-success':'badge-warning'}`}>{a.status === 'resolved' ? 'Complete' : 'Open'}</span>
+                    <span className={`badge ${a.status==='resolved'?'badge-success':a.status==='unsuccessful'?'badge-danger':'badge-blue'}`}>{a.status === 'resolved' ? 'Complete' : a.status === 'unsuccessful' ? 'Unsuccessful' : 'Open'}</span>
                   </div>
                 ))}
               </div>
@@ -279,14 +280,14 @@ function PortalDashboard({ session, onLogout }) {
                   try { const parsed = JSON.parse(a.description); if (Array.isArray(parsed)) responses = parsed; } catch {}
                   const descText = responses.length > 0 ? null : a.description;
                   return (
-                    <div key={a.id} className="card" style={{borderLeft:`3px solid ${a.status==='resolved'?'#10b981':'#1a52a8'}`}}>
+                    <div key={a.id} className="card" style={{borderLeft:`3px solid ${a.status==='resolved'?'#10b981':a.status==='unsuccessful'?'#dc2626':'#1a52a8'}`}}>
                       <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
                         <div style={{flex:1}}>
                           <div style={{fontWeight:600,fontSize:'0.9375rem'}}>{a.title}</div>
                           {descText && <div style={{fontSize:'0.875rem',color:'var(--text-2)',marginTop:'0.25rem'}}>{descText}</div>}
                           <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginTop:'0.25rem'}}>{new Date(a.created_at).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}</div>
                         </div>
-                        <span className={`badge ${a.status==='resolved'?'badge-success':'badge-blue'}`}>{a.status === 'resolved' ? 'Complete' : 'Open'}</span>
+                        <span className={`badge ${a.status==='resolved'?'badge-success':a.status==='unsuccessful'?'badge-danger':'badge-blue'}`}>{a.status === 'resolved' ? 'Complete' : a.status === 'unsuccessful' ? 'Unsuccessful' : 'Open'}</span>
                       </div>
                       {responses.length > 0 && (
                         <div style={{marginTop:'0.75rem',paddingTop:'0.75rem',borderTop:'1px solid var(--border)'}}>
@@ -298,6 +299,16 @@ function PortalDashboard({ session, onLogout }) {
                               <div style={{marginTop:'0.125rem'}}>{r.text}</div>
                             </div>
                           ))}
+                        </div>
+                      )}
+                      {/* Edit / Delete — only for open tasks */}
+                      {a.status === 'open' && (
+                        <div style={{display:'flex',gap:'0.5rem',marginTop:'0.75rem',paddingTop:'0.75rem',borderTop:'1px solid var(--border)'}}>
+                          <button onClick={() => setEditTask(a)} style={{fontSize:'0.75rem',color:'#1a52a8',background:'none',border:'1px solid #dbeafe',borderRadius:'6px',padding:'0.25rem 0.625rem',cursor:'pointer',fontWeight:600}}>Edit</button>
+                          <button onClick={async () => {
+                            if (!window.confirm('Delete this task?')) return;
+                            try { await api.portal.deleteAlert(token, a.id); setAlerts(prev => prev.filter(x => x.id !== a.id)); } catch {}
+                          }} style={{fontSize:'0.75rem',color:'#dc2626',background:'none',border:'1px solid #fecaca',borderRadius:'6px',padding:'0.25rem 0.625rem',cursor:'pointer',fontWeight:600}}>Delete</button>
                         </div>
                       )}
                     </div>
@@ -431,6 +442,18 @@ function PortalDashboard({ session, onLogout }) {
           }}
         />
       )}
+
+      {editTask && (
+        <PortalEditTaskModal
+          token={token}
+          task={editTask}
+          onClose={() => setEditTask(null)}
+          onSaved={() => {
+            setEditTask(null);
+            api.portal.alerts(token).then(r => setAlerts(r.data||[]));
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -459,6 +482,41 @@ function PortalRaiseAlertModal({ token, onClose, onSaved }) {
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
           <button className="btn btn-primary" onClick={send} disabled={saving}>{saving?'Sending...':'Submit Task'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PortalEditTaskModal({ token, task, onClose, onSaved }) {
+  const [form, setForm] = useState({ title: task.title || '', description: task.description || '' });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Don't show raw JSON in description field
+  useEffect(() => {
+    try { const p = JSON.parse(task.description); if (Array.isArray(p)) setForm(f => ({...f, description: ''})); } catch {}
+  }, []);
+
+  async function save() {
+    if (!form.title.trim()) { setError('Task description required'); return; }
+    try {
+      setSaving(true);
+      await api.portal.updateAlert(token, task.id, { title: form.title, description: form.description || null });
+      onSaved();
+    } catch(e) { setError(e.message); } finally { setSaving(false); }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e=>e.stopPropagation()}>
+        <div className="modal-header"><div className="modal-title">Edit Task</div><button className="modal-close" onClick={onClose}>x</button></div>
+        {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
+        <div className="field"><label className="label">What do you need us to do?</label><input className="input" value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} /></div>
+        <div className="field"><label className="label">Additional details (optional)</label><textarea className="input" rows={4} value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))} /></div>
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={save} disabled={saving}>{saving?'Saving...':'Save Changes'}</button>
         </div>
       </div>
     </div>

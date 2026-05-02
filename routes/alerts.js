@@ -26,7 +26,7 @@ router.post('/', authenticate, async (req, res, next) => {
 router.patch('/:id', authenticate, async (req, res, next) => {
   try {
     const updates = {};
-    if (req.body.status === 'resolved') { updates.status = 'resolved'; updates.resolved_by = req.user.id; updates.resolved_at = new Date().toISOString(); }
+    if (req.body.status === 'resolved' || req.body.status === 'unsuccessful') { updates.status = req.body.status; updates.resolved_by = req.user.id; updates.resolved_at = new Date().toISOString(); }
     else if (req.body.status) updates.status = req.body.status;
     if (req.body.title) updates.title = req.body.title;
     if (req.body.description) updates.description = req.body.description;

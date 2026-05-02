@@ -164,6 +164,30 @@ router.post('/alerts', portalAuth, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ── PATCH /api/portal/alerts/:id — client edits task ──────────────────────
+router.patch('/alerts/:id', portalAuth, async (req, res, next) => {
+  try {
+    const { site_id } = req.portalSession;
+    const { title, description } = req.body;
+    const updates = {};
+    if (title) updates.title = title;
+    if (description !== undefined) updates.description = description;
+    const { data, error } = await supabase.from('client_alerts').update(updates).eq('id', req.params.id).eq('site_id', site_id).select().single();
+    if (error) throw error;
+    res.json({ data });
+  } catch (err) { next(err); }
+});
+
+// ── DELETE /api/portal/alerts/:id — client deletes task ───────────────────
+router.delete('/alerts/:id', portalAuth, async (req, res, next) => {
+  try {
+    const { site_id } = req.portalSession;
+    const { error } = await supabase.from('client_alerts').delete().eq('id', req.params.id).eq('site_id', site_id);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
 // ── GET /api/portal/documents ──────────────────────────────────────────────
 router.get('/documents', portalAuth, async (req, res, next) => {
   try {

@@ -328,6 +328,8 @@ export const api = {
     logs: (token, params = {}) => request(`/api/portal/logs?${new URLSearchParams(params)}`, { headers: { Authorization: `Bearer ${token}` } }),
     alerts: (token, params = {}) => request(`/api/portal/alerts?${new URLSearchParams(params)}`, { headers: { Authorization: `Bearer ${token}` } }),
     raiseAlert: (token, data) => request('/api/portal/alerts', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(data) }),
+    updateAlert: (token, id, data) => request(`/api/portal/alerts/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(data) }),
+    deleteAlert: (token, id) => request(`/api/portal/alerts/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }),
     documents: (token) => request('/api/portal/documents', { headers: { Authorization: `Bearer ${token}` } }),
     saveSettings: (siteId, data) => request(`/api/portal/settings/${siteId}`, { method: 'PUT', body: JSON.stringify(data) }),
   },

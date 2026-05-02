@@ -679,7 +679,7 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift, onPatro
                         ? `✓ Task completed${clientTaskNotes.trim() ? ': ' + clientTaskNotes.trim() : ''}`
                         : `✗ Unsuccessful: ${clientTaskNotes.trim()}`,
                     });
-                    const status = clientTaskModal.outcome==='complete' ? 'resolved' : 'resolved';
+                    const status = clientTaskModal.outcome==='complete' ? 'resolved' : 'unsuccessful';
                     await api.alerts.update(clientTaskModal.task.id, { status, description: JSON.stringify(responses) });
                     setClientTasks(prev => prev.filter(t => t.id !== clientTaskModal.task.id));
                     setClientTaskModal(null);
