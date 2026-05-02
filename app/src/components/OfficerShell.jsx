@@ -490,6 +490,7 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift, onPatro
   const [checkCallConfirmed, setCheckCallConfirmed] = useState(false);
   const [activePatrol, setActivePatrol] = useState(false);
   const [showLogMenu, setShowLogMenu] = useState(false);
+  const [clientTasks, setClientTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [historyDate, setHistoryDate] = useState('');
@@ -523,6 +524,11 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift, onPatro
         // Set last check call from server data
         const lastSafetyCheck = (todayResponse.data || []).find(l => l.type_data?.check_call === true && !l.type_data?.missed_check);
         if (lastSafetyCheck) setLastCheckCall(new Date(lastSafetyCheck.occurred_at));
+        // Load client tasks for this site
+        try {
+          const clientTasksRes = await api.alerts.list({ site_id: site.id, status: 'open' });
+          setClientTasks(clientTasksRes.data || []);
+        } catch {}
         // Check for active patrol + last completed patrol time
         try {
           const patrolRes = await api.patrols.activeSession(site.id);
@@ -606,6 +612,32 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift, onPatro
         </div>
       ) : (
         <div style={{marginBottom:'0.75rem'}}>
+        </div>
+      )}
+
+      {/* Client Tasks */}
+      {clientTasks.length > 0 && (
+        <div style={{marginBottom:'0.625rem'}}>
+          {clientTasks.map(task => (
+            <div key={task.id} style={{padding:'0.875rem',background:'rgba(59,130,246,0.08)',border:'2px solid rgba(59,130,246,0.3)',borderRadius:'10px',marginBottom:'0.5rem'}}>
+              <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:'0.5rem'}}>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:'0.625rem',fontWeight:700,color:'#60a5fa',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.25rem'}}>Client Task</div>
+                  <div style={{fontSize:'0.9375rem',fontWeight:700,color:'#fff'}}>{task.title}</div>
+                  {task.description && <div style={{fontSize:'0.8125rem',color:'rgba(255,255,255,0.5)',marginTop:'0.25rem',lineHeight:1.4}}>{task.description}</div>}
+                  <div style={{fontSize:'0.6875rem',color:'rgba(255,255,255,0.3)',marginTop:'0.375rem'}}>{new Date(task.created_at).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}</div>
+                </div>
+              </div>
+              <button onClick={async () => {
+                try {
+                  await api.alerts.update(task.id, { status: 'resolved' });
+                  setClientTasks(prev => prev.filter(t => t.id !== task.id));
+                } catch {}
+              }} style={{width:'100%',marginTop:'0.625rem',padding:'0.625rem',background:'rgba(74,222,128,0.12)',border:'1.5px solid rgba(74,222,128,0.3)',borderRadius:'8px',color:'#4ade80',fontSize:'0.8125rem',fontWeight:700,cursor:'pointer'}}>
+                Mark Complete
+              </button>
+            </div>
+          ))}
         </div>
       )}
 

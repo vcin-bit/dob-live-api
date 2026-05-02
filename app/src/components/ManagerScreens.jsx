@@ -16,6 +16,7 @@ import {
 function ManagerDashboard({ user }) {
   const [data, setData] = useState({ shifts:[], incidents:[], recentLogs:[], pendingTasks:0, totalOfficers:0, logsToday:0 });
   const [loading, setLoading] = useState(true);
+  const [clientTasks, setClientTasks] = useState([]);
   const [lastRefresh, setLastRefresh] = useState(null);
   const [refreshPulse, setRefreshPulse] = useState(false);
   const [forceEndId, setForceEndId] = useState(null);
@@ -36,6 +37,8 @@ function ManagerDashboard({ user }) {
         api.tasks.list({ status: 'PENDING' }),
         api.users.list({ role: 'OFFICER' }),
       ]);
+      // Fetch client tasks
+      try { const ctRes = await api.alerts.list({ status: 'open' }); setClientTasks(ctRes.data || []); } catch {}
       const todayLogs = todayLogsRes.data || [];
       const incidents = todayLogs.filter(l => ['INCIDENT','ALARM','FIRE_ALARM','EMERGENCY'].includes(l.log_type));
       const doneList = todayLogs.filter(l => l.type_data?.scheduled_task_id);
@@ -242,6 +245,36 @@ function ManagerDashboard({ user }) {
           <div className="stat-card" style={{cursor:'pointer'}} onClick={() => setDashPanel(dashPanel === 'tasksDone' ? null : 'tasksDone')}><div className="stat-value" style={{color:data.tasksDone>0?'#10b981':'var(--text)'}}>{data.tasksDone||0}</div><div className="stat-label">Tasks Done</div></div>
           <div className="stat-card"><div className="stat-value">{data.totalOfficers}</div><div className="stat-label">Officers</div></div>
         </div>
+
+        {/* Client Tasks */}
+        {clientTasks.length > 0 && (
+          <div className="card" style={{marginBottom:'1.25rem',borderLeft:'3px solid #3b82f6'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.75rem'}}>
+              <div className="section-title" style={{margin:0,color:'#3b82f6'}}>Client Tasks ({clientTasks.length} open)</div>
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:'0.5rem'}}>
+              {clientTasks.map(t => (
+                <div key={t.id} style={{padding:'0.75rem',background:'rgba(59,130,246,0.04)',border:'1px solid rgba(59,130,246,0.15)',borderRadius:'8px'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'0.75rem'}}>
+                    <div style={{flex:1}}>
+                      <div style={{fontWeight:600,fontSize:'0.875rem'}}>{t.title}</div>
+                      {t.description && <div style={{fontSize:'0.8125rem',color:'var(--text-2)',marginTop:'0.25rem'}}>{t.description}</div>}
+                      <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginTop:'0.25rem'}}>
+                        {t.site?.name && <span style={{fontWeight:600}}>{t.site.name}</span>}
+                        {' — '}{new Date(t.created_at).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}
+                      </div>
+                    </div>
+                    <button onClick={async () => {
+                      try { await api.alerts.update(t.id, { status: 'resolved' }); setClientTasks(prev => prev.filter(x => x.id !== t.id)); } catch {}
+                    }} className="btn btn-sm" style={{background:'#10b981',color:'#fff',border:'none',borderRadius:'6px',padding:'0.375rem 0.75rem',fontSize:'0.75rem',fontWeight:700,cursor:'pointer',whiteSpace:'nowrap'}}>
+                      Complete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Expandable panels */}
         {dashPanel === 'incidents' && (
