@@ -86,22 +86,28 @@ router.get('/summary', portalAuth, async (req, res, next) => {
       since: s.checked_in_at,
     })) : [];
 
+    // Occurrence counts by type (client-relevant only)
+    const incidents = logs.filter(l => l.log_type === 'INCIDENT').length;
+    const vehicleReports = logs.filter(l => l.log_type === 'VEHICLE_CHECK').length;
+    const healthSafety = logs.filter(l => l.log_type === 'HEALTH_SAFETY').length;
+    const alarms = logs.filter(l => ['ALARM','FIRE_ALARM','EMERGENCY'].includes(l.log_type)).length;
+    const totalOccurrences = incidents + vehicleReports + healthSafety + alarms;
+    const patrols_completed = patrols.length;
+
     res.json({
       data: {
         logs_7d: logs.length,
-        incidents_7d: logs.filter(l => ['INCIDENT','ALARM','FIRE_ALARM','EMERGENCY'].includes(l.log_type)).length,
-        patrols_7d: patrols.length,
+        incidents_7d: incidents,
+        vehicle_reports_7d: vehicleReports,
+        health_safety_7d: healthSafety,
+        alarms_7d: alarms,
+        total_occurrences_7d: totalOccurrences,
+        patrols_7d: patrols_completed,
         patrols_today: patrols.filter(p => new Date(p.started_at) >= todayStart).length,
         open_alerts: (alertsRes.data || []).length,
         on_duty: onDuty,
         hours_delivered_7d: Math.round(hoursDelivered * 10) / 10,
         contracted_weekly: contractedWeekly,
-        recent_patrols: patrols.slice(0, 5).map(p => ({
-          started_at: p.started_at,
-          ended_at: p.ended_at,
-          checkpoints: (p.checkpoints_completed || []).length,
-          duration_mins: p.ended_at ? Math.round((new Date(p.ended_at) - new Date(p.started_at)) / 60000) : null,
-        })),
       }
     });
   } catch (err) { next(err); }

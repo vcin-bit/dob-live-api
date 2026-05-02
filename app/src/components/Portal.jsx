@@ -193,10 +193,38 @@ function PortalDashboard({ session, onLogout }) {
               )}
             </div>
 
-            {/* Stats */}
-            <div className="stats-grid" style={{marginBottom:'1.25rem'}}>
-              <div className="stat-card"><div className="stat-value" style={{color:'var(--danger)'}}>{summary?.incidents_7d||0}</div><div className="stat-label">Incidents (7 days)</div></div>
-              <div className="stat-card"><div className="stat-value" style={{color:summary?.open_alerts>0?'var(--warning)':'var(--text)'}}>{summary?.open_alerts||0}</div><div className="stat-label">Open Issues</div></div>
+            {/* Service Delivery Stats */}
+            <div className="card" style={{marginBottom:'1.25rem'}}>
+              <div className="section-title" style={{marginBottom:'0.875rem'}}>Service Delivery — Last 7 Days</div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(3, 1fr)',gap:'0.75rem',marginBottom:'1rem'}}>
+                <div style={{textAlign:'center',padding:'0.875rem',background:'#f8fafc',borderRadius:'8px',border:'1px solid #e2e8f0'}}>
+                  <div style={{fontSize:'1.5rem',fontWeight:800,color:'#1a52a8'}}>{summary?.total_occurrences_7d||0}</div>
+                  <div style={{fontSize:'0.6875rem',color:'#6b7280',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.04em',marginTop:'0.125rem'}}>Occurrences Logged</div>
+                </div>
+                <div style={{textAlign:'center',padding:'0.875rem',background:'#f8fafc',borderRadius:'8px',border:'1px solid #e2e8f0'}}>
+                  <div style={{fontSize:'1.5rem',fontWeight:800,color:'#10b981'}}>{summary?.patrols_7d||0}</div>
+                  <div style={{fontSize:'0.6875rem',color:'#6b7280',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.04em',marginTop:'0.125rem'}}>Patrols Completed</div>
+                </div>
+                <div style={{textAlign:'center',padding:'0.875rem',background:summary?.open_alerts>0?'#fef2f2':'#f8fafc',borderRadius:'8px',border:`1px solid ${summary?.open_alerts>0?'#fca5a5':'#e2e8f0'}`}}>
+                  <div style={{fontSize:'1.5rem',fontWeight:800,color:summary?.open_alerts>0?'#dc2626':'#6b7280'}}>{summary?.open_alerts||0}</div>
+                  <div style={{fontSize:'0.6875rem',color:'#6b7280',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.04em',marginTop:'0.125rem'}}>Open Issues</div>
+                </div>
+              </div>
+              {/* Breakdown */}
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.5rem'}}>
+                {[
+                  { label: 'Incidents', value: summary?.incidents_7d||0, color: '#dc2626' },
+                  { label: 'Vehicle Reports', value: summary?.vehicle_reports_7d||0, color: '#7c3aed' },
+                  { label: 'EH&S Reports', value: summary?.health_safety_7d||0, color: '#f59e0b' },
+                  { label: 'Alarms / Emergency', value: summary?.alarms_7d||0, color: '#ef4444' },
+                ].map((s, i) => (
+                  <div key={i} style={{display:'flex',alignItems:'center',gap:'0.625rem',padding:'0.5rem 0.75rem',background:'#f8fafc',borderRadius:'6px',border:'1px solid #f1f5f9'}}>
+                    <div style={{width:8,height:8,borderRadius:'50%',background:s.color,flexShrink:0}} />
+                    <div style={{flex:1,fontSize:'0.8125rem',color:'#374151'}}>{s.label}</div>
+                    <div style={{fontSize:'0.9375rem',fontWeight:700,color:s.value>0?s.color:'#d1d5db'}}>{s.value}</div>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Hours Delivered */}
