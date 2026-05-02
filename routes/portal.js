@@ -56,7 +56,7 @@ router.get('/summary', portalAuth, async (req, res, next) => {
     const todayStart = new Date(); todayStart.setHours(0,0,0,0);
 
     const [logsRes, alertsRes, activeShiftRes, patrolsRes, siteRes] = await Promise.all([
-      supabase.from('occurrence_logs').select('id, log_type, occurred_at, client_reportable').eq('site_id', site_id).gte('occurred_at', from7d.toISOString()),
+      supabase.from('occurrence_logs').select('id, log_type, occurred_at, client_reportable, type_data').eq('site_id', site_id).gte('occurred_at', from7d.toISOString()),
       supabase.from('client_alerts').select('id, status').eq('site_id', site_id).eq('status', 'open'),
       supabase.from('shifts').select('id, checked_in_at, officer:users!shifts_officer_id_fkey(first_name, last_name, sia_licence_number, sia_licence_type)').eq('site_id', site_id).eq('status', 'ACTIVE'),
       supabase.from('patrol_sessions').select('id, started_at, ended_at, checkpoints_completed').eq('site_id', site_id).gte('started_at', from7d.toISOString()).eq('status', 'completed'),
@@ -91,8 +91,10 @@ router.get('/summary', portalAuth, async (req, res, next) => {
     const vehicleReports = logs.filter(l => l.log_type === 'VEHICLE_CHECK').length;
     const healthSafety = logs.filter(l => l.log_type === 'HEALTH_SAFETY').length;
     const alarms = logs.filter(l => ['ALARM','FIRE_ALARM','EMERGENCY'].includes(l.log_type)).length;
+    const cctvPatrols = logs.filter(l => l.log_type === 'CCTV_CHECK').length;
+    const policeInvolved = logs.filter(l => l.type_data?.police_reported === true).length;
     const totalOccurrences = incidents + vehicleReports + healthSafety + alarms;
-    const patrols_completed = patrols.length;
+    const footPatrols = patrols.length;
 
     res.json({
       data: {
@@ -101,8 +103,11 @@ router.get('/summary', portalAuth, async (req, res, next) => {
         vehicle_reports_7d: vehicleReports,
         health_safety_7d: healthSafety,
         alarms_7d: alarms,
+        police_involved_7d: policeInvolved,
+        cctv_patrols_7d: cctvPatrols,
+        foot_patrols_7d: footPatrols,
         total_occurrences_7d: totalOccurrences,
-        patrols_7d: patrols_completed,
+        patrols_7d: footPatrols,
         patrols_today: patrols.filter(p => new Date(p.started_at) >= todayStart).length,
         open_alerts: (alertsRes.data || []).length,
         on_duty: onDuty,

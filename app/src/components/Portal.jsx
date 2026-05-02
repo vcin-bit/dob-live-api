@@ -198,19 +198,19 @@ function PortalDashboard({ session, onLogout }) {
             {/* Service Delivery Stats */}
             <div className="card" style={{marginBottom:'1.25rem'}}>
               <div className="section-title" style={{marginBottom:'0.875rem'}}>Service Delivery — Last 7 Days</div>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(3, 1fr)',gap:'0.75rem',marginBottom:'1rem'}}>
-                <div style={{textAlign:'center',padding:'0.875rem',background:'#f8fafc',borderRadius:'8px',border:'1px solid #e2e8f0'}}>
-                  <div style={{fontSize:'1.5rem',fontWeight:800,color:'#1a52a8'}}>{summary?.total_occurrences_7d||0}</div>
-                  <div style={{fontSize:'0.6875rem',color:'#6b7280',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.04em',marginTop:'0.125rem'}}>Occurrences Logged</div>
-                </div>
-                <div style={{textAlign:'center',padding:'0.875rem',background:'#f8fafc',borderRadius:'8px',border:'1px solid #e2e8f0'}}>
-                  <div style={{fontSize:'1.5rem',fontWeight:800,color:'#10b981'}}>{summary?.patrols_7d||0}</div>
-                  <div style={{fontSize:'0.6875rem',color:'#6b7280',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.04em',marginTop:'0.125rem'}}>Patrols Completed</div>
-                </div>
-                <div style={{textAlign:'center',padding:'0.875rem',background:summary?.open_alerts>0?'#fef2f2':'#f8fafc',borderRadius:'8px',border:`1px solid ${summary?.open_alerts>0?'#fca5a5':'#e2e8f0'}`}}>
-                  <div style={{fontSize:'1.5rem',fontWeight:800,color:summary?.open_alerts>0?'#dc2626':'#6b7280'}}>{summary?.open_alerts||0}</div>
-                  <div style={{fontSize:'0.6875rem',color:'#6b7280',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.04em',marginTop:'0.125rem'}}>Open Issues</div>
-                </div>
+              {/* Headline stats */}
+              <div style={{display:'grid',gridTemplateColumns:'repeat(4, 1fr)',gap:'0.625rem',marginBottom:'1rem'}}>
+                {[
+                  { label:'Occurrences', value: summary?.total_occurrences_7d||0, color:'#1a52a8' },
+                  { label:'Foot Patrols', value: summary?.foot_patrols_7d||0, color:'#10b981' },
+                  { label:'CCTV Patrols', value: summary?.cctv_patrols_7d||0, color:'#0891b2' },
+                  { label:'Police Involved', value: summary?.police_involved_7d||0, color: (summary?.police_involved_7d||0) > 0 ? '#dc2626' : '#6b7280' },
+                ].map((s,i) => (
+                  <div key={i} style={{textAlign:'center',padding:'0.75rem 0.5rem',background:'#f8fafc',borderRadius:'8px',border:'1px solid #e2e8f0'}}>
+                    <div style={{fontSize:'1.375rem',fontWeight:800,color:s.color}}>{s.value}</div>
+                    <div style={{fontSize:'0.5625rem',color:'#6b7280',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.04em',marginTop:'0.125rem'}}>{s.label}</div>
+                  </div>
+                ))}
               </div>
               {/* Breakdown */}
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.5rem'}}>
