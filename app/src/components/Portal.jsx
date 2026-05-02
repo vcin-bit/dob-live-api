@@ -259,18 +259,34 @@ function PortalDashboard({ session, onLogout }) {
               <div className="empty-state"><p>No alerts</p></div>
             ) : (
               <div style={{display:'flex',flexDirection:'column',gap:'0.625rem'}}>
-                {alerts.map(a => (
-                  <div key={a.id} className="card" style={{borderLeft:`3px solid ${severityColor(a.severity)}`}}>
-                    <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
-                      <div>
-                        <div style={{fontWeight:600,fontSize:'0.9375rem'}}>{a.title}</div>
-                        {a.description && <div style={{fontSize:'0.875rem',color:'var(--text-2)',marginTop:'0.25rem'}}>{a.description}</div>}
-                        <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginTop:'0.25rem'}}>{new Date(a.created_at).toLocaleDateString('en-GB')}</div>
+                {alerts.map(a => {
+                  let responses = [];
+                  try { const parsed = JSON.parse(a.description); if (Array.isArray(parsed)) responses = parsed; } catch {}
+                  const descText = responses.length > 0 ? null : a.description;
+                  return (
+                    <div key={a.id} className="card" style={{borderLeft:`3px solid ${severityColor(a.severity)}`}}>
+                      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
+                        <div style={{flex:1}}>
+                          <div style={{fontWeight:600,fontSize:'0.9375rem'}}>{a.title}</div>
+                          {descText && <div style={{fontSize:'0.875rem',color:'var(--text-2)',marginTop:'0.25rem'}}>{descText}</div>}
+                          <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginTop:'0.25rem'}}>{new Date(a.created_at).toLocaleDateString('en-GB')}</div>
+                        </div>
+                        <span className={`badge ${a.status==='resolved'?'badge-success':'badge-warning'}`}>{a.status}</span>
                       </div>
-                      <span className={`badge ${a.status==='resolved'?'badge-success':'badge-warning'}`}>{a.status}</span>
+                      {responses.length > 0 && (
+                        <div style={{marginTop:'0.75rem',paddingTop:'0.75rem',borderTop:'1px solid var(--border)'}}>
+                          {responses.map((r, i) => (
+                            <div key={i} style={{padding:'0.375rem 0',fontSize:'0.8125rem',color:'var(--text-2)'}}>
+                              <span style={{fontWeight:600,color:'var(--text-1)'}}>{r.name || r.from}</span>
+                              <span style={{color:'var(--text-3)',marginLeft:'0.5rem',fontSize:'0.75rem'}}>{r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : ''}</span>
+                              <div style={{marginTop:'0.125rem'}}>{r.text}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
