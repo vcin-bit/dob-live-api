@@ -109,7 +109,7 @@ function PortalDashboard({ session, onLogout }) {
       try {
         const [sumRes, logsRes, alertsRes, docsRes] = await Promise.all([
           api.portal.summary(token),
-          api.portal.logs(token, { limit: 100 }),
+          api.portal.logs(token, { limit: 500 }),
           api.portal.alerts(token),
           api.portal.documents(token),
         ]);
