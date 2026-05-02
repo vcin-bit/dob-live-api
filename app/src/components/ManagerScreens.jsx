@@ -556,40 +556,72 @@ function SiteManagement({ user }) {
           <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>
         ) : sites.length === 0 ? (
           <div className="empty-state"><p>No sites yet. Add your first site.</p></div>
-        ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Site Name</th>
-                <th>Address</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {sites.map(site => (
-                <tr key={site.id}>
-                  <td style={{fontWeight:500}}><Link to={`/sites/${site.id}`} style={{color:'var(--text)',textDecoration:'none',fontWeight:600}}>{site.name}</Link></td>
-                  <td style={{color:'var(--text-2)'}}>{site.address || '—'}</td>
-                  <td>
-                    <span className={`badge ${site.active !== false ? 'badge-success' : 'badge-neutral'}`}>
-                      {site.active !== false ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td style={{textAlign:'right',display:'flex',gap:'0.5rem',justifyContent:'flex-end'}}>
-                    <Link to={`/sites/${site.id}`} className="btn btn-ghost btn-sm" style={{color:"var(--blue)"}}>Configure</Link>
-                    <button className="btn btn-ghost btn-sm" onClick={() => { setEditSite(site); setShowForm(true); }}>Edit</button>
-                    <button className="btn btn-ghost btn-sm" onClick={() => setPortalSite(site)}>Portal</button>
-                    <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={async () => {
-                      if (!window.confirm(`Delete "${site.name}"? This cannot be undone.`)) return;
-                      try { await api.sites.delete(site.id); load(); } catch(e) { alert(e.message); }
-                    }}>Delete</button>
-                  </td>
+        ) : (() => {
+          // Group sites by client_name
+          const grouped = {};
+          const ungrouped = [];
+          sites.forEach(site => {
+            if (site.client_name) {
+              if (!grouped[site.client_name]) grouped[site.client_name] = [];
+              grouped[site.client_name].push(site);
+            } else {
+              ungrouped.push(site);
+            }
+          });
+          const clientNames = Object.keys(grouped).sort();
+          const SiteRow = ({ site, indent }) => (
+            <tr key={site.id}>
+              <td style={{fontWeight:500,paddingLeft:indent?'2rem':undefined}}>
+                {indent && <span style={{color:'var(--text-3)',marginRight:'0.5rem'}}>└</span>}
+                <Link to={`/sites/${site.id}`} style={{color:'var(--text)',textDecoration:'none',fontWeight:600}}>{site.name}</Link>
+              </td>
+              <td style={{color:'var(--text-2)'}}>{site.address || '—'}</td>
+              <td>
+                <span className={`badge ${site.active !== false ? 'badge-success' : 'badge-neutral'}`}>
+                  {site.active !== false ? 'Active' : 'Inactive'}
+                </span>
+              </td>
+              <td style={{textAlign:'right',display:'flex',gap:'0.5rem',justifyContent:'flex-end'}}>
+                <Link to={`/sites/${site.id}`} className="btn btn-ghost btn-sm" style={{color:"var(--blue)"}}>Configure</Link>
+                <button className="btn btn-ghost btn-sm" onClick={() => { setEditSite(site); setShowForm(true); }}>Edit</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => setPortalSite(site)}>Portal</button>
+                <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={async () => {
+                  if (!window.confirm(`Delete "${site.name}"? This cannot be undone.`)) return;
+                  try { await api.sites.delete(site.id); load(); } catch(e) { alert(e.message); }
+                }}>Delete</button>
+              </td>
+            </tr>
+          );
+          return (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Site Name</th>
+                  <th>Address</th>
+                  <th>Status</th>
+                  <th></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+              </thead>
+              <tbody>
+                {clientNames.map(client => (
+                  <React.Fragment key={client}>
+                    <tr>
+                      <td colSpan={4} style={{background:'var(--surface-2)',padding:'0.625rem 1rem',borderBottom:'1px solid var(--border)'}}>
+                        <div style={{display:'flex',alignItems:'center',gap:'0.5rem'}}>
+                          <BuildingOfficeIcon style={{width:'1rem',height:'1rem',color:'var(--blue)'}} />
+                          <span style={{fontWeight:700,fontSize:'0.875rem',color:'var(--text-1)'}}>{client}</span>
+                          <span style={{fontSize:'0.75rem',color:'var(--text-3)',marginLeft:'0.25rem'}}>{grouped[client].length} site{grouped[client].length!==1?'s':''}</span>
+                        </div>
+                      </td>
+                    </tr>
+                    {grouped[client].map(site => <SiteRow key={site.id} site={site} indent />)}
+                  </React.Fragment>
+                ))}
+                {ungrouped.map(site => <SiteRow key={site.id} site={site} />)}
+              </tbody>
+            </table>
+          );
+        })()}
       </div>
       {showForm && (
         <SiteFormModal
