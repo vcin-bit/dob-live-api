@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <link rel="manifest" href="/manifest.json" />
+    <link rel="manifest" href="/manifest.json" id="pwa-manifest" />
     <meta name="theme-color" content="#0b1222" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -16,6 +16,27 @@
     <meta http-equiv="Expires" content="0">
     <title>DOB Live</title>
     <script>
+      // Swap PWA manifest before Safari reads it — must run synchronously in head
+      (function() {
+        var p = window.location.pathname;
+        var m = document.getElementById('pwa-manifest');
+        var t = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+        var tc = document.querySelector('meta[name="theme-color"]');
+        if (p.indexOf('/inspect') === 0) {
+          if (m) m.setAttribute('href', '/manifest-inspect.json');
+          if (t) t.setAttribute('content', 'Inspection');
+          if (tc) tc.setAttribute('content', '#0b1a3e');
+          document.title = 'Risk Secured — Inspection';
+        } else if (p.indexOf('/hr') === 0) {
+          if (m) m.setAttribute('href', '/manifest-hr.json');
+          if (t) t.setAttribute('content', 'Personnel');
+          if (tc) tc.setAttribute('content', '#0b1a3e');
+          document.title = 'DOB Live — Personnel';
+        } else if (p.indexOf('/portal') === 0) {
+          if (t) t.setAttribute('content', 'Client Portal');
+          document.title = 'DOB Live — Portal';
+        }
+      })();
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(function(registrations) {
           for(let registration of registrations) {
