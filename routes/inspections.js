@@ -326,22 +326,33 @@ async function generatePDF(inspection, site, logoBuffer, photoBuffers, mapBuffer
     doc.rect(M, y, CW, 0.5).fill('#e2e8f0');
     y += 12;
     doc.fontSize(9).fillColor('#374151').font('Helvetica-Bold')
-      .text('Thank you for choosing Risk Secured Ltd', M + 14, y, { width: CW - 28, align: 'center' });
+      .text('Thank you for choosing Risk Secured', M + 14, y, { width: CW - 28, align: 'center' });
+    y += 18;
+    doc.fontSize(8).fillColor('#6b7280').font('Helvetica')
+      .text('We hope you found this report useful. Should you wish to discuss any aspect of this inspection, your property security, retail crime prevention, or any other security requirements, we would be delighted to hear from you. Our team is always available to help.', M + 14, y, { width: CW - 28, align: 'center', lineGap: 3 });
+    y += 52;
+    doc.rect(M + CW * 0.25, y, CW * 0.5, 0.5).fill('#e2e8f0');
+    y += 14;
+    doc.fontSize(9).fillColor('#374151').font('Helvetica-Bold')
+      .text('Did you know?', M + 14, y, { width: CW - 28, align: 'center' });
     y += 16;
     doc.fontSize(8).fillColor('#6b7280').font('Helvetica')
-      .text('If you wish to discuss this report, please contact:', M + 14, y, { width: CW - 28, align: 'center', lineGap: 3 });
-    y += 16;
+      .text('Risk Secured provides complimentary security consultancy surveys for your existing or upcoming vacant properties. Tailored specifically for Aldi Stores Ltd, our surveys identify vulnerabilities and recommend cost-effective measures to protect your assets. Contact David directly to arrange a free, no-obligation assessment.', M + 14, y, { width: CW - 28, align: 'center', lineGap: 3 });
+    y += 58;
+    doc.rect(M + CW * 0.25, y, CW * 0.5, 0.5).fill('#e2e8f0');
+    y += 14;
+    doc.fontSize(8).fillColor('#9ca3af').font('Helvetica-Bold')
+      .text('Risk Secured Ltd — Bespoke Security Solutions', M + 14, y, { width: CW - 28, align: 'center' });
+    y += 14;
+    doc.fontSize(7).fillColor('#9ca3af').font('Helvetica')
+      .text('Property Inspections  |  Retail Security  |  Manned Guarding  |  Mobile Patrols  |  Vacant Property Security  |  Close Protection  |  Risk Consultancy Surveys', M + 14, y, { width: CW - 28, align: 'center', lineGap: 2 });
+    y += 26;
     doc.fontSize(9).fillColor('#374151').font('Helvetica-Bold')
-      .text('David Foster', M + 14, y, { width: CW - 28, align: 'center' });
+      .text('David Foster — Managing Director', M + 14, y, { width: CW - 28, align: 'center' });
     y += 14;
     doc.fontSize(8).fillColor('#6b7280').font('Helvetica')
-      .text('Email: david@risksecured.co.uk  |  Mobile: 07587 865219  |  WhatsApp: 07587 865219', M + 14, y, { width: CW - 28, align: 'center' });
-    y += 20;
-    doc.rect(M + CW * 0.2, y, CW * 0.6, 0.5).fill('#e2e8f0');
-    y += 12;
-    doc.fontSize(8).fillColor('#6b7280').font('Helvetica')
-      .text('Risk Secured Ltd provides bespoke security solutions tailored to protect your assets and operations.', M + 14, y, { width: CW - 28, align: 'center', lineGap: 3 });
-    y += 30;
+      .text('david@risksecured.co.uk  |  07587 865219  |  WhatsApp: 07587 865219', M + 14, y, { width: CW - 28, align: 'center' });
+    y += 22;
     doc.fontSize(8).fillColor('#374151').font('Helvetica-Bold')
       .text('24/7 National Control Room: 01384 218829', M + 14, y, { width: CW - 28, align: 'center' });
     y += 20;
