@@ -15,7 +15,8 @@ function getSg() {
   return sg;
 }
 
-const ALDI_EMAIL = process.env.ALDI_INSPECTION_EMAIL || 'davidfoster7841@gmail.com';
+const ALDI_EMAIL = process.env.ALDI_INSPECTION_EMAIL || 'property.ath@aldi.co.uk';
+const RS_CC_EMAIL = process.env.RS_INSPECTION_CC_EMAIL || 'accounts@risksecured.co.uk';
 const RS_EMAIL = process.env.RS_INSPECTION_FROM_EMAIL || 'reports@risksecured.co.uk';
 
 function downloadImage(url) {
@@ -452,6 +453,7 @@ router.post('/', authenticate, async (req, res, next) => {
       try {
         await sg.send({
           to: ALDI_EMAIL,
+          cc: RS_CC_EMAIL,
           from: { email: RS_EMAIL, name: 'Risk Secured' },
           subject: `Property Inspection — ${site?.name} — ${new Date().toLocaleDateString('en-GB')}`,
           html: `
