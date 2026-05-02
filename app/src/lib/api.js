@@ -327,7 +327,7 @@ export const api = {
     summary: (token) => request('/api/portal/summary', { headers: { Authorization: `Bearer ${token}` } }),
     logs: (token, params = {}) => request(`/api/portal/logs?${new URLSearchParams(params)}`, { headers: { Authorization: `Bearer ${token}` } }),
     alerts: (token, params = {}) => request(`/api/portal/alerts?${new URLSearchParams(params)}`, { headers: { Authorization: `Bearer ${token}` } }),
-    raiseAlert: (token, data) => request('/api/portal/alerts', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(data) }),
+    raiseAlert: (token, data) => request('/api/portal/alerts', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(data) }),
     documents: (token) => request('/api/portal/documents', { headers: { Authorization: `Bearer ${token}` } }),
     saveSettings: (siteId, data) => request(`/api/portal/settings/${siteId}`, { method: 'PUT', body: JSON.stringify(data) }),
   },
