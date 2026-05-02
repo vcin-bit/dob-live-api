@@ -208,7 +208,7 @@ function HRAuthenticated() {
   if (loading) return <Spinner />;
 
   // ── Welcome / GDPR Screen ────────────────────────────────────────────────
-  if (isFirstTime && tab !== 'home') return (
+  if (isFirstTime) return (
     <div style={{minHeight:'100vh',background:'linear-gradient(135deg, #0b1a3e 0%, #1a3a7a 50%, #0b1a3e 100%)'}}>
       <div style={{maxWidth:'560px',margin:'0 auto',padding:'2rem 1.25rem 4rem'}}>
         {/* Welcome header */}
