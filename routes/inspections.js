@@ -16,7 +16,7 @@ function getSg() {
 }
 
 const ALDI_EMAIL = process.env.ALDI_INSPECTION_EMAIL || 'david@risksecured.co.uk';
-const RS_EMAIL = process.env.SENDGRID_FROM_EMAIL || 'onboarding@doblive.co.uk';
+const RS_EMAIL = process.env.RS_INSPECTION_FROM_EMAIL || 'reports@risksecured.co.uk';
 
 function downloadImage(url) {
   return new Promise((resolve) => {
