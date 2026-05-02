@@ -195,8 +195,6 @@ function PortalDashboard({ session, onLogout }) {
 
             {/* Stats */}
             <div className="stats-grid" style={{marginBottom:'1.25rem'}}>
-              <div className="stat-card"><div className="stat-value" style={{color:'#1a52a8'}}>{summary?.patrols_7d||0}</div><div className="stat-label">Patrols (7 days)</div></div>
-              <div className="stat-card"><div className="stat-value">{summary?.patrols_today||0}</div><div className="stat-label">Patrols Today</div></div>
               <div className="stat-card"><div className="stat-value" style={{color:'var(--danger)'}}>{summary?.incidents_7d||0}</div><div className="stat-label">Incidents (7 days)</div></div>
               <div className="stat-card"><div className="stat-value" style={{color:summary?.open_alerts>0?'var(--warning)':'var(--text)'}}>{summary?.open_alerts||0}</div><div className="stat-label">Open Issues</div></div>
             </div>
@@ -210,24 +208,6 @@ function PortalDashboard({ session, onLogout }) {
                     <div style={{width:`${Math.min(100, (summary.hours_delivered_7d / summary.contracted_weekly) * 100)}%`,height:'100%',background: summary.hours_delivered_7d >= summary.contracted_weekly ? '#10b981' : '#3b82f6',borderRadius:'6px'}} />
                   </div>
                   <span style={{fontSize:'0.9375rem',fontWeight:700,whiteSpace:'nowrap'}}>{summary.hours_delivered_7d} / {summary.contracted_weekly} hrs</span>
-                </div>
-              </div>
-            )}
-
-            {/* Recent Patrols */}
-            {(summary?.recent_patrols||[]).length > 0 && (
-              <div className="card" style={{marginBottom:'1.25rem'}}>
-                <div className="section-title" style={{marginBottom:'0.75rem'}}>Recent Patrols</div>
-                <div style={{display:'flex',flexDirection:'column',gap:'0.375rem'}}>
-                  {summary.recent_patrols.map((p, i) => (
-                    <div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.5rem 0',borderBottom:'1px solid #e2e8f0'}}>
-                      <div>
-                        <div style={{fontSize:'0.875rem',fontWeight:500}}>{new Date(p.started_at).toLocaleString('en-GB',{weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}</div>
-                        <div style={{fontSize:'0.75rem',color:'var(--text-3)'}}>{p.checkpoints} checkpoint{p.checkpoints!==1?'s':''} · {p.duration_mins||'?'} mins</div>
-                      </div>
-                      <span className="badge badge-success">Completed</span>
-                    </div>
-                  ))}
                 </div>
               </div>
             )}
