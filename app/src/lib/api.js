@@ -165,6 +165,13 @@ export const api = {
     }),
   },
 
+  // Inspections
+  inspections: {
+    list: (params = {}) => request(`/api/inspections?${new URLSearchParams(params)}`),
+    create: (data) => request('/api/inspections', { method: 'POST', body: JSON.stringify(data) }),
+    getPdf: (id) => request(`/api/inspections/${id}/pdf`),
+  },
+
   // HR
   hr: {
     get: () => request('/api/hr'),
