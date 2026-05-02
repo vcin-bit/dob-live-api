@@ -175,33 +175,18 @@ function ManagerDashboard({ user }) {
             <div className="card" style={{textAlign:'center',padding:'1.5rem',color:'var(--text-3)'}}>No officers currently on duty</div>
           ) : (
             <div style={{display:'flex',flexDirection:'column',gap:'0.625rem'}}>
-              {data.shifts.map(s => {
-                const hrs = (Date.now() - new Date(s.checked_in_at||s.start_time).getTime()) / 3600000;
-                const overdue = hrs > 3;
-                return (
-                  <div key={s.id} style={{display:'flex',alignItems:'center',gap:'0.875rem',padding:'0.875rem 1rem',background:overdue?'rgba(220,38,38,0.05)':'rgba(74,222,128,0.05)',border:`1px solid ${overdue?'rgba(220,38,38,0.2)':'rgba(74,222,128,0.15)'}`,borderRadius:'10px'}}>
-                    <div style={{width:'10px',height:'10px',borderRadius:'50%',background:overdue?'#ef4444':'#4ade80',flexShrink:0,boxShadow:`0 0 6px ${overdue?'#ef4444':'#4ade80'}`}} />
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:'0.9375rem',fontWeight:700}}>{s.officer?`${s.officer.first_name} ${s.officer.last_name}`:'Unknown'}</div>
-                      <div style={{fontSize:'0.75rem',color:'var(--text-2)',marginTop:'1px'}}>
-                        {s.site?.name||'—'} · {shiftDuration(s)} on duty
-                        {overdue && <span style={{color:'var(--danger)',fontWeight:600,marginLeft:'6px'}}>· PATROL OVERDUE</span>}
-                      </div>
-                    </div>
-                    <div style={{display:'flex',gap:'0.5rem',flexShrink:0}}>
-                      <Link to={`/sites/${s.site_id}`} className="btn btn-secondary btn-sm">Site</Link>
-                      {forceEndId === s.id ? (
-                        <>
-                          <button onClick={async()=>{await api.shifts.update(s.id,{status:'COMPLETED',checked_out_at:new Date().toISOString()});setForceEndId(null);load();}} className="btn btn-sm" style={{background:'var(--danger)',color:'#fff',border:'none'}}>Confirm</button>
-                          <button onClick={()=>setForceEndId(null)} className="btn btn-ghost btn-sm">Cancel</button>
-                        </>
-                      ) : (
-                        <button onClick={()=>setForceEndId(s.id)} className="btn btn-sm" style={{background:'rgba(220,38,38,0.1)',border:'1px solid rgba(220,38,38,0.25)',color:'var(--danger)'}}>End</button>
-                      )}
+              {data.shifts.map(s => (
+                <div key={s.id} style={{display:'flex',alignItems:'center',gap:'0.875rem',padding:'0.875rem 1rem',background:'rgba(74,222,128,0.05)',border:'1px solid rgba(74,222,128,0.15)',borderRadius:'10px'}}>
+                  <div style={{width:'10px',height:'10px',borderRadius:'50%',background:'#4ade80',flexShrink:0,boxShadow:'0 0 6px #4ade80'}} />
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:'0.9375rem',fontWeight:700}}>{s.officer?`${s.officer.first_name} ${s.officer.last_name}`:'Unknown'}</div>
+                    <div style={{fontSize:'0.75rem',color:'var(--text-2)',marginTop:'1px'}}>
+                      {s.site?.name||'—'} · {shiftDuration(s)} on duty
                     </div>
                   </div>
-                );
-              })}
+                  <Link to={`/sites/${s.site_id}`} className="btn btn-secondary btn-sm">Site</Link>
+                </div>
+              ))}
             </div>
           )}
         </div>
