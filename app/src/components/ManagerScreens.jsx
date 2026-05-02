@@ -17,6 +17,9 @@ function ManagerDashboard({ user }) {
   const [data, setData] = useState({ shifts:[], incidents:[], recentLogs:[], pendingTasks:0, totalOfficers:0, logsToday:0 });
   const [loading, setLoading] = useState(true);
   const [clientTasks, setClientTasks] = useState([]);
+  const [ctModal, setCtModal] = useState(null);
+  const [ctNotes, setCtNotes] = useState('');
+  const [ctSubmitting, setCtSubmitting] = useState(false);
   const [lastRefresh, setLastRefresh] = useState(null);
   const [refreshPulse, setRefreshPulse] = useState(false);
   const [forceEndId, setForceEndId] = useState(null);
@@ -236,23 +239,65 @@ function ManagerDashboard({ user }) {
             <div style={{display:'flex',flexDirection:'column',gap:'0.5rem'}}>
               {clientTasks.map(t => (
                 <div key={t.id} style={{padding:'0.75rem',background:'rgba(59,130,246,0.04)',border:'1px solid rgba(59,130,246,0.15)',borderRadius:'8px'}}>
-                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'0.75rem'}}>
-                    <div style={{flex:1}}>
-                      <div style={{fontWeight:600,fontSize:'0.875rem'}}>{t.title}</div>
-                      {t.description && <div style={{fontSize:'0.8125rem',color:'var(--text-2)',marginTop:'0.25rem'}}>{t.description}</div>}
-                      <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginTop:'0.25rem'}}>
-                        {t.site?.name && <span style={{fontWeight:600}}>{t.site.name}</span>}
-                        {' — '}{new Date(t.created_at).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}
-                      </div>
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:600,fontSize:'0.875rem'}}>{t.title}</div>
+                    {t.description && <div style={{fontSize:'0.8125rem',color:'var(--text-2)',marginTop:'0.25rem'}}>{t.description}</div>}
+                    <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginTop:'0.25rem'}}>
+                      {t.site?.name && <span style={{fontWeight:600}}>{t.site.name}</span>}
+                      {' — '}{new Date(t.created_at).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}
                     </div>
-                    <button onClick={async () => {
-                      try { await api.alerts.update(t.id, { status: 'resolved' }); setClientTasks(prev => prev.filter(x => x.id !== t.id)); } catch {}
-                    }} className="btn btn-sm" style={{background:'#10b981',color:'#fff',border:'none',borderRadius:'6px',padding:'0.375rem 0.75rem',fontSize:'0.75rem',fontWeight:700,cursor:'pointer',whiteSpace:'nowrap'}}>
-                      Complete
-                    </button>
+                  </div>
+                  <div style={{display:'flex',gap:'0.375rem',marginTop:'0.5rem'}}>
+                    <button onClick={() => { setCtModal({ task:t, outcome:'complete' }); setCtNotes(''); }} className="btn btn-sm" style={{background:'#10b981',color:'#fff',border:'none',borderRadius:'6px',padding:'0.375rem 0.75rem',fontSize:'0.75rem',fontWeight:700,cursor:'pointer'}}>Complete</button>
+                    <button onClick={() => { setCtModal({ task:t, outcome:'unsuccessful' }); setCtNotes(''); }} className="btn btn-sm" style={{background:'rgba(220,38,38,0.1)',color:'var(--danger)',border:'1px solid rgba(220,38,38,0.25)',borderRadius:'6px',padding:'0.375rem 0.75rem',fontSize:'0.75rem',fontWeight:700,cursor:'pointer'}}>Unsuccessful</button>
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Client Task Response Modal */}
+        {ctModal && (
+          <div className="modal-overlay" onClick={() => setCtModal(null)}>
+            <div className="modal" style={{maxWidth:'440px'}} onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <div className="modal-title" style={{color: ctModal.outcome==='complete' ? '#10b981' : 'var(--danger)'}}>
+                  {ctModal.outcome==='complete' ? 'Task Complete' : 'Task Unsuccessful'}
+                </div>
+                <button className="modal-close" onClick={() => setCtModal(null)}>x</button>
+              </div>
+              <div style={{marginBottom:'0.75rem',fontSize:'0.875rem',fontWeight:600}}>{ctModal.task.title}</div>
+              <div className="field">
+                <label className="label">{ctModal.outcome==='complete' ? 'Comments (optional)' : 'Reason *'}</label>
+                <textarea className="input" rows={3} value={ctNotes} onChange={e => setCtNotes(e.target.value)}
+                  placeholder={ctModal.outcome==='complete' ? 'Any notes on what was done...' : 'Why could this task not be completed?'} />
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setCtModal(null)}>Cancel</button>
+                <button className="btn btn-primary" disabled={ctSubmitting || (ctModal.outcome==='unsuccessful' && !ctNotes.trim())}
+                  onClick={async () => {
+                    setCtSubmitting(true);
+                    try {
+                      const name = `${user.first_name} ${user.last_name}`;
+                      const existing = ctModal.task.description || '';
+                      let responses = [];
+                      try { const p = JSON.parse(existing); if (Array.isArray(p)) responses = p; } catch {}
+                      responses.push({
+                        from: 'manager', name, createdAt: new Date().toISOString(),
+                        text: ctModal.outcome==='complete'
+                          ? `✓ Task completed${ctNotes.trim() ? ': ' + ctNotes.trim() : ''}`
+                          : `✗ Unsuccessful: ${ctNotes.trim()}`,
+                      });
+                      await api.alerts.update(ctModal.task.id, { status: 'resolved', description: JSON.stringify(responses) });
+                      setClientTasks(prev => prev.filter(x => x.id !== ctModal.task.id));
+                      setCtModal(null);
+                    } catch {}
+                    setCtSubmitting(false);
+                  }}>
+                  {ctSubmitting ? 'Submitting...' : 'Submit'}
+                </button>
+              </div>
             </div>
           </div>
         )}

@@ -491,6 +491,9 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift, onPatro
   const [activePatrol, setActivePatrol] = useState(false);
   const [showLogMenu, setShowLogMenu] = useState(false);
   const [clientTasks, setClientTasks] = useState([]);
+  const [clientTaskModal, setClientTaskModal] = useState(null);
+  const [clientTaskNotes, setClientTaskNotes] = useState('');
+  const [clientTaskSubmitting, setClientTaskSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [historyDate, setHistoryDate] = useState('');
@@ -628,16 +631,69 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift, onPatro
                   <div style={{fontSize:'0.6875rem',color:'rgba(255,255,255,0.3)',marginTop:'0.375rem'}}>{new Date(task.created_at).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}</div>
                 </div>
               </div>
-              <button onClick={async () => {
-                try {
-                  await api.alerts.update(task.id, { status: 'resolved' });
-                  setClientTasks(prev => prev.filter(t => t.id !== task.id));
-                } catch {}
-              }} style={{width:'100%',marginTop:'0.625rem',padding:'0.625rem',background:'rgba(74,222,128,0.12)',border:'1.5px solid rgba(74,222,128,0.3)',borderRadius:'8px',color:'#4ade80',fontSize:'0.8125rem',fontWeight:700,cursor:'pointer'}}>
-                Mark Complete
-              </button>
+              <div style={{display:'flex',gap:'0.5rem',marginTop:'0.625rem'}}>
+                <button onClick={() => { setClientTaskModal({ task, outcome:'complete' }); setClientTaskNotes(''); }}
+                  style={{flex:1,padding:'0.625rem',background:'rgba(74,222,128,0.12)',border:'1.5px solid rgba(74,222,128,0.3)',borderRadius:'8px',color:'#4ade80',fontSize:'0.8125rem',fontWeight:700,cursor:'pointer'}}>
+                  Complete
+                </button>
+                <button onClick={() => { setClientTaskModal({ task, outcome:'unsuccessful' }); setClientTaskNotes(''); }}
+                  style={{flex:1,padding:'0.625rem',background:'rgba(239,68,68,0.08)',border:'1.5px solid rgba(239,68,68,0.25)',borderRadius:'8px',color:'#ef4444',fontSize:'0.8125rem',fontWeight:700,cursor:'pointer'}}>
+                  Unsuccessful
+                </button>
+              </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Client Task Response Modal */}
+      {clientTaskModal && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',zIndex:9999,display:'flex',alignItems:'flex-end',justifyContent:'center',padding:'1rem'}}>
+          <div style={{background:'#0f1929',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'16px',padding:'1.5rem',width:'100%',maxWidth:'360px'}}>
+            <div style={{fontSize:'15px',fontWeight:700,color: clientTaskModal.outcome==='complete' ? '#4ade80' : '#ef4444',marginBottom:'4px'}}>
+              {clientTaskModal.outcome==='complete' ? 'Task Complete' : 'Task Unsuccessful'}
+            </div>
+            <div style={{fontSize:'13px',color:'rgba(255,255,255,0.5)',marginBottom:'12px'}}>{clientTaskModal.task.title}</div>
+            <div style={{fontSize:'10px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'6px'}}>
+              {clientTaskModal.outcome==='complete' ? 'Comments (optional)' : 'Reason *'}
+            </div>
+            <textarea value={clientTaskNotes} onChange={e => setClientTaskNotes(e.target.value)} rows={3}
+              placeholder={clientTaskModal.outcome==='complete' ? 'Any notes on what was done...' : 'Why could this task not be completed?'}
+              style={{width:'100%',padding:'10px 12px',background:'rgba(255,255,255,0.05)',border:'1.5px solid rgba(255,255,255,0.1)',borderRadius:'8px',color:'#fff',fontSize:'14px',resize:'none',boxSizing:'border-box',fontFamily:'inherit'}} />
+            <div style={{display:'flex',gap:'8px',marginTop:'12px'}}>
+              <button onClick={() => setClientTaskModal(null)}
+                style={{flex:1,padding:'13px',background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'10px',color:'rgba(255,255,255,0.6)',fontSize:'14px',fontWeight:600,cursor:'pointer'}}>
+                Cancel
+              </button>
+              <button disabled={clientTaskSubmitting || (clientTaskModal.outcome==='unsuccessful' && !clientTaskNotes.trim())}
+                onClick={async () => {
+                  setClientTaskSubmitting(true);
+                  try {
+                    const name = `${user.first_name} ${user.last_name}`;
+                    const existing = clientTaskModal.task.description || '';
+                    let responses = [];
+                    try { const p = JSON.parse(existing); if (Array.isArray(p)) responses = p; } catch {}
+                    responses.push({
+                      from: 'officer', name, createdAt: new Date().toISOString(),
+                      text: clientTaskModal.outcome==='complete'
+                        ? `✓ Task completed${clientTaskNotes.trim() ? ': ' + clientTaskNotes.trim() : ''}`
+                        : `✗ Unsuccessful: ${clientTaskNotes.trim()}`,
+                    });
+                    const status = clientTaskModal.outcome==='complete' ? 'resolved' : 'resolved';
+                    await api.alerts.update(clientTaskModal.task.id, { status, description: JSON.stringify(responses) });
+                    setClientTasks(prev => prev.filter(t => t.id !== clientTaskModal.task.id));
+                    setClientTaskModal(null);
+                  } catch {}
+                  setClientTaskSubmitting(false);
+                }}
+                style={{flex:1,padding:'13px',background: clientTaskModal.outcome==='complete' ? 'rgba(74,222,128,0.15)' : 'rgba(239,68,68,0.15)',
+                  border:`1.5px solid ${clientTaskModal.outcome==='complete' ? 'rgba(74,222,128,0.4)' : 'rgba(239,68,68,0.4)'}`,
+                  borderRadius:'10px',color: clientTaskModal.outcome==='complete' ? '#4ade80' : '#ef4444',fontSize:'14px',fontWeight:600,cursor:'pointer',
+                  opacity: (clientTaskSubmitting || (clientTaskModal.outcome==='unsuccessful' && !clientTaskNotes.trim())) ? 0.5 : 1}}>
+                {clientTaskSubmitting ? '...' : 'Submit'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
