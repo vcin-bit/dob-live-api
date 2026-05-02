@@ -369,17 +369,29 @@ function OfficerApp({ user }) {
       </div>
       <OfficerNavigation onSignOut={async () => {
         if (activeShift) {
-          // Check if shift was already expired by cron
           try {
+            // Check if shift was already expired by cron
             const check = await api.shifts.list({ officer_id: user.id, status: 'ACTIVE' });
             if (!check.data || check.data.length === 0) {
-              // Shift was expired — allow sign out
+              // Shift was expired by cron — allow sign out
+              setActiveShift(null);
+              signOut();
+              return;
+            }
+            // Check if shift has passed its scheduled end time
+            const shift = check.data[0];
+            const now = new Date();
+            const endTime = shift.end_time ? new Date(shift.end_time) : null;
+            if (endTime && now >= endTime) {
+              // Past end time — checkout and sign out
+              try { await api.shifts.checkout(shift.id); } catch {}
               setActiveShift(null);
               signOut();
               return;
             }
           } catch {}
-          // Still active — block
+          // Still within shift hours — block with message
+          alert('Your shift has not ended yet. Contact the control room if you need to go off duty early.');
           return;
         }
         signOut();
