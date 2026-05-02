@@ -256,16 +256,32 @@ async function generatePDF(inspection, site, logoBuffer, photoBuffers, mapBuffer
     // LOCATION + MAP
     // ════════════════════════════════════════════════════════════════════
     if (inspection.latitude && inspection.longitude) {
-      const mapH = mapBuffer ? 180 : 30;
-      section('Location Verification', mapH + 30, () => {
-        doc.fontSize(9).fillColor('#475569').font('Helvetica')
-          .text(`GPS Coordinates: ${inspection.latitude.toFixed(6)}, ${inspection.longitude.toFixed(6)}`, M + 14, y + 10);
-        y += 26;
+      const mapH = mapBuffer ? 170 : 30;
+      section('Location Verification', mapH + 20, () => {
         if (mapBuffer) {
+          // Map on left, info on right
+          const mapW = Math.floor(CW * 0.55);
+          const infoX = M + mapW + 20;
+          const infoW = CW - mapW - 34;
           try {
-            doc.image(mapBuffer, M + 14, y, { width: CW - 28, height: 170, fit: [CW - 28, 170] });
+            doc.rect(M + 14, y + 8, mapW - 14, 160).lineWidth(0.5).strokeColor('#d1d5db').stroke();
+            doc.image(mapBuffer, M + 15, y + 9, { width: mapW - 16, height: 158, fit: [mapW - 16, 158] });
           } catch {}
+          doc.fontSize(8).fillColor('#374151').font('Helvetica-Bold')
+            .text('Nearest GPS Fix', infoX, y + 12, { width: infoW });
+          doc.fontSize(8).fillColor('#6b7280').font('Helvetica')
+            .text(`Lat: ${inspection.latitude.toFixed(6)}`, infoX, y + 28, { width: infoW })
+            .text(`Lng: ${inspection.longitude.toFixed(6)}`, infoX, y + 40, { width: infoW });
+          doc.rect(infoX, y + 56, infoW, 0.5).fill('#e2e8f0');
+          doc.fontSize(7).fillColor('#9ca3af').font('Helvetica')
+            .text('GPS coordinates captured at time of inspection to verify site attendance.', infoX, y + 64, { width: infoW, lineGap: 2 });
+          doc.fontSize(7).fillColor('#9ca3af')
+            .text('All images are date and time stamped at point of capture.', infoX, y + 96, { width: infoW, lineGap: 2 });
           y += 176;
+        } else {
+          doc.fontSize(9).fillColor('#475569').font('Helvetica')
+            .text(`GPS Coordinates: ${inspection.latitude.toFixed(6)}, ${inspection.longitude.toFixed(6)}`, M + 14, y + 10);
+          y += 26;
         }
       });
     }
@@ -302,6 +318,25 @@ async function generatePDF(inspection, site, logoBuffer, photoBuffers, mapBuffer
         if (col === 1 || i === validPhotos.length - 1) y += photoH + 16;
       });
     }
+
+    // ════════════════════════════════════════════════════════════════════
+    // CLOSING STATEMENT
+    // ════════════════════════════════════════════════════════════════════
+    checkPage(80);
+    doc.rect(M, y, CW, 0.5).fill('#e2e8f0');
+    y += 12;
+    doc.fontSize(9).fillColor('#374151').font('Helvetica-Bold')
+      .text('Thank you for choosing Risk Secured Ltd', M + 14, y, { width: CW - 28, align: 'center' });
+    y += 16;
+    doc.fontSize(8).fillColor('#6b7280').font('Helvetica')
+      .text('If we can be of any further assistance or you wish to discuss the contents of this report, please do not hesitate to contact us. Risk Secured Ltd provides bespoke security solutions tailored to protect your assets and operations.', M + 14, y, { width: CW - 28, align: 'center', lineGap: 3 });
+    y += 50;
+    doc.fontSize(8).fillColor('#374151').font('Helvetica-Bold')
+      .text('24/7 National Control Room: 01384 218829', M + 14, y, { width: CW - 28, align: 'center' });
+    y += 14;
+    doc.fontSize(7).fillColor('#9ca3af').font('Helvetica')
+      .text('Tel: 0843 122 1247  |  Mobile: 07587 865219  |  Email: reports@risksecured.co.uk  |  www.risksecured.co.uk', M + 14, y, { width: CW - 28, align: 'center' });
+    y += 20;
 
     // ════════════════════════════════════════════════════════════════════
     // FOOTER — on all pages
@@ -392,6 +427,7 @@ router.post('/', authenticate, async (req, res, next) => {
 
     // Email
     const sg = getSg();
+    console.log('[Inspection] SendGrid available:', !!sg, '| From:', RS_EMAIL, '| To:', ALDI_EMAIL);
     if (sg) {
       const pdfBase64 = pdfBuffer.toString('base64');
       try {
@@ -430,7 +466,11 @@ router.post('/', authenticate, async (req, res, next) => {
             type: 'application/pdf', disposition: 'attachment',
           }],
         });
-      } catch (emailErr) { console.error('Email failed:', emailErr.message); }
+        console.log('[Inspection] Email sent successfully to', ALDI_EMAIL);
+      } catch (emailErr) {
+        console.error('[Inspection] Email FAILED:', emailErr.message);
+        if (emailErr.response) console.error('[Inspection] SendGrid response:', JSON.stringify(emailErr.response.body));
+      }
     }
 
     res.status(201).json({ data, pdf_url: publicUrl });
