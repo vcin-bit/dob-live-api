@@ -68,11 +68,15 @@ router.get('/summary', portalAuth, async (req, res, next) => {
     const patrols = patrolsRes.data || [];
     const contractedWeekly = parseFloat(siteRes.data?.contracted_hours_weekly) || 0;
 
-    // Hours delivered this week
-    const weekShiftsRes = await supabase.from('shifts').select('start_time, end_time')
-      .eq('site_id', site_id).gte('start_time', from7d.toISOString());
+    // Hours delivered this week — only COMPLETED/ACTIVE, use actual times where available
+    const weekShiftsRes = await supabase.from('shifts').select('start_time, end_time, checked_in_at, checked_out_at, status')
+      .eq('site_id', site_id).gte('start_time', from7d.toISOString()).in('status', ['COMPLETED', 'ACTIVE']);
     const weekShifts = weekShiftsRes.data || [];
-    const hoursDelivered = weekShifts.reduce((t, s) => t + (s.end_time ? Math.max(0, (new Date(s.end_time) - new Date(s.start_time)) / 3600000) : 0), 0);
+    const hoursDelivered = weekShifts.reduce((t, s) => {
+      const start = s.checked_in_at || s.start_time;
+      const end = s.checked_out_at || s.end_time;
+      return t + (end ? Math.max(0, (new Date(end) - new Date(start)) / 3600000) : 0);
+    }, 0);
 
     // On duty officer info
     const onDuty = activeShifts.length > 0 ? activeShifts.map(s => ({
