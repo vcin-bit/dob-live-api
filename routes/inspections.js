@@ -34,7 +34,7 @@ function downloadImage(url) {
 }
 
 // ── Generate PDF ────────────────────────────────────────────────────────────
-async function generatePDF(inspection, site, logoBuffer, photoBuffers, mapBuffer) {
+async function generatePDF(inspection, site, logoBuffer, photoBuffers, mapBuffer, aldiLogoBuffer) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: 0, bufferPages: true });
     const chunks = [];
@@ -54,29 +54,38 @@ async function generatePDF(inspection, site, logoBuffer, photoBuffers, mapBuffer
     // ════════════════════════════════════════════════════════════════════
     // HEADER — navy band with logo and report title
     // ════════════════════════════════════════════════════════════════════
-    doc.rect(0, 0, W, 100).fill('#0b1a3e');
-    // Blue accent line at top
+    doc.rect(0, 0, W, 120).fill('#0b1a3e');
     doc.rect(0, 0, W, 4).fill('#1a52a8');
 
+    // Risk Secured logo (left)
     if (logoBuffer) {
-      try { doc.image(logoBuffer, M, 20, { height: 50 }); } catch {}
+      try { doc.image(logoBuffer, M, 16, { height: 50 }); } catch {}
     } else {
-      doc.fontSize(24).fillColor('#ffffff').font('Helvetica-Bold').text('RISK SECURED', M, 30);
+      doc.fontSize(22).fillColor('#ffffff').font('Helvetica-Bold').text('RISK SECURED', M, 28);
     }
 
-    doc.fontSize(11).fillColor('#ffffff').font('Helvetica-Bold')
-      .text('PROPERTY INSPECTION REPORT', W - M - 220, 22, { width: 220, align: 'right' });
-    doc.fontSize(9).fillColor('#8899bb')
-      .text(`Ref: ${refNo}`, W - M - 220, 38, { width: 220, align: 'right' })
-      .text(`${dateStr}`, W - M - 220, 52, { width: 220, align: 'right' })
-      .text(`${timeStr}`, W - M - 220, 66, { width: 220, align: 'right' });
+    // Aldi logo (right)
+    if (aldiLogoBuffer) {
+      try { doc.image(aldiLogoBuffer, W - M - 70, 14, { height: 52 }); } catch {}
+    }
 
-    // Aldi badge
-    doc.roundedRect(M, 82, 110, 16, 3).fill('#2a3f6e');
+    // Report title + ref (centre-right)
+    doc.fontSize(12).fillColor('#ffffff').font('Helvetica-Bold')
+      .text('PROPERTY INSPECTION REPORT', W - M - 240, 20, { width: 160, align: 'left' });
+    doc.fontSize(8).fillColor('#8899bb')
+      .text(`Ref: ${refNo}`, W - M - 240, 36, { width: 160, align: 'left' })
+      .text(dateStr, W - M - 240, 48, { width: 160, align: 'left' })
+      .text(timeStr, W - M - 240, 60, { width: 160, align: 'left' });
+
+    // Tagline bar
+    doc.rect(0, 80, W, 24).fill('#0e2252');
     doc.fontSize(8).fillColor('#8899bb').font('Helvetica-Bold')
-      .text('ALDI STORES LTD', M + 8, 86);
+      .text('Risk Secured Ltd — Bespoke Security Solutions for Aldi Stores Ltd', M, 87, { width: CW, align: 'center' });
 
-    let y = 115;
+    // Thin accent under tagline
+    doc.rect(0, 104, W, 2).fill('#1a52a8');
+
+    let y = 120;
 
     // ════════════════════════════════════════════════════════════════════
     // HELPER: boxed section with title bar
@@ -149,7 +158,7 @@ async function generatePDF(inspection, site, logoBuffer, photoBuffers, mapBuffer
     // CATEGORIES
     // ════════════════════════════════════════════════════════════════════
     if (inspection.categories?.length > 0) {
-      section('Reported Categories', 40, () => {
+      section('Observations', 40, () => {
         let cx = M + 14;
         let cy = y + 10;
         inspection.categories.forEach(cat => {
@@ -251,7 +260,7 @@ async function generatePDF(inspection, site, logoBuffer, photoBuffers, mapBuffer
       doc.rect(0, fY + 2, W, 58).fill('#0b1a3e');
 
       doc.fontSize(9).fillColor('#ffffff').font('Helvetica-Bold')
-        .text('Risk Secured Consultancy Ltd', M, fY + 10);
+        .text('Risk Secured Ltd', M, fY + 10);
       doc.fontSize(7).fillColor('#8899bb').font('Helvetica')
         .text('Tel: 0843 122 1247  |  Mobile: 07587 865219  |  Email: david@risksecured.co.uk', M, fY + 24)
         .text('Web: www.risksecured.co.uk  |  24/7 National Control Room: 01384 218829', M, fY + 36);
@@ -296,24 +305,27 @@ router.post('/', authenticate, async (req, res, next) => {
       .from('property_inspections').insert(record).select().single();
     if (error) throw error;
 
-    // Download logo, photos, and static map for PDF embedding
+    // Download logos, photos, and static map for PDF embedding
     const logoUrl = 'https://bxesqjzkuredqzvepomn.supabase.co/storage/v1/object/public/company-logos/4bab41dd-f6a9-4407-983b-d42d32ea1432/logo.png';
+    const aldiLogoUrl = 'https://dm.emea.cms.aldi.cx/is/image/aldiprodeu/aldi_logo_v1?fmt=png&wid=300';
     const mapUrl = latitude && longitude
-      ? `https://staticmap.openstreetmap.de/staticmap.php?center=${latitude},${longitude}&zoom=16&size=800x400&markers=${latitude},${longitude},red-pushpin&maptype=mapnik`
+      ? `https://staticmap.openstreetmap.de/staticmap.php?center=${latitude},${longitude}&zoom=16&size=600x300&markers=${latitude},${longitude},ol-marker&maptype=mapnik`
       : null;
 
     const downloads = [
       downloadImage(logoUrl),
+      downloadImage(aldiLogoUrl),
       ...(media || []).map(m => m.url ? downloadImage(m.url) : Promise.resolve(null)),
     ];
     if (mapUrl) downloads.push(downloadImage(mapUrl));
 
     const results = await Promise.all(downloads);
     const logoBuffer = results[0];
-    const photoBuffers = results.slice(1, 1 + (media || []).length);
+    const aldiLogoBuffer = results[1];
+    const photoBuffers = results.slice(2, 2 + (media || []).length);
     const mapBuffer = mapUrl ? results[results.length - 1] : null;
 
-    const pdfBuffer = await generatePDF(data, site, logoBuffer, photoBuffers, mapBuffer);
+    const pdfBuffer = await generatePDF(data, site, logoBuffer, photoBuffers, mapBuffer, aldiLogoBuffer);
 
     // Upload PDF
     const pdfPath = `${req.user.company_id}/inspections/${data.id}.pdf`;
@@ -361,7 +373,7 @@ router.post('/', authenticate, async (req, res, next) => {
                 <p style="margin:20px 0 0;font-size:12px;color:#9ca3af;">Full report with photographs attached as PDF.</p>
               </div>
               <div style="text-align:center;padding:16px;font-size:11px;color:#9ca3af;">
-                Risk Secured Consultancy Ltd | 24/7 National Control Room: 01384 218829<br/>
+                Risk Secured Ltd | 24/7 National Control Room: 01384 218829<br/>
                 Tel: 0843 122 1247 | Mobile: 07587 865219 | david@risksecured.co.uk | www.risksecured.co.uk
               </div>
             </div>

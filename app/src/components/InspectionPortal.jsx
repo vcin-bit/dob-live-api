@@ -7,8 +7,8 @@ import { compressImage, isImage } from '../lib/imageUtils';
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const LOGO_URL = 'https://bxesqjzkuredqzvepomn.supabase.co/storage/v1/object/public/company-logos/4bab41dd-f6a9-4407-983b-d42d32ea1432/logo.png';
 
-const CATEGORIES = [
-  'Fly Tipping','Forced Entry','Travellers','Safety Concern',
+const OBSERVATIONS = [
+  'Nothing to Report','Fly Tipping','Forced Entry','Travellers','Safety Concern',
   'Property Breached','Criminal Damage','Graffiti','Suspicious Activity',
   'Anti-Social Behaviour','Fire Risk','Water Leak','Broken Fencing',
   'Lighting Issue','Other'
@@ -75,7 +75,7 @@ function InspectLogin() {
           </form>
         </div>
         <div style={{textAlign:'center',marginTop:'1.5rem',fontSize:'0.6875rem',color:'rgba(255,255,255,0.3)'}}>
-          Risk Secured Consultancy Ltd | 24/7 Control Room: 01384 218829
+          Risk Secured Ltd | 24/7 Control Room: 01384 218829
         </div>
       </div>
     </div>
@@ -290,12 +290,12 @@ function InspectAuthenticated() {
           </div>
         </div>
 
-        {/* Categories */}
-        {form.new_to_report && (
+        {/* Observations */}
+        {form.new_to_report !== null && (
           <div style={S.section}>
-            <div style={S.sectionTitle}>Categories (select all that apply)</div>
+            <div style={S.sectionTitle}>Observations (select all that apply)</div>
             <div style={{display:'flex',flexWrap:'wrap',gap:'0.5rem'}}>
-              {CATEGORIES.map(cat => {
+              {OBSERVATIONS.map(cat => {
                 const sel = form.categories.includes(cat);
                 return (
                   <button key={cat} onClick={() => toggleCat(cat)}
@@ -382,7 +382,7 @@ function InspectAuthenticated() {
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:'1rem'}}>
             <div>
               <img src={LOGO_URL} alt="Risk Secured" style={{maxHeight:'24px',maxWidth:'120px',objectFit:'contain',marginBottom:'0.5rem',opacity:0.7}} />
-              <div style={{fontSize:'0.625rem',color:'rgba(255,255,255,0.3)'}}>Risk Secured Consultancy Ltd</div>
+              <div style={{fontSize:'0.625rem',color:'rgba(255,255,255,0.3)'}}>Risk Secured Ltd</div>
             </div>
             <div style={{textAlign:'right'}}>
               <div style={{fontSize:'0.6875rem',color:'rgba(255,255,255,0.5)',marginBottom:'0.25rem'}}>
