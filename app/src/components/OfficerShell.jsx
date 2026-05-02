@@ -11,7 +11,6 @@ import PlaybookAlerts from './PlaybookAlerts';
 import PatrolScreen, { PatrolHistoryOfficerScreen } from './PatrolScreen';
 import { HandoverScreen } from './HandoverScreen';
 import OfficerVisitorsScreen from './OfficerVisitors';
-import OfficerHR from './OfficerHR';
 import {
   HomeIcon, ClipboardDocumentListIcon, MapPinIcon, ClockIcon,
   UserGroupIcon, Cog6ToothIcon, PlusIcon, ArrowRightOnRectangleIcon,
@@ -373,7 +372,6 @@ function OfficerApp({ user }) {
         <Route path="/handover" element={<HandoverScreen user={user} site={selectedSite} shift={activeShift} onShiftEnded={() => { setActiveShift(null); }} />} />
         <Route path="/visitors" element={<OfficerVisitorsScreen site={selectedSite} />} />
           <Route path="/profile" element={<OfficerProfile user={user} />} />
-          <Route path="/hr" element={<OfficerHR user={user} />} />
         <Route path="/policies" element={<OfficerPoliciesScreen user={user} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

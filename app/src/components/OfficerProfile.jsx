@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { useUser, useClerk } from '@clerk/clerk-react';
 import { api } from '../lib/api';
 
@@ -156,11 +155,6 @@ export default function OfficerProfile({ user }) {
           </div>
         )}
       </div>
-
-      {/* HR Self-Service */}
-      <Link to="/hr" style={{display:'block',width:'100%',padding:'14px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'10px',color:'rgba(255,255,255,0.7)',fontSize:'14px',fontWeight:600,textDecoration:'none',textAlign:'center',marginBottom:'12px'}}>
-        HR Self-Service →
-      </Link>
 
       {/* Check Call PINs */}
       <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'12px',padding:'1rem',marginTop:'1rem'}}>
