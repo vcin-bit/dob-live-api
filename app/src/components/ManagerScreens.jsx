@@ -40,7 +40,7 @@ function ManagerDashboard({ user }) {
       // Fetch client tasks
       try { const ctRes = await api.alerts.list({ status: 'open' }); setClientTasks(ctRes.data || []); } catch {}
       const todayLogs = todayLogsRes.data || [];
-      const incidents = todayLogs.filter(l => ['INCIDENT','ALARM','FIRE_ALARM','EMERGENCY'].includes(l.log_type));
+      const incidents = todayLogs.filter(l => ['INCIDENT','ALARM','FIRE_ALARM','EMERGENCY'].includes(l.log_type) && l.review_status !== 'RESOLVED');
       const doneList = todayLogs.filter(l => l.type_data?.scheduled_task_id);
       const tasksDone = doneList.length;
       setTasksDueList(tasksRes.data || []);
