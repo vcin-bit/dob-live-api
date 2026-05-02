@@ -20,6 +20,7 @@ function ManagerDashboard({ user }) {
   const [ctModal, setCtModal] = useState(null);
   const [ctNotes, setCtNotes] = useState('');
   const [ctSubmitting, setCtSubmitting] = useState(false);
+  const [ctFilter, setCtFilter] = useState('open');
   const [lastRefresh, setLastRefresh] = useState(null);
   const [refreshPulse, setRefreshPulse] = useState(false);
   const [forceEndId, setForceEndId] = useState(null);
@@ -41,7 +42,7 @@ function ManagerDashboard({ user }) {
         api.users.list({ role: 'OFFICER' }),
       ]);
       // Fetch client tasks
-      try { const ctRes = await api.alerts.list({ status: 'open' }); setClientTasks(ctRes.data || []); } catch {}
+      try { const ctRes = await api.alerts.list(); setClientTasks(ctRes.data || []); } catch {}
       const todayLogs = todayLogsRes.data || [];
       const incidents = todayLogs.filter(l => ['INCIDENT','ALARM','FIRE_ALARM','EMERGENCY'].includes(l.log_type) && l.review_status !== 'RESOLVED');
       const doneList = todayLogs.filter(l => l.type_data?.scheduled_task_id);
@@ -234,25 +235,64 @@ function ManagerDashboard({ user }) {
         {clientTasks.length > 0 && (
           <div className="card" style={{marginBottom:'1.25rem',borderLeft:'3px solid #3b82f6'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.75rem'}}>
-              <div className="section-title" style={{margin:0,color:'#3b82f6'}}>Client Tasks ({clientTasks.length} open)</div>
+              <div className="section-title" style={{margin:0,color:'#3b82f6'}}>Client Tasks</div>
+              <div style={{display:'flex',gap:'0.25rem'}}>
+                {[
+                  { label:'Open', value:'open', count: clientTasks.filter(t=>t.status==='open').length, color:'#3b82f6' },
+                  { label:'Done', value:'resolved', count: clientTasks.filter(t=>t.status==='resolved').length, color:'#10b981' },
+                  { label:'Failed', value:'unsuccessful', count: clientTasks.filter(t=>t.status==='unsuccessful').length, color:'var(--danger)' },
+                  { label:'All', value:'', count: clientTasks.length },
+                ].map(f => (
+                  <button key={f.value} onClick={() => setCtFilter(f.value)}
+                    style={{padding:'0.1875rem 0.5rem',borderRadius:'999px',border:`1px solid ${ctFilter===f.value ? (f.color||'#374151') : 'var(--border)'}`,
+                      background:ctFilter===f.value ? (f.color||'#374151') : 'transparent',
+                      color:ctFilter===f.value ? '#fff' : 'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,cursor:'pointer'}}>
+                    {f.label} {f.count > 0 ? `(${f.count})` : ''}
+                  </button>
+                ))}
+              </div>
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:'0.5rem'}}>
-              {clientTasks.map(t => (
-                <div key={t.id} style={{padding:'0.75rem',background:'rgba(59,130,246,0.04)',border:'1px solid rgba(59,130,246,0.15)',borderRadius:'8px'}}>
-                  <div style={{flex:1}}>
-                    <div style={{fontWeight:600,fontSize:'0.875rem'}}>{t.title}</div>
-                    {t.description && <div style={{fontSize:'0.8125rem',color:'var(--text-2)',marginTop:'0.25rem'}}>{t.description}</div>}
-                    <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginTop:'0.25rem'}}>
-                      {t.site?.name && <span style={{fontWeight:600}}>{t.site.name}</span>}
-                      {' — '}{new Date(t.created_at).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}
+              {clientTasks.filter(t => !ctFilter || t.status === ctFilter).map(t => {
+                const borderColor = t.status==='resolved' ? '#10b981' : t.status==='unsuccessful' ? 'var(--danger)' : 'rgba(59,130,246,0.3)';
+                const bgColor = t.status==='resolved' ? 'rgba(16,185,129,0.04)' : t.status==='unsuccessful' ? 'rgba(220,38,38,0.04)' : 'rgba(59,130,246,0.04)';
+                let responses = [];
+                try { const p = JSON.parse(t.description); if (Array.isArray(p)) responses = p; } catch {}
+                return (
+                  <div key={t.id} style={{padding:'0.75rem',background:bgColor,border:`1px solid ${borderColor}`,borderRadius:'8px'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+                      <div style={{flex:1}}>
+                        <div style={{fontWeight:600,fontSize:'0.875rem'}}>{t.title}</div>
+                        <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginTop:'0.25rem'}}>
+                          {t.site?.name && <span style={{fontWeight:600}}>{t.site.name}</span>}
+                          {' — '}{new Date(t.created_at).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}
+                        </div>
+                      </div>
+                      <span className={`badge ${t.status==='resolved'?'badge-success':t.status==='unsuccessful'?'badge-danger':'badge-blue'}`} style={{fontSize:'0.625rem'}}>
+                        {t.status==='resolved'?'Complete':t.status==='unsuccessful'?'Unsuccessful':'Open'}
+                      </span>
                     </div>
+                    {responses.length > 0 && (
+                      <div style={{marginTop:'0.5rem',paddingTop:'0.5rem',borderTop:'1px solid var(--border)'}}>
+                        {responses.map((r,i) => (
+                          <div key={i} style={{fontSize:'0.75rem',color:'var(--text-2)',padding:'0.125rem 0'}}>
+                            <span style={{fontWeight:600}}>{r.name}</span>: {r.text}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {t.status === 'open' && (
+                      <div style={{display:'flex',gap:'0.375rem',marginTop:'0.5rem'}}>
+                        <button onClick={() => { setCtModal({ task:t, outcome:'complete' }); setCtNotes(''); }} className="btn btn-sm" style={{background:'#10b981',color:'#fff',border:'none',borderRadius:'6px',padding:'0.375rem 0.75rem',fontSize:'0.75rem',fontWeight:700,cursor:'pointer'}}>Complete</button>
+                        <button onClick={() => { setCtModal({ task:t, outcome:'unsuccessful' }); setCtNotes(''); }} className="btn btn-sm" style={{background:'rgba(220,38,38,0.1)',color:'var(--danger)',border:'1px solid rgba(220,38,38,0.25)',borderRadius:'6px',padding:'0.375rem 0.75rem',fontSize:'0.75rem',fontWeight:700,cursor:'pointer'}}>Unsuccessful</button>
+                      </div>
+                    )}
                   </div>
-                  <div style={{display:'flex',gap:'0.375rem',marginTop:'0.5rem'}}>
-                    <button onClick={() => { setCtModal({ task:t, outcome:'complete' }); setCtNotes(''); }} className="btn btn-sm" style={{background:'#10b981',color:'#fff',border:'none',borderRadius:'6px',padding:'0.375rem 0.75rem',fontSize:'0.75rem',fontWeight:700,cursor:'pointer'}}>Complete</button>
-                    <button onClick={() => { setCtModal({ task:t, outcome:'unsuccessful' }); setCtNotes(''); }} className="btn btn-sm" style={{background:'rgba(220,38,38,0.1)',color:'var(--danger)',border:'1px solid rgba(220,38,38,0.25)',borderRadius:'6px',padding:'0.375rem 0.75rem',fontSize:'0.75rem',fontWeight:700,cursor:'pointer'}}>Unsuccessful</button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
+              {clientTasks.filter(t => !ctFilter || t.status === ctFilter).length === 0 && (
+                <div style={{padding:'1rem',textAlign:'center',color:'var(--text-3)',fontSize:'0.8125rem'}}>No {ctFilter || ''} tasks</div>
+              )}
             </div>
           </div>
         )}
