@@ -1,0 +1,14 @@
+{
+  "name": "DOB Live — Personnel Portal",
+  "short_name": "Personnel",
+  "description": "HR Self-Service Portal",
+  "start_url": "/hr",
+  "scope": "/hr",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#0b1a3e",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

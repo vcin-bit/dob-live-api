@@ -15,6 +15,20 @@ const OBSERVATIONS = [
 ];
 
 export function InspectionPortalApp() {
+  // Swap PWA manifest so "Add to Home Screen" opens /inspect not /
+  useEffect(() => {
+    const link = document.querySelector('link[rel="manifest"]');
+    if (link) link.setAttribute('href', '/manifest-inspect.json');
+    // Set theme color for this portal
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', '#0b1a3e');
+    document.title = 'Risk Secured — Property Inspection';
+    return () => {
+      if (link) link.setAttribute('href', '/manifest.json');
+      document.title = 'DOB Live';
+    };
+  }, []);
+
   return (
     <ClerkProvider publishableKey={clerkPubKey} signInFallbackRedirectUrl="/inspect" signUpFallbackRedirectUrl="/inspect">
       <SignedOut><InspectLogin /></SignedOut>

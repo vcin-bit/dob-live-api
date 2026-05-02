@@ -7,6 +7,13 @@ const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const SIA_TYPES = ['Security Guarding','Door Supervisor','CCTV Operator','Close Protection','Vehicle Immobiliser','Key Holding'];
 
 export function HRPortalApp() {
+  useEffect(() => {
+    const link = document.querySelector('link[rel="manifest"]');
+    if (link) link.setAttribute('href', '/manifest-hr.json');
+    document.title = 'DOB Live — Personnel Portal';
+    return () => { if (link) link.setAttribute('href', '/manifest.json'); document.title = 'DOB Live'; };
+  }, []);
+
   return (
     <ClerkProvider publishableKey={clerkPubKey} signInFallbackRedirectUrl="/hr" signUpFallbackRedirectUrl="/hr">
       <SignedOut><HRLogin /></SignedOut>
