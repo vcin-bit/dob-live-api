@@ -103,6 +103,8 @@ function PortalDashboard({ session, onLogout }) {
   const [loading, setLoading] = useState(true);
   const [showRaiseAlert, setShowRaiseAlert] = useState(false);
   const [logTypeFilter, setLogTypeFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState(() => { const d = new Date(); d.setDate(d.getDate() - d.getDay() + 1); return d.toLocaleDateString('en-CA', {timeZone:'Europe/London'}); });
+  const [dateTo, setDateTo] = useState(() => new Date().toLocaleDateString('en-CA', {timeZone:'Europe/London'}));
 
   useEffect(() => {
     async function load() {
@@ -302,8 +304,22 @@ function PortalDashboard({ session, onLogout }) {
           </div>
         ) : tab === 'incidents' ? (
           <div>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1rem'}}>
-              <div className="section-title" style={{margin:0}}>Occurrence Reports</div>
+            <div style={{marginBottom:'1rem'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.75rem'}}>
+                <div className="section-title" style={{margin:0}}>Occurrence Reports</div>
+              </div>
+              {/* Date range */}
+              <div style={{display:'flex',gap:'0.5rem',alignItems:'center',marginBottom:'0.75rem',flexWrap:'wrap'}}>
+                <span style={{fontSize:'0.75rem',color:'#6b7280',fontWeight:600}}>From</span>
+                <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{padding:'0.375rem 0.5rem',border:'1px solid #d1d5db',borderRadius:'6px',fontSize:'0.8125rem',color:'#374151',background:'#fff'}} />
+                <span style={{fontSize:'0.75rem',color:'#6b7280',fontWeight:600}}>To</span>
+                <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{padding:'0.375rem 0.5rem',border:'1px solid #d1d5db',borderRadius:'6px',fontSize:'0.8125rem',color:'#374151',background:'#fff'}} />
+                <button onClick={() => { const d=new Date(); d.setDate(d.getDate()-d.getDay()+1); setDateFrom(d.toLocaleDateString('en-CA',{timeZone:'Europe/London'})); setDateTo(new Date().toLocaleDateString('en-CA',{timeZone:'Europe/London'})); }}
+                  style={{padding:'0.375rem 0.625rem',border:'1px solid #d1d5db',borderRadius:'6px',fontSize:'0.75rem',color:'#6b7280',background:'#f9fafb',cursor:'pointer',fontWeight:500}}>This Week</button>
+                <button onClick={() => { const d=new Date(); d.setDate(1); setDateFrom(d.toLocaleDateString('en-CA',{timeZone:'Europe/London'})); setDateTo(new Date().toLocaleDateString('en-CA',{timeZone:'Europe/London'})); }}
+                  style={{padding:'0.375rem 0.625rem',border:'1px solid #d1d5db',borderRadius:'6px',fontSize:'0.75rem',color:'#6b7280',background:'#f9fafb',cursor:'pointer',fontWeight:500}}>This Month</button>
+              </div>
+              {/* Type pills */}
               <div style={{display:'flex',gap:'0.375rem',flexWrap:'wrap'}}>
                 {[
                   { label:'All', value:'' },
@@ -321,26 +337,40 @@ function PortalDashboard({ session, onLogout }) {
             </div>
             {(() => {
               const relevantTypes = ['INCIDENT','VEHICLE_CHECK','HEALTH_SAFETY','ALARM','FIRE_ALARM','EMERGENCY'];
-              const filtered = logs.filter(l => relevantTypes.includes(l.log_type) && (!logTypeFilter || l.log_type === logTypeFilter || (logTypeFilter === 'ALARM' && ['ALARM','FIRE_ALARM','EMERGENCY'].includes(l.log_type))));
+              const fromDate = dateFrom ? new Date(dateFrom + 'T00:00:00') : null;
+              const toDate = dateTo ? new Date(dateTo + 'T23:59:59') : null;
+              const filtered = logs.filter(l => {
+                if (!relevantTypes.includes(l.log_type)) return false;
+                if (logTypeFilter && l.log_type !== logTypeFilter && !(logTypeFilter === 'ALARM' && ['ALARM','FIRE_ALARM','EMERGENCY'].includes(l.log_type))) return false;
+                const d = new Date(l.occurred_at);
+                if (fromDate && d < fromDate) return false;
+                if (toDate && d > toDate) return false;
+                return true;
+              });
               const typeLabels = { INCIDENT:'Incident', VEHICLE_CHECK:'Vehicle Report', HEALTH_SAFETY:'EH&S', ALARM:'Alarm', FIRE_ALARM:'Fire Alarm', EMERGENCY:'Emergency' };
               const typeBorders = { INCIDENT:'#dc2626', VEHICLE_CHECK:'#7c3aed', HEALTH_SAFETY:'#f59e0b', ALARM:'#ef4444', FIRE_ALARM:'#ef4444', EMERGENCY:'#ef4444' };
-              return filtered.length === 0 ? <div className="empty-state"><p>No occurrence reports{logTypeFilter ? ' for this category' : ''}</p></div> : (
-                <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
-                  {filtered.map(l => (
-                    <div key={l.id} className="card" style={{borderLeft:`3px solid ${typeBorders[l.log_type]||'#6b7280'}`}}>
-                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
-                        <div style={{flex:1}}>
-                          <div style={{fontWeight:600,fontSize:'0.9375rem'}}>{l.title||typeLabels[l.log_type]||'Report'}</div>
-                          {l.description && <div style={{fontSize:'0.875rem',color:'var(--text-2)',marginTop:'0.25rem',lineHeight:1.5}}>{l.description}</div>}
-                          <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginTop:'0.5rem'}}>
-                            {new Date(l.occurred_at).toLocaleString('en-GB',{weekday:'short',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}
+              return (
+                <>
+                  <div style={{fontSize:'0.75rem',color:'#9ca3af',marginBottom:'0.75rem'}}>{filtered.length} occurrence{filtered.length!==1?'s':''} found</div>
+                  {filtered.length === 0 ? <div className="empty-state"><p>No occurrence reports for this period</p></div> : (
+                    <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
+                      {filtered.map(l => (
+                        <div key={l.id} className="card" style={{borderLeft:`3px solid ${typeBorders[l.log_type]||'#6b7280'}`}}>
+                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+                            <div style={{flex:1}}>
+                              <div style={{fontWeight:600,fontSize:'0.9375rem'}}>{l.title||typeLabels[l.log_type]||'Report'}</div>
+                              {l.description && <div style={{fontSize:'0.875rem',color:'var(--text-2)',marginTop:'0.25rem',lineHeight:1.5}}>{l.description}</div>}
+                              <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginTop:'0.5rem'}}>
+                                {new Date(l.occurred_at).toLocaleString('en-GB',{weekday:'short',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}
+                              </div>
+                            </div>
+                            <span style={{padding:'0.125rem 0.5rem',borderRadius:'999px',fontSize:'0.6875rem',fontWeight:700,background:`${typeBorders[l.log_type]||'#6b7280'}15`,color:typeBorders[l.log_type]||'#6b7280',border:`1px solid ${typeBorders[l.log_type]||'#6b7280'}30`,whiteSpace:'nowrap'}}>{typeLabels[l.log_type]||l.log_type}</span>
                           </div>
                         </div>
-                        <span style={{padding:'0.125rem 0.5rem',borderRadius:'999px',fontSize:'0.6875rem',fontWeight:700,background:`${typeBorders[l.log_type]||'#6b7280'}15`,color:typeBorders[l.log_type]||'#6b7280',border:`1px solid ${typeBorders[l.log_type]||'#6b7280'}30`,whiteSpace:'nowrap'}}>{typeLabels[l.log_type]||l.log_type}</span>
-                      </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  )}
+                </>
               );
             })()}
           </div>
