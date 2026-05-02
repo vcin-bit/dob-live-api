@@ -53,6 +53,24 @@ router.post('/documents', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'O
   } catch (err) { next(err); }
 });
 
+// GET signed URL for a document
+router.get('/documents/:id/signed', authenticate, async (req, res, next) => {
+  try {
+    const { data: doc, error } = await supabase.from('site_documents').select('storage_path').eq('id', req.params.id).eq('company_id', req.user.company_id).single();
+    if (error || !doc?.storage_path) return res.status(404).json({ error: 'Document not found' });
+    // Try hr-documents bucket first (inspections), then patrol-media
+    let signed;
+    const { data: s1, error: e1 } = await supabase.storage.from('hr-documents').createSignedUrl(doc.storage_path, 300);
+    if (!e1 && s1?.signedUrl) { signed = s1; }
+    else {
+      const { data: s2, error: e2 } = await supabase.storage.from('patrol-media').createSignedUrl(doc.storage_path, 300);
+      if (!e2 && s2?.signedUrl) signed = s2;
+    }
+    if (!signed) return res.status(404).json({ error: 'File not found in storage' });
+    res.json({ data: { url: signed.signedUrl } });
+  } catch (err) { next(err); }
+});
+
 router.delete('/documents/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
   try {
     const { error } = await supabase.from('site_documents').delete().eq('id', req.params.id).eq('company_id', req.user.company_id);

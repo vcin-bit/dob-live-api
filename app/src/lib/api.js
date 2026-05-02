@@ -245,6 +245,7 @@ export const api = {
       list: (params = {}) => request(`/api/folders/documents?${new URLSearchParams(params)}`),
       create: (data) => request('/api/folders/documents', { method: 'POST', body: JSON.stringify(data) }),
       delete: (id) => request(`/api/folders/documents/${id}`, { method: 'DELETE' }),
+      getSigned: (id) => request(`/api/folders/documents/${id}/signed`),
     },
   },
   patrols: {

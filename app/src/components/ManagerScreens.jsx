@@ -1731,7 +1731,7 @@ function SiteDetail({ user }) {
       </div>
       {/* Tab bar */}
       <div style={{display:'flex',gap:0,borderBottom:'1px solid var(--border)',padding:'0 1.5rem',background:'var(--surface)'}}>
-        {[{key:'info',label:'Site Info'},{key:'logs',label:'Recent Logs'},{key:'roster',label:'Roster'},{key:'officers',label:'Officers'},{key:'visitors',label:'Visitors'},{key:'codes',label:'Codes'},{key:'playbook',label:'Virtual Supervisor'}].map(t => (
+        {[{key:'info',label:'Site Info'},{key:'logs',label:'Recent Logs'},{key:'roster',label:'Roster'},{key:'officers',label:'Officers'},{key:'visitors',label:'Visitors'},{key:'documents',label:'Documents'},{key:'codes',label:'Codes'},{key:'playbook',label:'Virtual Supervisor'}].map(t => (
           <button key={t.key} onClick={() => setActiveTab(t.key)}
             style={{padding:'0.75rem 1rem',background:'none',border:'none',borderBottom:`2px solid ${activeTab===t.key?'var(--blue)':'transparent'}`,color:activeTab===t.key?'var(--blue)':'var(--text-2)',fontSize:'0.875rem',fontWeight:600,cursor:'pointer',marginBottom:'-1px',whiteSpace:'nowrap'}}>
             {t.label}
@@ -1802,6 +1802,7 @@ function SiteDetail({ user }) {
           </div>
         )}
         {activeTab === 'visitors' && <SiteVisitorsTab siteId={id} />}
+        {activeTab === 'documents' && <SiteDocumentsTab siteId={id} />}
         {activeTab === 'codes' && <SiteCodesTab siteId={id} />}
         {activeTab === 'info' && <div>
         <div className="card" style={{marginBottom:'1rem'}}>
@@ -2753,6 +2754,62 @@ function SiteVisitorsTab({ siteId }) {
                 <td style={{fontSize:'0.8125rem',color:'var(--text-2)',whiteSpace:'nowrap'}}>{v.time_out ? `${fmtDate(v.time_out)} ${fmtTime(v.time_out)}` : '—'}</td>
                 <td><span className={`badge ${v.status==='on_site'?'badge-success':'badge-neutral'}`}>{v.status==='on_site'?'ON SITE':'OFF SITE'}</span></td>
                 <td style={{color:'var(--text-2)',fontSize:'0.8125rem'}}>{v.officer?`${v.officer.first_name} ${v.officer.last_name}`:'—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+function SiteDocumentsTab({ siteId }) {
+  const [docs, setDocs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.folders.documents.list({ site_id: siteId })
+      .then(res => setDocs(res.data || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [siteId]);
+
+  async function viewDoc(doc) {
+    try {
+      const res = await api.folders.documents.getSigned(doc.id);
+      if (res.data?.url) window.open(res.data.url, '_blank');
+      else alert('Could not open document');
+    } catch { alert('Could not open document'); }
+  }
+
+  if (loading) return <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>;
+
+  return (
+    <div>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'1rem'}}>
+        <div style={{fontSize:'0.875rem',fontWeight:700,color:'var(--text-1)'}}>Documents ({docs.length})</div>
+      </div>
+      {docs.length === 0 ? (
+        <div className="empty-state"><p>No documents for this site yet</p></div>
+      ) : (
+        <table className="table">
+          <thead><tr><th>Document</th><th>Uploaded By</th><th>Date</th><th></th></tr></thead>
+          <tbody>
+            {docs.map(doc => (
+              <tr key={doc.id}>
+                <td>
+                  <div style={{fontWeight:600}}>{doc.name || doc.original_name}</div>
+                  <div style={{fontSize:'0.75rem',color:'var(--text-3)'}}>{doc.mime_type}</div>
+                </td>
+                <td style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>
+                  {doc.uploader ? `${doc.uploader.first_name} ${doc.uploader.last_name}` : '—'}
+                </td>
+                <td style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>
+                  {doc.created_at ? new Date(doc.created_at).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}) : '—'}
+                </td>
+                <td style={{textAlign:'right'}}>
+                  <button className="btn btn-ghost btn-sm" style={{color:'var(--blue)'}} onClick={() => viewDoc(doc)}>View</button>
+                </td>
               </tr>
             ))}
           </tbody>
