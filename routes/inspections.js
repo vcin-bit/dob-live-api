@@ -329,13 +329,21 @@ async function generatePDF(inspection, site, logoBuffer, photoBuffers, mapBuffer
       .text('Thank you for choosing Risk Secured Ltd', M + 14, y, { width: CW - 28, align: 'center' });
     y += 16;
     doc.fontSize(8).fillColor('#6b7280').font('Helvetica')
-      .text('If we can be of any further assistance or you wish to discuss the contents of this report, please do not hesitate to contact us. Risk Secured Ltd provides bespoke security solutions tailored to protect your assets and operations.', M + 14, y, { width: CW - 28, align: 'center', lineGap: 3 });
-    y += 50;
+      .text('If you wish to discuss this report, please contact:', M + 14, y, { width: CW - 28, align: 'center', lineGap: 3 });
+    y += 16;
+    doc.fontSize(9).fillColor('#374151').font('Helvetica-Bold')
+      .text('David Foster', M + 14, y, { width: CW - 28, align: 'center' });
+    y += 14;
+    doc.fontSize(8).fillColor('#6b7280').font('Helvetica')
+      .text('Email: david@risksecured.co.uk  |  Mobile: 07587 865219  |  WhatsApp: 07587 865219', M + 14, y, { width: CW - 28, align: 'center' });
+    y += 20;
+    doc.rect(M + CW * 0.2, y, CW * 0.6, 0.5).fill('#e2e8f0');
+    y += 12;
+    doc.fontSize(8).fillColor('#6b7280').font('Helvetica')
+      .text('Risk Secured Ltd provides bespoke security solutions tailored to protect your assets and operations.', M + 14, y, { width: CW - 28, align: 'center', lineGap: 3 });
+    y += 30;
     doc.fontSize(8).fillColor('#374151').font('Helvetica-Bold')
       .text('24/7 National Control Room: 01384 218829', M + 14, y, { width: CW - 28, align: 'center' });
-    y += 14;
-    doc.fontSize(7).fillColor('#9ca3af').font('Helvetica')
-      .text('Tel: 0843 122 1247  |  Mobile: 07587 865219  |  Email: reports@risksecured.co.uk  |  www.risksecured.co.uk', M + 14, y, { width: CW - 28, align: 'center' });
     y += 20;
 
     // ════════════════════════════════════════════════════════════════════
