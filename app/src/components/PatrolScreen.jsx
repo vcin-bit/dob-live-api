@@ -14,7 +14,7 @@ async function fetchW3W(lat, lng) {
   } catch { return null; }
 }
 
-export default function PatrolScreen({ user, site, shift }) {
+export default function PatrolScreen({ user, site, shift, onPatrolEnded }) {
   const navigate = useNavigate();
   const watchRef = useRef(null);
 
@@ -185,7 +185,9 @@ export default function PatrolScreen({ user, site, shift }) {
   async function endPatrol() {
     try { if (session?.id) await api.patrols.endSession(session.id); }
     catch (e) { console.error('End patrol failed:', e.message); }
-    setPatrolStarted(false); setSession(null); setShowEndConfirm(false); setCompletedCps([]); navigate('/');
+    setPatrolStarted(false); setSession(null); setShowEndConfirm(false); setCompletedCps([]);
+    onPatrolEnded?.();
+    navigate('/');
   }
 
   // Draw route on map when route loads

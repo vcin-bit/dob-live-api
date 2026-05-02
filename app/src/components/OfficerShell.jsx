@@ -168,6 +168,16 @@ function OfficerApp({ user }) {
     fetchOfficerData();
   }, [user]);
 
+  // Load last patrol time for PlaybookAlerts
+  useEffect(() => {
+    if (!selectedSite?.id) return;
+    api.patrols.listSessions({ site_id: selectedSite.id, status: 'completed', limit: 1 })
+      .then(res => {
+        const last = (res.data || [])[0];
+        if (last?.ended_at) setLastPatrolTime(last.ended_at);
+      }).catch(() => {});
+  }, [selectedSite?.id]);
+
   // Check for roster shift on lock screen
   useEffect(() => {
     if (!selectedSite || activeShift) return;
@@ -328,12 +338,13 @@ function OfficerApp({ user }) {
           />
         } />
         <Route path="/" element={
-          <OfficerDashboard 
+          <OfficerDashboard
             user={user}
             site={selectedSite}
             shift={activeShift}
             onStartShift={startShift}
             onEndShift={endShift}
+            onPatrolTimeUpdate={setLastPatrolTime}
           />
         } />
         <Route path="/log" element={
@@ -357,7 +368,7 @@ function OfficerApp({ user }) {
           />
         } />
         <Route path="/instructions" element={<OfficerInstructionsScreen user={user} site={selectedSite} />} />
-        <Route path="/patrol"   element={<PatrolScreen user={user} site={selectedSite} shift={activeShift} />} />
+        <Route path="/patrol"   element={<PatrolScreen user={user} site={selectedSite} shift={activeShift} onPatrolEnded={() => setLastPatrolTime(new Date().toISOString())} />} />
         <Route path="/patrol-history" element={<PatrolHistoryOfficerScreen user={user} site={selectedSite} />} />
         <Route path="/handover" element={<HandoverScreen user={user} site={selectedSite} shift={activeShift} onShiftEnded={() => { setActiveShift(null); }} />} />
         <Route path="/visitors" element={<OfficerVisitorsScreen site={selectedSite} />} />
@@ -464,7 +475,7 @@ function SitePickerScreen({ sites, onSiteSelect, user }) {
 }
 
 // Officer Dashboard
-function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
+function OfficerDashboard({ user, site, shift, onStartShift, onEndShift, onPatrolTimeUpdate }) {
   const [recentLogs, setRecentLogs] = useState([]);
   const [todayCount, setTodayCount] = useState(0);
   const [tasks, setTasks] = useState([]);
@@ -523,7 +534,7 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift }) {
         try {
           const sessionsRes = await api.patrols.listSessions({ site_id: site.id, status: 'completed', limit: 1 });
           const lastSession = (sessionsRes.data || [])[0];
-          if (lastSession?.ended_at) setLastPatrolTime(lastSession.ended_at);
+          if (lastSession?.ended_at) onPatrolTimeUpdate?.(lastSession.ended_at);
         } catch {}
 
       } catch (err) {
