@@ -21,7 +21,7 @@ const RS_EMAIL = process.env.SENDGRID_FROM_EMAIL || 'onboarding@doblive.co.uk';
 function downloadImage(url) {
   return new Promise((resolve) => {
     const mod = url.startsWith('https') ? https : http;
-    const req = mod.get(url, { timeout: 8000 }, (res) => {
+    const req = mod.get(url, { timeout: 8000, headers: { 'User-Agent': 'RiskSecured-InspectionBot/1.0' } }, (res) => {
       if (res.statusCode !== 200) { resolve(null); return; }
       const chunks = [];
       res.on('data', c => chunks.push(c));
@@ -31,6 +31,68 @@ function downloadImage(url) {
     req.on('error', () => resolve(null));
     req.on('timeout', () => { req.destroy(); resolve(null); });
   });
+}
+
+// Build a static map from OSM tiles (3x3 grid at zoom 16)
+async function buildMapImage(lat, lng) {
+  try {
+    const { createCanvas, loadImage } = require('canvas');
+    const zoom = 16;
+    const tileSize = 256;
+    const gridSize = 3;
+    const totalSize = tileSize * gridSize; // 768x768
+
+    // Convert lat/lng to tile coordinates
+    const n = Math.pow(2, zoom);
+    const centerTileX = ((lng + 180) / 360) * n;
+    const centerTileY = (1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * n;
+
+    const startX = Math.floor(centerTileX) - 1;
+    const startY = Math.floor(centerTileY) - 1;
+
+    // Download 3x3 tiles
+    const tilePromises = [];
+    for (let dy = 0; dy < gridSize; dy++) {
+      for (let dx = 0; dx < gridSize; dx++) {
+        const url = `https://tile.openstreetmap.org/${zoom}/${startX + dx}/${startY + dy}.png`;
+        tilePromises.push(downloadImage(url));
+      }
+    }
+    const tiles = await Promise.all(tilePromises);
+
+    const canvas = createCanvas(totalSize, totalSize);
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#e5e7eb';
+    ctx.fillRect(0, 0, totalSize, totalSize);
+
+    for (let i = 0; i < tiles.length; i++) {
+      if (!tiles[i]) continue;
+      const img = await loadImage(tiles[i]);
+      const dx = (i % gridSize) * tileSize;
+      const dy = Math.floor(i / gridSize) * tileSize;
+      ctx.drawImage(img, dx, dy);
+    }
+
+    // Draw red marker at centre
+    const markerX = (centerTileX - startX) * tileSize;
+    const markerY = (centerTileY - startY) * tileSize;
+    ctx.beginPath();
+    ctx.arc(markerX, markerY, 10, 0, Math.PI * 2);
+    ctx.fillStyle = '#dc2626';
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(markerX, markerY, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+
+    return canvas.toBuffer('image/png');
+  } catch (e) {
+    console.error('Map generation failed:', e.message);
+    return null;
+  }
 }
 
 // ── Generate PDF ────────────────────────────────────────────────────────────
@@ -69,13 +131,14 @@ async function generatePDF(inspection, site, logoBuffer, photoBuffers, mapBuffer
       try { doc.image(aldiLogoBuffer, W - M - 70, 14, { height: 52 }); } catch {}
     }
 
-    // Report title + ref (centre-right)
-    doc.fontSize(12).fillColor('#ffffff').font('Helvetica-Bold')
-      .text('PROPERTY INSPECTION REPORT', W - M - 240, 20, { width: 160, align: 'left' });
-    doc.fontSize(8).fillColor('#8899bb')
-      .text(`Ref: ${refNo}`, W - M - 240, 36, { width: 160, align: 'left' })
-      .text(dateStr, W - M - 240, 48, { width: 160, align: 'left' })
-      .text(timeStr, W - M - 240, 60, { width: 160, align: 'left' });
+    // Report title + ref (centre)
+    doc.fontSize(10).fillColor('#ffffff').font('Helvetica-Bold')
+      .text('PROPERTY INSPECTION', W - M - 250, 16, { width: 170, align: 'left' })
+      .text('REPORT', W - M - 250, 28, { width: 170, align: 'left' });
+    doc.fontSize(8).fillColor('#8899bb').font('Helvetica')
+      .text(`Ref: ${refNo}`, W - M - 250, 44, { width: 170, align: 'left' })
+      .text(dateStr, W - M - 250, 56, { width: 170, align: 'left' })
+      .text(timeStr, W - M - 250, 68, { width: 170, align: 'left' });
 
     // Tagline bar
     doc.rect(0, 80, W, 24).fill('#0e2252');
@@ -308,22 +371,14 @@ router.post('/', authenticate, async (req, res, next) => {
     // Download logos, photos, and static map for PDF embedding
     const logoUrl = 'https://bxesqjzkuredqzvepomn.supabase.co/storage/v1/object/public/company-logos/4bab41dd-f6a9-4407-983b-d42d32ea1432/logo.png';
     const aldiLogoUrl = 'https://dm.emea.cms.aldi.cx/is/image/aldiprodeu/aldi_logo_v1?fmt=png&wid=300';
-    const mapUrl = latitude && longitude
-      ? `https://staticmap.openstreetmap.de/staticmap.php?center=${latitude},${longitude}&zoom=16&size=600x300&markers=${latitude},${longitude},ol-marker&maptype=mapnik`
-      : null;
-
-    const downloads = [
+    const [logoBuffer, aldiLogoBuffer, ...photoBuffers] = await Promise.all([
       downloadImage(logoUrl),
       downloadImage(aldiLogoUrl),
       ...(media || []).map(m => m.url ? downloadImage(m.url) : Promise.resolve(null)),
-    ];
-    if (mapUrl) downloads.push(downloadImage(mapUrl));
+    ]);
 
-    const results = await Promise.all(downloads);
-    const logoBuffer = results[0];
-    const aldiLogoBuffer = results[1];
-    const photoBuffers = results.slice(2, 2 + (media || []).length);
-    const mapBuffer = mapUrl ? results[results.length - 1] : null;
+    // Build map from OSM tiles
+    const mapBuffer = (latitude && longitude) ? await buildMapImage(latitude, longitude) : null;
 
     const pdfBuffer = await generatePDF(data, site, logoBuffer, photoBuffers, mapBuffer, aldiLogoBuffer);
 
