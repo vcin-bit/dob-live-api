@@ -146,7 +146,7 @@ function PortalDashboard({ session, onLogout }) {
 
       {/* Tabs */}
       <div style={{background:'#fff',borderBottom:'1px solid #e2e8f0',display:'flex',padding:'0 1.25rem'}}>
-        {[['dashboard','Dashboard'],['issues','Issues'],['incidents','Incident Reports'],['docs','Documents']].map(([val,label]) => (
+        {[['dashboard','Dashboard'],['issues','Issues'],['incidents','Occurrences'],['docs','Documents']].map(([val,label]) => (
           <button key={val} onClick={() => setTab(val)} style={{padding:'0.75rem 1rem',fontSize:'0.875rem',fontWeight:500,border:'none',borderBottom:`2px solid ${tab===val?'#1a52a8':'transparent'}`,color:tab===val?'#1a52a8':'#64748b',background:'none',cursor:'pointer',marginBottom:'-1px'}}>
             {label}
             {val==='issues' && openAlerts.length > 0 && <span style={{marginLeft:'0.375rem',background:'#dc2626',color:'#fff',borderRadius:'999px',fontSize:'0.6875rem',padding:'0 5px',fontWeight:700}}>{openAlerts.length}</span>}
@@ -213,15 +213,17 @@ function PortalDashboard({ session, onLogout }) {
               {/* Breakdown */}
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.5rem'}}>
                 {[
-                  { label: 'Incidents', value: summary?.incidents_7d||0, color: '#dc2626' },
-                  { label: 'Vehicle Reports', value: summary?.vehicle_reports_7d||0, color: '#7c3aed' },
-                  { label: 'EH&S Reports', value: summary?.health_safety_7d||0, color: '#f59e0b' },
-                  { label: 'Alarms / Emergency', value: summary?.alarms_7d||0, color: '#ef4444' },
+                  { label: 'Incidents', value: summary?.incidents_7d||0, color: '#dc2626', filter: 'INCIDENT' },
+                  { label: 'Vehicle Reports', value: summary?.vehicle_reports_7d||0, color: '#7c3aed', filter: 'VEHICLE_CHECK' },
+                  { label: 'EH&S Reports', value: summary?.health_safety_7d||0, color: '#f59e0b', filter: 'HEALTH_SAFETY' },
+                  { label: 'Alarms / Emergency', value: summary?.alarms_7d||0, color: '#ef4444', filter: 'ALARM' },
                 ].map((s, i) => (
-                  <div key={i} style={{display:'flex',alignItems:'center',gap:'0.625rem',padding:'0.5rem 0.75rem',background:'#f8fafc',borderRadius:'6px',border:'1px solid #f1f5f9'}}>
+                  <div key={i} onClick={() => { setLogTypeFilter(s.filter); setTab('incidents'); }}
+                    style={{display:'flex',alignItems:'center',gap:'0.625rem',padding:'0.5rem 0.75rem',background:'#f8fafc',borderRadius:'6px',border:'1px solid #f1f5f9',cursor:'pointer',transition:'background 0.15s'}}>
                     <div style={{width:8,height:8,borderRadius:'50%',background:s.color,flexShrink:0}} />
                     <div style={{flex:1,fontSize:'0.8125rem',color:'#374151'}}>{s.label}</div>
                     <div style={{fontSize:'0.9375rem',fontWeight:700,color:s.value>0?s.color:'#d1d5db'}}>{s.value}</div>
+                    <div style={{fontSize:'0.6875rem',color:'#9ca3af'}}>View &rarr;</div>
                   </div>
                 ))}
               </div>
@@ -300,26 +302,47 @@ function PortalDashboard({ session, onLogout }) {
           </div>
         ) : tab === 'incidents' ? (
           <div>
-            <div className="section-title" style={{marginBottom:'1rem'}}>Incident Reports</div>
-            {(() => { const incidents = logs.filter(l => l.client_reportable); return incidents.length === 0 ? <div className="empty-state"><p>No incident reports</p></div> : (
-              <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
-                {incidents.map(l => (
-                  <div key={l.id} className="card" style={{borderLeft:'3px solid #dc2626'}}>
-                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
-                      <div>
-                        <div style={{fontWeight:600,fontSize:'0.9375rem'}}>{l.title||'Incident'}</div>
-                        <div style={{fontSize:'0.875rem',color:'var(--text-2)',marginTop:'0.25rem',lineHeight:1.5}}>{l.description}</div>
-                        <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginTop:'0.5rem'}}>
-                          {new Date(l.occurred_at).toLocaleString('en-GB',{weekday:'short',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}
-                          {l.review_status && <span style={{marginLeft:'0.75rem',fontWeight:600,color: l.review_status === 'RESOLVED' ? '#10b981' : l.review_status === 'UNDER_REVIEW' ? '#3b82f6' : '#f59e0b'}}>{l.review_status.replace(/_/g,' ')}</span>}
-                        </div>
-                      </div>
-                      <span className={`badge ${typeColors[l.log_type]||'badge-danger'}`}>{l.log_type}</span>
-                    </div>
-                  </div>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1rem'}}>
+              <div className="section-title" style={{margin:0}}>Occurrence Reports</div>
+              <div style={{display:'flex',gap:'0.375rem',flexWrap:'wrap'}}>
+                {[
+                  { label:'All', value:'' },
+                  { label:'Incidents', value:'INCIDENT' },
+                  { label:'Vehicle', value:'VEHICLE_CHECK' },
+                  { label:'EH&S', value:'HEALTH_SAFETY' },
+                  { label:'Alarms', value:'ALARM' },
+                ].map(f => (
+                  <button key={f.value} onClick={() => setLogTypeFilter(f.value)}
+                    style={{padding:'0.25rem 0.625rem',borderRadius:'999px',border:`1px solid ${logTypeFilter===f.value?'#1a52a8':'#d1d5db'}`,background:logTypeFilter===f.value?'#1a52a8':'#fff',color:logTypeFilter===f.value?'#fff':'#6b7280',fontSize:'0.75rem',fontWeight:600,cursor:'pointer'}}>
+                    {f.label}
+                  </button>
                 ))}
               </div>
-            ); })()}
+            </div>
+            {(() => {
+              const relevantTypes = ['INCIDENT','VEHICLE_CHECK','HEALTH_SAFETY','ALARM','FIRE_ALARM','EMERGENCY'];
+              const filtered = logs.filter(l => relevantTypes.includes(l.log_type) && (!logTypeFilter || l.log_type === logTypeFilter || (logTypeFilter === 'ALARM' && ['ALARM','FIRE_ALARM','EMERGENCY'].includes(l.log_type))));
+              const typeLabels = { INCIDENT:'Incident', VEHICLE_CHECK:'Vehicle Report', HEALTH_SAFETY:'EH&S', ALARM:'Alarm', FIRE_ALARM:'Fire Alarm', EMERGENCY:'Emergency' };
+              const typeBorders = { INCIDENT:'#dc2626', VEHICLE_CHECK:'#7c3aed', HEALTH_SAFETY:'#f59e0b', ALARM:'#ef4444', FIRE_ALARM:'#ef4444', EMERGENCY:'#ef4444' };
+              return filtered.length === 0 ? <div className="empty-state"><p>No occurrence reports{logTypeFilter ? ' for this category' : ''}</p></div> : (
+                <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
+                  {filtered.map(l => (
+                    <div key={l.id} className="card" style={{borderLeft:`3px solid ${typeBorders[l.log_type]||'#6b7280'}`}}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+                        <div style={{flex:1}}>
+                          <div style={{fontWeight:600,fontSize:'0.9375rem'}}>{l.title||typeLabels[l.log_type]||'Report'}</div>
+                          {l.description && <div style={{fontSize:'0.875rem',color:'var(--text-2)',marginTop:'0.25rem',lineHeight:1.5}}>{l.description}</div>}
+                          <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginTop:'0.5rem'}}>
+                            {new Date(l.occurred_at).toLocaleString('en-GB',{weekday:'short',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}
+                          </div>
+                        </div>
+                        <span style={{padding:'0.125rem 0.5rem',borderRadius:'999px',fontSize:'0.6875rem',fontWeight:700,background:`${typeBorders[l.log_type]||'#6b7280'}15`,color:typeBorders[l.log_type]||'#6b7280',border:`1px solid ${typeBorders[l.log_type]||'#6b7280'}30`,whiteSpace:'nowrap'}}>{typeLabels[l.log_type]||l.log_type}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         ) : tab === 'docs' ? (
           <div>
