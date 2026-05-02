@@ -5,6 +5,7 @@ import { api } from '../lib/api';
 import { compressImage, isImage } from '../lib/imageUtils';
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+const LOGO_URL = 'https://bxesqjzkuredqzvepomn.supabase.co/storage/v1/object/public/company-logos/4bab41dd-f6a9-4407-983b-d42d32ea1432/logo.png';
 
 const CATEGORIES = [
   'Fly Tipping','Forced Entry','Travellers','Safety Concern',
@@ -54,8 +55,8 @@ function InspectLogin() {
     <div style={{minHeight:'100vh',background:'linear-gradient(135deg, #0b1a3e 0%, #1a3a7a 50%, #0b1a3e 100%)',display:'flex',alignItems:'center',justifyContent:'center',padding:'1.5rem'}}>
       <div style={{width:'100%',maxWidth:'400px'}}>
         <div style={{textAlign:'center',marginBottom:'2rem'}}>
-          <div style={{fontSize:'1.5rem',fontWeight:800,color:'#fff'}}><span style={{color:'#60a5fa'}}>Risk Secured</span></div>
-          <div style={{fontSize:'0.875rem',color:'rgba(255,255,255,0.5)',marginTop:'0.25rem'}}>Property Inspection Portal</div>
+          <img src={LOGO_URL} alt="Risk Secured" style={{maxHeight:'48px',maxWidth:'200px',objectFit:'contain',marginBottom:'0.75rem'}} />
+          <div style={{fontSize:'0.875rem',color:'rgba(255,255,255,0.5)',fontWeight:500}}>Property Inspection Portal</div>
         </div>
         <div style={{background:'#fff',borderRadius:'16px',padding:'2rem',boxShadow:'0 25px 50px rgba(0,0,0,0.25)'}}>
           <div style={{fontSize:'1.0625rem',fontWeight:700,color:'#111827',marginBottom:'1.5rem'}}>Sign in to continue</div>
@@ -72,6 +73,9 @@ function InspectLogin() {
             )}
             <button type="submit" disabled={loading} style={{...S.btn,opacity:loading?0.7:1}}>{loading?'Signing in...':step==='email'?'Continue':'Sign In'}</button>
           </form>
+        </div>
+        <div style={{textAlign:'center',marginTop:'1.5rem',fontSize:'0.6875rem',color:'rgba(255,255,255,0.3)'}}>
+          Risk Secured Consultancy Ltd | 24/7 Control Room: 01384 218829
         </div>
       </div>
     </div>
@@ -90,6 +94,7 @@ function InspectAuthenticated() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [pdfUrl, setPdfUrl] = useState(null);
+  const [gpsLoading, setGpsLoading] = useState(true);
 
   const [form, setForm] = useState({
     site_id: '',
@@ -110,7 +115,6 @@ function InspectAuthenticated() {
       try {
         const [userRes, sitesRes] = await Promise.all([api.users.me(), api.sites.list()]);
         setDbUser(userRes.data);
-        // Filter to Aldi sites only
         const aldiSites = (sitesRes.data || []).filter(s => s.client_name === 'Aldi Stores Ltd');
         setSites(aldiSites);
         if (aldiSites.length === 1) setForm(f => ({ ...f, site_id: aldiSites[0].id }));
@@ -118,12 +122,17 @@ function InspectAuthenticated() {
       finally { setLoading(false); }
     }
     load();
-    // Get GPS
-    navigator.geolocation?.getCurrentPosition(
-      p => setForm(f => ({ ...f, latitude: p.coords.latitude, longitude: p.coords.longitude })),
-      () => {}, { enableHighAccuracy: true, timeout: 10000 }
-    );
   }, []);
+
+  function getGPS() {
+    setGpsLoading(true);
+    navigator.geolocation?.getCurrentPosition(
+      p => { setForm(f => ({ ...f, latitude: p.coords.latitude, longitude: p.coords.longitude })); setGpsLoading(false); },
+      () => setGpsLoading(false),
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }
+  useEffect(() => { getGPS(); }, []);
 
   async function uploadPhotos(e) {
     const files = Array.from(e.target.files || []);
@@ -165,10 +174,11 @@ function InspectAuthenticated() {
     const current = form.categories;
     f('categories', current.includes(cat) ? current.filter(c => c !== cat) : [...current, cat]);
   };
+  const selectedSite = sites.find(s => s.id === form.site_id);
 
   if (loading) return <div style={S.page}><div style={S.spinner} /></div>;
 
-  // ── Success screen ────────────────────────────────────────────────────
+  // ── Success ───────────────────────────────────────────────────────────
   if (submitted) return (
     <div style={{minHeight:'100vh',background:'#f1f5f9',display:'flex',alignItems:'center',justifyContent:'center',padding:'1.5rem'}}>
       <div style={{maxWidth:'480px',textAlign:'center'}}>
@@ -177,10 +187,10 @@ function InspectAuthenticated() {
         </div>
         <h1 style={{fontSize:'1.5rem',fontWeight:700,color:'#111827',marginBottom:'0.5rem'}}>Inspection Submitted</h1>
         <p style={{fontSize:'0.9375rem',color:'#6b7280',marginBottom:'1.5rem',lineHeight:1.5}}>
-          Your report has been emailed to the client and saved to DOB Live.
+          Report emailed to client and saved to DOB Live.
         </p>
         <div style={{display:'flex',gap:'0.75rem',justifyContent:'center',flexWrap:'wrap'}}>
-          <button onClick={() => { setSubmitted(false); setForm({ site_id: sites.length===1 ? sites[0].id : '', new_to_report:null, categories:[], summary:'', action_points:'', immediate_action:false, latitude:form.latitude, longitude:form.longitude, media:[] }); }}
+          <button onClick={() => { setSubmitted(false); setForm({ site_id: sites.length===1?sites[0].id:'', new_to_report:null, categories:[], summary:'', action_points:'', immediate_action:false, latitude:form.latitude, longitude:form.longitude, media:[] }); }}
             style={{padding:'0.75rem 1.5rem',background:'#1a52a8',color:'#fff',border:'none',borderRadius:'8px',fontSize:'0.875rem',fontWeight:700,cursor:'pointer'}}>
             New Inspection
           </button>
@@ -195,51 +205,92 @@ function InspectAuthenticated() {
   // ── Form ──────────────────────────────────────────────────────────────
   return (
     <div style={{minHeight:'100vh',background:'#f1f5f9'}}>
-      {/* Header */}
+      {/* Corporate Header */}
       <div style={{background:'#0b1a3e',padding:'0 1.25rem'}}>
-        <div style={{maxWidth:'640px',margin:'0 auto',display:'flex',alignItems:'center',justifyContent:'space-between',height:'56px'}}>
-          <div>
-            <div style={{fontSize:'0.9375rem',fontWeight:700,color:'#fff'}}>Property Inspection</div>
-            <div style={{fontSize:'0.6875rem',color:'rgba(255,255,255,0.4)'}}>Aldi Stores Ltd</div>
+        <div style={{maxWidth:'680px',margin:'0 auto',display:'flex',alignItems:'center',justifyContent:'space-between',height:'64px'}}>
+          <div style={{display:'flex',alignItems:'center',gap:'1rem'}}>
+            <img src={LOGO_URL} alt="Risk Secured" style={{maxHeight:'32px',maxWidth:'140px',objectFit:'contain'}} />
+            <div style={{width:'1px',height:'28px',background:'rgba(255,255,255,0.15)'}} />
+            <div>
+              <div style={{fontSize:'0.8125rem',fontWeight:700,color:'#fff'}}>Property Inspection</div>
+              <div style={{fontSize:'0.625rem',color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.06em'}}>Aldi Stores Ltd</div>
+            </div>
           </div>
           <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
-            <div style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.5)'}}>{dbUser?.first_name} {dbUser?.last_name}</div>
-            <button onClick={() => signOut()} style={{padding:'0.375rem 0.625rem',background:'rgba(255,255,255,0.1)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:'6px',color:'rgba(255,255,255,0.6)',fontSize:'0.6875rem',fontWeight:600,cursor:'pointer'}}>Sign Out</button>
+            <div style={{textAlign:'right'}}>
+              <div style={{fontSize:'0.6875rem',color:'rgba(255,255,255,0.5)'}}>{dbUser?.first_name} {dbUser?.last_name}</div>
+              <div style={{fontSize:'0.5625rem',color:'rgba(255,255,255,0.3)'}}>{new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'Europe/London'})}</div>
+            </div>
+            <button onClick={() => signOut()} style={{padding:'0.375rem 0.625rem',background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',color:'rgba(255,255,255,0.5)',fontSize:'0.625rem',fontWeight:600,cursor:'pointer'}}>Sign Out</button>
           </div>
         </div>
       </div>
 
-      <div style={{maxWidth:'640px',margin:'0 auto',padding:'1.5rem 1.25rem 4rem'}}>
+      <div style={{maxWidth:'680px',margin:'0 auto',padding:'1.5rem 1.25rem 2rem'}}>
         {error && <div style={{background:'#fef2f2',border:'1px solid #fca5a5',borderRadius:'8px',padding:'0.75rem',marginBottom:'1rem',fontSize:'0.8125rem',color:'#dc2626'}}>{error}</div>}
 
-        {/* Site */}
+        {/* Site Selection */}
         <div style={S.section}>
           <div style={S.sectionTitle}>Site</div>
           {sites.length === 1 ? (
-            <div style={{fontSize:'1rem',fontWeight:600,color:'#111827'}}>{sites[0].name}</div>
+            <div>
+              <div style={{fontSize:'1.0625rem',fontWeight:700,color:'#111827'}}>{sites[0].name}</div>
+              <div style={{fontSize:'0.8125rem',color:'#6b7280',marginTop:'0.125rem'}}>{[sites[0].address, sites[0].city, sites[0].postcode].filter(Boolean).join(', ')}</div>
+            </div>
           ) : (
-            <select value={form.site_id} onChange={e => f('site_id', e.target.value)} style={S.fieldInput}>
-              <option value="">Select site...</option>
-              {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
+            <>
+              <select value={form.site_id} onChange={e => f('site_id', e.target.value)} style={S.fieldInput}>
+                <option value="">Select site...</option>
+                {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              {selectedSite && <div style={{fontSize:'0.8125rem',color:'#6b7280',marginTop:'0.375rem'}}>{[selectedSite.address, selectedSite.city, selectedSite.postcode].filter(Boolean).join(', ')}</div>}
+            </>
           )}
-          {form.latitude && <div style={{fontSize:'0.6875rem',color:'#9ca3af',marginTop:'0.5rem'}}>GPS: {form.latitude.toFixed(5)}, {form.longitude.toFixed(5)}</div>}
+        </div>
+
+        {/* GPS Location with Map */}
+        <div style={S.section}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.75rem'}}>
+            <div style={S.sectionTitle}>Location Verification</div>
+            <button onClick={getGPS} style={{padding:'0.375rem 0.75rem',background:'#1a52a8',border:'none',borderRadius:'6px',color:'#fff',fontSize:'0.6875rem',fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',gap:'0.375rem'}}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>
+              {gpsLoading ? 'Locating...' : 'Update Location'}
+            </button>
+          </div>
+          {form.latitude ? (
+            <>
+              <div style={{height:'200px',borderRadius:'8px',overflow:'hidden',border:'1px solid #e2e8f0',marginBottom:'0.5rem'}}>
+                <iframe
+                  width="100%" height="100%" frameBorder="0" style={{border:0}}
+                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${form.longitude-0.005},${form.latitude-0.003},${form.longitude+0.005},${form.latitude+0.003}&layer=mapnik&marker=${form.latitude},${form.longitude}`}
+                />
+              </div>
+              <div style={{fontSize:'0.6875rem',color:'#9ca3af',display:'flex',alignItems:'center',gap:'0.375rem'}}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                GPS: {form.latitude.toFixed(6)}, {form.longitude.toFixed(6)}
+              </div>
+            </>
+          ) : (
+            <div style={{padding:'2rem',textAlign:'center',background:'#f9fafb',borderRadius:'8px',border:'1px dashed #d1d5db'}}>
+              <div style={{fontSize:'0.8125rem',color:'#9ca3af'}}>{gpsLoading ? 'Acquiring GPS position...' : 'GPS unavailable — tap Update Location'}</div>
+            </div>
+          )}
         </div>
 
         {/* New to report */}
         <div style={S.section}>
           <div style={S.sectionTitle}>Anything new to report?</div>
           <div style={{display:'flex',gap:'0.75rem'}}>
-            {[{v:true,label:'Yes',color:'#dc2626',bg:'#fef2f2',border:'#fca5a5'},{v:false,label:'No — all clear',color:'#16a34a',bg:'#f0fdf4',border:'#86efac'}].map(opt => (
+            {[{v:true,label:'Yes — Issues Found',color:'#dc2626',bg:'#fef2f2',border:'#fca5a5'},{v:false,label:'No — All Clear',color:'#16a34a',bg:'#f0fdf4',border:'#86efac'}].map(opt => (
               <button key={String(opt.v)} onClick={() => f('new_to_report', opt.v)}
-                style={{flex:1,padding:'1rem',background:form.new_to_report===opt.v ? opt.bg : '#fff',border:`2px solid ${form.new_to_report===opt.v ? opt.border : '#e5e7eb'}`,borderRadius:'10px',cursor:'pointer',fontSize:'0.9375rem',fontWeight:700,color:form.new_to_report===opt.v ? opt.color : '#9ca3af',transition:'all 0.15s'}}>
-                {opt.label}
+                style={{flex:1,padding:'1rem',background:form.new_to_report===opt.v?opt.bg:'#fff',border:`2px solid ${form.new_to_report===opt.v?opt.border:'#e5e7eb'}`,borderRadius:'10px',cursor:'pointer',fontSize:'0.875rem',fontWeight:700,color:form.new_to_report===opt.v?opt.color:'#9ca3af',transition:'all 0.15s'}}>
+                {form.new_to_report===opt.v && '✓ '}{opt.label}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Categories — only if new to report */}
+        {/* Categories */}
         {form.new_to_report && (
           <div style={S.section}>
             <div style={S.sectionTitle}>Categories (select all that apply)</div>
@@ -248,7 +299,7 @@ function InspectAuthenticated() {
                 const sel = form.categories.includes(cat);
                 return (
                   <button key={cat} onClick={() => toggleCat(cat)}
-                    style={{padding:'0.5rem 0.875rem',background:sel?'#1a52a8':'#fff',border:`1.5px solid ${sel?'#1a52a8':'#d1d5db'}`,borderRadius:'999px',color:sel?'#fff':'#374151',fontSize:'0.8125rem',fontWeight:sel?700:500,cursor:'pointer',transition:'all 0.15s'}}>
+                    style={{padding:'0.5rem 0.875rem',background:sel?'#1a52a8':'#fff',border:`1.5px solid ${sel?'#1a52a8':'#d1d5db'}`,borderRadius:'999px',color:sel?'#fff':'#374151',fontSize:'0.8125rem',fontWeight:sel?700:500,cursor:'pointer'}}>
                     {sel && '✓ '}{cat}
                   </button>
                 );
@@ -265,7 +316,7 @@ function InspectAuthenticated() {
             style={{...S.fieldInput, resize:'vertical', minHeight:'100px'}} />
         </div>
 
-        {/* Action points — only if new to report */}
+        {/* Action points */}
         {form.new_to_report && (
           <div style={S.section}>
             <div style={S.sectionTitle}>Suggested Action Points</div>
@@ -298,30 +349,53 @@ function InspectAuthenticated() {
           )}
           <div style={{display:'flex',gap:'0.5rem',flexWrap:'wrap',marginBottom:'0.75rem'}}>
             {form.media.map((m, i) => (
-              <div key={i} style={{width:72,height:72,borderRadius:'8px',overflow:'hidden',position:'relative',border:'1px solid #e5e7eb'}}>
+              <div key={i} style={{width:80,height:80,borderRadius:'8px',overflow:'hidden',position:'relative',border:'1px solid #e5e7eb'}}>
                 <img src={m.url} style={{width:'100%',height:'100%',objectFit:'cover'}} alt="" />
                 <button onClick={() => f('media', form.media.filter((_,j) => j!==i))}
-                  style={{position:'absolute',top:2,right:2,width:18,height:18,background:'#dc2626',borderRadius:'50%',border:'none',color:'#fff',fontSize:'10px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>x</button>
+                  style={{position:'absolute',top:3,right:3,width:20,height:20,background:'#dc2626',borderRadius:'50%',border:'none',color:'#fff',fontSize:'11px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>x</button>
               </div>
             ))}
             {form.media.length < 10 && (
               <button onClick={() => fileRef.current?.click()} disabled={uploading}
-                style={{width:72,height:72,borderRadius:'8px',border:'2px dashed #d1d5db',background:'#f9fafb',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>
-                <div style={{fontSize:'1.25rem',color:'#9ca3af'}}>{uploading ? '...' : '+'}</div>
+                style={{width:80,height:80,borderRadius:'8px',border:'2px dashed #d1d5db',background:'#f9fafb',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>
+                <div style={{fontSize:'1.5rem',color:'#9ca3af',lineHeight:1}}>{uploading ? '...' : '+'}</div>
                 <div style={{fontSize:'0.5625rem',color:'#9ca3af'}}>{uploading ? 'Uploading' : 'Add Photo'}</div>
               </button>
             )}
           </div>
-          <div style={{fontSize:'0.6875rem',color:'#9ca3af'}}>Up to 10 photos. Tap + to add.</div>
+          <div style={{fontSize:'0.6875rem',color:'#9ca3af'}}>Up to 10 photographs. These will be embedded in the report.</div>
         </div>
 
         {/* Submit */}
         <button onClick={submit} disabled={submitting || uploading}
           style={{width:'100%',padding:'1rem',background:'#0b1a3e',color:'#fff',border:'none',borderRadius:'10px',fontSize:'1rem',fontWeight:700,cursor:submitting?'wait':'pointer',opacity:(submitting||uploading)?0.7:1}}>
-          {submitting ? 'Submitting & Generating Report...' : 'Submit Inspection'}
+          {submitting ? 'Generating Report & Sending...' : 'Submit Inspection'}
         </button>
-        <div style={{textAlign:'center',fontSize:'0.6875rem',color:'#9ca3af',marginTop:'0.75rem'}}>
+        <div style={{textAlign:'center',fontSize:'0.6875rem',color:'#9ca3af',marginTop:'0.5rem',marginBottom:'1.5rem'}}>
           Report will be emailed to the client and saved to DOB Live
+        </div>
+      </div>
+
+      {/* Corporate Footer */}
+      <div style={{background:'#0b1a3e',padding:'1.25rem',borderTop:'3px solid #1a52a8'}}>
+        <div style={{maxWidth:'680px',margin:'0 auto'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:'1rem'}}>
+            <div>
+              <img src={LOGO_URL} alt="Risk Secured" style={{maxHeight:'24px',maxWidth:'120px',objectFit:'contain',marginBottom:'0.5rem',opacity:0.7}} />
+              <div style={{fontSize:'0.625rem',color:'rgba(255,255,255,0.3)'}}>Risk Secured Consultancy Ltd</div>
+            </div>
+            <div style={{textAlign:'right'}}>
+              <div style={{fontSize:'0.6875rem',color:'rgba(255,255,255,0.5)',marginBottom:'0.25rem'}}>
+                24/7 Control Room: <span style={{color:'rgba(255,255,255,0.7)',fontWeight:600}}>01384 218829</span>
+              </div>
+              <div style={{fontSize:'0.625rem',color:'rgba(255,255,255,0.35)'}}>
+                Tel: 0843 122 1247 | Mobile: 07587 865219
+              </div>
+              <div style={{fontSize:'0.625rem',color:'rgba(255,255,255,0.35)'}}>
+                david@risksecured.co.uk | www.risksecured.co.uk
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -335,6 +409,6 @@ const S = {
   input: { width:'100%',padding:'0.6875rem 0.875rem',border:'1.5px solid #d1d5db',borderRadius:'8px',fontSize:'0.9375rem',color:'#111827',background:'#fff',boxSizing:'border-box',fontFamily:'inherit',outline:'none' },
   btn: { width:'100%',padding:'0.875rem',background:'#1a52a8',color:'#fff',border:'none',borderRadius:'8px',fontSize:'0.9375rem',fontWeight:700,cursor:'pointer',fontFamily:'inherit' },
   section: { background:'#fff',border:'1px solid #e5e7eb',borderRadius:'10px',padding:'1.25rem',marginBottom:'1rem' },
-  sectionTitle: { fontSize:'0.6875rem',fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.875rem' },
+  sectionTitle: { fontSize:'0.6875rem',fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.75rem' },
   fieldInput: { width:'100%',padding:'0.625rem 0.75rem',border:'1.5px solid #d1d5db',borderRadius:'6px',fontSize:'0.875rem',color:'#111827',background:'#fff',boxSizing:'border-box',fontFamily:'inherit',outline:'none' },
 };
