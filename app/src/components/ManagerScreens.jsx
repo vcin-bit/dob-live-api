@@ -1731,7 +1731,7 @@ function SiteDetail({ user }) {
       </div>
       {/* Tab bar */}
       <div style={{display:'flex',gap:0,borderBottom:'1px solid var(--border)',padding:'0 1.5rem',background:'var(--surface)'}}>
-        {[{key:'info',label:'Site Info'},{key:'logs',label:'Recent Logs'},{key:'roster',label:'Roster'},{key:'officers',label:'Officers'},{key:'visitors',label:'Visitors'},{key:'documents',label:'Documents'},{key:'codes',label:'Codes'},{key:'playbook',label:'Virtual Supervisor'}].map(t => (
+        {[{key:'info',label:'Site Info'},{key:'logs',label:'Recent Logs'},{key:'roster',label:'Roster'},{key:'officers',label:'Officers'},{key:'visitors',label:'Visitors'},{key:'documents',label:'Inspections'},{key:'codes',label:'Codes'},{key:'playbook',label:'Virtual Supervisor'}].map(t => (
           <button key={t.key} onClick={() => setActiveTab(t.key)}
             style={{padding:'0.75rem 1rem',background:'none',border:'none',borderBottom:`2px solid ${activeTab===t.key?'var(--blue)':'transparent'}`,color:activeTab===t.key?'var(--blue)':'var(--text-2)',fontSize:'0.875rem',fontWeight:600,cursor:'pointer',marginBottom:'-1px',whiteSpace:'nowrap'}}>
             {t.label}
@@ -2787,7 +2787,7 @@ function SiteDocumentsTab({ siteId }) {
   return (
     <div>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'1rem'}}>
-        <div style={{fontSize:'0.875rem',fontWeight:700,color:'var(--text-1)'}}>Documents ({docs.length})</div>
+        <div style={{fontSize:'0.875rem',fontWeight:700,color:'var(--text-1)'}}>Property Inspections ({docs.length})</div>
       </div>
       {docs.length === 0 ? (
         <div className="empty-state"><p>No documents for this site yet</p></div>

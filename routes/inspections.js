@@ -1,6 +1,8 @@
 const router = require('express').Router();
 const multer = require('multer');
 const PDFDocument = require('pdfkit');
+const https = require('https');
+const http = require('http');
 const supabase = require('../lib/supabase');
 const { authenticate } = require('../middleware/auth');
 
@@ -16,123 +18,204 @@ function getSg() {
 const ALDI_EMAIL = process.env.ALDI_INSPECTION_EMAIL || 'david@risksecured.co.uk';
 const RS_EMAIL = process.env.SENDGRID_FROM_EMAIL || 'onboarding@doblive.co.uk';
 
-const CATEGORIES = [
-  'Fly Tipping','Forced Entry','Travellers','Safety Concern',
-  'Property Breached','Criminal Damage','Graffiti','Suspicious Activity',
-  'Anti-Social Behaviour','Fire Risk','Water Leak','Broken Fencing',
-  'Lighting Issue','Other'
-];
+// Download image as buffer
+function downloadImage(url) {
+  return new Promise((resolve) => {
+    const mod = url.startsWith('https') ? https : http;
+    mod.get(url, (res) => {
+      if (res.statusCode !== 200) { resolve(null); return; }
+      const chunks = [];
+      res.on('data', c => chunks.push(c));
+      res.on('end', () => resolve(Buffer.concat(chunks)));
+      res.on('error', () => resolve(null));
+    }).on('error', () => resolve(null));
+  });
+}
 
 // ── Generate PDF ────────────────────────────────────────────────────────────
-function generatePDF(inspection, photoUrls) {
+async function generatePDF(inspection, site, logoBuffer, photoBuffers) {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ size: 'A4', margin: 50, bufferPages: true });
+    const doc = new PDFDocument({ size: 'A4', margin: 0, bufferPages: true });
     const chunks = [];
     doc.on('data', c => chunks.push(c));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
+    const W = doc.page.width;   // 595
+    const M = 40;               // margin
+    const CW = W - M * 2;      // content width
     const navy = '#0b1a3e';
     const blue = '#1a52a8';
     const grey = '#6b7280';
-    const lightGrey = '#f3f4f6';
+    const lightBg = '#f8fafc';
+    const border = '#e2e8f0';
 
-    // Header bar
-    doc.rect(0, 0, doc.page.width, 80).fill(navy);
-    doc.fontSize(22).fillColor('#fff').font('Helvetica-Bold').text('Risk Secured', 50, 20);
-    doc.fontSize(10).fillColor('rgba(255,255,255,0.6)').font('Helvetica').text('Property Inspection Report', 50, 48);
-    doc.fontSize(9).fillColor('rgba(255,255,255,0.4)').text('Aldi Stores Ltd', 50, 62);
-
-    // Report reference + date (right side)
     const dateStr = new Date(inspection.inspected_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
     const timeStr = new Date(inspection.inspected_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
-    doc.fontSize(9).fillColor('rgba(255,255,255,0.7)').text(`${dateStr} at ${timeStr}`, 350, 25, { width: 200, align: 'right' });
-    doc.text(`Ref: INS-${inspection.id.slice(0,8).toUpperCase()}`, 350, 40, { width: 200, align: 'right' });
+    const refNo = `INS-${inspection.id.slice(0,8).toUpperCase()}`;
+    const siteAddress = [site?.address, site?.city, site?.postcode].filter(Boolean).join(', ');
 
-    let y = 100;
+    // ── Header ──────────────────────────────────────────────────────────
+    doc.rect(0, 0, W, 90).fill(navy);
 
-    // Info grid
-    const field = (label, value, x, w) => {
-      doc.fontSize(7).fillColor(grey).font('Helvetica-Bold').text(label.toUpperCase(), x, y, { width: w });
-      doc.fontSize(10).fillColor('#111827').font('Helvetica').text(value || '—', x, y + 11, { width: w });
-    };
-
-    doc.rect(50, y - 8, doc.page.width - 100, 50).lineWidth(0.5).strokeColor('#e5e7eb').stroke();
-    field('Site', inspection.site_name, 58, 200);
-    field('Inspector', inspection.inspector_name, 260, 150);
-    field('Date / Time', `${dateStr}  ${timeStr}`, 410, 140);
-    y += 58;
-
-    // New to report
-    doc.rect(50, y, doc.page.width - 100, 28).fill(inspection.new_to_report ? '#fef2f2' : '#f0fdf4');
-    doc.fontSize(9).fillColor(inspection.new_to_report ? '#dc2626' : '#16a34a').font('Helvetica-Bold')
-      .text(inspection.new_to_report ? 'NEW ISSUES TO REPORT' : 'NOTHING NEW TO REPORT', 58, y + 8);
-    y += 40;
-
-    // Categories
-    if (inspection.categories?.length > 0) {
-      doc.fontSize(7).fillColor(grey).font('Helvetica-Bold').text('CATEGORIES', 50, y);
-      y += 14;
-      const catText = inspection.categories.join('  |  ');
-      doc.fontSize(9).fillColor(blue).font('Helvetica-Bold').text(catText, 50, y, { width: doc.page.width - 100 });
-      y += doc.heightOfString(catText, { width: doc.page.width - 100, fontSize: 9 }) + 12;
+    // Logo
+    if (logoBuffer) {
+      try { doc.image(logoBuffer, M, 18, { height: 36 }); } catch {}
+    } else {
+      doc.fontSize(20).fillColor('#fff').font('Helvetica-Bold').text('Risk Secured', M, 28);
     }
 
-    // Report summary
-    if (inspection.summary) {
-      doc.fontSize(7).fillColor(grey).font('Helvetica-Bold').text('REPORT SUMMARY', 50, y);
-      y += 14;
-      doc.fontSize(10).fillColor('#111827').font('Helvetica').text(inspection.summary, 50, y, { width: doc.page.width - 100, lineGap: 3 });
-      y += doc.heightOfString(inspection.summary, { width: doc.page.width - 100, fontSize: 10, lineGap: 3 }) + 16;
-    }
+    // Right side header info
+    doc.fontSize(8).fillColor('rgba(255,255,255,0.5)').font('Helvetica')
+      .text('PROPERTY INSPECTION REPORT', W - M - 180, 20, { width: 180, align: 'right' })
+      .text(refNo, W - M - 180, 32, { width: 180, align: 'right' });
+    doc.fontSize(9).fillColor('rgba(255,255,255,0.7)')
+      .text(`${dateStr}`, W - M - 180, 48, { width: 180, align: 'right' })
+      .text(`${timeStr}`, W - M - 180, 60, { width: 180, align: 'right' });
 
-    // Action points
-    if (inspection.action_points) {
-      doc.fontSize(7).fillColor(grey).font('Helvetica-Bold').text('SUGGESTED ACTION POINTS', 50, y);
-      y += 14;
-      doc.fontSize(10).fillColor('#111827').font('Helvetica').text(inspection.action_points, 50, y, { width: doc.page.width - 100, lineGap: 3 });
-      y += doc.heightOfString(inspection.action_points, { width: doc.page.width - 100, fontSize: 10, lineGap: 3 }) + 16;
-    }
+    // Client badge
+    doc.rect(M, 74, 100, 14).fill('rgba(255,255,255,0.1)');
+    doc.fontSize(7).fillColor('rgba(255,255,255,0.6)').font('Helvetica-Bold')
+      .text('ALDI STORES LTD', M + 6, 77);
 
-    // Immediate intervention
-    if (inspection.immediate_action) {
-      doc.rect(50, y, doc.page.width - 100, 28).fill('#dc2626');
-      doc.fontSize(10).fillColor('#fff').font('Helvetica-Bold').text('IMMEDIATE INTERVENTION REQUIRED', 58, y + 8);
-      y += 40;
-    }
+    let y = 105;
 
-    // GPS
-    if (inspection.latitude && inspection.longitude) {
-      doc.fontSize(7).fillColor(grey).font('Helvetica-Bold').text('LOCATION', 50, y);
-      y += 14;
-      doc.fontSize(9).fillColor('#111827').font('Helvetica').text(`GPS: ${inspection.latitude.toFixed(6)}, ${inspection.longitude.toFixed(6)}`, 50, y);
-      y += 18;
-    }
-
-    // Photos
-    if (photoUrls?.length > 0) {
-      if (y > 600) { doc.addPage(); y = 50; }
-      doc.fontSize(7).fillColor(grey).font('Helvetica-Bold').text(`PHOTOGRAPHS (${photoUrls.length})`, 50, y);
-      y += 16;
-      // Photos will be added as references (URLs) since we can't embed remote images in pdfkit easily
-      photoUrls.forEach((url, i) => {
-        if (y > 750) { doc.addPage(); y = 50; }
-        doc.fontSize(9).fillColor(blue).font('Helvetica').text(`Photo ${i + 1}: ${url}`, 50, y, { width: doc.page.width - 100, underline: true });
-        y += 14;
-      });
+    // ── Helper: draw a boxed section ────────────────────────────────────
+    function sectionBox(title, contentFn) {
+      doc.rect(M, y, CW, 1).fill(border);
+      y += 1;
+      // Title bar
+      doc.rect(M, y, CW, 22).fill(lightBg);
+      doc.rect(M, y, CW, 22).lineWidth(0.5).strokeColor(border).stroke();
+      doc.fontSize(7).fillColor(grey).font('Helvetica-Bold')
+        .text(title.toUpperCase(), M + 10, y + 7, { width: CW - 20 });
+      y += 22;
+      // Content area
+      const startY = y;
+      contentFn();
+      const endY = y;
+      doc.rect(M, startY, CW, endY - startY).lineWidth(0.5).strokeColor(border).stroke();
       y += 8;
     }
 
-    // Footer
+    // ── Site Details ────────────────────────────────────────────────────
+    sectionBox('Site Details', () => {
+      const col1 = M + 12;
+      const col2 = M + CW / 2;
+      doc.fontSize(7).fillColor(grey).font('Helvetica').text('SITE NAME', col1, y + 6);
+      doc.fontSize(10).fillColor('#111827').font('Helvetica-Bold').text(inspection.site_name, col1, y + 17);
+      doc.fontSize(7).fillColor(grey).font('Helvetica').text('ADDRESS', col1, y + 34);
+      doc.fontSize(9).fillColor('#111827').font('Helvetica').text(siteAddress || '—', col1, y + 45, { width: CW / 2 - 20 });
+
+      doc.fontSize(7).fillColor(grey).font('Helvetica').text('INSPECTOR', col2, y + 6);
+      doc.fontSize(10).fillColor('#111827').font('Helvetica-Bold').text(inspection.inspector_name, col2, y + 17);
+      doc.fontSize(7).fillColor(grey).font('Helvetica').text('DATE / TIME', col2, y + 34);
+      doc.fontSize(9).fillColor('#111827').font('Helvetica').text(`${dateStr} at ${timeStr}`, col2, y + 45);
+      y += 64;
+    });
+
+    // ── Status ──────────────────────────────────────────────────────────
+    const statusColor = inspection.new_to_report ? '#dc2626' : '#16a34a';
+    const statusBg = inspection.new_to_report ? '#fef2f2' : '#f0fdf4';
+    const statusBorder = inspection.new_to_report ? '#fca5a5' : '#86efac';
+    const statusText = inspection.new_to_report ? 'ISSUES REPORTED — ACTION REQUIRED' : 'ALL CLEAR — NO NEW ISSUES';
+
+    doc.roundedRect(M, y, CW, 32, 4).lineWidth(1.5).strokeColor(statusBorder).fillAndStroke(statusBg, statusBorder);
+    doc.fontSize(11).fillColor(statusColor).font('Helvetica-Bold')
+      .text(statusText, M + 14, y + 10, { width: CW - 28 });
+    y += 44;
+
+    // ── Immediate Intervention ──────────────────────────────────────────
+    if (inspection.immediate_action) {
+      doc.roundedRect(M, y, CW, 32, 4).fill('#dc2626');
+      doc.fontSize(11).fillColor('#fff').font('Helvetica-Bold')
+        .text('IMMEDIATE INTERVENTION REQUIRED', M + 14, y + 10, { width: CW - 28 });
+      y += 44;
+    }
+
+    // ── Categories ──────────────────────────────────────────────────────
+    if (inspection.categories?.length > 0) {
+      sectionBox('Categories', () => {
+        let cx = M + 12;
+        let cy = y + 8;
+        inspection.categories.forEach(cat => {
+          const tw = doc.widthOfString(cat, { fontSize: 8 }) + 16;
+          if (cx + tw > M + CW - 12) { cx = M + 12; cy += 20; }
+          doc.roundedRect(cx, cy, tw, 18, 9).fill(blue);
+          doc.fontSize(8).fillColor('#fff').font('Helvetica-Bold').text(cat, cx + 8, cy + 4);
+          cx += tw + 6;
+        });
+        y = cy + 28;
+      });
+    }
+
+    // ── Report Summary ──────────────────────────────────────────────────
+    if (inspection.summary) {
+      sectionBox('Report Summary', () => {
+        doc.fontSize(10).fillColor('#111827').font('Helvetica')
+          .text(inspection.summary, M + 12, y + 8, { width: CW - 24, lineGap: 3 });
+        y += doc.heightOfString(inspection.summary, { width: CW - 24, fontSize: 10, lineGap: 3 }) + 18;
+      });
+    }
+
+    // ── Action Points ───────────────────────────────────────────────────
+    if (inspection.action_points) {
+      sectionBox('Suggested Action Points', () => {
+        doc.fontSize(10).fillColor('#111827').font('Helvetica')
+          .text(inspection.action_points, M + 12, y + 8, { width: CW - 24, lineGap: 3 });
+        y += doc.heightOfString(inspection.action_points, { width: CW - 24, fontSize: 10, lineGap: 3 }) + 18;
+      });
+    }
+
+    // ── GPS Location ────────────────────────────────────────────────────
+    if (inspection.latitude && inspection.longitude) {
+      sectionBox('Location', () => {
+        doc.fontSize(9).fillColor('#111827').font('Helvetica')
+          .text(`GPS: ${inspection.latitude.toFixed(6)}, ${inspection.longitude.toFixed(6)}`, M + 12, y + 8);
+        y += 24;
+      });
+    }
+
+    // ── Photographs ─────────────────────────────────────────────────────
+    if (photoBuffers?.length > 0) {
+      const validPhotos = photoBuffers.filter(Boolean);
+      if (validPhotos.length > 0) {
+        // Check if we need a new page
+        if (y > 500) { doc.addPage(); y = 40; }
+
+        doc.rect(M, y, CW, 1).fill(border);
+        y += 1;
+        doc.rect(M, y, CW, 22).fill(lightBg);
+        doc.rect(M, y, CW, 22).lineWidth(0.5).strokeColor(border).stroke();
+        doc.fontSize(7).fillColor(grey).font('Helvetica-Bold')
+          .text(`PHOTOGRAPHS (${validPhotos.length})`, M + 10, y + 7);
+        y += 26;
+
+        const photoW = (CW - 16) / 2;
+        const photoH = 180;
+        validPhotos.forEach((buf, i) => {
+          if (y + photoH + 10 > doc.page.height - 60) { doc.addPage(); y = 40; }
+          const x = M + 4 + (i % 2) * (photoW + 8);
+          try {
+            doc.image(buf, x, y, { width: photoW, height: photoH, fit: [photoW, photoH], align: 'center', valign: 'center' });
+          } catch {}
+          if (i % 2 === 1 || i === validPhotos.length - 1) y += photoH + 8;
+        });
+        y += 4;
+      }
+    }
+
+    // ── Footer on all pages ─────────────────────────────────────────────
     const pageCount = doc.bufferedPageRange().count;
     for (let i = 0; i < pageCount; i++) {
       doc.switchToPage(i);
-      doc.rect(0, doc.page.height - 50, doc.page.width, 50).fill(lightGrey);
-      doc.fontSize(7).fillColor(grey).font('Helvetica')
-        .text('Risk Secured Consultancy  |  Tel: 0843 122 1247  |  Mobile: 07587 865219', 50, doc.page.height - 38)
-        .text('Email: david@risksecured.co.uk  |  Web: www.risksecured.co.uk', 50, doc.page.height - 28)
-        .text(`4/7 Control Room: 01384 218829`, 50, doc.page.height - 18);
-      doc.text(`Page ${i + 1} of ${pageCount}`, 400, doc.page.height - 28, { width: 150, align: 'right' });
+      const fY = doc.page.height - 45;
+      doc.rect(0, fY, W, 45).fill(navy);
+      doc.fontSize(7).fillColor('rgba(255,255,255,0.5)').font('Helvetica')
+        .text('Risk Secured Consultancy  |  Tel: 0843 122 1247  |  Mobile: 07587 865219  |  Email: david@risksecured.co.uk', M, fY + 10, { width: CW })
+        .text('Web: www.risksecured.co.uk  |  24/7 Control Room: 01384 218829', M, fY + 22, { width: CW });
+      doc.fontSize(7).fillColor('rgba(255,255,255,0.35)')
+        .text(`Page ${i + 1} of ${pageCount}`, W - M - 80, fY + 16, { width: 80, align: 'right' });
     }
 
     doc.end();
@@ -148,7 +231,7 @@ router.post('/', authenticate, async (req, res, next) => {
     } = req.body;
 
     // Get site + inspector info
-    const { data: site } = await supabase.from('sites').select('id, name, client_name').eq('id', site_id).single();
+    const { data: site } = await supabase.from('sites').select('id, name, address, city, postcode, client_name').eq('id', site_id).single();
     const inspector_name = `${req.user.first_name} ${req.user.last_name}`;
 
     const record = {
@@ -176,11 +259,17 @@ router.post('/', authenticate, async (req, res, next) => {
       .single();
     if (error) throw error;
 
-    // Generate PDF
-    const photoUrls = (media || []).map(m => m.url).filter(Boolean);
-    const pdfBuffer = await generatePDF(data, photoUrls);
+    // Download logo + photos for embedding in PDF
+    const logoUrl = 'https://bxesqjzkuredqzvepomn.supabase.co/storage/v1/object/public/company-logos/4bab41dd-f6a9-4407-983b-d42d32ea1432/logo.png';
+    const [logoBuffer, ...photoBuffers] = await Promise.all([
+      downloadImage(logoUrl),
+      ...(media || []).map(m => m.url ? downloadImage(m.url) : Promise.resolve(null)),
+    ]);
 
-    // Upload PDF to Supabase storage (documents bucket is public)
+    // Generate PDF
+    const pdfBuffer = await generatePDF(data, site, logoBuffer, photoBuffers);
+
+    // Upload PDF to Supabase storage
     const pdfPath = `${req.user.company_id}/inspections/${data.id}.pdf`;
     await supabase.storage.from('documents').upload(pdfPath, pdfBuffer, {
       contentType: 'application/pdf', upsert: true
@@ -190,11 +279,11 @@ router.post('/', authenticate, async (req, res, next) => {
     // Update record with PDF path
     await supabase.from('property_inspections').update({ pdf_path: pdfPath }).eq('id', data.id);
 
-    // Also save as a site document for the DOBLive folder
+    // Save as site document
     await supabase.from('site_documents').insert({
       company_id: req.user.company_id,
       site_id,
-      name: `Inspection — ${site?.name} — ${new Date().toLocaleDateString('en-GB')}`,
+      name: `Property Inspection — ${site?.name} — ${new Date().toLocaleDateString('en-GB')}`,
       original_name: `inspection-${data.id.slice(0,8)}.pdf`,
       mime_type: 'application/pdf',
       storage_path: pdfPath,
@@ -206,8 +295,6 @@ router.post('/', authenticate, async (req, res, next) => {
     if (sg) {
       const pdfBase64 = pdfBuffer.toString('base64');
       const subject = `Property Inspection — ${site?.name} — ${new Date().toLocaleDateString('en-GB')}`;
-
-      // Send to Aldi
       try {
         await sg.send({
           to: ALDI_EMAIL,
@@ -217,19 +304,20 @@ router.post('/', authenticate, async (req, res, next) => {
             <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
               <div style="background:#0b1a3e;padding:20px 24px;border-radius:8px 8px 0 0;">
                 <h1 style="color:#fff;margin:0;font-size:20px;">Risk Secured</h1>
-                <p style="color:rgba(255,255,255,0.5);margin:4px 0 0;font-size:13px;">Property Inspection Report</p>
+                <p style="color:rgba(255,255,255,0.5);margin:4px 0 0;font-size:13px;">Property Inspection Report — Aldi Stores Ltd</p>
               </div>
               <div style="padding:24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;">
                 <p style="margin:0 0 12px;font-size:14px;color:#374151;"><strong>Site:</strong> ${site?.name}</p>
+                <p style="margin:0 0 12px;font-size:14px;color:#374151;"><strong>Address:</strong> ${[site?.address, site?.city, site?.postcode].filter(Boolean).join(', ')}</p>
                 <p style="margin:0 0 12px;font-size:14px;color:#374151;"><strong>Inspector:</strong> ${inspector_name}</p>
                 <p style="margin:0 0 12px;font-size:14px;color:#374151;"><strong>Date:</strong> ${new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'long',year:'numeric'})}</p>
-                <p style="margin:0 0 12px;font-size:14px;color:#374151;"><strong>Status:</strong> ${new_to_report ? '<span style="color:#dc2626;font-weight:700;">New issues reported</span>' : '<span style="color:#16a34a;">Nothing new to report</span>'}</p>
+                <p style="margin:0 0 12px;font-size:14px;color:#374151;"><strong>Status:</strong> ${new_to_report ? '<span style="color:#dc2626;font-weight:700;">Issues reported</span>' : '<span style="color:#16a34a;">All clear</span>'}</p>
                 ${summary ? `<p style="margin:0 0 12px;font-size:14px;color:#374151;"><strong>Summary:</strong> ${summary}</p>` : ''}
                 ${action_points ? `<p style="margin:0 0 12px;font-size:14px;color:#374151;"><strong>Actions:</strong> ${action_points}</p>` : ''}
                 ${immediate_action ? '<p style="margin:16px 0;padding:12px;background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;color:#dc2626;font-weight:700;font-size:14px;">IMMEDIATE INTERVENTION REQUIRED</p>' : ''}
-                <p style="margin:16px 0 0;font-size:12px;color:#9ca3af;">Full report attached as PDF.</p>
+                <p style="margin:16px 0 0;font-size:12px;color:#9ca3af;">Full report with photographs attached as PDF.</p>
               </div>
-              <p style="text-align:center;font-size:11px;color:#9ca3af;margin-top:16px;">Risk Secured Consultancy | 4/7 Control Room: 01384 218829</p>
+              <p style="text-align:center;font-size:11px;color:#9ca3af;margin-top:16px;">Risk Secured Consultancy | 24/7 Control Room: 01384 218829</p>
             </div>
           `,
           attachments: [{
@@ -239,7 +327,7 @@ router.post('/', authenticate, async (req, res, next) => {
             disposition: 'attachment',
           }],
         });
-      } catch (emailErr) { console.error('Aldi email failed:', emailErr.message); }
+      } catch (emailErr) { console.error('Email failed:', emailErr.message); }
     }
 
     res.status(201).json({ data, pdf_url: publicUrl });
@@ -262,7 +350,7 @@ router.get('/', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// ── GET /api/inspections/:id/pdf — get signed URL for PDF ───────────────────
+// ── GET /api/inspections/:id/pdf — signed URL ──────────────────────────────
 router.get('/:id/pdf', authenticate, async (req, res, next) => {
   try {
     const { data: insp } = await supabase.from('property_inspections')
