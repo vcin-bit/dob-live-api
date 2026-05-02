@@ -269,6 +269,7 @@ function HRAuthenticated() {
   const tabs = [
     { key:'home', label:'Home' },
     { key:'personal', label:'Personal' },
+    { key:'nok', label:'Next of Kin' },
     { key:'documents', label:'Documents' },
     { key:'licence', label:'Licence' },
   ];
@@ -363,7 +364,8 @@ function HRAuthenticated() {
             {/* Quick actions */}
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem',marginBottom:'1.25rem'}}>
               {[
-                { label:'Personal Details', desc:'Name, address, emergency contact', tab:'personal', color:'#1a52a8' },
+                { label:'Personal Details', desc:'Address, DOB, NI number', tab:'personal', color:'#1a52a8' },
+                { label:'Next of Kin', desc:'Emergency contact details', tab:'nok', color:'#dc2626' },
                 { label:'Documents', desc:'SIA licence, DBS certificate', tab:'documents', color:'#7c3aed' },
                 { label:'Licence Details', desc:'SIA type, number, expiry', tab:'licence', color:'#0891b2' },
                 { label:'Data & Privacy', desc:'GDPR consent, your rights', tab:'privacy', color:'#059669' },
@@ -390,27 +392,6 @@ function HRAuthenticated() {
             <div style={{marginBottom:'1.25rem'}}>
               <h2 style={{fontSize:'1.125rem',fontWeight:700,color:'#111827',margin:'0 0 0.25rem'}}>Personal Details</h2>
               <p style={{fontSize:'0.8125rem',color:'#6b7280',margin:0}}>Your information is encrypted and only accessible by authorised personnel.</p>
-            </div>
-
-            <div style={S.section}>
-              <div style={S.sectionTitle}>Emergency Contact / Next of Kin</div>
-              <div style={{marginBottom:'0.75rem'}}>
-                <label style={S.fieldLabel}>Full Name</label>
-                <input value={form.nok_name} onChange={e => f('nok_name', e.target.value)} placeholder="e.g. Jane Smith" style={S.fieldInput} />
-              </div>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
-                <div>
-                  <label style={S.fieldLabel}>Relationship</label>
-                  <select value={form.nok_relationship} onChange={e => f('nok_relationship', e.target.value)} style={S.fieldInput}>
-                    <option value="">Select...</option>
-                    {['Spouse','Partner','Parent','Sibling','Child','Friend','Other'].map(r => <option key={r} value={r}>{r}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={S.fieldLabel}>Phone Number</label>
-                  <input value={form.nok_phone} onChange={e => f('nok_phone', e.target.value)} placeholder="+44 7700 000000" style={S.fieldInput} />
-                </div>
-              </div>
             </div>
 
             <div style={S.section}>
@@ -449,6 +430,43 @@ function HRAuthenticated() {
 
             <button onClick={save} disabled={saving} style={{...S.btn, opacity:saving?0.7:1}}>
               {saving ? 'Saving...' : 'Save Personal Details'}
+            </button>
+          </>
+        )}
+
+        {/* ── NEXT OF KIN TAB ──────────────────────────────────────── */}
+        {tab === 'nok' && (
+          <>
+            <div style={{marginBottom:'1.25rem'}}>
+              <h2 style={{fontSize:'1.125rem',fontWeight:700,color:'#111827',margin:'0 0 0.25rem'}}>Next of Kin</h2>
+              <p style={{fontSize:'0.8125rem',color:'#6b7280',margin:0}}>Your emergency contact will be notified in the event of a serious incident during your duties.</p>
+            </div>
+
+            <div style={S.section}>
+              <div style={S.sectionTitle}>Emergency Contact</div>
+              <div style={{marginBottom:'0.75rem'}}>
+                <label style={S.fieldLabel}>Full Name</label>
+                <input value={form.nok_name} onChange={e => f('nok_name', e.target.value)} placeholder="e.g. Jane Smith" style={S.fieldInput} />
+              </div>
+              <div style={{marginBottom:'0.75rem'}}>
+                <label style={S.fieldLabel}>Relationship</label>
+                <select value={form.nok_relationship} onChange={e => f('nok_relationship', e.target.value)} style={S.fieldInput}>
+                  <option value="">Select...</option>
+                  {['Spouse','Partner','Parent','Sibling','Child','Friend','Other'].map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={S.fieldLabel}>Phone Number</label>
+                <input value={form.nok_phone} onChange={e => f('nok_phone', e.target.value)} placeholder="+44 7700 000000" style={S.fieldInput} />
+              </div>
+            </div>
+
+            <div style={{background:'#fef3c7',border:'1px solid #fde68a',borderRadius:'8px',padding:'0.875rem',fontSize:'0.8125rem',color:'#92400e',lineHeight:1.5,marginBottom:'1rem'}}>
+              This information is critical. In the event of a lone worker emergency, panic activation, or serious incident on site, your next of kin will be contacted by the national command centre.
+            </div>
+
+            <button onClick={save} disabled={saving} style={{...S.btn, opacity:saving?0.7:1}}>
+              {saving ? 'Saving...' : 'Save Next of Kin'}
             </button>
           </>
         )}
