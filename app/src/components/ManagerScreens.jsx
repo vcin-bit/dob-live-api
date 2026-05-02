@@ -1921,6 +1921,7 @@ function TeamManagement({ user }) {
   const [resendingId, setResendingId] = useState(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('active');
+  const [hrOfficer, setHrOfficer] = useState(null);
 
   async function load() {
     try {
@@ -2017,6 +2018,7 @@ function TeamManagement({ user }) {
                   <td><span className={`badge ${o.active!==false?'badge-success':'badge-neutral'}`}>{o.active!==false?'Active':'Inactive'}</span></td>
                   <td style={{textAlign:'right',display:'flex',gap:'0.375rem',justifyContent:'flex-end',flexWrap:'wrap'}}>
                     <button className="btn btn-ghost btn-sm" onClick={() => setSiteAssignOfficer(o)}>Sites</button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => setHrOfficer(o)}>HR</button>
                     <button className="btn btn-ghost btn-sm" onClick={() => { setEditUser(o); setShowForm(true); }}>Edit</button>
                     {!o.clerk_id && (
                       <button className="btn btn-ghost btn-sm" disabled={resendingId===o.id} onClick={async () => {
@@ -2057,6 +2059,115 @@ function TeamManagement({ user }) {
           onClose={() => setSiteAssignOfficer(null)}
         />
       )}
+      {hrOfficer && (
+        <HRDetailModal
+          officer={hrOfficer}
+          onClose={() => setHrOfficer(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function HRDetailModal({ officer, onClose }) {
+  const [hr, setHr] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [docUrls, setDocUrls] = useState({});
+
+  useEffect(() => {
+    api.hr.getForUser(officer.id)
+      .then(res => setHr(res.data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [officer.id]);
+
+  async function viewDoc(docType) {
+    if (docUrls[docType]) { window.open(docUrls[docType], '_blank'); return; }
+    try {
+      const res = await api.hr.getDocUrl(docType, officer.id);
+      setDocUrls(prev => ({ ...prev, [docType]: res.url }));
+      window.open(res.url, '_blank');
+    } catch { alert('Could not load document'); }
+  }
+
+  const Row = ({ label, value }) => value ? (
+    <div style={{display:'flex',justifyContent:'space-between',padding:'0.5rem 0',borderBottom:'1px solid var(--border)'}}>
+      <span style={{fontSize:'0.8125rem',color:'var(--text-3)'}}>{label}</span>
+      <span style={{fontSize:'0.8125rem',fontWeight:600,color:'var(--text-1)'}}>{value}</span>
+    </div>
+  ) : null;
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{maxWidth:'560px',maxHeight:'90vh',overflowY:'auto'}} onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-title">HR Record — {officer.first_name} {officer.last_name}</div>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+
+        {loading ? (
+          <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>
+        ) : !hr ? (
+          <div style={{padding:'2rem',textAlign:'center',color:'var(--text-3)'}}>
+            <div style={{fontSize:'1rem',marginBottom:'0.5rem'}}>No HR record submitted</div>
+            <div style={{fontSize:'0.8125rem'}}>This officer has not completed their HR self-service form yet.</div>
+          </div>
+        ) : (
+          <div style={{padding:'0 0.5rem'}}>
+            {/* Next of Kin */}
+            <div style={{marginBottom:'1rem'}}>
+              <div style={{fontSize:'0.6875rem',fontWeight:700,color:'var(--text-3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.375rem'}}>Next of Kin / Emergency Contact</div>
+              <Row label="Name" value={hr.nok_name} />
+              <Row label="Relationship" value={hr.nok_relationship} />
+              <Row label="Phone" value={hr.nok_phone} />
+              {!hr.nok_name && <div style={{fontSize:'0.8125rem',color:'var(--text-3)',padding:'0.5rem 0'}}>Not provided</div>}
+            </div>
+
+            {/* Personal */}
+            <div style={{marginBottom:'1rem'}}>
+              <div style={{fontSize:'0.6875rem',fontWeight:700,color:'var(--text-3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.375rem'}}>Personal Details</div>
+              <Row label="Date of Birth" value={hr.date_of_birth ? new Date(hr.date_of_birth).toLocaleDateString('en-GB') : null} />
+              <Row label="Address" value={[hr.address_line_1, hr.address_line_2, hr.city, hr.postcode].filter(Boolean).join(', ') || null} />
+              <Row label="NI Number" value={hr.ni_number} />
+            </div>
+
+            {/* Documents */}
+            <div style={{marginBottom:'1rem'}}>
+              <div style={{fontSize:'0.6875rem',fontWeight:700,color:'var(--text-3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.375rem'}}>Documents</div>
+              {[
+                { key: 'sia_front', label: 'SIA Licence (Front)' },
+                { key: 'sia_back', label: 'SIA Licence (Back)' },
+                { key: 'dbs_certificate', label: 'DBS Certificate' },
+              ].map(doc => (
+                <div key={doc.key} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.5rem 0',borderBottom:'1px solid var(--border)'}}>
+                  <div>
+                    <span style={{fontSize:'0.8125rem',color:'var(--text-1)'}}>{doc.label}</span>
+                    <span style={{fontSize:'0.75rem',color: hr[`${doc.key}_path`] ? '#10b981' : 'var(--text-3)',marginLeft:'0.5rem'}}>
+                      {hr[`${doc.key}_path`] ? '● Uploaded' : '○ Not uploaded'}
+                    </span>
+                  </div>
+                  {hr[`${doc.key}_path`] && (
+                    <button className="btn btn-ghost btn-sm" onClick={() => viewDoc(doc.key)}>View</button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* GDPR */}
+            <div style={{marginBottom:'0.5rem'}}>
+              <div style={{fontSize:'0.6875rem',fontWeight:700,color:'var(--text-3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.375rem'}}>GDPR Consent</div>
+              <div style={{fontSize:'0.8125rem',color: hr.gdpr_consent ? '#10b981' : 'var(--danger)',fontWeight:600}}>
+                {hr.gdpr_consent ? '✓ Consent given' : '✗ No consent recorded'}
+                {hr.gdpr_consent_at && <span style={{color:'var(--text-3)',fontWeight:400,marginLeft:'0.5rem'}}>{new Date(hr.gdpr_consent_at).toLocaleDateString('en-GB')}</span>}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>Close</button>
+        </div>
+      </div>
     </div>
   );
 }
