@@ -116,39 +116,34 @@ async function generatePDF(inspection, site, logoBuffer, photoBuffers, mapBuffer
     // ════════════════════════════════════════════════════════════════════
     // HEADER — navy band with logo and report title
     // ════════════════════════════════════════════════════════════════════
-    doc.rect(0, 0, W, 120).fill('#0b1a3e');
-    doc.rect(0, 0, W, 4).fill('#1a52a8');
+    // HEADER — clean white with thin accent
+    doc.rect(0, 0, W, 2).fill('#1a52a8');
+    doc.rect(0, 2, W, 88).fill('#ffffff');
+    doc.rect(0, 90, W, 1).fill('#e2e8f0');
 
     // Risk Secured logo (left)
     if (logoBuffer) {
-      try { doc.image(logoBuffer, M, 16, { height: 50 }); } catch {}
+      try { doc.image(logoBuffer, M, 12, { height: 42 }); } catch {}
     } else {
-      doc.fontSize(22).fillColor('#ffffff').font('Helvetica-Bold').text('RISK SECURED', M, 28);
+      doc.fontSize(18).fillColor('#0b1a3e').font('Helvetica-Bold').text('RISK SECURED', M, 22);
     }
 
     // Aldi logo (right)
     if (aldiLogoBuffer) {
-      try { doc.image(aldiLogoBuffer, W - M - 70, 14, { height: 52 }); } catch {}
+      try { doc.image(aldiLogoBuffer, W - M - 55, 10, { height: 45 }); } catch {}
     }
 
     // Report title + ref (centre)
-    doc.fontSize(10).fillColor('#ffffff').font('Helvetica-Bold')
-      .text('PROPERTY INSPECTION', W - M - 250, 16, { width: 170, align: 'left' })
-      .text('REPORT', W - M - 250, 28, { width: 170, align: 'left' });
-    doc.fontSize(8).fillColor('#8899bb').font('Helvetica')
-      .text(`Ref: ${refNo}`, W - M - 250, 44, { width: 170, align: 'left' })
-      .text(dateStr, W - M - 250, 56, { width: 170, align: 'left' })
-      .text(timeStr, W - M - 250, 68, { width: 170, align: 'left' });
+    doc.fontSize(11).fillColor('#0b1a3e').font('Helvetica-Bold')
+      .text('Property Inspection Report', 200, 14, { width: 200, align: 'center' });
+    doc.fontSize(7).fillColor('#6b7280').font('Helvetica')
+      .text(`Ref: ${refNo}  |  ${dateStr}  |  ${timeStr}`, 180, 30, { width: 240, align: 'center' });
 
-    // Tagline bar
-    doc.rect(0, 80, W, 24).fill('#0e2252');
-    doc.fontSize(8).fillColor('#8899bb').font('Helvetica-Bold')
-      .text('Risk Secured Ltd — Bespoke Security Solutions for Aldi Stores Ltd', M, 87, { width: CW, align: 'center' });
+    // Tagline
+    doc.fontSize(7).fillColor('#9ca3af').font('Helvetica')
+      .text('Risk Secured Ltd — Bespoke Security Solutions for Aldi Stores Ltd', M, 76, { width: CW, align: 'center' });
 
-    // Thin accent under tagline
-    doc.rect(0, 104, W, 2).fill('#1a52a8');
-
-    let y = 120;
+    let y = 100;
 
     // ════════════════════════════════════════════════════════════════════
     // HELPER: boxed section with title bar
@@ -316,19 +311,17 @@ async function generatePDF(inspection, site, logoBuffer, photoBuffers, mapBuffer
     const pageCount = doc.bufferedPageRange().count;
     for (let i = 0; i < pageCount; i++) {
       doc.switchToPage(i);
-      const fY = doc.page.height - 60;
-      // Accent line
-      doc.rect(0, fY, W, 2).fill('#1a52a8');
-      // Footer background
-      doc.rect(0, fY + 2, W, 58).fill('#0b1a3e');
+      const fY = doc.page.height - 50;
+      doc.rect(0, fY, W, 1).fill('#e2e8f0');
+      doc.rect(0, fY + 1, W, 49).fill('#f8fafc');
 
-      doc.fontSize(9).fillColor('#ffffff').font('Helvetica-Bold')
-        .text('Risk Secured Ltd', M, fY + 10);
-      doc.fontSize(7).fillColor('#8899bb').font('Helvetica')
-        .text('Tel: 0843 122 1247  |  Mobile: 07587 865219  |  Email: david@risksecured.co.uk', M, fY + 24)
-        .text('Web: www.risksecured.co.uk  |  24/7 National Control Room: 01384 218829', M, fY + 36);
-      doc.fontSize(7).fillColor('#8899bb')
-        .text(`Page ${i + 1} of ${pageCount}`, W - M - 60, fY + 30, { width: 60, align: 'right' });
+      doc.fontSize(8).fillColor('#374151').font('Helvetica-Bold')
+        .text('Risk Secured Ltd', M, fY + 8);
+      doc.fontSize(7).fillColor('#9ca3af').font('Helvetica')
+        .text('Tel: 0843 122 1247  |  Mobile: 07587 865219  |  Email: david@risksecured.co.uk  |  Web: www.risksecured.co.uk', M, fY + 20)
+        .text('24/7 National Control Room: 01384 218829', M, fY + 32);
+      doc.fontSize(7).fillColor('#9ca3af')
+        .text(`Page ${i + 1} of ${pageCount}`, W - M - 60, fY + 20, { width: 60, align: 'right' });
     }
 
     doc.end();

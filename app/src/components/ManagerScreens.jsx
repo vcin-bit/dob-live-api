@@ -2767,12 +2767,14 @@ function SiteDocumentsTab({ siteId }) {
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  function load() {
+    setLoading(true);
     api.folders.documents.list({ site_id: siteId })
       .then(res => setDocs(res.data || []))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [siteId]);
+  }
+  useEffect(() => { load(); }, [siteId]);
 
   async function viewDoc(doc) {
     try {
@@ -2780,6 +2782,29 @@ function SiteDocumentsTab({ siteId }) {
       if (res.data?.url) window.open(res.data.url, '_blank');
       else alert('Could not open document');
     } catch { alert('Could not open document'); }
+  }
+
+  async function downloadDoc(doc) {
+    try {
+      const res = await api.folders.documents.getSigned(doc.id);
+      if (res.data?.url) {
+        const a = document.createElement('a');
+        a.href = res.data.url;
+        a.download = doc.original_name || doc.name || 'document.pdf';
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+    } catch { alert('Could not download document'); }
+  }
+
+  async function deleteDoc(doc) {
+    if (!window.confirm(`Delete "${doc.name}"? This cannot be undone.`)) return;
+    try {
+      await api.folders.documents.delete(doc.id);
+      load();
+    } catch (e) { alert('Could not delete: ' + e.message); }
   }
 
   if (loading) return <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>;
@@ -2790,16 +2815,15 @@ function SiteDocumentsTab({ siteId }) {
         <div style={{fontSize:'0.875rem',fontWeight:700,color:'var(--text-1)'}}>Property Inspections ({docs.length})</div>
       </div>
       {docs.length === 0 ? (
-        <div className="empty-state"><p>No documents for this site yet</p></div>
+        <div className="empty-state"><p>No inspection reports for this site yet</p></div>
       ) : (
         <table className="table">
-          <thead><tr><th>Document</th><th>Uploaded By</th><th>Date</th><th></th></tr></thead>
+          <thead><tr><th>Report</th><th>Inspector</th><th>Date</th><th></th></tr></thead>
           <tbody>
             {docs.map(doc => (
               <tr key={doc.id}>
                 <td>
                   <div style={{fontWeight:600}}>{doc.name || doc.original_name}</div>
-                  <div style={{fontSize:'0.75rem',color:'var(--text-3)'}}>{doc.mime_type}</div>
                 </td>
                 <td style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>
                   {doc.uploader ? `${doc.uploader.first_name} ${doc.uploader.last_name}` : '—'}
@@ -2807,8 +2831,10 @@ function SiteDocumentsTab({ siteId }) {
                 <td style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>
                   {doc.created_at ? new Date(doc.created_at).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}) : '—'}
                 </td>
-                <td style={{textAlign:'right'}}>
+                <td style={{textAlign:'right',display:'flex',gap:'0.375rem',justifyContent:'flex-end'}}>
                   <button className="btn btn-ghost btn-sm" style={{color:'var(--blue)'}} onClick={() => viewDoc(doc)}>View</button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => downloadDoc(doc)}>Download</button>
+                  <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={() => deleteDoc(doc)}>Delete</button>
                 </td>
               </tr>
             ))}
