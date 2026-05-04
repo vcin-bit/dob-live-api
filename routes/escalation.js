@@ -242,7 +242,7 @@ router.post('/cron-check', async (req, res) => {
 
       const minsOverdue = Math.floor(minsSinceLastCheck - 60);
 
-      results.details.push({ officer: officerName, site: siteName, minsOverdue, level, checkNumber: currentCheckNumber, checkDueAt: checkDueAt.toISOString() });
+      results.details.push({ officer: officerName, site: siteName, minsOverdue, level, lastCheckTime: lastCheckTime.toISOString() });
 
       // Level 0 → 1: SMS to officer (at +5 mins)
       if (minsOverdue >= 5 && level < 1 && twilio && officerPhone) {
