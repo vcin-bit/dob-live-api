@@ -11,6 +11,7 @@ import PlaybookAlerts from './PlaybookAlerts';
 import PatrolScreen, { PatrolHistoryOfficerScreen } from './PatrolScreen';
 import { HandoverScreen } from './HandoverScreen';
 import OfficerVisitorsScreen from './OfficerVisitors';
+import OfficerPerksScreen from './OfficerPerks';
 import {
   HomeIcon, ClipboardDocumentListIcon, MapPinIcon, ClockIcon,
   UserGroupIcon, Cog6ToothIcon, PlusIcon, ArrowRightOnRectangleIcon,
@@ -378,6 +379,7 @@ function OfficerApp({ user }) {
         <Route path="/visitors" element={<OfficerVisitorsScreen site={selectedSite} />} />
           <Route path="/profile" element={<OfficerProfile user={user} />} />
         <Route path="/policies" element={<OfficerPoliciesScreen user={user} />} />
+        <Route path="/perks" element={<OfficerPerksScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </div>
@@ -827,6 +829,16 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift, onPatro
           </div>
         </div>
       )}
+
+      {/* Perks link */}
+      <Link to="/perks" style={{display:'flex',alignItems:'center',gap:'0.75rem',padding:'0.875rem',background:'rgba(251,191,36,0.06)',border:'1px solid rgba(251,191,36,0.15)',borderRadius:'10px',textDecoration:'none',marginBottom:'0.625rem'}}>
+        <span style={{fontSize:'1.25rem'}}>🎁</span>
+        <div style={{flex:1}}>
+          <div style={{fontSize:'0.875rem',fontWeight:600,color:'#fbbf24'}}>Officer Perks & Discounts</div>
+          <div style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.35)'}}>Exclusive offers for security professionals</div>
+        </div>
+        <span style={{color:'rgba(255,255,255,0.2)',fontSize:'1rem'}}>›</span>
+      </Link>
 
       {/* Task completion modal */}
       {taskModal && (
