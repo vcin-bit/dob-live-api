@@ -30,7 +30,7 @@ export function InspectionPortalApp() {
   }, []);
 
   return (
-    <ClerkProvider publishableKey={clerkPubKey} signInFallbackRedirectUrl="/inspect" signUpFallbackRedirectUrl="/inspect">
+    <ClerkProvider publishableKey={clerkPubKey} signInForceRedirectUrl="/inspect" signUpForceRedirectUrl="/inspect" afterSignOutUrl="/inspect">
       <SignedOut><InspectLogin /></SignedOut>
       <SignedIn><InspectAuthenticated /></SignedIn>
     </ClerkProvider>
@@ -60,7 +60,7 @@ function InspectLogin() {
       if (result.status === 'needs_first_factor') {
         result = await signIn.attemptFirstFactor({ strategy: 'password', password });
       }
-      if (result.status === 'complete') await setActive({ session: result.createdSessionId });
+      if (result.status === 'complete') await setActive({ session: result.createdSessionId, redirectUrl: '/inspect' });
       else if (result.status === 'needs_second_factor' || result.status === 'needs_client_trust') {
         const emailFactor = result.supportedSecondFactors?.find(f => f.strategy === 'email_code');
         if (emailFactor) {
@@ -77,7 +77,7 @@ function InspectLogin() {
     setLoading(true); setError('');
     try {
       const result = await signIn.attemptSecondFactor({ strategy: 'email_code', code: trustCode });
-      if (result.status === 'complete') await setActive({ session: result.createdSessionId });
+      if (result.status === 'complete') await setActive({ session: result.createdSessionId, redirectUrl: '/inspect' });
       else setError('Verification failed. Please try again.');
     } catch (err) {
       setError(err.errors?.[0]?.longMessage || err.errors?.[0]?.message || 'Invalid verification code');

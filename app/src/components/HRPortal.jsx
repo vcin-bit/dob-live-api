@@ -15,7 +15,7 @@ export function HRPortalApp() {
   }, []);
 
   return (
-    <ClerkProvider publishableKey={clerkPubKey} signInFallbackRedirectUrl="/hr" signUpFallbackRedirectUrl="/hr">
+    <ClerkProvider publishableKey={clerkPubKey} signInForceRedirectUrl="/hr" signUpForceRedirectUrl="/hr" afterSignOutUrl="/hr">
       <SignedOut><HRLogin /></SignedOut>
       <SignedIn><HRAuthenticated /></SignedIn>
     </ClerkProvider>
@@ -46,7 +46,7 @@ function HRLogin() {
         result = await signIn.attemptFirstFactor({ strategy: 'password', password });
       }
       if (result.status === 'complete') {
-        await setActive({ session: result.createdSessionId });
+        await setActive({ session: result.createdSessionId, redirectUrl: '/hr' });
       } else if (result.status === 'needs_second_factor' || result.status === 'needs_client_trust') {
         const emailFactor = result.supportedSecondFactors?.find(f => f.strategy === 'email_code');
         if (emailFactor) {
@@ -64,7 +64,7 @@ function HRLogin() {
     setLoading(true); setError('');
     try {
       const result = await signIn.attemptSecondFactor({ strategy: 'email_code', code: trustCode });
-      if (result.status === 'complete') await setActive({ session: result.createdSessionId });
+      if (result.status === 'complete') await setActive({ session: result.createdSessionId, redirectUrl: '/hr' });
       else setError('Verification failed. Please try again.');
     } catch (err) {
       setError(err.errors?.[0]?.longMessage || err.errors?.[0]?.message || 'Invalid verification code');
