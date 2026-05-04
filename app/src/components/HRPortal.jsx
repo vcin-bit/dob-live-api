@@ -497,7 +497,7 @@ function HRAuthenticated() {
             </div>
 
             <div style={{background:'#fef3c7',border:'1px solid #fde68a',borderRadius:'8px',padding:'0.875rem',fontSize:'0.8125rem',color:'#92400e',lineHeight:1.5,marginBottom:'1rem'}}>
-              <strong>Why we need this:</strong> As a lone worker, your safety is our priority. If you activate a panic alarm, miss multiple safety checks, or are involved in a serious incident, our national command centre will contact your next of kin immediately. Without this information, we cannot notify your family in an emergency.
+              <strong>Why we need this:</strong> As a lone worker, your safety is our priority. If you are involved in a serious incident during your duties, our national command centre will contact your next of kin immediately. Without this information, we cannot notify your family in an emergency.
             </div>
 
             <div style={S.section}>
