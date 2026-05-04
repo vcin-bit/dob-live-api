@@ -162,6 +162,8 @@ function HRAuthenticated() {
     nok_name:'', nok_relationship:'', nok_phone:'',
     address_line_1:'', address_line_2:'', city:'', postcode:'',
     date_of_birth:'', ni_number:'',
+    employment_status:'', utr_number:'',
+    company_name:'', company_address:'', company_vat_number:'', company_reg_number:'',
   });
   const [docs, setDocs] = useState({ sia_front:null, sia_back:null, dbs_certificate:null });
   const [uploading, setUploading] = useState('');
@@ -191,6 +193,9 @@ function HRAuthenticated() {
             nok_name: hrRes.data.nok_name||'', nok_relationship: hrRes.data.nok_relationship||'', nok_phone: hrRes.data.nok_phone||'',
             address_line_1: hrRes.data.address_line_1||'', address_line_2: hrRes.data.address_line_2||'', city: hrRes.data.city||'', postcode: hrRes.data.postcode||'',
             date_of_birth: hrRes.data.date_of_birth ? hrRes.data.date_of_birth.split('T')[0] : '', ni_number: hrRes.data.ni_number||'',
+            employment_status: hrRes.data.employment_status||'', utr_number: hrRes.data.utr_number||'',
+            company_name: hrRes.data.company_name||'', company_address: hrRes.data.company_address||'',
+            company_vat_number: hrRes.data.company_vat_number||'', company_reg_number: hrRes.data.company_reg_number||'',
           });
           setDocs({ sia_front: hrRes.data.sia_front_path||null, sia_back: hrRes.data.sia_back_path||null, dbs_certificate: hrRes.data.dbs_certificate_path||null });
           // If GDPR already accepted, skip welcome
@@ -318,6 +323,7 @@ function HRAuthenticated() {
   ];
 
   const completionItems = [
+    { label:'Employment status', done: !!hr?.employment_status },
     { label:'Next of kin', done: !!hr?.nok_name },
     { label:'Address', done: !!hr?.address_line_1 },
     { label:'Date of birth', done: !!hr?.date_of_birth },
@@ -446,6 +452,22 @@ function HRAuthenticated() {
                 </div>
 
                 <div style={S.section}>
+                  <div style={S.sectionTitle}>Employment Status</div>
+                  <div style={S.readValue}>
+                    {hr.employment_status === 'employed' ? 'Employed (PAYE)' : hr.employment_status === 'self_employed' ? 'Self-Employed' : hr.employment_status === 'ltd_company' ? 'Subcontractor (Ltd Company)' : '—'}
+                  </div>
+                  {hr.employment_status === 'self_employed' && hr.utr_number && (
+                    <div style={{marginTop:'0.5rem'}}><div style={S.readLabel}>UTR Number</div><div style={{...S.readValue,fontFamily:'monospace'}}>••••••{hr.utr_number.slice(-4)}</div></div>
+                  )}
+                  {hr.employment_status === 'ltd_company' && hr.company_name && (
+                    <div style={{marginTop:'0.5rem',display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.5rem'}}>
+                      <div><div style={S.readLabel}>Company</div><div style={S.readValue}>{hr.company_name}</div></div>
+                      {hr.company_reg_number && <div><div style={S.readLabel}>Company No.</div><div style={S.readValue}>{hr.company_reg_number}</div></div>}
+                    </div>
+                  )}
+                </div>
+
+                <div style={S.section}>
                   <div style={S.sectionTitle}>Address</div>
                   <div style={{fontSize:'0.875rem',color:'#374151',lineHeight:1.6}}>
                     {hr.address_line_1}{hr.address_line_2 ? `, ${hr.address_line_2}` : ''}<br/>
@@ -475,6 +497,70 @@ function HRAuthenticated() {
                 <div style={{background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:'8px',padding:'0.875rem',fontSize:'0.8125rem',color:'#1e40af',lineHeight:1.5,marginBottom:'1rem'}}>
                   <strong>Why we need this:</strong> Your address is required for payroll, tax correspondence, and in case emergency services need to attend your home address following a serious incident on duty. Your date of birth and NI number are legal requirements for HMRC payroll processing.
                 </div>
+
+                <div style={S.section}>
+                  <div style={S.sectionTitle}>Employment Status</div>
+                  <div style={{fontSize:'0.75rem',color:'#6b7280',marginBottom:'0.75rem',lineHeight:1.5}}>
+                    Please select your employment arrangement. This determines how you are paid and what tax information we require.
+                  </div>
+                  <div style={{display:'flex',flexDirection:'column',gap:'0.5rem'}}>
+                    {[
+                      { value:'employed', label:'Employed (PAYE)', desc:'You are paid through our payroll with tax and NI deducted at source.' },
+                      { value:'self_employed', label:'Self-Employed', desc:'You invoice for your services and manage your own tax via Self Assessment.' },
+                      { value:'ltd_company', label:'Subcontractor (Ltd Company)', desc:'You operate through a limited company and invoice us as a business.' },
+                    ].map(opt => (
+                      <button key={opt.value} type="button" onClick={() => f('employment_status', opt.value)}
+                        style={{textAlign:'left',padding:'0.875rem',background: form.employment_status===opt.value ? '#eff6ff' : '#fff',
+                          border: form.employment_status===opt.value ? '2px solid #1a52a8' : '1.5px solid #e5e7eb',
+                          borderRadius:'10px',cursor:'pointer',transition:'all 0.15s'}}>
+                        <div style={{fontSize:'0.875rem',fontWeight:700,color: form.employment_status===opt.value ? '#1a52a8' : '#111827',marginBottom:'0.125rem'}}>{opt.label}</div>
+                        <div style={{fontSize:'0.75rem',color:'#6b7280',lineHeight:1.4}}>{opt.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Self-employed: UTR number */}
+                {form.employment_status === 'self_employed' && (
+                  <div style={S.section}>
+                    <div style={S.sectionTitle}>Self-Employment Details</div>
+                    <div style={{fontSize:'0.75rem',color:'#6b7280',marginBottom:'0.75rem',lineHeight:1.5}}>
+                      Your Unique Taxpayer Reference (UTR) is required for CIS verification and our records.
+                    </div>
+                    <div>
+                      <label style={S.fieldLabel}>UTR Number</label>
+                      <input value={form.utr_number} onChange={e => f('utr_number', e.target.value.replace(/\D/g,''))} placeholder="10-digit number" maxLength={10} style={{...S.fieldInput, fontFamily:'monospace', letterSpacing:'0.05em'}} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Ltd company: company details */}
+                {form.employment_status === 'ltd_company' && (
+                  <div style={S.section}>
+                    <div style={S.sectionTitle}>Company Details</div>
+                    <div style={{fontSize:'0.75rem',color:'#6b7280',marginBottom:'0.75rem',lineHeight:1.5}}>
+                      We need your company information for invoicing and compliance purposes.
+                    </div>
+                    <div style={{marginBottom:'0.75rem'}}>
+                      <label style={S.fieldLabel}>Company Name</label>
+                      <input value={form.company_name} onChange={e => f('company_name', e.target.value)} placeholder="e.g. Smith Security Ltd" style={S.fieldInput} />
+                    </div>
+                    <div style={{marginBottom:'0.75rem'}}>
+                      <label style={S.fieldLabel}>Registered Address</label>
+                      <input value={form.company_address} onChange={e => f('company_address', e.target.value)} placeholder="Full registered address" style={S.fieldInput} />
+                    </div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
+                      <div>
+                        <label style={S.fieldLabel}>Company Number</label>
+                        <input value={form.company_reg_number} onChange={e => f('company_reg_number', e.target.value)} placeholder="e.g. 12345678" maxLength={8} style={{...S.fieldInput, fontFamily:'monospace'}} />
+                      </div>
+                      <div>
+                        <label style={S.fieldLabel}>VAT Number (if registered)</label>
+                        <input value={form.company_vat_number} onChange={e => f('company_vat_number', e.target.value)} placeholder="GB 123 4567 89" style={{...S.fieldInput, fontFamily:'monospace'}} />
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div style={S.section}>
                   <div style={S.sectionTitle}>Address</div>

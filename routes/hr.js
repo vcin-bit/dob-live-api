@@ -38,6 +38,8 @@ router.put('/', authenticate, async (req, res, next) => {
       nok_name, nok_relationship, nok_phone,
       address_line_1, address_line_2, city, postcode,
       date_of_birth, ni_number,
+      employment_status, utr_number,
+      company_name, company_address, company_vat_number, company_reg_number,
       gdpr_consent, gdpr_consent_at,
     } = req.body;
 
@@ -53,6 +55,12 @@ router.put('/', authenticate, async (req, res, next) => {
       postcode: postcode || null,
       date_of_birth: date_of_birth || null,
       ni_number: ni_number || null,
+      employment_status: employment_status || null,
+      utr_number: utr_number || null,
+      company_name: company_name || null,
+      company_address: company_address || null,
+      company_vat_number: company_vat_number || null,
+      company_reg_number: company_reg_number || null,
       gdpr_consent: gdpr_consent || false,
       gdpr_consent_at: gdpr_consent_at || null,
       updated_at: new Date().toISOString(),
