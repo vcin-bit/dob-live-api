@@ -161,7 +161,7 @@ function HRAuthenticated() {
   const [form, setForm] = useState({
     nok_name:'', nok_relationship:'', nok_phone:'',
     address_line_1:'', address_line_2:'', city:'', postcode:'',
-    date_of_birth:'', ni_number:'',
+    date_of_birth:'', ni_number:'', personal_email:'',
     employment_status:'', utr_number:'',
     company_name:'', company_address:'', company_vat_number:'', company_reg_number:'',
   });
@@ -197,7 +197,7 @@ function HRAuthenticated() {
           setForm({
             nok_name: hrRes.data.nok_name||'', nok_relationship: hrRes.data.nok_relationship||'', nok_phone: hrRes.data.nok_phone||'',
             address_line_1: hrRes.data.address_line_1||'', address_line_2: hrRes.data.address_line_2||'', city: hrRes.data.city||'', postcode: hrRes.data.postcode||'',
-            date_of_birth: hrRes.data.date_of_birth ? hrRes.data.date_of_birth.split('T')[0] : '', ni_number: hrRes.data.ni_number||'',
+            date_of_birth: hrRes.data.date_of_birth ? hrRes.data.date_of_birth.split('T')[0] : '', ni_number: hrRes.data.ni_number||'', personal_email: hrRes.data.personal_email||'',
             employment_status: hrRes.data.employment_status||'', utr_number: hrRes.data.utr_number||'',
             company_name: hrRes.data.company_name||'', company_address: hrRes.data.company_address||'',
             company_vat_number: hrRes.data.company_vat_number||'', company_reg_number: hrRes.data.company_reg_number||'',
@@ -486,6 +486,7 @@ function HRAuthenticated() {
                   <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
                     <div><div style={S.readLabel}>Date of Birth</div><div style={S.readValue}>{new Date(hr.date_of_birth).toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div></div>
                     <div><div style={S.readLabel}>NI Number</div><div style={{...S.readValue,fontFamily:'monospace'}}>••••••••••</div></div>
+                    <div style={{gridColumn:'1 / -1'}}><div style={S.readLabel}>Personal Email</div><div style={S.readValue}>{hr.personal_email || '—'}</div></div>
                   </div>
                 </div>
 
@@ -594,6 +595,11 @@ function HRAuthenticated() {
                     <div>
                       <label style={S.fieldLabel}>NI Number</label>
                       <input value={form.ni_number} onChange={e => f('ni_number', e.target.value.toUpperCase())} placeholder="AB 12 34 56 C" maxLength={13} style={{...S.fieldInput, fontFamily:'monospace', letterSpacing:'0.05em'}} />
+                    </div>
+                    <div style={{gridColumn:'1 / -1'}}>
+                      <label style={S.fieldLabel}>Personal Email Address</label>
+                      <input type="email" value={form.personal_email} onChange={e => f('personal_email', e.target.value)} placeholder="you@example.com" style={S.fieldInput} />
+                      <div style={{fontSize:'0.6875rem',color:'#9ca3af',marginTop:'0.375rem'}}>Used to send you copies of invoices and important correspondence.</div>
                     </div>
                   </div>
                   <div style={{fontSize:'0.6875rem',color:'#9ca3af',marginTop:'0.5rem',display:'flex',alignItems:'center',gap:'0.375rem'}}>

@@ -38,6 +38,7 @@ router.put('/', authenticate, async (req, res, next) => {
       nok_name, nok_relationship, nok_phone,
       address_line_1, address_line_2, city, postcode,
       date_of_birth, ni_number,
+      personal_email,
       employment_status, utr_number,
       company_name, company_address, company_vat_number, company_reg_number,
       gdpr_consent, gdpr_consent_at,
@@ -55,6 +56,7 @@ router.put('/', authenticate, async (req, res, next) => {
       postcode: postcode || null,
       date_of_birth: date_of_birth || null,
       ni_number: ni_number || null,
+      personal_email: personal_email || null,
       employment_status: employment_status || null,
       utr_number: utr_number || null,
       company_name: company_name || null,
@@ -285,9 +287,13 @@ router.post('/invoice', authenticate, async (req, res, next) => {
       sg.setApiKey(process.env.SENDGRID_API_KEY);
       const fromEmail = process.env.RS_INSPECTION_FROM_EMAIL || 'reports@risksecured.co.uk';
       const toEmail = 'accounts@risksecured.co.uk';
+      // CC the officer if they have a personal email on file
+      const { data: hrRec } = await supabase.from('officer_hr').select('personal_email').eq('user_id', officer.id).maybeSingle();
+      const ccEmail = hrRec?.personal_email || officer.email || null;
       try {
         await sg.send({
           to: toEmail,
+          ...(ccEmail ? { cc: ccEmail } : {}),
           from: { email: fromEmail, name: 'DOB Live' },
           subject: `Invoice ${invoiceRef} — ${contractor.name || `${officer.first_name} ${officer.last_name}`} — ${month}`,
           html: `
