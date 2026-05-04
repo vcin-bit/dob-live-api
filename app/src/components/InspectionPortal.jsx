@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { ClerkProvider, useAuth, useSignIn, SignedIn, SignedOut } from '@clerk/clerk-react';
+import { useAuth, useSignIn, SignedIn, SignedOut } from '@clerk/clerk-react';
 import { api } from '../lib/api';
 import { compressImage, isImage } from '../lib/imageUtils';
 
-const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const LOGO_URL = 'https://bxesqjzkuredqzvepomn.supabase.co/storage/v1/object/public/company-logos/4bab41dd-f6a9-4407-983b-d42d32ea1432/logo.png';
 
 const OBSERVATIONS = [
@@ -30,10 +29,10 @@ export function InspectionPortalApp() {
   }, []);
 
   return (
-    <ClerkProvider publishableKey={clerkPubKey} signInForceRedirectUrl="/inspect" signUpForceRedirectUrl="/inspect" afterSignOutUrl="/inspect">
+    <>
       <SignedOut><InspectLogin /></SignedOut>
       <SignedIn><InspectAuthenticated /></SignedIn>
-    </ClerkProvider>
+    </>
   );
 }
 
@@ -60,7 +59,7 @@ function InspectLogin() {
       if (result.status === 'needs_first_factor') {
         result = await signIn.attemptFirstFactor({ strategy: 'password', password });
       }
-      if (result.status === 'complete') await setActive({ session: result.createdSessionId, redirectUrl: '/inspect' });
+      if (result.status === 'complete') await setActive({ session: result.createdSessionId });
       else if (result.status === 'needs_second_factor' || result.status === 'needs_client_trust') {
         const emailFactor = result.supportedSecondFactors?.find(f => f.strategy === 'email_code');
         if (emailFactor) {
@@ -77,7 +76,7 @@ function InspectLogin() {
     setLoading(true); setError('');
     try {
       const result = await signIn.attemptSecondFactor({ strategy: 'email_code', code: trustCode });
-      if (result.status === 'complete') await setActive({ session: result.createdSessionId, redirectUrl: '/inspect' });
+      if (result.status === 'complete') await setActive({ session: result.createdSessionId });
       else setError('Verification failed. Please try again.');
     } catch (err) {
       setError(err.errors?.[0]?.longMessage || err.errors?.[0]?.message || 'Invalid verification code');
@@ -249,7 +248,7 @@ function InspectAuthenticated() {
             style={{padding:'0.75rem 1.5rem',background:'#1a52a8',color:'#fff',border:'none',borderRadius:'8px',fontSize:'0.875rem',fontWeight:700,cursor:'pointer'}}>
             New Inspection
           </button>
-          <button onClick={() => signOut({ redirectUrl: '/inspect' })} style={{padding:'0.75rem 1.5rem',background:'#f3f4f6',color:'#374151',border:'1px solid #d1d5db',borderRadius:'8px',fontSize:'0.875rem',fontWeight:600,cursor:'pointer'}}>
+          <button onClick={() => signOut()} style={{padding:'0.75rem 1.5rem',background:'#f3f4f6',color:'#374151',border:'1px solid #d1d5db',borderRadius:'8px',fontSize:'0.875rem',fontWeight:600,cursor:'pointer'}}>
             Sign Out
           </button>
         </div>
@@ -276,7 +275,7 @@ function InspectAuthenticated() {
               <div style={{fontSize:'0.6875rem',color:'rgba(255,255,255,0.5)'}}>{dbUser?.first_name} {dbUser?.last_name}</div>
               <div style={{fontSize:'0.5625rem',color:'rgba(255,255,255,0.3)'}}>{new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'Europe/London'})}</div>
             </div>
-            <button onClick={() => signOut({ redirectUrl: '/inspect' })} style={{padding:'0.375rem 0.625rem',background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',color:'rgba(255,255,255,0.5)',fontSize:'0.625rem',fontWeight:600,cursor:'pointer'}}>Sign Out</button>
+            <button onClick={() => signOut()} style={{padding:'0.375rem 0.625rem',background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',color:'rgba(255,255,255,0.5)',fontSize:'0.625rem',fontWeight:600,cursor:'pointer'}}>Sign Out</button>
           </div>
         </div>
       </div>

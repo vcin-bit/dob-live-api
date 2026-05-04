@@ -45,23 +45,21 @@ function App() {
   }, []);
 
   return (
-    <Router>
-      <Routes>
-        <Route path="/portal/*" element={<PortalApp />} />
-        <Route path="/hr/*" element={<HRPortalApp />} />
-        <Route path="/inspect/*" element={<InspectionPortalApp />} />
-        <Route path="*" element={
-          <ClerkProvider
-            publishableKey={clerkPubKey}
-            signInFallbackRedirectUrl="/"
-            signUpFallbackRedirectUrl="/"
-          >
-            <SignedOut><AuthFlow /></SignedOut>
-            <SignedIn><AuthenticatedApp /></SignedIn>
-          </ClerkProvider>
-        } />
-      </Routes>
-    </Router>
+    <ClerkProvider publishableKey={clerkPubKey}>
+      <Router>
+        <Routes>
+          <Route path="/portal/*" element={<PortalApp />} />
+          <Route path="/hr/*" element={<HRPortalApp />} />
+          <Route path="/inspect/*" element={<InspectionPortalApp />} />
+          <Route path="*" element={
+            <>
+              <SignedOut><AuthFlow /></SignedOut>
+              <SignedIn><AuthenticatedApp /></SignedIn>
+            </>
+          } />
+        </Routes>
+      </Router>
+    </ClerkProvider>
   );
 }
 
