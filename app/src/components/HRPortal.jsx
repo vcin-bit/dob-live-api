@@ -326,6 +326,7 @@ function HRAuthenticated() {
     { key:'documents', label:'Documents' },
     { key:'licence', label:'Licence' },
     { key:'hours', label:'Hours' },
+    { key:'perks', label:'Perks' },
   ];
 
   const completionItems = [
@@ -836,6 +837,20 @@ function HRAuthenticated() {
             showInvoice={showInvoice} setShowInvoice={setShowInvoice}
             invoiceRef={invoiceRef} setInvoiceRef={setInvoiceRef}
           />
+        )}
+
+        {/* ── PERKS TAB ──────────────────────────────────────────────── */}
+        {tab === 'perks' && (
+          <div style={{padding:'2rem',textAlign:'center'}}>
+            <div style={{fontSize:'2.5rem',marginBottom:'1rem'}}>🎁</div>
+            <h2 style={{fontSize:'1.25rem',fontWeight:700,color:'#111827',margin:'0 0 0.5rem'}}>Officer Perks & Discounts</h2>
+            <p style={{fontSize:'0.875rem',color:'#6b7280',lineHeight:1.6,maxWidth:'400px',margin:'0 auto 1.5rem'}}>
+              Exclusive discounts on food, fitness, entertainment, fuel, and more — all for security professionals. Coming soon.
+            </p>
+            <div style={{display:'inline-block',padding:'0.5rem 1.25rem',background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:'20px',fontSize:'0.8125rem',fontWeight:600,color:'#1a52a8'}}>
+              Coming Soon
+            </div>
+          </div>
         )}
 
         {/* ── PRIVACY TAB ─────────────────────────────────────────────── */}
