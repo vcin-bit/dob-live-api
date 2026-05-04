@@ -249,7 +249,7 @@ function InspectAuthenticated() {
             style={{padding:'0.75rem 1.5rem',background:'#1a52a8',color:'#fff',border:'none',borderRadius:'8px',fontSize:'0.875rem',fontWeight:700,cursor:'pointer'}}>
             New Inspection
           </button>
-          <button onClick={() => signOut()} style={{padding:'0.75rem 1.5rem',background:'#f3f4f6',color:'#374151',border:'1px solid #d1d5db',borderRadius:'8px',fontSize:'0.875rem',fontWeight:600,cursor:'pointer'}}>
+          <button onClick={() => signOut({ redirectUrl: '/inspect' })} style={{padding:'0.75rem 1.5rem',background:'#f3f4f6',color:'#374151',border:'1px solid #d1d5db',borderRadius:'8px',fontSize:'0.875rem',fontWeight:600,cursor:'pointer'}}>
             Sign Out
           </button>
         </div>
@@ -276,7 +276,7 @@ function InspectAuthenticated() {
               <div style={{fontSize:'0.6875rem',color:'rgba(255,255,255,0.5)'}}>{dbUser?.first_name} {dbUser?.last_name}</div>
               <div style={{fontSize:'0.5625rem',color:'rgba(255,255,255,0.3)'}}>{new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'Europe/London'})}</div>
             </div>
-            <button onClick={() => signOut()} style={{padding:'0.375rem 0.625rem',background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',color:'rgba(255,255,255,0.5)',fontSize:'0.625rem',fontWeight:600,cursor:'pointer'}}>Sign Out</button>
+            <button onClick={() => signOut({ redirectUrl: '/inspect' })} style={{padding:'0.375rem 0.625rem',background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'6px',color:'rgba(255,255,255,0.5)',fontSize:'0.625rem',fontWeight:600,cursor:'pointer'}}>Sign Out</button>
           </div>
         </div>
       </div>

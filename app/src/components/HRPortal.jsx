@@ -173,7 +173,7 @@ function HRAuthenticated() {
     const t = setInterval(() => {
       const mins = Math.max(0, Math.ceil((sessionExpiry - Date.now()) / 60000));
       setTimeLeft(mins);
-      if (mins <= 0) signOut();
+      if (mins <= 0) signOut({ redirectUrl: '/hr' });
     }, 30000);
     return () => clearInterval(t);
   }, [sessionExpiry]);
@@ -341,7 +341,7 @@ function HRAuthenticated() {
           </div>
           <div style={{display:'flex',alignItems:'center',gap:'0.875rem'}}>
             <div style={{fontSize:'0.6875rem',color:'rgba(255,255,255,0.4)'}}>Session {timeLeft}m</div>
-            <button onClick={() => signOut()} style={{padding:'0.375rem 0.75rem',background:'rgba(255,255,255,0.1)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:'6px',color:'rgba(255,255,255,0.7)',fontSize:'0.6875rem',fontWeight:600,cursor:'pointer'}}>Sign Out</button>
+            <button onClick={() => signOut({ redirectUrl: '/hr' })} style={{padding:'0.375rem 0.75rem',background:'rgba(255,255,255,0.1)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:'6px',color:'rgba(255,255,255,0.7)',fontSize:'0.6875rem',fontWeight:600,cursor:'pointer'}}>Sign Out</button>
           </div>
         </div>
       </div>
