@@ -106,26 +106,48 @@ function AuthFlow() {
     if (!signInLoaded) return;
     setLoading(true); setError('');
     try {
-      const result = await signIn.create({ identifier: email, password });
+      let result = await signIn.create({ identifier: email, password });
+      if (result.status === 'needs_first_factor') {
+        result = await signIn.attemptFirstFactor({ strategy: 'password', password });
+      }
       if (result.status === 'complete') {
         await setSignInActive({ session: result.createdSessionId });
-      } else if (result.status === 'needs_first_factor') {
-        const result2 = await signIn.attemptFirstFactor({ strategy: 'password', password });
-        if (result2.status === 'complete') {
-          await setSignInActive({ session: result2.createdSessionId });
+      } else if (result.status === 'needs_second_factor' || result.status === 'needs_client_trust') {
+        const emailFactor = result.supportedSecondFactors?.find(f => f.strategy === 'email_code');
+        if (emailFactor) {
+          await signIn.prepareSecondFactor({ strategy: 'email_code' });
+          setStep('trust');
+          setCode('');
+          setInfo(`We sent a verification code to your email.`);
         } else {
-          setError(`Sign in status: ${result2.status}`);
-          console.log('Sign in result2:', JSON.stringify(result2));
+          setError('Verification required but no email code method available. Contact support.');
         }
       } else {
         setError(`Sign in status: ${result.status}. Please try again or contact support.`);
-        console.log('Sign in result:', JSON.stringify(result));
       }
     } catch (err) {
       const e0 = err.errors?.[0];
       const parts = [e0?.longMessage || e0?.message || 'Incorrect email or password'];
       if (e0?.code) parts.push(`(${e0.code})`);
       setError(parts.join(' '));
+    } finally { setLoading(false); }
+  }
+
+  // ── Trust / Second Factor Verification ─────────────────────────────────
+  async function handleTrustVerify(e) {
+    e.preventDefault();
+    if (!signInLoaded) return;
+    setLoading(true); setError(''); setInfo('');
+    try {
+      const result = await signIn.attemptSecondFactor({ strategy: 'email_code', code });
+      if (result.status === 'complete') {
+        await setSignInActive({ session: result.createdSessionId });
+      } else {
+        setError(`Verification status: ${result.status}. Please try again.`);
+      }
+    } catch (err) {
+      const e0 = err.errors?.[0];
+      setError(e0?.longMessage || e0?.message || 'Invalid verification code');
     } finally { setLoading(false); }
   }
 
@@ -245,7 +267,7 @@ function AuthFlow() {
           )}
 
           {/* SIGN IN */}
-          {mode === 'signin' && (
+          {mode === 'signin' && step !== 'trust' && (
             <form onSubmit={handleSignIn}>
               <div style={fieldStyle}>
                 <label style={labelStyle}>Email address</label>
@@ -275,6 +297,26 @@ function AuthFlow() {
               )}
               <button type="submit" style={btnStyle} disabled={loading}>
                 {loading ? 'Signing in...' : step === 'email' ? 'Continue →' : 'Sign in'}
+              </button>
+            </form>
+          )}
+
+          {/* TRUST / SECOND FACTOR VERIFICATION */}
+          {mode === 'signin' && step === 'trust' && (
+            <form onSubmit={handleTrustVerify}>
+              <p style={{fontSize:'0.875rem',color:'#64748b',marginBottom:'1rem'}}>
+                We sent a verification code to <strong>{email}</strong>
+              </p>
+              <div style={fieldStyle}>
+                <label style={labelStyle}>6-digit code</label>
+                <input type="text" value={code} onChange={e=>setCode(e.target.value.replace(/\D/g,''))} style={{...inputStyle,letterSpacing:'0.25em',fontSize:'1.25rem',textAlign:'center'}}
+                  placeholder="000000" required maxLength={6} autoFocus inputMode="numeric"
+                  onFocus={e=>e.target.style.borderColor='#1a52a8'} onBlur={e=>e.target.style.borderColor='#e2e8f0'} />
+              </div>
+              <button type="submit" style={btnStyle} disabled={loading || code.length !== 6}>{loading ? 'Verifying...' : 'Verify'}</button>
+              <button type="button" onClick={() => { setStep('password'); setCode(''); setError(''); setInfo(''); }}
+                style={{width:'100%',marginTop:'0.5rem',padding:'0.625rem',background:'none',border:'none',color:'#64748b',fontSize:'0.875rem',cursor:'pointer'}}>
+                Back to sign in
               </button>
             </form>
           )}

@@ -46,23 +46,42 @@ function InspectLogin() {
   const [step, setStep] = useState('email');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [trustCode, setTrustCode] = useState('');
 
   if (!isLoaded) return <div style={S.page}><div style={S.spinner} /></div>;
 
   async function handleSubmit(e) {
     e.preventDefault();
     if (step === 'email') { setStep('password'); return; }
+    if (step === 'trust') { return handleTrustVerify(e); }
     setLoading(true); setError('');
     try {
-      const result = await signIn.create({ identifier: email, password });
+      let result = await signIn.create({ identifier: email, password });
+      if (result.status === 'needs_first_factor') {
+        result = await signIn.attemptFirstFactor({ strategy: 'password', password });
+      }
       if (result.status === 'complete') await setActive({ session: result.createdSessionId });
-      else if (result.status === 'needs_first_factor') {
-        const r2 = await signIn.attemptFirstFactor({ strategy: 'password', password });
-        if (r2.status === 'complete') await setActive({ session: r2.createdSessionId });
-        else setError('Sign in failed.');
+      else if (result.status === 'needs_second_factor' || result.status === 'needs_client_trust') {
+        const emailFactor = result.supportedSecondFactors?.find(f => f.strategy === 'email_code');
+        if (emailFactor) {
+          await signIn.prepareSecondFactor({ strategy: 'email_code' });
+          setStep('trust'); setTrustCode('');
+        } else { setError('Verification required but no email code method available.'); }
       } else setError('Sign in failed.');
     } catch (err) { setError(err.errors?.[0]?.longMessage || 'Incorrect email or password'); }
     finally { setLoading(false); }
+  }
+
+  async function handleTrustVerify(e) {
+    e.preventDefault();
+    setLoading(true); setError('');
+    try {
+      const result = await signIn.attemptSecondFactor({ strategy: 'email_code', code: trustCode });
+      if (result.status === 'complete') await setActive({ session: result.createdSessionId });
+      else setError('Verification failed. Please try again.');
+    } catch (err) {
+      setError(err.errors?.[0]?.longMessage || err.errors?.[0]?.message || 'Invalid verification code');
+    } finally { setLoading(false); }
   }
 
   return (
@@ -76,16 +95,30 @@ function InspectLogin() {
           <div style={{fontSize:'1.0625rem',fontWeight:700,color:'#111827',marginBottom:'1.5rem'}}>Sign in to continue</div>
           {error && <div style={{background:'#fef2f2',border:'1px solid #fca5a5',borderRadius:'8px',padding:'0.75rem',marginBottom:'1rem',fontSize:'0.8125rem',color:'#dc2626'}}>{error}</div>}
           <form onSubmit={handleSubmit}>
-            <div style={{marginBottom:'1rem'}}><label style={S.label}>Email</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@risksecured.co.uk" required autoComplete="email" style={S.input} /></div>
-            {step === 'password' && (
-              <div style={{marginBottom:'1rem'}}><label style={S.label}>Password</label>
-                <div style={{position:'relative'}}>
-                  <input type={showPw?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} required autoFocus style={{...S.input,paddingRight:'3.5rem'}} />
-                  <button type="button" onClick={()=>setShowPw(!showPw)} style={{position:'absolute',right:'0.75rem',top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:'#6b7280',fontSize:'0.8125rem',cursor:'pointer'}}>{showPw?'Hide':'Show'}</button>
-                </div>
-              </div>
+            {step !== 'trust' && (
+              <>
+                <div style={{marginBottom:'1rem'}}><label style={S.label}>Email</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@risksecured.co.uk" required autoComplete="email" style={S.input} /></div>
+                {step === 'password' && (
+                  <div style={{marginBottom:'1rem'}}><label style={S.label}>Password</label>
+                    <div style={{position:'relative'}}>
+                      <input type={showPw?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} required autoFocus style={{...S.input,paddingRight:'3.5rem'}} />
+                      <button type="button" onClick={()=>setShowPw(!showPw)} style={{position:'absolute',right:'0.75rem',top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:'#6b7280',fontSize:'0.8125rem',cursor:'pointer'}}>{showPw?'Hide':'Show'}</button>
+                    </div>
+                  </div>
+                )}
+                <button type="submit" disabled={loading} style={{...S.btn,opacity:loading?0.7:1}}>{loading?'Signing in...':step==='email'?'Continue':'Sign In'}</button>
+              </>
             )}
-            <button type="submit" disabled={loading} style={{...S.btn,opacity:loading?0.7:1}}>{loading?'Signing in...':step==='email'?'Continue':'Sign In'}</button>
+            {step === 'trust' && (
+              <>
+                <p style={{fontSize:'0.8125rem',color:'#6b7280',marginBottom:'1rem'}}>We sent a verification code to <strong>{email}</strong></p>
+                <div style={{marginBottom:'1rem'}}><label style={S.label}>6-digit code</label>
+                  <input type="text" inputMode="numeric" value={trustCode} onChange={e=>setTrustCode(e.target.value.replace(/\D/g,''))} placeholder="000000" required maxLength={6} autoFocus style={{...S.input,letterSpacing:'0.25em',fontSize:'1.25rem',textAlign:'center'}} />
+                </div>
+                <button type="submit" disabled={loading||trustCode.length!==6} style={{...S.btn,opacity:loading||trustCode.length!==6?0.7:1}}>{loading?'Verifying...':'Verify'}</button>
+                <button type="button" onClick={()=>{setStep('password');setTrustCode('');setError('');}} style={{display:'block',margin:'0.75rem auto 0',background:'none',border:'none',color:'#6b7280',fontSize:'0.8125rem',cursor:'pointer'}}>Back to sign in</button>
+              </>
+            )}
           </form>
         </div>
         <div style={{textAlign:'center',marginTop:'1.5rem',fontSize:'0.6875rem',color:'rgba(255,255,255,0.3)'}}>
