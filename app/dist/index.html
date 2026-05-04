@@ -5,16 +5,40 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#0b1222" />
+    <script>
+      // Must run BEFORE any link/meta tags so Safari uses the correct manifest
+      (function() {
+        var p = window.location.pathname;
+        var manifest = '/manifest.json';
+        var title = 'DOB Live';
+        var appTitle = 'DOB Live';
+        var theme = '#0b1222';
+        if (p.indexOf('/inspect') === 0) {
+          manifest = '/manifest-inspect.json';
+          title = 'Risk Secured — Inspection';
+          appTitle = 'Inspection';
+          theme = '#0b1a3e';
+        } else if (p.indexOf('/hr') === 0) {
+          manifest = '/manifest-hr.json';
+          title = 'DOB Live — Personnel';
+          appTitle = 'Personnel';
+          theme = '#0b1a3e';
+        } else if (p.indexOf('/portal') === 0) {
+          title = 'DOB Live — Portal';
+          appTitle = 'Client Portal';
+        }
+        document.write('<link rel="manifest" href="' + manifest + '" />');
+        document.write('<meta name="theme-color" content="' + theme + '" />');
+        document.write('<meta name="apple-mobile-web-app-title" content="' + appTitle + '" />');
+        document.title = title;
+      })();
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="DOB Live" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>DOB Live</title>
     <script>
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -24,7 +48,7 @@
         });
       }
     </script>
-    <script type="module" crossorigin src="/assets/index-4a5fcab7.js"></script>
+    <script type="module" crossorigin src="/assets/index-977f3748.js"></script>
     <link rel="stylesheet" href="/assets/index-5c027a8b.css">
   </head>
   <body>

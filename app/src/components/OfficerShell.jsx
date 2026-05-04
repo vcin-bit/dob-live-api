@@ -378,30 +378,15 @@ function OfficerApp({ user }) {
       </div>
       <OfficerNavigation onSignOut={async () => {
         if (activeShift) {
+          if (!confirm('Are you sure you want to end your shift and sign out?')) return;
           try {
             // Check if shift was already expired by cron
             const check = await api.shifts.list({ officer_id: user.id, status: 'ACTIVE' });
-            if (!check.data || check.data.length === 0) {
-              // Shift was expired by cron — allow sign out
-              setActiveShift(null);
-              signOut();
-              return;
-            }
-            // Check if shift has passed its scheduled end time
-            const shift = check.data[0];
-            const now = new Date();
-            const endTime = shift.end_time ? new Date(shift.end_time) : null;
-            if (endTime && now >= endTime) {
-              // Past end time — checkout and sign out
-              try { await api.shifts.checkout(shift.id); } catch {}
-              setActiveShift(null);
-              signOut();
-              return;
+            if (check.data && check.data.length > 0) {
+              await api.shifts.checkout(check.data[0].id);
             }
           } catch {}
-          // Still within shift hours — block with message
-          alert('Your shift has not ended yet. Contact the control room if you need to go off duty early.');
-          return;
+          setActiveShift(null);
         }
         signOut();
       }} />
@@ -488,6 +473,7 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift, onPatro
   const [checkCallDue, setCheckCallDue] = useState(false);
   const [lastCheckCall, setLastCheckCall] = useState(null);
   const [checkCallConfirmed, setCheckCallConfirmed] = useState(false);
+  const [checkCallMinsLeft, setCheckCallMinsLeft] = useState(null);
   const [activePatrol, setActivePatrol] = useState(false);
   const [showLogMenu, setShowLogMenu] = useState(false);
   const [clientTasks, setClientTasks] = useState([]);
@@ -567,6 +553,8 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift, onPatro
       // Use server-loaded lastCheckCall, or shift checked_in_at from current active shift
       const last = lastCheckCall || (shift.checked_in_at ? new Date(shift.checked_in_at) : new Date());
       const elapsed = (Date.now() - last.getTime()) / 60000;
+      const remaining = Math.ceil(55 - elapsed);
+      setCheckCallMinsLeft(remaining);
       if (elapsed >= 55 && elapsed < 40000) { // Due at 55 mins, cap at ~28 days to catch stale data
         setCheckCallDue(true);
         try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); const o = ctx.createOscillator(); o.frequency.value = 800; o.connect(ctx.destination); o.start(); setTimeout(() => o.stop(), 500); } catch {}
@@ -738,7 +726,7 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift, onPatro
         <div style={{display:'flex',gap:'0.5rem',marginBottom:'0.625rem'}}>
           <button onClick={() => { setShowCheckCall(true); setCheckPin(''); }}
             style={{flex:2,padding:'0.875rem',background: checkCallDue ? 'rgba(239,68,68,0.2)' : 'rgba(59,130,246,0.1)',border:`2px solid ${checkCallDue ? 'rgba(239,68,68,0.5)' : 'rgba(59,130,246,0.25)'}`,borderRadius:'10px',color: checkCallDue ? '#ef4444' : '#60a5fa',fontSize:'0.9375rem',fontWeight:700,cursor:'pointer',animation: checkCallDue ? 'pulse 1s infinite' : 'none'}}>
-            📞 {checkCallDue ? 'SAFETY CHECK DUE' : 'Safety Check'}
+            📞 {checkCallDue ? 'SAFETY CHECK DUE' : checkCallMinsLeft != null ? `Safety Check — ${checkCallMinsLeft} min` : 'Safety Check'}
           </button>
           <button onClick={async () => {
             if (!confirm('ACTIVATE PANIC ALERT? This will immediately alert the control room.')) return;
