@@ -928,41 +928,51 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
               <div style={{fontSize:'0.8125rem',color:'#6b7280'}}>Date: {today}</div>
             </div>
             <div style={{textAlign:'right'}}>
-              <div style={{fontWeight:700}}>{hr?.employment_status === 'ltd_company' ? (form.company_name || 'Company Name') : `${dbUser?.first_name || ''} ${dbUser?.last_name || ''}`}</div>
+              <div style={{fontWeight:700,fontSize:'1rem'}}>{hr?.employment_status === 'ltd_company' ? (form.company_name || 'Company Name') : `${dbUser?.first_name || ''} ${dbUser?.last_name || ''}`}</div>
               {hr?.employment_status === 'ltd_company' && form.company_address && <div style={{fontSize:'0.75rem',color:'#6b7280',marginTop:'0.25rem'}}>{form.company_address}</div>}
               {hr?.employment_status === 'ltd_company' && form.company_reg_number && <div style={{fontSize:'0.75rem',color:'#6b7280'}}>Company No: {form.company_reg_number}</div>}
-              {hr?.employment_status === 'ltd_company' && form.company_vat_number && <div style={{fontSize:'0.75rem',color:'#6b7280'}}>VAT: {form.company_vat_number}</div>}
-              {hr?.employment_status === 'self_employed' && form.utr_number && <div style={{fontSize:'0.75rem',color:'#6b7280'}}>UTR: {form.utr_number}</div>}
+              {hr?.employment_status === 'ltd_company' && form.company_vat_number && <div style={{fontSize:'0.75rem',color:'#6b7280'}}>VAT Reg: {form.company_vat_number}</div>}
               {hr?.address_line_1 && <div style={{fontSize:'0.75rem',color:'#6b7280',marginTop:'0.25rem'}}>{hr.address_line_1}, {hr.city} {hr.postcode}</div>}
             </div>
           </div>
 
-          {/* Bill To */}
-          <div style={{marginBottom:'1.5rem',padding:'0.875rem',background:'#f8fafc',borderRadius:'8px'}}>
-            <div style={{fontSize:'0.6875rem',fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.25rem'}}>Bill To</div>
-            <div style={{fontWeight:600}}>Risk Secured Ltd</div>
-            <div style={{fontSize:'0.8125rem',color:'#6b7280'}}>Security Services</div>
+          {/* Contractor details */}
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginBottom:'1.5rem',padding:'0.875rem',background:'#f8fafc',borderRadius:'8px',fontSize:'0.8125rem'}}>
+            <div>
+              <div style={{fontSize:'0.6875rem',fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.375rem'}}>Contractor Details</div>
+              <div style={{color:'#374151'}}><strong>UTR:</strong> {form.utr_number || hr?.utr_number || '—'}</div>
+              <div style={{color:'#374151'}}><strong>SIA Licence:</strong> {dbUser?.sia_licence_number || '—'}</div>
+              <div style={{color:'#374151'}}><strong>SIA Expiry:</strong> {dbUser?.sia_expiry_date ? new Date(dbUser.sia_expiry_date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—'}</div>
+              <div style={{color:'#374151'}}><strong>SIA Type:</strong> {dbUser?.sia_licence_type || '—'}</div>
+            </div>
+            <div>
+              <div style={{fontSize:'0.6875rem',fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.375rem'}}>Bill To</div>
+              <div style={{fontWeight:600,color:'#111827'}}>Risk Secured Ltd</div>
+              <div style={{color:'#6b7280'}}>Security Services</div>
+            </div>
           </div>
 
           {/* Line items */}
           <table style={{width:'100%',borderCollapse:'collapse',marginBottom:'1.5rem'}}>
             <thead>
               <tr style={{borderBottom:'2px solid #e5e7eb'}}>
-                <th style={{textAlign:'left',padding:'0.5rem 0',fontSize:'0.75rem',fontWeight:700,color:'#6b7280',textTransform:'uppercase'}}>Date</th>
-                <th style={{textAlign:'left',padding:'0.5rem 0',fontSize:'0.75rem',fontWeight:700,color:'#6b7280',textTransform:'uppercase'}}>Site</th>
-                <th style={{textAlign:'right',padding:'0.5rem 0',fontSize:'0.75rem',fontWeight:700,color:'#6b7280',textTransform:'uppercase'}}>Hours</th>
-                <th style={{textAlign:'right',padding:'0.5rem 0',fontSize:'0.75rem',fontWeight:700,color:'#6b7280',textTransform:'uppercase'}}>Rate</th>
-                <th style={{textAlign:'right',padding:'0.5rem 0',fontSize:'0.75rem',fontWeight:700,color:'#6b7280',textTransform:'uppercase'}}>Amount</th>
+                <th style={{textAlign:'left',padding:'0.5rem 0',fontSize:'0.7rem',fontWeight:700,color:'#6b7280',textTransform:'uppercase'}}>Date</th>
+                <th style={{textAlign:'left',padding:'0.5rem 0',fontSize:'0.7rem',fontWeight:700,color:'#6b7280',textTransform:'uppercase'}}>Site</th>
+                <th style={{textAlign:'center',padding:'0.5rem 0',fontSize:'0.7rem',fontWeight:700,color:'#6b7280',textTransform:'uppercase'}}>From–To</th>
+                <th style={{textAlign:'right',padding:'0.5rem 0',fontSize:'0.7rem',fontWeight:700,color:'#6b7280',textTransform:'uppercase'}}>Hours</th>
+                <th style={{textAlign:'right',padding:'0.5rem 0',fontSize:'0.7rem',fontWeight:700,color:'#6b7280',textTransform:'uppercase'}}>Rate</th>
+                <th style={{textAlign:'right',padding:'0.5rem 0',fontSize:'0.7rem',fontWeight:700,color:'#6b7280',textTransform:'uppercase'}}>Amount</th>
               </tr>
             </thead>
             <tbody>
               {selectedShifts.map(s => {
                 const hrs = getHours(s);
-                const rate = s.charge_rate || s.pay_rate || 0;
+                const rate = s.pay_rate || 0;
                 return (
                   <tr key={s.id} style={{borderBottom:'1px solid #f1f5f9'}}>
                     <td style={{padding:'0.5rem 0'}}>{new Date(s.start_time).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}</td>
                     <td style={{padding:'0.5rem 0'}}>{s.site?.name || '—'}</td>
+                    <td style={{padding:'0.5rem 0',textAlign:'center',fontSize:'0.8125rem'}}>{new Date(s.checked_in_at||s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}–{new Date(s.checked_out_at||s.end_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}</td>
                     <td style={{padding:'0.5rem 0',textAlign:'right'}}>{hrs.toFixed(2)}</td>
                     <td style={{padding:'0.5rem 0',textAlign:'right'}}>£{rate.toFixed(2)}</td>
                     <td style={{padding:'0.5rem 0',textAlign:'right',fontWeight:600}}>£{(hrs * rate).toFixed(2)}</td>
@@ -983,14 +993,31 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
               {hr?.employment_status === 'ltd_company' && form.company_vat_number && (
                 <>
                   <div style={{fontSize:'0.75rem',color:'#6b7280',marginTop:'0.25rem'}}>VAT (20%): £{(totalAmount * 0.2).toFixed(2)}</div>
-                  <div style={{fontSize:'1.125rem',fontWeight:700,color:'#0b1a3e'}}>Total: £{(totalAmount * 1.2).toFixed(2)}</div>
+                  <div style={{fontSize:'1.125rem',fontWeight:700,color:'#0b1a3e'}}>Total Inc. VAT: £{(totalAmount * 1.2).toFixed(2)}</div>
                 </>
               )}
             </div>
           </div>
 
+          {/* Self-employment declaration */}
+          <div style={{marginTop:'1.5rem',padding:'1rem',background:'#fffbeb',border:'1px solid #fde68a',borderRadius:'8px',fontSize:'0.75rem',color:'#92400e',lineHeight:1.6}}>
+            <div style={{fontWeight:700,marginBottom:'0.5rem',fontSize:'0.8125rem'}}>Self-Employment Declaration</div>
+            <p style={{margin:'0 0 0.5rem'}}>I confirm that I am {hr?.employment_status === 'ltd_company' ? 'operating through a limited company' : 'self-employed'} for the purposes of this engagement and that this is not a contract of employment. I acknowledge that:</p>
+            <ul style={{margin:'0 0 0.5rem',paddingLeft:'1.25rem'}}>
+              <li>I am responsible for the payment of my own Income Tax and National Insurance Contributions in accordance with the Income Tax (Earnings and Pensions) Act 2003 and the Social Security Contributions and Benefits Act 1992.</li>
+              <li>I am not entitled to employment rights including, but not limited to, statutory sick pay, holiday pay, or pension contributions under the Employment Rights Act 1996.</li>
+              <li>I am responsible for registering with HMRC for Self Assessment and submitting my own tax returns by the statutory deadlines.</li>
+              <li>I hold a valid SIA licence as required under the Private Security Industry Act 2001 and will notify the engaging company immediately if my licence is revoked, suspended, or expires.</li>
+              {hr?.employment_status === 'ltd_company' && <li>My company is registered with Companies House and I am responsible for meeting all obligations under the Companies Act 2006 including filing annual accounts and confirmation statements.</li>}
+            </ul>
+            <div style={{display:'flex',alignItems:'center',gap:'0.5rem',marginTop:'0.75rem',paddingTop:'0.75rem',borderTop:'1px solid #fde68a'}}>
+              <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M3 7l3 3 5-5" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <span style={{fontWeight:600,color:'#374151'}}>Signed electronically by {dbUser?.first_name} {dbUser?.last_name} on {today}</span>
+            </div>
+          </div>
+
           {/* Payment details */}
-          <div style={{marginTop:'1.5rem',padding:'0.875rem',background:'#f8fafc',borderRadius:'8px',fontSize:'0.8125rem',color:'#6b7280'}}>
+          <div style={{marginTop:'1rem',padding:'0.875rem',background:'#f8fafc',borderRadius:'8px',fontSize:'0.8125rem',color:'#6b7280'}}>
             <div style={{fontWeight:600,color:'#374151',marginBottom:'0.25rem'}}>Payment Terms</div>
             Payment due within 30 days of invoice date. Please reference invoice number {ref} with payment.
           </div>
@@ -1024,26 +1051,35 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
 
           {/* Shift list */}
           <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:'10px',overflow:'hidden',marginBottom:'1rem'}}>
+            {/* Header */}
+            <div style={{display:'grid',gridTemplateColumns: isSelfEmployed ? '28px 1fr 80px 60px 55px 65px' : '1fr 80px 60px 55px 65px',gap:'0.5rem',padding:'0.625rem 1rem',background:'#f8fafc',borderBottom:'1px solid #e5e7eb',fontSize:'0.6875rem',fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.05em'}}>
+              {isSelfEmployed && <div></div>}
+              <div>Date / Site</div>
+              <div style={{textAlign:'center'}}>From–To</div>
+              <div style={{textAlign:'right'}}>Hours</div>
+              <div style={{textAlign:'right'}}>Rate</div>
+              <div style={{textAlign:'right'}}>Total</div>
+            </div>
             {shifts.map((s, i) => {
               const hrs = getHours(s);
-              const rate = s.charge_rate || s.pay_rate || 0;
+              const rate = s.pay_rate || 0;
               const selected = invoiceShifts.includes(s.id);
               return (
-                <div key={s.id} style={{display:'flex',alignItems:'center',gap:'0.75rem',padding:'0.875rem 1rem',borderBottom: i < shifts.length-1 ? '1px solid #f1f5f9' : 'none',background: selected ? '#eff6ff' : '#fff'}}>
+                <div key={s.id} style={{display:'grid',gridTemplateColumns: isSelfEmployed ? '28px 1fr 80px 60px 55px 65px' : '1fr 80px 60px 55px 65px',gap:'0.5rem',alignItems:'center',padding:'0.75rem 1rem',borderBottom: i < shifts.length-1 ? '1px solid #f1f5f9' : 'none',background: selected ? '#eff6ff' : '#fff'}}>
                   {isSelfEmployed && (
                     <input type="checkbox" checked={selected} onChange={() => toggleInvoiceShift(s.id)}
-                      style={{width:'18px',height:'18px',accentColor:'#1a52a8',cursor:'pointer',flexShrink:0}} />
+                      style={{width:'16px',height:'16px',accentColor:'#1a52a8',cursor:'pointer'}} />
                   )}
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:'0.875rem',fontWeight:600,color:'#111827'}}>{s.site?.name || 'Site'}</div>
-                    <div style={{fontSize:'0.75rem',color:'#6b7280'}}>
-                      {new Date(s.start_time).toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short'})} · {new Date(s.checked_in_at || s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}–{new Date(s.checked_out_at || s.end_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}
-                    </div>
+                  <div style={{minWidth:0}}>
+                    <div style={{fontSize:'0.8125rem',fontWeight:600,color:'#111827',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.site?.name || 'Site'}</div>
+                    <div style={{fontSize:'0.6875rem',color:'#6b7280'}}>{new Date(s.start_time).toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short',year:'numeric'})}</div>
                   </div>
-                  <div style={{textAlign:'right',flexShrink:0}}>
-                    <div style={{fontSize:'0.875rem',fontWeight:700,color:'#111827'}}>{hrs.toFixed(1)}h</div>
-                    {rate > 0 && <div style={{fontSize:'0.6875rem',color:'#6b7280'}}>£{(hrs * rate).toFixed(2)}</div>}
+                  <div style={{textAlign:'center',fontSize:'0.75rem',color:'#374151'}}>
+                    {new Date(s.checked_in_at || s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}–{new Date(s.checked_out_at || s.end_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}
                   </div>
+                  <div style={{textAlign:'right',fontSize:'0.8125rem',fontWeight:600,color:'#111827'}}>{hrs.toFixed(1)}</div>
+                  <div style={{textAlign:'right',fontSize:'0.75rem',color:'#6b7280'}}>£{rate.toFixed(2)}</div>
+                  <div style={{textAlign:'right',fontSize:'0.8125rem',fontWeight:700,color:'#111827'}}>£{(hrs * rate).toFixed(2)}</div>
                 </div>
               );
             })}
