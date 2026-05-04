@@ -151,6 +151,7 @@ function HRAuthenticated() {
   const [loading, setLoading] = useState(true);
   const [hr, setHr] = useState(null);
   const [tab, setTab] = useState('home');
+  const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
@@ -436,55 +437,92 @@ function HRAuthenticated() {
               <p style={{fontSize:'0.8125rem',color:'#6b7280',margin:0,lineHeight:1.5}}>Your information is encrypted and only accessible by authorised personnel.</p>
             </div>
 
-            <div style={{background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:'8px',padding:'0.875rem',fontSize:'0.8125rem',color:'#1e40af',lineHeight:1.5,marginBottom:'1rem'}}>
-              <strong>Why we need this:</strong> Your address is required for payroll, tax correspondence, and in case emergency services need to attend your home address following a serious incident on duty. Your date of birth and NI number are legal requirements for HMRC payroll processing.
-            </div>
-
-            <div style={S.section}>
-              <div style={S.sectionTitle}>Address</div>
-              <div style={{marginBottom:'0.75rem'}}>
-                <label style={S.fieldLabel}>Address Line 1</label>
-                <input value={form.address_line_1} onChange={e => f('address_line_1', e.target.value)} style={S.fieldInput} />
-              </div>
-              <div style={{marginBottom:'0.75rem'}}>
-                <label style={S.fieldLabel}>Address Line 2</label>
-                <input value={form.address_line_2} onChange={e => f('address_line_2', e.target.value)} style={S.fieldInput} />
-              </div>
-              <div style={{display:'grid',gridTemplateColumns:'2fr 1fr',gap:'0.75rem'}}>
-                <div><label style={S.fieldLabel}>City / Town</label><input value={form.city} onChange={e => f('city', e.target.value)} style={S.fieldInput} /></div>
-                <div><label style={S.fieldLabel}>Postcode</label><input value={form.postcode} onChange={e => f('postcode', e.target.value)} placeholder="AB1 2CD" style={S.fieldInput} /></div>
-              </div>
-            </div>
-
-            <div style={S.section}>
-              <div style={S.sectionTitle}>Personal Information</div>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
-                <div>
-                  <label style={S.fieldLabel}>Date of Birth</label>
-                  <input type="date" value={form.date_of_birth} onChange={e => f('date_of_birth', e.target.value)} style={S.fieldInput} />
+            {/* Completed summary view */}
+            {hr?.address_line_1 && hr?.date_of_birth && hr?.ni_number && !editing ? (
+              <>
+                <div style={{background:'#f0fdf4',border:'1px solid #86efac',borderRadius:'8px',padding:'0.875rem',fontSize:'0.8125rem',color:'#16a34a',lineHeight:1.5,marginBottom:'1rem',display:'flex',alignItems:'center',gap:'0.5rem'}}>
+                  <svg width="18" height="18" viewBox="0 0 14 14" fill="none"><path d="M3 7l3 3 5-5" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <strong>Complete</strong> — Your personal details are on file.
                 </div>
-                <div>
-                  <label style={S.fieldLabel}>NI Number</label>
-                  <input value={form.ni_number} onChange={e => f('ni_number', e.target.value.toUpperCase())} placeholder="AB 12 34 56 C" maxLength={13} style={{...S.fieldInput, fontFamily:'monospace', letterSpacing:'0.05em'}} />
-                </div>
-              </div>
-              <div style={{fontSize:'0.6875rem',color:'#9ca3af',marginTop:'0.5rem',display:'flex',alignItems:'center',gap:'0.375rem'}}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-                Encrypted at rest. Only accessible by authorised administrators.
-              </div>
-            </div>
 
-            <div style={{display:'flex',gap:'0.75rem'}}>
-              <button onClick={() => setTab('home')} style={{flex:1,padding:'0.875rem',background:'#fff',color:'#6b7280',border:'1px solid #d1d5db',borderRadius:'8px',fontSize:'0.875rem',fontWeight:600,cursor:'pointer'}}>
-                Back
-              </button>
-              <button onClick={async () => { await save(); setTab('nok'); }} disabled={saving} style={{flex:2,...S.btn, opacity:saving?0.7:1,marginTop:0}}>
-                {saving ? 'Saving...' : 'Save & Continue →'}
-              </button>
-            </div>
-            <div style={{textAlign:'center',marginTop:'0.75rem'}}>
-              <span style={{fontSize:'0.6875rem',color:'#9ca3af'}}>Step 1 of 3 — Next: Emergency Contact</span>
-            </div>
+                <div style={S.section}>
+                  <div style={S.sectionTitle}>Address</div>
+                  <div style={{fontSize:'0.875rem',color:'#374151',lineHeight:1.6}}>
+                    {hr.address_line_1}{hr.address_line_2 ? `, ${hr.address_line_2}` : ''}<br/>
+                    {hr.city}{hr.postcode ? `, ${hr.postcode}` : ''}
+                  </div>
+                </div>
+
+                <div style={S.section}>
+                  <div style={S.sectionTitle}>Personal Information</div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
+                    <div><div style={S.readLabel}>Date of Birth</div><div style={S.readValue}>{new Date(hr.date_of_birth).toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div></div>
+                    <div><div style={S.readLabel}>NI Number</div><div style={{...S.readValue,fontFamily:'monospace'}}>••••••••••</div></div>
+                  </div>
+                </div>
+
+                <div style={{display:'flex',gap:'0.75rem'}}>
+                  <button onClick={() => setEditing(true)} style={{flex:1,padding:'0.875rem',background:'#fff',color:'#6b7280',border:'1px solid #d1d5db',borderRadius:'8px',fontSize:'0.875rem',fontWeight:600,cursor:'pointer'}}>
+                    Edit Details
+                  </button>
+                  <button onClick={() => setTab('nok')} style={{flex:2,padding:'0.875rem',background:'#1a52a8',color:'#fff',border:'none',borderRadius:'8px',fontSize:'0.875rem',fontWeight:700,cursor:'pointer'}}>
+                    Continue to Next of Kin →
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:'8px',padding:'0.875rem',fontSize:'0.8125rem',color:'#1e40af',lineHeight:1.5,marginBottom:'1rem'}}>
+                  <strong>Why we need this:</strong> Your address is required for payroll, tax correspondence, and in case emergency services need to attend your home address following a serious incident on duty. Your date of birth and NI number are legal requirements for HMRC payroll processing.
+                </div>
+
+                <div style={S.section}>
+                  <div style={S.sectionTitle}>Address</div>
+                  <div style={{marginBottom:'0.75rem'}}>
+                    <label style={S.fieldLabel}>Address Line 1</label>
+                    <input value={form.address_line_1} onChange={e => f('address_line_1', e.target.value)} style={S.fieldInput} />
+                  </div>
+                  <div style={{marginBottom:'0.75rem'}}>
+                    <label style={S.fieldLabel}>Address Line 2</label>
+                    <input value={form.address_line_2} onChange={e => f('address_line_2', e.target.value)} style={S.fieldInput} />
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'2fr 1fr',gap:'0.75rem'}}>
+                    <div><label style={S.fieldLabel}>City / Town</label><input value={form.city} onChange={e => f('city', e.target.value)} style={S.fieldInput} /></div>
+                    <div><label style={S.fieldLabel}>Postcode</label><input value={form.postcode} onChange={e => f('postcode', e.target.value)} placeholder="AB1 2CD" style={S.fieldInput} /></div>
+                  </div>
+                </div>
+
+                <div style={S.section}>
+                  <div style={S.sectionTitle}>Personal Information</div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
+                    <div>
+                      <label style={S.fieldLabel}>Date of Birth</label>
+                      <input type="date" value={form.date_of_birth} onChange={e => f('date_of_birth', e.target.value)} style={S.fieldInput} />
+                    </div>
+                    <div>
+                      <label style={S.fieldLabel}>NI Number</label>
+                      <input value={form.ni_number} onChange={e => f('ni_number', e.target.value.toUpperCase())} placeholder="AB 12 34 56 C" maxLength={13} style={{...S.fieldInput, fontFamily:'monospace', letterSpacing:'0.05em'}} />
+                    </div>
+                  </div>
+                  <div style={{fontSize:'0.6875rem',color:'#9ca3af',marginTop:'0.5rem',display:'flex',alignItems:'center',gap:'0.375rem'}}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                    Encrypted at rest. Only accessible by authorised administrators.
+                  </div>
+                </div>
+
+                <div style={{display:'flex',gap:'0.75rem'}}>
+                  <button onClick={() => { setEditing(false); setTab('home'); }} style={{flex:1,padding:'0.875rem',background:'#fff',color:'#6b7280',border:'1px solid #d1d5db',borderRadius:'8px',fontSize:'0.875rem',fontWeight:600,cursor:'pointer'}}>
+                    Back
+                  </button>
+                  <button onClick={async () => { await save(); setEditing(false); setTab('nok'); }} disabled={saving} style={{flex:2,...S.btn, opacity:saving?0.7:1,marginTop:0}}>
+                    {saving ? 'Saving...' : 'Save & Continue →'}
+                  </button>
+                </div>
+                <div style={{textAlign:'center',marginTop:'0.75rem'}}>
+                  <span style={{fontSize:'0.6875rem',color:'#9ca3af'}}>Step 1 of 3 — Next: Emergency Contact</span>
+                </div>
+              </>
+            )}
           </>
         )}
 
@@ -496,40 +534,70 @@ function HRAuthenticated() {
               <p style={{fontSize:'0.8125rem',color:'#6b7280',margin:0,lineHeight:1.5}}>Your emergency contact will be notified in the event of a serious incident during your duties.</p>
             </div>
 
-            <div style={{background:'#fef3c7',border:'1px solid #fde68a',borderRadius:'8px',padding:'0.875rem',fontSize:'0.8125rem',color:'#92400e',lineHeight:1.5,marginBottom:'1rem'}}>
-              <strong>Why we need this:</strong> As a lone worker, your safety is our priority. If you are involved in a serious incident during your duties, our national command centre will contact your next of kin immediately. Without this information, we cannot notify your family in an emergency.
-            </div>
+            {/* Completed summary view */}
+            {hr?.nok_name && hr?.nok_phone && !editing ? (
+              <>
+                <div style={{background:'#f0fdf4',border:'1px solid #86efac',borderRadius:'8px',padding:'0.875rem',fontSize:'0.8125rem',color:'#16a34a',lineHeight:1.5,marginBottom:'1rem',display:'flex',alignItems:'center',gap:'0.5rem'}}>
+                  <svg width="18" height="18" viewBox="0 0 14 14" fill="none"><path d="M3 7l3 3 5-5" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <strong>Complete</strong> — Your emergency contact is on file.
+                </div>
 
-            <div style={S.section}>
-              <div style={S.sectionTitle}>Emergency Contact</div>
-              <div style={{marginBottom:'0.75rem'}}>
-                <label style={S.fieldLabel}>Full Name</label>
-                <input value={form.nok_name} onChange={e => f('nok_name', e.target.value)} placeholder="e.g. Jane Smith" style={S.fieldInput} />
-              </div>
-              <div style={{marginBottom:'0.75rem'}}>
-                <label style={S.fieldLabel}>Relationship</label>
-                <select value={form.nok_relationship} onChange={e => f('nok_relationship', e.target.value)} style={S.fieldInput}>
-                  <option value="">Select...</option>
-                  {['Spouse','Partner','Parent','Sibling','Child','Friend','Other'].map(r => <option key={r} value={r}>{r}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={S.fieldLabel}>Phone Number</label>
-                <input value={form.nok_phone} onChange={e => f('nok_phone', e.target.value)} placeholder="+44 7700 000000" style={S.fieldInput} />
-              </div>
-            </div>
+                <div style={S.section}>
+                  <div style={S.sectionTitle}>Emergency Contact</div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
+                    <div><div style={S.readLabel}>Name</div><div style={S.readValue}>{hr.nok_name}</div></div>
+                    <div><div style={S.readLabel}>Relationship</div><div style={S.readValue}>{hr.nok_relationship || '—'}</div></div>
+                    <div><div style={S.readLabel}>Phone</div><div style={S.readValue}>{hr.nok_phone}</div></div>
+                  </div>
+                </div>
 
-            <div style={{display:'flex',gap:'0.75rem'}}>
-              <button onClick={() => setTab('personal')} style={{flex:1,padding:'0.875rem',background:'#fff',color:'#6b7280',border:'1px solid #d1d5db',borderRadius:'8px',fontSize:'0.875rem',fontWeight:600,cursor:'pointer'}}>
-                ← Back
-              </button>
-              <button onClick={async () => { await save(); setTab('documents'); }} disabled={saving} style={{flex:2,...S.btn, opacity:saving?0.7:1,marginTop:0}}>
-                {saving ? 'Saving...' : 'Save & Continue →'}
-              </button>
-            </div>
-            <div style={{textAlign:'center',marginTop:'0.75rem'}}>
-              <span style={{fontSize:'0.6875rem',color:'#9ca3af'}}>Step 2 of 3 — Next: Documents</span>
-            </div>
+                <div style={{display:'flex',gap:'0.75rem'}}>
+                  <button onClick={() => setEditing(true)} style={{flex:1,padding:'0.875rem',background:'#fff',color:'#6b7280',border:'1px solid #d1d5db',borderRadius:'8px',fontSize:'0.875rem',fontWeight:600,cursor:'pointer'}}>
+                    Edit Details
+                  </button>
+                  <button onClick={() => setTab('documents')} style={{flex:2,padding:'0.875rem',background:'#1a52a8',color:'#fff',border:'none',borderRadius:'8px',fontSize:'0.875rem',fontWeight:700,cursor:'pointer'}}>
+                    Continue to Documents →
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{background:'#fef3c7',border:'1px solid #fde68a',borderRadius:'8px',padding:'0.875rem',fontSize:'0.8125rem',color:'#92400e',lineHeight:1.5,marginBottom:'1rem'}}>
+                  <strong>Why we need this:</strong> As a lone worker, your safety is our priority. If you are involved in a serious incident during your duties, our national command centre will contact your next of kin immediately. Without this information, we cannot notify your family in an emergency.
+                </div>
+
+                <div style={S.section}>
+                  <div style={S.sectionTitle}>Emergency Contact</div>
+                  <div style={{marginBottom:'0.75rem'}}>
+                    <label style={S.fieldLabel}>Full Name</label>
+                    <input value={form.nok_name} onChange={e => f('nok_name', e.target.value)} placeholder="e.g. Jane Smith" style={S.fieldInput} />
+                  </div>
+                  <div style={{marginBottom:'0.75rem'}}>
+                    <label style={S.fieldLabel}>Relationship</label>
+                    <select value={form.nok_relationship} onChange={e => f('nok_relationship', e.target.value)} style={S.fieldInput}>
+                      <option value="">Select...</option>
+                      {['Spouse','Partner','Parent','Sibling','Child','Friend','Other'].map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={S.fieldLabel}>Phone Number</label>
+                    <input value={form.nok_phone} onChange={e => f('nok_phone', e.target.value)} placeholder="+44 7700 000000" style={S.fieldInput} />
+                  </div>
+                </div>
+
+                <div style={{display:'flex',gap:'0.75rem'}}>
+                  <button onClick={() => { setEditing(false); setTab('personal'); }} style={{flex:1,padding:'0.875rem',background:'#fff',color:'#6b7280',border:'1px solid #d1d5db',borderRadius:'8px',fontSize:'0.875rem',fontWeight:600,cursor:'pointer'}}>
+                    ← Back
+                  </button>
+                  <button onClick={async () => { await save(); setEditing(false); setTab('documents'); }} disabled={saving} style={{flex:2,...S.btn, opacity:saving?0.7:1,marginTop:0}}>
+                    {saving ? 'Saving...' : 'Save & Continue →'}
+                  </button>
+                </div>
+                <div style={{textAlign:'center',marginTop:'0.75rem'}}>
+                  <span style={{fontSize:'0.6875rem',color:'#9ca3af'}}>Step 2 of 3 — Next: Documents</span>
+                </div>
+              </>
+            )}
           </>
         )}
 
