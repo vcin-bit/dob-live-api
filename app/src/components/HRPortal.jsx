@@ -174,6 +174,10 @@ function HRAuthenticated() {
   const [invoiceShifts, setInvoiceShifts] = useState([]);
   const [showInvoice, setShowInvoice] = useState(false);
   const [invoiceRef, setInvoiceRef] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  });
 
   // Session timer
   useEffect(() => {
@@ -902,9 +906,21 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
     setInvoiceShifts(prev => prev.includes(shiftId) ? prev.filter(id => id !== shiftId) : [...prev, shiftId]);
   }
 
-  const selectedShifts = shifts.filter(s => invoiceShifts.includes(s.id));
+  // Filter shifts by selected month
+  const monthShifts = shifts.filter(s => {
+    const d = new Date(s.start_time);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` === selectedMonth;
+  });
+
+  // Get available months from shifts
+  const availableMonths = [...new Set(shifts.map(s => {
+    const d = new Date(s.start_time);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  }))].sort().reverse();
+
+  const selectedShifts = monthShifts;
   const totalHours = selectedShifts.reduce((sum, s) => sum + getHours(s), 0);
-  const totalAmount = selectedShifts.reduce((sum, s) => sum + (getHours(s) * (s.charge_rate || s.pay_rate || 0)), 0);
+  const totalAmount = selectedShifts.reduce((sum, s) => sum + (getHours(s) * (s.pay_rate || 0)), 0);
 
   if (showInvoice) {
     const today = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'long', year:'numeric' });
@@ -1026,11 +1042,25 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
     );
   }
 
+  // Format month for display
+  function formatMonth(ym) {
+    const [y, m] = ym.split('-');
+    return new Date(y, m-1).toLocaleDateString('en-GB', { month:'long', year:'numeric' });
+  }
+
   return (
     <>
-      <div style={{marginBottom:'1.25rem'}}>
-        <h2 style={{fontSize:'1.125rem',fontWeight:700,color:'#111827',margin:'0 0 0.25rem'}}>Hours Worked</h2>
-        <p style={{fontSize:'0.8125rem',color:'#6b7280',margin:0,lineHeight:1.5}}>Your completed shifts and work history.</p>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'1.25rem'}}>
+        <div>
+          <h2 style={{fontSize:'1.125rem',fontWeight:700,color:'#111827',margin:'0 0 0.25rem'}}>Hours Worked</h2>
+          <p style={{fontSize:'0.8125rem',color:'#6b7280',margin:0,lineHeight:1.5}}>Your completed shifts by month.</p>
+        </div>
+        {!shiftsLoading && availableMonths.length > 0 && (
+          <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}
+            style={{padding:'0.5rem 0.75rem',border:'1.5px solid #d1d5db',borderRadius:'8px',fontSize:'0.8125rem',fontWeight:600,color:'#111827',background:'#fff',cursor:'pointer'}}>
+            {availableMonths.map(m => <option key={m} value={m}>{formatMonth(m)}</option>)}
+          </select>
+        )}
       </div>
 
       {shiftsLoading && <div style={{padding:'2rem',textAlign:'center',color:'#9ca3af'}}>Loading shifts...</div>}
@@ -1045,59 +1075,62 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
         <>
           {isSelfEmployed && (
             <div style={{background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:'8px',padding:'0.875rem',fontSize:'0.8125rem',color:'#1e40af',lineHeight:1.5,marginBottom:'1rem'}}>
-              Select shifts below to generate a professional invoice. Tick the shifts you wish to invoice for, then tap "Generate Invoice".
+              Showing shifts for <strong>{formatMonth(selectedMonth)}</strong>. Tap "Generate Invoice" to create an invoice for this month.
             </div>
           )}
 
-          {/* Shift list */}
-          <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:'10px',overflow:'hidden',marginBottom:'1rem'}}>
-            {/* Header */}
-            <div style={{display:'grid',gridTemplateColumns: isSelfEmployed ? '28px 1fr 80px 60px 55px 65px' : '1fr 80px 60px 55px 65px',gap:'0.5rem',padding:'0.625rem 1rem',background:'#f8fafc',borderBottom:'1px solid #e5e7eb',fontSize:'0.6875rem',fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.05em'}}>
-              {isSelfEmployed && <div></div>}
-              <div>Date / Site</div>
-              <div style={{textAlign:'center'}}>From–To</div>
-              <div style={{textAlign:'right'}}>Hours</div>
-              <div style={{textAlign:'right'}}>Rate</div>
-              <div style={{textAlign:'right'}}>Total</div>
+          {monthShifts.length === 0 ? (
+            <div style={{padding:'2rem',textAlign:'center',background:'#f9fafb',borderRadius:'10px',border:'1px dashed #d1d5db',marginBottom:'1rem'}}>
+              <div style={{fontSize:'0.875rem',color:'#9ca3af'}}>No shifts for {formatMonth(selectedMonth)}.</div>
             </div>
-            {shifts.map((s, i) => {
-              const hrs = getHours(s);
-              const rate = s.pay_rate || 0;
-              const selected = invoiceShifts.includes(s.id);
-              return (
-                <div key={s.id} style={{display:'grid',gridTemplateColumns: isSelfEmployed ? '28px 1fr 80px 60px 55px 65px' : '1fr 80px 60px 55px 65px',gap:'0.5rem',alignItems:'center',padding:'0.75rem 1rem',borderBottom: i < shifts.length-1 ? '1px solid #f1f5f9' : 'none',background: selected ? '#eff6ff' : '#fff'}}>
-                  {isSelfEmployed && (
-                    <input type="checkbox" checked={selected} onChange={() => toggleInvoiceShift(s.id)}
-                      style={{width:'16px',height:'16px',accentColor:'#1a52a8',cursor:'pointer'}} />
-                  )}
-                  <div style={{minWidth:0}}>
-                    <div style={{fontSize:'0.8125rem',fontWeight:600,color:'#111827',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.site?.name || 'Site'}</div>
-                    <div style={{fontSize:'0.6875rem',color:'#6b7280'}}>{new Date(s.start_time).toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short',year:'numeric'})}</div>
-                  </div>
-                  <div style={{textAlign:'center',fontSize:'0.75rem',color:'#374151'}}>
-                    {new Date(s.checked_in_at || s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}–{new Date(s.checked_out_at || s.end_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}
-                  </div>
-                  <div style={{textAlign:'right',fontSize:'0.8125rem',fontWeight:600,color:'#111827'}}>{hrs.toFixed(1)}</div>
-                  <div style={{textAlign:'right',fontSize:'0.75rem',color:'#6b7280'}}>£{rate.toFixed(2)}</div>
-                  <div style={{textAlign:'right',fontSize:'0.8125rem',fontWeight:700,color:'#111827'}}>£{(hrs * rate).toFixed(2)}</div>
+          ) : (
+            <>
+              {/* Shift list */}
+              <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:'10px',overflow:'hidden',marginBottom:'1rem'}}>
+                {/* Header */}
+                <div style={{display:'grid',gridTemplateColumns:'1fr 80px 60px 55px 65px',gap:'0.5rem',padding:'0.625rem 1rem',background:'#f8fafc',borderBottom:'1px solid #e5e7eb',fontSize:'0.6875rem',fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.05em'}}>
+                  <div>Date / Site</div>
+                  <div style={{textAlign:'center'}}>From–To</div>
+                  <div style={{textAlign:'right'}}>Hours</div>
+                  <div style={{textAlign:'right'}}>Rate</div>
+                  <div style={{textAlign:'right'}}>Total</div>
                 </div>
-              );
-            })}
-          </div>
+                {monthShifts.map((s, i) => {
+                  const hrs = getHours(s);
+                  const rate = s.pay_rate || 0;
+                  return (
+                    <div key={s.id} style={{display:'grid',gridTemplateColumns:'1fr 80px 60px 55px 65px',gap:'0.5rem',alignItems:'center',padding:'0.75rem 1rem',borderBottom: i < monthShifts.length-1 ? '1px solid #f1f5f9' : 'none'}}>
+                      <div style={{minWidth:0}}>
+                        <div style={{fontSize:'0.8125rem',fontWeight:600,color:'#111827',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.site?.name || 'Site'}</div>
+                        <div style={{fontSize:'0.6875rem',color:'#6b7280'}}>{new Date(s.start_time).toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short'})}</div>
+                      </div>
+                      <div style={{textAlign:'center',fontSize:'0.75rem',color:'#374151'}}>
+                        {new Date(s.checked_in_at || s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}–{new Date(s.checked_out_at || s.end_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}
+                      </div>
+                      <div style={{textAlign:'right',fontSize:'0.8125rem',fontWeight:600,color:'#111827'}}>{hrs.toFixed(1)}</div>
+                      <div style={{textAlign:'right',fontSize:'0.75rem',color:'#6b7280'}}>£{rate.toFixed(2)}</div>
+                      <div style={{textAlign:'right',fontSize:'0.8125rem',fontWeight:700,color:'#111827'}}>£{(hrs * rate).toFixed(2)}</div>
+                    </div>
+                  );
+                })}
+              </div>
 
-          {/* Summary + Invoice button */}
-          <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:'10px',padding:'1rem',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <div>
-              <div style={{fontSize:'0.75rem',color:'#6b7280'}}>Total shifts: {shifts.length}</div>
-              <div style={{fontSize:'0.875rem',fontWeight:700,color:'#111827'}}>{shifts.reduce((sum, s) => sum + getHours(s), 0).toFixed(1)} hours worked</div>
-            </div>
-            {isSelfEmployed && invoiceShifts.length > 0 && (
-              <button onClick={() => setShowInvoice(true)}
-                style={{padding:'0.75rem 1.25rem',background:'#1a52a8',border:'none',borderRadius:'8px',color:'#fff',fontSize:'0.8125rem',fontWeight:700,cursor:'pointer'}}>
-                Generate Invoice ({invoiceShifts.length})
-              </button>
-            )}
-          </div>
+              {/* Monthly summary + Invoice button */}
+              <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:'10px',padding:'1rem',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                <div>
+                  <div style={{fontSize:'0.6875rem',color:'#6b7280',textTransform:'uppercase',fontWeight:600}}>{formatMonth(selectedMonth)}</div>
+                  <div style={{fontSize:'1rem',fontWeight:700,color:'#111827'}}>{totalHours.toFixed(1)} hours · £{totalAmount.toFixed(2)}</div>
+                  <div style={{fontSize:'0.75rem',color:'#6b7280'}}>{monthShifts.length} shift{monthShifts.length!==1?'s':''}</div>
+                </div>
+                {isSelfEmployed && monthShifts.length > 0 && (
+                  <button onClick={() => { setInvoiceRef(''); setShowInvoice(true); }}
+                    style={{padding:'0.75rem 1.25rem',background:'#1a52a8',border:'none',borderRadius:'8px',color:'#fff',fontSize:'0.8125rem',fontWeight:700,cursor:'pointer'}}>
+                    Generate Invoice
+                  </button>
+                )}
+              </div>
+            </>
+          )}
         </>
       )}
     </>
