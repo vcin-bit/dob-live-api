@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { execSync } from 'child_process'
+import { resolve } from 'path'
 
 let commitHash = 'unknown';
 try { commitHash = execSync('git rev-parse --short HEAD').toString().trim(); } catch {}
@@ -17,6 +18,13 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true
+    sourcemap: true,
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        hr: resolve(__dirname, 'hr.html'),
+        inspect: resolve(__dirname, 'inspect.html'),
+      },
+    },
   }
 })

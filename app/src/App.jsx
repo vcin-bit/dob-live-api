@@ -11,8 +11,6 @@ import {
 } from '@heroicons/react/24/outline';
 
 import { PortalApp } from './components/Portal';
-import { HRPortalApp } from './components/HRPortal';
-import { InspectionPortalApp } from './components/InspectionPortal';
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 import { OfficerApp } from './components/OfficerShell';
@@ -49,8 +47,6 @@ function App() {
       <Router>
         <Routes>
           <Route path="/portal/*" element={<PortalApp />} />
-          <Route path="/hr/*" element={<HRPortalApp />} />
-          <Route path="/inspect/*" element={<InspectionPortalApp />} />
           <Route path="*" element={
             <>
               <SignedOut><AuthFlow /></SignedOut>
