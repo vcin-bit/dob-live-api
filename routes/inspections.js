@@ -304,20 +304,29 @@ async function generatePDF(inspection, site, logoBuffer, photoBuffers, mapBuffer
       const photoW = Math.floor((CW - 14) / 2);
       const photoH = 200;
 
-      validPhotos.forEach((buf, i) => {
-        if (y + photoH + 10 > 780) { doc.addPage(); y = 40; }
-        const col = i % 2;
-        const x = M + 4 + col * (photoW + 6);
+      for (let i = 0; i < validPhotos.length; i += 2) {
+        // Check page break once per row (not per photo)
+        if (y + photoH + 20 > 780) { doc.addPage(); y = 40; }
+        // Left photo
+        const x1 = M + 4;
         try {
-          // Photo border
-          doc.rect(x, y, photoW, photoH).lineWidth(0.5).strokeColor('#d1d5db').stroke();
-          doc.image(buf, x + 1, y + 1, { width: photoW - 2, height: photoH - 2, fit: [photoW - 2, photoH - 2], align: 'center', valign: 'center' });
+          doc.rect(x1, y, photoW, photoH).lineWidth(0.5).strokeColor('#d1d5db').stroke();
+          doc.image(validPhotos[i], x1 + 1, y + 1, { width: photoW - 2, height: photoH - 2, fit: [photoW - 2, photoH - 2], align: 'center', valign: 'center' });
         } catch {}
-        // Label
         doc.fontSize(7).fillColor('#9ca3af').font('Helvetica')
-          .text(`Photo ${i + 1}`, x, y + photoH + 2, { width: photoW, align: 'center' });
-        if (col === 1 || i === validPhotos.length - 1) y += photoH + 16;
-      });
+          .text(`Photo ${i + 1}`, x1, y + photoH + 2, { width: photoW, align: 'center' });
+        // Right photo (if exists)
+        if (i + 1 < validPhotos.length) {
+          const x2 = M + 4 + photoW + 6;
+          try {
+            doc.rect(x2, y, photoW, photoH).lineWidth(0.5).strokeColor('#d1d5db').stroke();
+            doc.image(validPhotos[i + 1], x2 + 1, y + 1, { width: photoW - 2, height: photoH - 2, fit: [photoW - 2, photoH - 2], align: 'center', valign: 'center' });
+          } catch {}
+          doc.fontSize(7).fillColor('#9ca3af').font('Helvetica')
+            .text(`Photo ${i + 2}`, x2, y + photoH + 2, { width: photoW, align: 'center' });
+        }
+        y += photoH + 16;
+      }
     }
 
     // ════════════════════════════════════════════════════════════════════

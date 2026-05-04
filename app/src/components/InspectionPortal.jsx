@@ -171,12 +171,20 @@ function InspectAuthenticated() {
     load();
   }, []);
 
+  const [gpsError, setGpsError] = useState('');
   function getGPS() {
-    setGpsLoading(true);
-    navigator.geolocation?.getCurrentPosition(
+    setGpsLoading(true); setGpsError('');
+    if (!navigator.geolocation) { setGpsError('Geolocation not supported by this browser'); setGpsLoading(false); return; }
+    navigator.geolocation.getCurrentPosition(
       p => { setForm(f => ({ ...f, latitude: p.coords.latitude, longitude: p.coords.longitude })); setGpsLoading(false); },
-      () => setGpsLoading(false),
-      { enableHighAccuracy: true, timeout: 10000 }
+      (err) => {
+        setGpsLoading(false);
+        if (err.code === 1) setGpsError('Location permission denied — check browser settings');
+        else if (err.code === 2) setGpsError('Location unavailable — try again');
+        else if (err.code === 3) setGpsError('Location timed out — tap Update Location to retry');
+        else setGpsError('Could not get location');
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
     );
   }
   useEffect(() => { getGPS(); }, []);
@@ -318,8 +326,8 @@ function InspectAuthenticated() {
               </div>
             </>
           ) : (
-            <div style={{padding:'2rem',textAlign:'center',background:'#f9fafb',borderRadius:'8px',border:'1px dashed #d1d5db'}}>
-              <div style={{fontSize:'0.8125rem',color:'#9ca3af'}}>{gpsLoading ? 'Acquiring GPS position...' : 'GPS unavailable — tap Update Location'}</div>
+            <div style={{padding:'2rem',textAlign:'center',background:'#f9fafb',borderRadius:'8px',border:`1px dashed ${gpsError ? '#fca5a5' : '#d1d5db'}`}}>
+              <div style={{fontSize:'0.8125rem',color: gpsError ? '#dc2626' : '#9ca3af'}}>{gpsLoading ? 'Acquiring GPS position...' : gpsError || 'GPS unavailable — tap Update Location'}</div>
             </div>
           )}
         </div>
