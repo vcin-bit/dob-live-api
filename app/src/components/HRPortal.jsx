@@ -886,12 +886,12 @@ function HRAuthenticated() {
 function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShiftsLoading, invoiceShifts, setInvoiceShifts, showInvoice, setShowInvoice, invoiceRef, setInvoiceRef }) {
   const isSelfEmployed = hr?.employment_status === 'self_employed' || hr?.employment_status === 'ltd_company';
 
+  const [shiftsError, setShiftsError] = useState('');
   useEffect(() => {
-    if (shifts.length > 0) return;
-    setShiftsLoading(true);
+    setShiftsLoading(true); setShiftsError('');
     api.shifts.list({ status: 'COMPLETED' })
       .then(res => setShifts(res.data || []))
-      .catch(() => {})
+      .catch(err => { console.error('Shifts load failed:', err); setShiftsError(err.message || 'Failed to load shifts'); })
       .finally(() => setShiftsLoading(false));
   }, []);
 
@@ -1065,7 +1065,11 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
 
       {shiftsLoading && <div style={{padding:'2rem',textAlign:'center',color:'#9ca3af'}}>Loading shifts...</div>}
 
-      {!shiftsLoading && shifts.length === 0 && (
+      {shiftsError && (
+        <div style={{background:'#fef2f2',border:'1px solid #fca5a5',borderRadius:'8px',padding:'0.75rem',marginBottom:'1rem',fontSize:'0.8125rem',color:'#dc2626'}}>{shiftsError}</div>
+      )}
+
+      {!shiftsLoading && !shiftsError && shifts.length === 0 && (
         <div style={{padding:'2rem',textAlign:'center',background:'#f9fafb',borderRadius:'10px',border:'1px dashed #d1d5db'}}>
           <div style={{fontSize:'0.875rem',color:'#9ca3af'}}>No completed shifts found.</div>
         </div>
