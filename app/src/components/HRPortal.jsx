@@ -162,6 +162,7 @@ function HRAuthenticated() {
     nok_name:'', nok_relationship:'', nok_phone:'',
     address_line_1:'', address_line_2:'', city:'', postcode:'',
     date_of_birth:'', ni_number:'', personal_email:'',
+    bank_name:'', bank_sort_code:'', bank_account_number:'', bank_account_holder:'',
     employment_status:'', utr_number:'',
     company_name:'', company_address:'', company_vat_number:'', company_reg_number:'',
   });
@@ -198,6 +199,7 @@ function HRAuthenticated() {
             nok_name: hrRes.data.nok_name||'', nok_relationship: hrRes.data.nok_relationship||'', nok_phone: hrRes.data.nok_phone||'',
             address_line_1: hrRes.data.address_line_1||'', address_line_2: hrRes.data.address_line_2||'', city: hrRes.data.city||'', postcode: hrRes.data.postcode||'',
             date_of_birth: hrRes.data.date_of_birth ? hrRes.data.date_of_birth.split('T')[0] : '', ni_number: hrRes.data.ni_number||'', personal_email: hrRes.data.personal_email||'',
+            bank_name: hrRes.data.bank_name||'', bank_sort_code: hrRes.data.bank_sort_code||'', bank_account_number: hrRes.data.bank_account_number||'', bank_account_holder: hrRes.data.bank_account_holder||'',
             employment_status: hrRes.data.employment_status||'', utr_number: hrRes.data.utr_number||'',
             company_name: hrRes.data.company_name||'', company_address: hrRes.data.company_address||'',
             company_vat_number: hrRes.data.company_vat_number||'', company_reg_number: hrRes.data.company_reg_number||'',
@@ -335,6 +337,7 @@ function HRAuthenticated() {
     { label:'Address', done: !!hr?.address_line_1 },
     { label:'Date of birth', done: !!hr?.date_of_birth },
     { label:'NI number', done: !!hr?.ni_number },
+    { label:'Bank details', done: !!hr?.bank_account_holder },
     { label:'SIA licence (front)', done: !!docs.sia_front },
     { label:'SIA licence (back)', done: !!docs.sia_back },
     { label:'DBS certificate', done: !!docs.dbs_certificate },
@@ -491,6 +494,18 @@ function HRAuthenticated() {
                   </div>
                 </div>
 
+                {hr.bank_account_holder && (
+                  <div style={S.section}>
+                    <div style={S.sectionTitle}>Bank Details</div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
+                      <div style={{gridColumn:'1 / -1'}}><div style={S.readLabel}>Account Holder</div><div style={S.readValue}>{hr.bank_account_holder}</div></div>
+                      <div><div style={S.readLabel}>Bank</div><div style={S.readValue}>{hr.bank_name || '—'}</div></div>
+                      <div><div style={S.readLabel}>Sort Code</div><div style={{...S.readValue,fontFamily:'monospace'}}>{hr.bank_sort_code || '—'}</div></div>
+                      <div><div style={S.readLabel}>Account Number</div><div style={{...S.readValue,fontFamily:'monospace'}}>••••{hr.bank_account_number?.slice(-4) || '—'}</div></div>
+                    </div>
+                  </div>
+                )}
+
                 <div style={{display:'flex',gap:'0.75rem'}}>
                   <button onClick={() => setEditing(true)} style={{flex:1,padding:'0.875rem',background:'#fff',color:'#6b7280',border:'1px solid #d1d5db',borderRadius:'8px',fontSize:'0.875rem',fontWeight:600,cursor:'pointer'}}>
                     Edit Details
@@ -601,6 +616,31 @@ function HRAuthenticated() {
                       <label style={S.fieldLabel}>Personal Email Address</label>
                       <input type="email" value={form.personal_email} onChange={e => f('personal_email', e.target.value)} placeholder="you@example.com" style={S.fieldInput} />
                       <div style={{fontSize:'0.6875rem',color:'#9ca3af',marginTop:'0.375rem'}}>Used to send you copies of invoices and important correspondence.</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={S.section}>
+                  <div style={S.sectionTitle}>Bank Details</div>
+                  <div style={{fontSize:'0.75rem',color:'#6b7280',marginBottom:'0.75rem',lineHeight:1.5}}>
+                    Required for salary payments or invoice settlement. Please enter details exactly as they appear on your bank statement.
+                  </div>
+                  <div style={{marginBottom:'0.75rem'}}>
+                    <label style={S.fieldLabel}>Account Holder Name (as it appears on your bank statement)</label>
+                    <input value={form.bank_account_holder} onChange={e => f('bank_account_holder', e.target.value)} placeholder="e.g. Mr J Smith" style={S.fieldInput} />
+                  </div>
+                  <div style={{marginBottom:'0.75rem'}}>
+                    <label style={S.fieldLabel}>Bank Name</label>
+                    <input value={form.bank_name} onChange={e => f('bank_name', e.target.value)} placeholder="e.g. Barclays, Lloyds, Monzo" style={S.fieldInput} />
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
+                    <div>
+                      <label style={S.fieldLabel}>Sort Code</label>
+                      <input value={form.bank_sort_code} onChange={e => f('bank_sort_code', e.target.value)} placeholder="00-00-00" maxLength={8} style={{...S.fieldInput, fontFamily:'monospace', letterSpacing:'0.05em'}} />
+                    </div>
+                    <div>
+                      <label style={S.fieldLabel}>Account Number</label>
+                      <input value={form.bank_account_number} onChange={e => f('bank_account_number', e.target.value)} placeholder="12345678" maxLength={8} style={{...S.fieldInput, fontFamily:'monospace', letterSpacing:'0.05em'}} />
                     </div>
                   </div>
                   <div style={{fontSize:'0.6875rem',color:'#9ca3af',marginTop:'0.5rem',display:'flex',alignItems:'center',gap:'0.375rem'}}>
@@ -970,6 +1010,10 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
           sia_type: dbUser?.sia_licence_type || null,
           sia_expiry: dbUser?.sia_expiry_date ? new Date(dbUser.sia_expiry_date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : null,
           is_ltd: hr?.employment_status === 'ltd_company',
+          bank_name: form.bank_name || hr?.bank_name || null,
+          bank_sort_code: form.bank_sort_code || hr?.bank_sort_code || null,
+          bank_account_number: form.bank_account_number || hr?.bank_account_number || null,
+          bank_account_holder: form.bank_account_holder || hr?.bank_account_holder || null,
         },
         totals: {
           hours: totalHours.toFixed(2),
@@ -1108,8 +1152,21 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
             </div>
           </div>
 
-          {/* Payment details */}
-          <div style={{marginTop:'1rem',padding:'0.875rem',background:'#f8fafc',borderRadius:'8px',fontSize:'0.8125rem',color:'#6b7280'}}>
+          {/* Bank details */}
+          {(form.bank_account_holder || hr?.bank_account_holder) && (
+            <div style={{marginTop:'1rem',padding:'0.875rem',background:'#f8fafc',borderRadius:'8px',fontSize:'0.8125rem',color:'#374151'}}>
+              <div style={{fontWeight:600,marginBottom:'0.5rem'}}>Bank Details for Payment</div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.25rem 1rem',fontSize:'0.8125rem'}}>
+                <div><span style={{color:'#6b7280'}}>Account Holder:</span> {form.bank_account_holder || hr?.bank_account_holder}</div>
+                <div><span style={{color:'#6b7280'}}>Bank:</span> {form.bank_name || hr?.bank_name || '—'}</div>
+                <div><span style={{color:'#6b7280'}}>Sort Code:</span> <span style={{fontFamily:'monospace'}}>{form.bank_sort_code || hr?.bank_sort_code || '—'}</span></div>
+                <div><span style={{color:'#6b7280'}}>Account No:</span> <span style={{fontFamily:'monospace'}}>{form.bank_account_number || hr?.bank_account_number || '—'}</span></div>
+              </div>
+            </div>
+          )}
+
+          {/* Payment terms */}
+          <div style={{marginTop:'0.75rem',padding:'0.875rem',background:'#f8fafc',borderRadius:'8px',fontSize:'0.8125rem',color:'#6b7280'}}>
             <div style={{fontWeight:600,color:'#374151',marginBottom:'0.25rem'}}>Payment Terms</div>
             Payment due within 30 days of invoice date. Please reference invoice number {ref} with payment.
           </div>

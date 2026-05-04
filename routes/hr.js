@@ -39,6 +39,7 @@ router.put('/', authenticate, async (req, res, next) => {
       address_line_1, address_line_2, city, postcode,
       date_of_birth, ni_number,
       personal_email,
+      bank_name, bank_sort_code, bank_account_number, bank_account_holder,
       employment_status, utr_number,
       company_name, company_address, company_vat_number, company_reg_number,
       gdpr_consent, gdpr_consent_at,
@@ -57,6 +58,10 @@ router.put('/', authenticate, async (req, res, next) => {
       date_of_birth: date_of_birth || null,
       ni_number: ni_number || null,
       personal_email: personal_email || null,
+      bank_name: bank_name || null,
+      bank_sort_code: bank_sort_code || null,
+      bank_account_number: bank_account_number || null,
+      bank_account_holder: bank_account_holder || null,
       employment_status: employment_status || null,
       utr_number: utr_number || null,
       company_name: company_name || null,
@@ -271,8 +276,17 @@ router.post('/invoice', authenticate, async (req, res, next) => {
         .text(`Signed electronically by ${officer.first_name} ${officer.last_name} on ${today}`, M, y);
       y += 20;
 
-      // Payment terms
+      // Bank details & Payment terms
       doc.rect(M, y, CW, 0.5).fill('#e2e8f0'); y += 10;
+      if (contractor.bank_account_holder || contractor.bank_sort_code) {
+        doc.fontSize(8).font('Helvetica-Bold').fillColor('#374151').text('Bank Details for Payment', M, y); y += 14;
+        doc.fontSize(8).font('Helvetica').fillColor('#374151');
+        if (contractor.bank_account_holder) { doc.text(`Account Holder: ${contractor.bank_account_holder}`, M, y); y += 13; }
+        if (contractor.bank_name) { doc.text(`Bank: ${contractor.bank_name}`, M, y); y += 13; }
+        if (contractor.bank_sort_code) { doc.text(`Sort Code: ${contractor.bank_sort_code}`, M, y); y += 13; }
+        if (contractor.bank_account_number) { doc.text(`Account Number: ${contractor.bank_account_number}`, M, y); y += 13; }
+        y += 6;
+      }
       doc.fontSize(8).font('Helvetica-Bold').fillColor('#374151').text('Payment Terms', M, y); y += 14;
       doc.fontSize(7).font('Helvetica').fillColor('#6b7280')
         .text(`Payment due within 30 days of invoice date. Please reference invoice number ${invoiceRef} with payment.`, M, y, { width: CW });
