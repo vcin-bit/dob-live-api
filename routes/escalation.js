@@ -213,39 +213,34 @@ router.post('/cron-check', async (req, res) => {
       const officerPhone = shift.officer.phone ? (shift.officer.phone.startsWith('+') ? shift.officer.phone : `+44${shift.officer.phone.replace(/^0/, '')}`) : null;
       const level = shift.safety_alert_level || 0;
 
-      // Fixed hourly intervals from shift start
+      // Rolling timer: 60 mins since last check call (or shift start if none)
       const shiftStart = new Date(shift.checked_in_at || shift.start_time);
-      const minsSinceStart = (now - shiftStart) / 60000;
 
-      // Which hourly check are we on? (1st due at 60 mins, 2nd at 120, etc)
-      const currentCheckNumber = Math.floor(minsSinceStart / 60);
-      if (currentCheckNumber < 1) continue; // First hour not up yet
-
-      // When was this check due?
-      const checkDueAt = new Date(shiftStart.getTime() + currentCheckNumber * 60 * 60000);
-      const minsOverdue = Math.floor((now - checkDueAt) / 60000);
-
-      // Has officer made a check call AFTER this check was due?
-      const { data: checks } = await supabase
+      // Find officer's most recent successful check call this shift
+      const { data: lastChecks } = await supabase
         .from('occurrence_logs')
         .select('occurred_at, type_data')
         .eq('officer_id', shift.officer.id)
         .eq('log_type', 'WELFARE_CHECK')
-        .gte('occurred_at', checkDueAt.toISOString())
+        .gte('occurred_at', shiftStart.toISOString())
         .order('occurred_at', { ascending: false })
         .limit(5);
-      const madeCheck = (checks || []).some(l => l.type_data?.check_call === true && !l.type_data?.missed_check);
+      const lastCheck = (lastChecks || []).find(l => l.type_data?.check_call === true && !l.type_data?.missed_check);
+      const lastCheckTime = lastCheck ? new Date(lastCheck.occurred_at) : shiftStart;
 
-      // If they've checked in for this period, reset and move on
-      if (madeCheck) {
-        if (level > 0) {
+      // How long since their last check?
+      const minsSinceLastCheck = (now - lastCheckTime) / 60000;
+
+      // Not due yet (due at 60 mins, matches frontend 55 min warning + 5 min grace)
+      if (minsSinceLastCheck < 60) {
+        // If they recently checked in, clear any alert level
+        if (level > 0 && lastCheck) {
           await supabase.from('shifts').update({ safety_alert_level: 0, last_safety_alert_at: null }).eq('id', shift.id);
         }
         continue;
       }
 
-      // Not overdue enough yet
-      if (minsOverdue < 5) continue;
+      const minsOverdue = Math.floor(minsSinceLastCheck - 60);
 
       results.details.push({ officer: officerName, site: siteName, minsOverdue, level, checkNumber: currentCheckNumber, checkDueAt: checkDueAt.toISOString() });
 

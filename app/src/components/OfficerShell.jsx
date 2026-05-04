@@ -558,9 +558,9 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift, onPatro
       // Use server-loaded lastCheckCall, or shift checked_in_at from current active shift
       const last = lastCheckCall || (shift.checked_in_at ? new Date(shift.checked_in_at) : new Date());
       const elapsed = (Date.now() - last.getTime()) / 60000;
-      const remaining = Math.ceil(55 - elapsed);
-      setCheckCallMinsLeft(remaining);
-      if (elapsed >= 55 && elapsed < 40000) { // Due at 55 mins, cap at ~28 days to catch stale data
+      const remaining = Math.ceil(60 - elapsed);
+      setCheckCallMinsLeft(remaining > 0 ? remaining : 0);
+      if (elapsed >= 55 && elapsed < 40000) { // Warning at 55 mins, cron escalates at 60
         setCheckCallDue(true);
         try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); const o = ctx.createOscillator(); o.frequency.value = 800; o.connect(ctx.destination); o.start(); setTimeout(() => o.stop(), 500); } catch {}
       } else {
