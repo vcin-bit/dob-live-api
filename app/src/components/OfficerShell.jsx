@@ -169,15 +169,18 @@ function OfficerApp({ user }) {
     fetchOfficerData();
   }, [user]);
 
-  // Load last patrol time for PlaybookAlerts
+  // Load last patrol time for PlaybookAlerts (only from current shift)
   useEffect(() => {
-    if (!selectedSite?.id) return;
+    if (!selectedSite?.id || !activeShift) return;
+    const shiftStart = activeShift.checked_in_at || activeShift.start_time;
     api.patrols.listSessions({ site_id: selectedSite.id, status: 'completed', limit: 1 })
       .then(res => {
         const last = (res.data || [])[0];
-        if (last?.ended_at) setLastPatrolTime(last.ended_at);
+        if (last?.ended_at && new Date(last.ended_at) >= new Date(shiftStart)) {
+          setLastPatrolTime(last.ended_at);
+        }
       }).catch(() => {});
-  }, [selectedSite?.id]);
+  }, [selectedSite?.id, activeShift?.id]);
 
   // Check for roster shift on lock screen
   useEffect(() => {
