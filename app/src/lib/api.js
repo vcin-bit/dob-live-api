@@ -179,6 +179,7 @@ export const api = {
     save: (data) => request('/api/hr', { method: 'PUT', body: JSON.stringify(data) }),
     getDocUrl: (docType, userId) => request(`/api/hr/documents/${docType}${userId ? `?user_id=${userId}` : ''}`),
     deleteDoc: (docType) => request(`/api/hr/documents/${docType}`, { method: 'DELETE' }),
+    sendInvoice: (data) => request('/api/hr/invoice', { method: 'POST', body: JSON.stringify(data) }),
     uploadDoc: async (docType, file) => {
       const API = import.meta.env.VITE_API_URL || 'https://dob-live-api.onrender.com';
       const token = await window.__clerkGetToken?.() || '';

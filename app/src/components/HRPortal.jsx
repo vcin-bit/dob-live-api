@@ -922,6 +922,48 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
   const totalHours = selectedShifts.reduce((sum, s) => sum + getHours(s), 0);
   const totalAmount = selectedShifts.reduce((sum, s) => sum + (getHours(s) * (s.pay_rate || 0)), 0);
 
+  const [invoiceSending, setInvoiceSending] = useState(false);
+  const [invoiceSent, setInvoiceSent] = useState(false);
+
+  async function sendInvoice(ref) {
+    setInvoiceSending(true);
+    try {
+      const invoiceData = {
+        invoiceRef: ref,
+        month: formatMonth(selectedMonth),
+        shifts: selectedShifts.map(s => ({
+          date: new Date(s.start_time).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}),
+          site: s.site?.name || '—',
+          times: `${new Date(s.checked_in_at||s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}–${new Date(s.checked_out_at||s.end_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}`,
+          hours: getHours(s).toFixed(2),
+          rate: (s.pay_rate || 0).toFixed(2),
+          amount: (getHours(s) * (s.pay_rate || 0)).toFixed(2),
+        })),
+        contractor: {
+          name: hr?.employment_status === 'ltd_company' ? (form.company_name || `${dbUser?.first_name} ${dbUser?.last_name}`) : `${dbUser?.first_name} ${dbUser?.last_name}`,
+          address: hr?.employment_status === 'ltd_company' ? form.company_address : [hr?.address_line_1, hr?.city, hr?.postcode].filter(Boolean).join(', '),
+          company_reg: form.company_reg_number || null,
+          vat: form.company_vat_number || null,
+          utr: form.utr_number || hr?.utr_number || null,
+          sia_number: dbUser?.sia_licence_number || null,
+          sia_type: dbUser?.sia_licence_type || null,
+          sia_expiry: dbUser?.sia_expiry_date ? new Date(dbUser.sia_expiry_date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : null,
+          is_ltd: hr?.employment_status === 'ltd_company',
+        },
+        totals: {
+          hours: totalHours.toFixed(2),
+          subtotal: totalAmount.toFixed(2),
+          vat: (hr?.employment_status === 'ltd_company' && form.company_vat_number) ? (totalAmount * 0.2).toFixed(2) : null,
+          total: (hr?.employment_status === 'ltd_company' && form.company_vat_number) ? (totalAmount * 1.2).toFixed(2) : totalAmount.toFixed(2),
+        },
+      };
+      const res = await api.hr.sendInvoice(invoiceData);
+      if (res.emailSent) setInvoiceSent(true);
+      else alert('Invoice generated but email could not be sent. Please use Print to save as PDF.');
+    } catch (err) { alert('Failed to send invoice: ' + err.message); }
+    finally { setInvoiceSending(false); }
+  }
+
   if (showInvoice) {
     const today = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'long', year:'numeric' });
     const ref = invoiceRef || `INV-${Date.now().toString(36).toUpperCase().slice(-6)}`;
@@ -929,9 +971,22 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
 
     return (
       <>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1rem'}}>
-          <button onClick={() => setShowInvoice(false)} style={{padding:'0.5rem 0.75rem',background:'#fff',border:'1px solid #d1d5db',borderRadius:'6px',fontSize:'0.8125rem',fontWeight:600,color:'#374151',cursor:'pointer'}}>← Back to Hours</button>
-          <button onClick={() => window.print()} style={{padding:'0.5rem 0.75rem',background:'#1a52a8',border:'none',borderRadius:'6px',fontSize:'0.8125rem',fontWeight:600,color:'#fff',cursor:'pointer'}}>Print / Save PDF</button>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'0.5rem',marginBottom:'1rem',flexWrap:'wrap'}}>
+          <button onClick={() => { setShowInvoice(false); setInvoiceSent(false); }} style={{padding:'0.5rem 0.75rem',background:'#fff',border:'1px solid #d1d5db',borderRadius:'6px',fontSize:'0.8125rem',fontWeight:600,color:'#374151',cursor:'pointer'}}>← Back</button>
+          <div style={{display:'flex',gap:'0.5rem'}}>
+            <button onClick={() => window.print()} style={{padding:'0.5rem 0.75rem',background:'#fff',border:'1px solid #d1d5db',borderRadius:'6px',fontSize:'0.8125rem',fontWeight:600,color:'#374151',cursor:'pointer'}}>Print / PDF</button>
+            {invoiceSent ? (
+              <div style={{padding:'0.5rem 0.75rem',background:'#f0fdf4',border:'1px solid #86efac',borderRadius:'6px',fontSize:'0.8125rem',fontWeight:600,color:'#16a34a',display:'flex',alignItems:'center',gap:'0.375rem'}}>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 7l3 3 5-5" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                Sent to Accounts
+              </div>
+            ) : (
+              <button onClick={() => sendInvoice(ref)} disabled={invoiceSending}
+                style={{padding:'0.5rem 0.75rem',background:'#1a52a8',border:'none',borderRadius:'6px',fontSize:'0.8125rem',fontWeight:600,color:'#fff',cursor:'pointer',opacity:invoiceSending?0.7:1}}>
+                {invoiceSending ? 'Sending...' : 'Email to Accounts'}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Professional Invoice */}

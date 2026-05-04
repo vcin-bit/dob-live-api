@@ -159,4 +159,168 @@ router.delete('/documents/:docType', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// POST /api/hr/invoice — generate PDF invoice and email to accounts
+router.post('/invoice', authenticate, async (req, res, next) => {
+  try {
+    const PDFDocument = require('pdfkit');
+    const { invoiceRef, month, shifts, contractor, totals } = req.body;
+    if (!shifts?.length) return res.status(400).json({ error: 'No shifts provided' });
+
+    const officer = req.user;
+    const today = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'long', year:'numeric' });
+
+    // Generate PDF
+    const pdfBuffer = await new Promise((resolve, reject) => {
+      const doc = new PDFDocument({ size: 'A4', margin: 40 });
+      const chunks = [];
+      doc.on('data', c => chunks.push(c));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+
+      const W = 595, M = 40, CW = W - M * 2;
+
+      // Header
+      doc.rect(0, 0, W, 3).fill('#1a52a8');
+      doc.fontSize(22).font('Helvetica-Bold').fillColor('#0b1a3e').text('INVOICE', M, 20);
+      doc.fontSize(9).font('Helvetica').fillColor('#6b7280')
+        .text(`Ref: ${invoiceRef}`, M, 46)
+        .text(`Date: ${today}`, M, 58)
+        .text(`Period: ${month}`, M, 70);
+
+      // From (right side)
+      const fromX = W - M - 200;
+      doc.fontSize(11).font('Helvetica-Bold').fillColor('#0b1a3e')
+        .text(contractor.name || `${officer.first_name} ${officer.last_name}`, fromX, 20, { width: 200, align: 'right' });
+      let fy = 36;
+      doc.fontSize(8).font('Helvetica').fillColor('#6b7280');
+      if (contractor.address) { doc.text(contractor.address, fromX, fy, { width: 200, align: 'right' }); fy += 12; }
+      if (contractor.company_reg) { doc.text(`Company No: ${contractor.company_reg}`, fromX, fy, { width: 200, align: 'right' }); fy += 12; }
+      if (contractor.vat) { doc.text(`VAT: ${contractor.vat}`, fromX, fy, { width: 200, align: 'right' }); fy += 12; }
+      if (contractor.utr) { doc.text(`UTR: ${contractor.utr}`, fromX, fy, { width: 200, align: 'right' }); fy += 12; }
+
+      let y = 90;
+      doc.rect(M, y, CW, 0.5).fill('#e2e8f0'); y += 8;
+
+      // Contractor & Bill To
+      doc.fontSize(7).font('Helvetica-Bold').fillColor('#6b7280').text('CONTRACTOR DETAILS', M, y);
+      doc.text('BILL TO', M + CW / 2, y); y += 14;
+      doc.fontSize(8).font('Helvetica').fillColor('#374151');
+      doc.text(`SIA Licence: ${contractor.sia_number || '—'}`, M, y);
+      doc.text('Risk Secured Ltd', M + CW / 2, y); y += 12;
+      doc.text(`SIA Type: ${contractor.sia_type || '—'}`, M, y);
+      doc.text('Security Services', M + CW / 2, y); y += 12;
+      doc.text(`SIA Expiry: ${contractor.sia_expiry || '—'}`, M, y); y += 12;
+      if (contractor.utr) { doc.text(`UTR: ${contractor.utr}`, M, y); y += 12; }
+      y += 8;
+      doc.rect(M, y, CW, 0.5).fill('#e2e8f0'); y += 12;
+
+      // Table header
+      const cols = [M, M+80, M+200, M+310, M+390, M+CW-50];
+      doc.fontSize(7).font('Helvetica-Bold').fillColor('#6b7280');
+      doc.text('DATE', cols[0], y);
+      doc.text('SITE', cols[1], y);
+      doc.text('FROM–TO', cols[2], y);
+      doc.text('HOURS', cols[3], y, { width: 60, align: 'right' });
+      doc.text('RATE', cols[4], y, { width: 50, align: 'right' });
+      doc.text('AMOUNT', cols[5], y, { width: 65, align: 'right' });
+      y += 16; doc.rect(M, y - 2, CW, 0.5).fill('#e5e7eb');
+
+      // Line items
+      doc.fontSize(8).font('Helvetica').fillColor('#111827');
+      for (const s of shifts) {
+        if (y > 720) { doc.addPage(); y = 40; }
+        doc.text(s.date, cols[0], y);
+        doc.text(s.site, cols[1], y, { width: 115 });
+        doc.text(s.times, cols[2], y);
+        doc.text(s.hours, cols[3], y, { width: 60, align: 'right' });
+        doc.text(`£${s.rate}`, cols[4], y, { width: 50, align: 'right' });
+        doc.font('Helvetica-Bold').text(`£${s.amount}`, cols[5], y, { width: 65, align: 'right' });
+        doc.font('Helvetica');
+        y += 16;
+        doc.rect(M, y - 2, CW, 0.25).fill('#f1f5f9');
+      }
+
+      // Totals
+      y += 8; doc.rect(M, y, CW, 1.5).fill('#0b1a3e'); y += 10;
+      doc.fontSize(9).font('Helvetica').fillColor('#6b7280')
+        .text(`Total Hours: ${totals.hours}`, M, y);
+      doc.font('Helvetica-Bold').fillColor('#0b1a3e')
+        .text(`Subtotal: £${totals.subtotal}`, M + CW - 150, y, { width: 150, align: 'right' });
+      y += 16;
+      if (totals.vat) {
+        doc.fontSize(8).font('Helvetica').fillColor('#6b7280')
+          .text(`VAT (20%): £${totals.vat}`, M + CW - 150, y, { width: 150, align: 'right' });
+        y += 14;
+        doc.fontSize(12).font('Helvetica-Bold').fillColor('#0b1a3e')
+          .text(`Total: £${totals.total}`, M + CW - 150, y, { width: 150, align: 'right' });
+        y += 20;
+      }
+
+      // Declaration
+      y += 8;
+      if (y > 600) { doc.addPage(); y = 40; }
+      doc.rect(M, y, CW, 0.5).fill('#e2e8f0'); y += 10;
+      doc.fontSize(8).font('Helvetica-Bold').fillColor('#92400e').text('Self-Employment Declaration', M, y); y += 14;
+      doc.fontSize(7).font('Helvetica').fillColor('#6b7280');
+      const decl = `I confirm that I am ${contractor.is_ltd ? 'operating through a limited company' : 'self-employed'} for the purposes of this engagement and that this is not a contract of employment. I am responsible for the payment of my own Income Tax and National Insurance Contributions in accordance with the Income Tax (Earnings and Pensions) Act 2003 and the Social Security Contributions and Benefits Act 1992. I am not entitled to employment rights under the Employment Rights Act 1996. I am responsible for registering with HMRC for Self Assessment and submitting my own tax returns. I hold a valid SIA licence as required under the Private Security Industry Act 2001.`;
+      doc.text(decl, M, y, { width: CW, lineGap: 2 });
+      y += doc.heightOfString(decl, { width: CW, lineGap: 2 }) + 12;
+      doc.fontSize(8).font('Helvetica-Bold').fillColor('#374151')
+        .text(`Signed electronically by ${officer.first_name} ${officer.last_name} on ${today}`, M, y);
+      y += 20;
+
+      // Payment terms
+      doc.rect(M, y, CW, 0.5).fill('#e2e8f0'); y += 10;
+      doc.fontSize(8).font('Helvetica-Bold').fillColor('#374151').text('Payment Terms', M, y); y += 14;
+      doc.fontSize(7).font('Helvetica').fillColor('#6b7280')
+        .text(`Payment due within 30 days of invoice date. Please reference invoice number ${invoiceRef} with payment.`, M, y, { width: CW });
+
+      doc.end();
+    });
+
+    // Email via SendGrid
+    let emailSent = false;
+    if (process.env.SENDGRID_API_KEY) {
+      const sg = require('@sendgrid/mail');
+      sg.setApiKey(process.env.SENDGRID_API_KEY);
+      const fromEmail = process.env.RS_INSPECTION_FROM_EMAIL || 'reports@risksecured.co.uk';
+      const toEmail = 'accounts@risksecured.co.uk';
+      try {
+        await sg.send({
+          to: toEmail,
+          from: { email: fromEmail, name: 'DOB Live' },
+          subject: `Invoice ${invoiceRef} — ${contractor.name || `${officer.first_name} ${officer.last_name}`} — ${month}`,
+          html: `
+            <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+              <div style="background:#0b1a3e;padding:20px 24px;border-radius:8px 8px 0 0;border-top:4px solid #1a52a8;">
+                <h1 style="color:#fff;margin:0;font-size:18px;">DOB Live — Invoice Submission</h1>
+              </div>
+              <div style="padding:24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;background:#fff;">
+                <table style="width:100%;font-size:14px;color:#374151;border-collapse:collapse;">
+                  <tr><td style="padding:6px 0;font-weight:600;width:120px;">Invoice Ref:</td><td>${invoiceRef}</td></tr>
+                  <tr><td style="padding:6px 0;font-weight:600;">Contractor:</td><td>${contractor.name || `${officer.first_name} ${officer.last_name}`}</td></tr>
+                  <tr><td style="padding:6px 0;font-weight:600;">Period:</td><td>${month}</td></tr>
+                  <tr><td style="padding:6px 0;font-weight:600;">Total Hours:</td><td>${totals.hours}</td></tr>
+                  <tr><td style="padding:6px 0;font-weight:600;">Amount:</td><td><strong>£${totals.vat ? totals.total : totals.subtotal}</strong></td></tr>
+                </table>
+                <p style="margin:20px 0 0;font-size:12px;color:#9ca3af;">Full invoice attached as PDF.</p>
+              </div>
+            </div>
+          `,
+          attachments: [{
+            content: pdfBuffer.toString('base64'),
+            filename: `Invoice-${invoiceRef}.pdf`,
+            type: 'application/pdf', disposition: 'attachment',
+          }],
+        });
+        emailSent = true;
+      } catch (emailErr) {
+        console.error('[Invoice] Email failed:', emailErr.message);
+      }
+    }
+
+    res.json({ success: true, emailSent });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;
