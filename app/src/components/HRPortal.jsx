@@ -433,7 +433,11 @@ function HRAuthenticated() {
           <>
             <div style={{marginBottom:'1.25rem'}}>
               <h2 style={{fontSize:'1.125rem',fontWeight:700,color:'#111827',margin:'0 0 0.25rem'}}>Personal Details</h2>
-              <p style={{fontSize:'0.8125rem',color:'#6b7280',margin:0}}>Your information is encrypted and only accessible by authorised personnel.</p>
+              <p style={{fontSize:'0.8125rem',color:'#6b7280',margin:0,lineHeight:1.5}}>Your information is encrypted and only accessible by authorised personnel.</p>
+            </div>
+
+            <div style={{background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:'8px',padding:'0.875rem',fontSize:'0.8125rem',color:'#1e40af',lineHeight:1.5,marginBottom:'1rem'}}>
+              <strong>Why we need this:</strong> Your address is required for payroll, tax correspondence, and in case emergency services need to attend your home address following a serious incident on duty. Your date of birth and NI number are legal requirements for HMRC payroll processing.
             </div>
 
             <div style={S.section}>
@@ -470,9 +474,17 @@ function HRAuthenticated() {
               </div>
             </div>
 
-            <button onClick={save} disabled={saving} style={{...S.btn, opacity:saving?0.7:1}}>
-              {saving ? 'Saving...' : 'Save Personal Details'}
-            </button>
+            <div style={{display:'flex',gap:'0.75rem'}}>
+              <button onClick={() => setTab('home')} style={{flex:1,padding:'0.875rem',background:'#fff',color:'#6b7280',border:'1px solid #d1d5db',borderRadius:'8px',fontSize:'0.875rem',fontWeight:600,cursor:'pointer'}}>
+                Back
+              </button>
+              <button onClick={async () => { await save(); setTab('nok'); }} disabled={saving} style={{flex:2,...S.btn, opacity:saving?0.7:1,marginTop:0}}>
+                {saving ? 'Saving...' : 'Save & Continue →'}
+              </button>
+            </div>
+            <div style={{textAlign:'center',marginTop:'0.75rem'}}>
+              <span style={{fontSize:'0.6875rem',color:'#9ca3af'}}>Step 1 of 3 — Next: Emergency Contact</span>
+            </div>
           </>
         )}
 
@@ -481,7 +493,11 @@ function HRAuthenticated() {
           <>
             <div style={{marginBottom:'1.25rem'}}>
               <h2 style={{fontSize:'1.125rem',fontWeight:700,color:'#111827',margin:'0 0 0.25rem'}}>Next of Kin</h2>
-              <p style={{fontSize:'0.8125rem',color:'#6b7280',margin:0}}>Your emergency contact will be notified in the event of a serious incident during your duties.</p>
+              <p style={{fontSize:'0.8125rem',color:'#6b7280',margin:0,lineHeight:1.5}}>Your emergency contact will be notified in the event of a serious incident during your duties.</p>
+            </div>
+
+            <div style={{background:'#fef3c7',border:'1px solid #fde68a',borderRadius:'8px',padding:'0.875rem',fontSize:'0.8125rem',color:'#92400e',lineHeight:1.5,marginBottom:'1rem'}}>
+              <strong>Why we need this:</strong> As a lone worker, your safety is our priority. If you activate a panic alarm, miss multiple safety checks, or are involved in a serious incident, our national command centre will contact your next of kin immediately. Without this information, we cannot notify your family in an emergency.
             </div>
 
             <div style={S.section}>
@@ -503,13 +519,17 @@ function HRAuthenticated() {
               </div>
             </div>
 
-            <div style={{background:'#fef3c7',border:'1px solid #fde68a',borderRadius:'8px',padding:'0.875rem',fontSize:'0.8125rem',color:'#92400e',lineHeight:1.5,marginBottom:'1rem'}}>
-              This information is critical. In the event of a lone worker emergency, panic activation, or serious incident on site, your next of kin will be contacted by the national command centre.
+            <div style={{display:'flex',gap:'0.75rem'}}>
+              <button onClick={() => setTab('personal')} style={{flex:1,padding:'0.875rem',background:'#fff',color:'#6b7280',border:'1px solid #d1d5db',borderRadius:'8px',fontSize:'0.875rem',fontWeight:600,cursor:'pointer'}}>
+                ← Back
+              </button>
+              <button onClick={async () => { await save(); setTab('documents'); }} disabled={saving} style={{flex:2,...S.btn, opacity:saving?0.7:1,marginTop:0}}>
+                {saving ? 'Saving...' : 'Save & Continue →'}
+              </button>
             </div>
-
-            <button onClick={save} disabled={saving} style={{...S.btn, opacity:saving?0.7:1}}>
-              {saving ? 'Saving...' : 'Save Next of Kin'}
-            </button>
+            <div style={{textAlign:'center',marginTop:'0.75rem'}}>
+              <span style={{fontSize:'0.6875rem',color:'#9ca3af'}}>Step 2 of 3 — Next: Documents</span>
+            </div>
           </>
         )}
 
@@ -518,7 +538,11 @@ function HRAuthenticated() {
           <>
             <div style={{marginBottom:'1.25rem'}}>
               <h2 style={{fontSize:'1.125rem',fontWeight:700,color:'#111827',margin:'0 0 0.25rem'}}>Documents</h2>
-              <p style={{fontSize:'0.8125rem',color:'#6b7280',margin:0}}>Upload your identification documents. These are stored in a private vault with time-limited access.</p>
+              <p style={{fontSize:'0.8125rem',color:'#6b7280',margin:0,lineHeight:1.5}}>Upload your identification documents. These are stored in a private vault with time-limited access.</p>
+            </div>
+
+            <div style={{background:'#f5f3ff',border:'1px solid #ddd6fe',borderRadius:'8px',padding:'0.875rem',fontSize:'0.8125rem',color:'#5b21b6',lineHeight:1.5,marginBottom:'1rem'}}>
+              <strong>Why we need this:</strong> Under the Private Security Industry Act 2001, your employer must hold a verified copy of your SIA licence. Your DBS certificate confirms you have been vetted to BS7858 standards. These documents are stored in a secure, encrypted vault and are only accessible to authorised compliance staff.
             </div>
 
             {createPortal(
@@ -555,6 +579,18 @@ function HRAuthenticated() {
                 </div>
               </div>
             ))}
+
+            <div style={{display:'flex',gap:'0.75rem',marginTop:'1rem'}}>
+              <button onClick={() => setTab('nok')} style={{flex:1,padding:'0.875rem',background:'#fff',color:'#6b7280',border:'1px solid #d1d5db',borderRadius:'8px',fontSize:'0.875rem',fontWeight:600,cursor:'pointer'}}>
+                ← Back
+              </button>
+              <button onClick={() => setTab('home')} style={{flex:2,padding:'0.875rem',background:'#16a34a',color:'#fff',border:'none',borderRadius:'8px',fontSize:'0.875rem',fontWeight:700,cursor:'pointer'}}>
+                Done — Return to Home
+              </button>
+            </div>
+            <div style={{textAlign:'center',marginTop:'0.75rem'}}>
+              <span style={{fontSize:'0.6875rem',color:'#9ca3af'}}>Step 3 of 3 — Upload your documents to complete your profile</span>
+            </div>
           </>
         )}
 
