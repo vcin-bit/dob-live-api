@@ -42,7 +42,7 @@ function ManagerApp({ user }) {
           <Route path="/instructions" element={<SiteInstructionsScreen user={user} />} />
           <Route path="/messages"     element={<MessagesScreen user={user} />} />
           <Route path="/contracts"   element={<ContractsScreen user={user} />} />
-          <Route path="/updates"     element={<ManagerUpdatesPanel />} />
+          <Route path="/updates"     element={<div className="page-content"><ManagerUpdatesPanel /></div>} />
           <Route path="/portal-settings" element={<PortalManagement user={user} />} />
           <Route path="*"          element={<Navigate to="/dashboard" replace />} />
         </Routes>

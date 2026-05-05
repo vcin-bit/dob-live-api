@@ -147,7 +147,7 @@ export function ManagerUpdatesPanel() {
   }
 
   return (
-    <div style={{padding:'1.5rem'}}>
+    <div>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1rem'}}>
         <h3 style={{fontSize:'1rem',fontWeight:700,color:'#111827',margin:0}}>Company Updates</h3>
         <button onClick={() => setShowForm(!showForm)}
