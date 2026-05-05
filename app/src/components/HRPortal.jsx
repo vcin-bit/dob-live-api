@@ -1084,7 +1084,8 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
             <div>
               <div style={{fontSize:'0.6875rem',fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.375rem'}}>Bill To</div>
               <div style={{fontWeight:600,color:'#111827'}}>Risk Secured Ltd</div>
-              <div style={{color:'#6b7280'}}>Security Services</div>
+              <div style={{color:'#6b7280'}}>128 City Road</div>
+              <div style={{color:'#6b7280'}}>London EC1V 2NX</div>
             </div>
           </div>
 

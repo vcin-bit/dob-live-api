@@ -215,8 +215,9 @@ router.post('/invoice', authenticate, async (req, res, next) => {
       doc.text(`SIA Licence: ${contractor.sia_number || '—'}`, M, y);
       doc.text('Risk Secured Ltd', M + CW / 2, y); y += 12;
       doc.text(`SIA Type: ${contractor.sia_type || '—'}`, M, y);
-      doc.text('Security Services', M + CW / 2, y); y += 12;
-      doc.text(`SIA Expiry: ${contractor.sia_expiry || '—'}`, M, y); y += 12;
+      doc.text('128 City Road', M + CW / 2, y); y += 12;
+      doc.text(`SIA Expiry: ${contractor.sia_expiry || '—'}`, M, y);
+      doc.text('London EC1V 2NX', M + CW / 2, y); y += 12;
       if (contractor.utr) { doc.text(`UTR: ${contractor.utr}`, M, y); y += 12; }
       y += 8;
       doc.rect(M, y, CW, 0.5).fill('#e2e8f0'); y += 12;
