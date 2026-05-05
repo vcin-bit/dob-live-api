@@ -1066,11 +1066,16 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
               <div style={{fontSize:'0.8125rem',color:'#6b7280'}}>Date: {today}</div>
             </div>
             <div style={{textAlign:'right'}}>
-              <div style={{fontWeight:700,fontSize:'1rem'}}>{hr?.employment_status === 'ltd_company' ? (form.company_name || 'Company Name') : `${dbUser?.first_name || ''} ${dbUser?.last_name || ''}`}</div>
-              {hr?.employment_status === 'ltd_company' && form.company_address && <div style={{fontSize:'0.75rem',color:'#6b7280',marginTop:'0.25rem'}}>{form.company_address}</div>}
-              {hr?.employment_status === 'ltd_company' && form.company_reg_number && <div style={{fontSize:'0.75rem',color:'#6b7280'}}>Company No: {form.company_reg_number}</div>}
+              <div style={{fontWeight:700,fontSize:'1rem',color:'#0b1a3e'}}>{hr?.employment_status === 'ltd_company' ? (form.company_name || 'Company Name') : `${dbUser?.first_name || ''} ${dbUser?.last_name || ''}`}</div>
+              {hr?.address_line_1 && <div style={{fontSize:'0.8125rem',color:'#374151',marginTop:'0.375rem',lineHeight:1.5}}>
+                {hr.address_line_1}<br/>
+                {hr.address_line_2 && <>{hr.address_line_2}<br/></>}
+                {hr.city && <>{hr.city}<br/></>}
+                {hr.postcode}
+              </div>}
+              {hr?.employment_status === 'ltd_company' && form.company_reg_number && <div style={{fontSize:'0.75rem',color:'#6b7280',marginTop:'0.375rem'}}>Company No: {form.company_reg_number}</div>}
               {hr?.employment_status === 'ltd_company' && form.company_vat_number && <div style={{fontSize:'0.75rem',color:'#6b7280'}}>VAT Reg: {form.company_vat_number}</div>}
-              {hr?.address_line_1 && <div style={{fontSize:'0.75rem',color:'#6b7280',marginTop:'0.25rem'}}>{hr.address_line_1}, {hr.city} {hr.postcode}</div>}
+              {hr?.personal_email && <div style={{fontSize:'0.75rem',color:'#6b7280',marginTop:'0.25rem'}}>{hr.personal_email}</div>}
             </div>
           </div>
 
