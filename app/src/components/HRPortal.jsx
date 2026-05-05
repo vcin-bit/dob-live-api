@@ -328,6 +328,7 @@ function HRAuthenticated() {
     { key:'documents', label:'Documents' },
     { key:'licence', label:'Licence' },
     { key:'hours', label:'Hours' },
+    { key:'updates', label:'Updates' },
     { key:'perks', label:'Perks' },
   ];
 
@@ -879,6 +880,9 @@ function HRAuthenticated() {
           />
         )}
 
+        {/* ── UPDATES TAB ────────────────────────────────────────────── */}
+        {tab === 'updates' && <HRUpdatesTab />}
+
         {/* ── PERKS TAB ──────────────────────────────────────────────── */}
         {tab === 'perks' && (
           <div style={{padding:'2rem',textAlign:'center'}}>
@@ -1294,6 +1298,117 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
           )}
         </>
       )}
+    </>
+  );
+}
+
+function HRUpdatesTab() {
+  const [updates, setUpdates] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState(null);
+  const [comments, setComments] = useState({});
+  const [commentText, setCommentText] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    api.updates.list().then(res => setUpdates(res.data || [])).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  async function loadComments(updateId) {
+    if (expandedId === updateId) { setExpandedId(null); return; }
+    setExpandedId(updateId);
+    if (!comments[updateId]) {
+      try {
+        const res = await api.updates.comments(updateId);
+        setComments(prev => ({ ...prev, [updateId]: res.data || [] }));
+      } catch {}
+    }
+  }
+
+  async function postComment(updateId) {
+    if (!commentText.trim()) return;
+    setSubmitting(true);
+    try {
+      const res = await api.updates.comment(updateId, commentText);
+      setComments(prev => ({ ...prev, [updateId]: [...(prev[updateId] || []), res.data] }));
+      setCommentText('');
+    } catch (err) { alert(err.message || 'Failed to post comment'); }
+    finally { setSubmitting(false); }
+  }
+
+  if (loading) return <div style={{padding:'2rem',textAlign:'center',color:'#9ca3af'}}>Loading...</div>;
+
+  return (
+    <>
+      <div style={{marginBottom:'1.25rem'}}>
+        <h2 style={{fontSize:'1.125rem',fontWeight:700,color:'#111827',margin:'0 0 0.25rem'}}>Company Updates</h2>
+        <p style={{fontSize:'0.8125rem',color:'#6b7280',margin:0,lineHeight:1.5}}>News and updates from the Managing Director.</p>
+      </div>
+
+      {updates.length === 0 && (
+        <div style={{padding:'2rem',textAlign:'center',background:'#f9fafb',borderRadius:'10px',border:'1px dashed #d1d5db'}}>
+          <div style={{fontSize:'0.875rem',color:'#9ca3af'}}>No updates yet.</div>
+        </div>
+      )}
+
+      <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
+        {updates.map(update => {
+          const isExpanded = expandedId === update.id;
+          const updateComments = comments[update.id] || [];
+          return (
+            <div key={update.id} style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:'12px',overflow:'hidden'}}>
+              <div style={{padding:'1.25rem'}}>
+                <div style={{display:'flex',alignItems:'center',gap:'0.5rem',marginBottom:'0.75rem'}}>
+                  <div style={{width:'36px',height:'36px',borderRadius:'50%',background:'#eff6ff',border:'1px solid #bfdbfe',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.8125rem',fontWeight:700,color:'#1a52a8'}}>
+                    {update.author?.first_name?.[0]}{update.author?.last_name?.[0]}
+                  </div>
+                  <div>
+                    <div style={{fontSize:'0.875rem',fontWeight:600,color:'#111827'}}>{update.author?.first_name} {update.author?.last_name}</div>
+                    <div style={{fontSize:'0.6875rem',color:'#9ca3af'}}>
+                      {new Date(update.created_at).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'Europe/London'})} at {new Date(update.created_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}
+                    </div>
+                  </div>
+                </div>
+                <div style={{fontSize:'1.0625rem',fontWeight:700,color:'#111827',marginBottom:'0.5rem'}}>{update.title}</div>
+                <div style={{fontSize:'0.875rem',color:'#374151',lineHeight:1.7,whiteSpace:'pre-wrap'}}>{update.content}</div>
+              </div>
+
+              <div style={{borderTop:'1px solid #f1f5f9',padding:'0.625rem 1.25rem'}}>
+                <button onClick={() => loadComments(update.id)}
+                  style={{background:'none',border:'none',color:'#6b7280',fontSize:'0.8125rem',fontWeight:500,cursor:'pointer',padding:0}}>
+                  {isExpanded ? 'Hide comments' : `Comments${updateComments.length > 0 ? ` (${updateComments.length})` : ''}`}
+                </button>
+              </div>
+
+              {isExpanded && (
+                <div style={{borderTop:'1px solid #f1f5f9',padding:'1rem 1.25rem',background:'#f8fafc'}}>
+                  {updateComments.length === 0 && (
+                    <div style={{fontSize:'0.8125rem',color:'#9ca3af',marginBottom:'0.75rem'}}>No comments yet. Be the first to respond.</div>
+                  )}
+                  {updateComments.map(c => (
+                    <div key={c.id} style={{marginBottom:'0.75rem',paddingBottom:'0.75rem',borderBottom:'1px solid #e5e7eb'}}>
+                      <div style={{display:'flex',alignItems:'center',gap:'0.375rem',marginBottom:'0.25rem'}}>
+                        <span style={{fontSize:'0.8125rem',fontWeight:600,color:'#374151'}}>{c.user?.first_name} {c.user?.last_name}</span>
+                        <span style={{fontSize:'0.6875rem',color:'#9ca3af'}}>{new Date(c.created_at).toLocaleDateString('en-GB',{day:'2-digit',month:'short',timeZone:'Europe/London'})} {new Date(c.created_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}</span>
+                      </div>
+                      <div style={{fontSize:'0.8125rem',color:'#6b7280',lineHeight:1.5}}>{c.content}</div>
+                    </div>
+                  ))}
+                  <div style={{display:'flex',gap:'0.5rem',marginTop:'0.5rem'}}>
+                    <input value={commentText} onChange={e => setCommentText(e.target.value)} placeholder="Write a comment..."
+                      onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); postComment(update.id); } }}
+                      style={{flex:1,padding:'0.625rem 0.75rem',border:'1.5px solid #d1d5db',borderRadius:'8px',fontSize:'0.8125rem',color:'#111827',outline:'none'}} />
+                    <button onClick={() => postComment(update.id)} disabled={submitting || !commentText.trim()}
+                      style={{padding:'0.625rem 1rem',background:'#1a52a8',border:'none',borderRadius:'8px',color:'#fff',fontSize:'0.8125rem',fontWeight:600,cursor:'pointer',opacity:(!commentText.trim()||submitting)?0.5:1}}>
+                      Post
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </>
   );
 }
