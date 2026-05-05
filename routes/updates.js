@@ -30,6 +30,22 @@ router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGE
   } catch (err) { next(err); }
 });
 
+// PATCH /api/updates/:id — edit update (managers only)
+router.patch('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
+  try {
+    const { title, content } = req.body;
+    if (!title?.trim() || !content?.trim()) return res.status(400).json({ error: 'Title and content required' });
+    const { data, error } = await supabase
+      .from('company_updates')
+      .update({ title: title.trim(), content: content.trim() })
+      .eq('id', req.params.id).eq('company_id', req.user.company_id)
+      .select('*, author:users(id, first_name, last_name, role)')
+      .single();
+    if (error) throw error;
+    res.json({ data });
+  } catch (err) { next(err); }
+});
+
 // DELETE /api/updates/:id — delete update (managers only)
 router.delete('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
   try {

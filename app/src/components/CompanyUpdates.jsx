@@ -122,6 +122,7 @@ export function ManagerUpdatesPanel() {
   const [updates, setUpdates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -134,11 +135,20 @@ export function ManagerUpdatesPanel() {
     if (!title.trim() || !content.trim()) return;
     setSubmitting(true);
     try {
-      const res = await api.updates.create({ title: title.trim(), content: content.trim() });
-      setUpdates(prev => [res.data, ...prev]);
-      setTitle(''); setContent(''); setShowForm(false);
+      if (editingId) {
+        const res = await api.updates.update(editingId, { title: title.trim(), content: content.trim() });
+        setUpdates(prev => prev.map(u => u.id === editingId ? res.data : u));
+      } else {
+        const res = await api.updates.create({ title: title.trim(), content: content.trim() });
+        setUpdates(prev => [res.data, ...prev]);
+      }
+      setTitle(''); setContent(''); setShowForm(false); setEditingId(null);
     } catch (err) { alert(err.message || 'Failed to publish'); }
     finally { setSubmitting(false); }
+  }
+
+  function startEdit(u) {
+    setEditingId(u.id); setTitle(u.title); setContent(u.content); setShowForm(true);
   }
 
   async function deleteUpdate(id) {
@@ -150,7 +160,7 @@ export function ManagerUpdatesPanel() {
     <div>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1rem'}}>
         <h3 style={{fontSize:'1rem',fontWeight:700,color:'#111827',margin:0}}>Company Updates</h3>
-        <button onClick={() => setShowForm(!showForm)}
+        <button onClick={() => { setShowForm(!showForm); if (showForm) { setEditingId(null); setTitle(''); setContent(''); } }}
           style={{padding:'0.5rem 1rem',background:'#1a52a8',border:'none',borderRadius:'8px',color:'#fff',fontSize:'0.8125rem',fontWeight:600,cursor:'pointer'}}>
           {showForm ? 'Cancel' : '+ New Update'}
         </button>
@@ -164,7 +174,7 @@ export function ManagerUpdatesPanel() {
             rows={6} style={{width:'100%',padding:'0.75rem',background:'#f9fafb',border:'1.5px solid #d1d5db',borderRadius:'8px',color:'#111827',fontSize:'0.875rem',lineHeight:1.6,resize:'vertical',marginBottom:'0.75rem',boxSizing:'border-box',outline:'none',fontFamily:'inherit'}} />
           <button onClick={publish} disabled={submitting || !title.trim() || !content.trim()}
             style={{padding:'0.75rem 1.5rem',background:'#1a52a8',border:'none',borderRadius:'8px',color:'#fff',fontSize:'0.875rem',fontWeight:700,cursor:'pointer',opacity:(submitting||!title.trim()||!content.trim())?0.5:1}}>
-            {submitting ? 'Publishing...' : 'Publish to All Officers'}
+            {submitting ? 'Saving...' : editingId ? 'Save Changes' : 'Publish to All Officers'}
           </button>
         </div>
       )}
@@ -180,10 +190,16 @@ export function ManagerUpdatesPanel() {
                 {new Date(u.created_at).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})} — {u.author?.first_name} {u.author?.last_name}
               </div>
             </div>
-            <button onClick={() => deleteUpdate(u.id)}
-              style={{background:'none',border:'none',color:'#dc2626',fontSize:'0.75rem',cursor:'pointer',padding:'0.25rem'}}>
-              Delete
-            </button>
+            <div style={{display:'flex',gap:'0.5rem',flexShrink:0}}>
+              <button onClick={() => startEdit(u)}
+                style={{background:'none',border:'none',color:'#1a52a8',fontSize:'0.75rem',cursor:'pointer',padding:'0.25rem',fontWeight:600}}>
+                Edit
+              </button>
+              <button onClick={() => deleteUpdate(u.id)}
+                style={{background:'none',border:'none',color:'#dc2626',fontSize:'0.75rem',cursor:'pointer',padding:'0.25rem'}}>
+                Delete
+              </button>
+            </div>
           </div>
         ))}
       </div>
