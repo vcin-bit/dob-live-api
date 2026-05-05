@@ -147,9 +147,9 @@ export function ManagerUpdatesPanel() {
   }
 
   return (
-    <div>
+    <div style={{padding:'1.5rem'}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1rem'}}>
-        <h3 style={{fontSize:'1rem',fontWeight:700,color:'#fff',margin:0}}>Company Updates</h3>
+        <h3 style={{fontSize:'1rem',fontWeight:700,color:'#111827',margin:0}}>Company Updates</h3>
         <button onClick={() => setShowForm(!showForm)}
           style={{padding:'0.5rem 1rem',background:'#1a52a8',border:'none',borderRadius:'8px',color:'#fff',fontSize:'0.8125rem',fontWeight:600,cursor:'pointer'}}>
           {showForm ? 'Cancel' : '+ New Update'}
@@ -157,11 +157,11 @@ export function ManagerUpdatesPanel() {
       </div>
 
       {showForm && (
-        <div style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'10px',padding:'1.25rem',marginBottom:'1rem'}}>
+        <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:'10px',padding:'1.25rem',marginBottom:'1rem'}}>
           <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Update title..."
-            style={{width:'100%',padding:'0.75rem',background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'8px',color:'#fff',fontSize:'0.9375rem',fontWeight:600,marginBottom:'0.75rem',boxSizing:'border-box',outline:'none'}} />
+            style={{width:'100%',padding:'0.75rem',background:'#f9fafb',border:'1.5px solid #d1d5db',borderRadius:'8px',color:'#111827',fontSize:'0.9375rem',fontWeight:600,marginBottom:'0.75rem',boxSizing:'border-box',outline:'none'}} />
           <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Write your update to all officers..."
-            rows={6} style={{width:'100%',padding:'0.75rem',background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'8px',color:'#fff',fontSize:'0.875rem',lineHeight:1.6,resize:'vertical',marginBottom:'0.75rem',boxSizing:'border-box',outline:'none',fontFamily:'inherit'}} />
+            rows={6} style={{width:'100%',padding:'0.75rem',background:'#f9fafb',border:'1.5px solid #d1d5db',borderRadius:'8px',color:'#111827',fontSize:'0.875rem',lineHeight:1.6,resize:'vertical',marginBottom:'0.75rem',boxSizing:'border-box',outline:'none',fontFamily:'inherit'}} />
           <button onClick={publish} disabled={submitting || !title.trim() || !content.trim()}
             style={{padding:'0.75rem 1.5rem',background:'#1a52a8',border:'none',borderRadius:'8px',color:'#fff',fontSize:'0.875rem',fontWeight:700,cursor:'pointer',opacity:(submitting||!title.trim()||!content.trim())?0.5:1}}>
             {submitting ? 'Publishing...' : 'Publish to All Officers'}
@@ -169,19 +169,19 @@ export function ManagerUpdatesPanel() {
         </div>
       )}
 
-      {loading && <div style={{color:'rgba(255,255,255,0.4)',fontSize:'0.875rem'}}>Loading...</div>}
+      {loading && <div style={{color:'#9ca3af',fontSize:'0.875rem'}}>Loading...</div>}
 
       <div style={{display:'flex',flexDirection:'column',gap:'0.5rem'}}>
         {updates.map(u => (
-          <div key={u.id} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'0.875rem',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:'8px'}}>
+          <div key={u.id} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'0.875rem',background:'#fff',border:'1px solid #e5e7eb',borderRadius:'8px'}}>
             <div style={{flex:1}}>
-              <div style={{fontSize:'0.875rem',fontWeight:600,color:'#fff'}}>{u.title}</div>
-              <div style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.35)',marginTop:'0.25rem'}}>
+              <div style={{fontSize:'0.875rem',fontWeight:600,color:'#111827'}}>{u.title}</div>
+              <div style={{fontSize:'0.75rem',color:'#9ca3af',marginTop:'0.25rem'}}>
                 {new Date(u.created_at).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})} — {u.author?.first_name} {u.author?.last_name}
               </div>
             </div>
             <button onClick={() => deleteUpdate(u.id)}
-              style={{background:'none',border:'none',color:'rgba(255,255,255,0.25)',fontSize:'0.75rem',cursor:'pointer',padding:'0.25rem'}}>
+              style={{background:'none',border:'none',color:'#dc2626',fontSize:'0.75rem',cursor:'pointer',padding:'0.25rem'}}>
               Delete
             </button>
           </div>
