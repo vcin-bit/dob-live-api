@@ -985,6 +985,8 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
 
   const [invoiceSending, setInvoiceSending] = useState(false);
   const [invoiceSent, setInvoiceSent] = useState(false);
+  const [declAccepted, setDeclAccepted] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   async function sendInvoice(ref) {
     setInvoiceSending(true);
@@ -1046,9 +1048,9 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
                 Sent to Accounts
               </div>
             ) : (
-              <button onClick={() => sendInvoice(ref)} disabled={invoiceSending}
-                style={{padding:'0.5rem 0.75rem',background:'#1a52a8',border:'none',borderRadius:'6px',fontSize:'0.8125rem',fontWeight:600,color:'#fff',cursor:'pointer',opacity:invoiceSending?0.7:1}}>
-                {invoiceSending ? 'Sending...' : 'Email to Accounts'}
+              <button onClick={() => sendInvoice(ref)} disabled={invoiceSending || !declAccepted || !termsAccepted}
+                style={{padding:'0.5rem 0.75rem',background:'#1a52a8',border:'none',borderRadius:'6px',fontSize:'0.8125rem',fontWeight:600,color:'#fff',cursor:'pointer',opacity:(invoiceSending || !declAccepted || !termsAccepted)?0.5:1}}>
+                {invoiceSending ? 'Sending...' : !declAccepted || !termsAccepted ? 'Accept declaration to send' : 'Email to Accounts'}
               </button>
             )}
           </div>
@@ -1140,17 +1142,33 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
           <div style={{marginTop:'1.5rem',padding:'1rem',background:'#fffbeb',border:'1px solid #fde68a',borderRadius:'8px',fontSize:'0.75rem',color:'#92400e',lineHeight:1.6}}>
             <div style={{fontWeight:700,marginBottom:'0.5rem',fontSize:'0.8125rem'}}>Self-Employment Declaration</div>
             <p style={{margin:'0 0 0.5rem'}}>I confirm that I am {hr?.employment_status === 'ltd_company' ? 'operating through a limited company' : 'self-employed'} for the purposes of this engagement and that this is not a contract of employment. I acknowledge that:</p>
-            <ul style={{margin:'0 0 0.5rem',paddingLeft:'1.25rem'}}>
+            <ul style={{margin:'0 0 0.75rem',paddingLeft:'1.25rem'}}>
               <li>I am responsible for the payment of my own Income Tax and National Insurance Contributions in accordance with the Income Tax (Earnings and Pensions) Act 2003 and the Social Security Contributions and Benefits Act 1992.</li>
               <li>I am not entitled to employment rights including, but not limited to, statutory sick pay, holiday pay, or pension contributions under the Employment Rights Act 1996.</li>
               <li>I am responsible for registering with HMRC for Self Assessment and submitting my own tax returns by the statutory deadlines.</li>
               <li>I hold a valid SIA licence as required under the Private Security Industry Act 2001 and will notify the engaging company immediately if my licence is revoked, suspended, or expires.</li>
               {hr?.employment_status === 'ltd_company' && <li>My company is registered with Companies House and I am responsible for meeting all obligations under the Companies Act 2006 including filing annual accounts and confirmation statements.</li>}
             </ul>
-            <div style={{display:'flex',alignItems:'center',gap:'0.5rem',marginTop:'0.75rem',paddingTop:'0.75rem',borderTop:'1px solid #fde68a'}}>
-              <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M3 7l3 3 5-5" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              <span style={{fontWeight:600,color:'#374151'}}>Signed electronically by {dbUser?.first_name} {dbUser?.last_name} on {today}</span>
+
+            <div style={{borderTop:'1px solid #fde68a',paddingTop:'0.75rem',display:'flex',flexDirection:'column',gap:'0.625rem'}}>
+              <label style={{display:'flex',alignItems:'flex-start',gap:'0.5rem',cursor:'pointer'}}>
+                <input type="checkbox" checked={declAccepted} onChange={e => setDeclAccepted(e.target.checked)}
+                  style={{width:'18px',height:'18px',accentColor:'#1a52a8',cursor:'pointer',flexShrink:0,marginTop:'1px'}} />
+                <span style={{color:'#374151',fontWeight:600}}>I confirm the above self-employment declaration is true and accurate, and I accept full responsibility for my own tax affairs.</span>
+              </label>
+              <label style={{display:'flex',alignItems:'flex-start',gap:'0.5rem',cursor:'pointer'}}>
+                <input type="checkbox" checked={termsAccepted} onChange={e => setTermsAccepted(e.target.checked)}
+                  style={{width:'18px',height:'18px',accentColor:'#1a52a8',cursor:'pointer',flexShrink:0,marginTop:'1px'}} />
+                <span style={{color:'#374151',fontWeight:600}}>I accept Risk Secured Ltd's Terms & Conditions of engagement.</span>
+              </label>
             </div>
+
+            {declAccepted && termsAccepted && (
+              <div style={{display:'flex',alignItems:'center',gap:'0.5rem',marginTop:'0.75rem',paddingTop:'0.5rem',borderTop:'1px solid #fde68a'}}>
+                <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M3 7l3 3 5-5" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                <span style={{fontWeight:600,color:'#374151'}}>Signed electronically by {dbUser?.first_name} {dbUser?.last_name} on {today}</span>
+              </div>
+            )}
           </div>
 
           {/* Bank details */}
