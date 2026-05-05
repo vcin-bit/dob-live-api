@@ -454,7 +454,7 @@ function HRAuthenticated() {
             </div>
 
             {/* Completed summary view */}
-            {hr?.address_line_1 && hr?.date_of_birth && hr?.ni_number && !editing ? (
+            {hr?.address_line_1 && hr?.date_of_birth && hr?.ni_number && hr?.bank_account_holder && !editing ? (
               <>
                 <div style={{background:'#f0fdf4',border:'1px solid #86efac',borderRadius:'8px',padding:'0.875rem',fontSize:'0.8125rem',color:'#16a34a',lineHeight:1.5,marginBottom:'1rem',display:'flex',alignItems:'center',gap:'0.5rem'}}>
                   <svg width="18" height="18" viewBox="0 0 14 14" fill="none"><path d="M3 7l3 3 5-5" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
