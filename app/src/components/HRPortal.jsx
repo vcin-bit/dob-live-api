@@ -423,6 +423,51 @@ function HRAuthenticated() {
               )}
             </div>
 
+            {/* Expiry Dates */}
+            {(() => {
+              const expiryItems = [
+                { label: 'SIA Licence', date: dbUser?.sia_expiry_date, type: dbUser?.sia_licence_type },
+                ...(dbUser?.sia_expiry_date_2 ? [{ label: 'SIA Licence (2nd)', date: dbUser.sia_expiry_date_2, type: dbUser.sia_licence_type_2 }] : []),
+                ...(dbUser?.bs7858_expiry_date ? [{ label: 'BS7858 Vetting', date: dbUser.bs7858_expiry_date }] : []),
+              ].filter(e => e.date);
+              if (expiryItems.length === 0) return null;
+              const now = new Date();
+              const threeMonths = new Date(); threeMonths.setMonth(threeMonths.getMonth() + 3);
+              return (
+                <div style={S.section}>
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.875rem'}}>
+                    <div style={{fontSize:'0.875rem',fontWeight:700,color:'#111827'}}>Expiry Dates</div>
+                  </div>
+                  <div style={{display:'flex',flexDirection:'column',gap:'0.625rem'}}>
+                    {expiryItems.map((item, i) => {
+                      const exp = new Date(item.date);
+                      const expired = exp < now;
+                      const expiringSoon = !expired && exp < threeMonths;
+                      const daysLeft = Math.ceil((exp - now) / 86400000);
+                      const bg = expired ? '#fef2f2' : expiringSoon ? '#fffbeb' : '#f0fdf4';
+                      const border = expired ? '#fca5a5' : expiringSoon ? '#fde68a' : '#86efac';
+                      const textColor = expired ? '#dc2626' : expiringSoon ? '#d97706' : '#16a34a';
+                      const statusText = expired ? 'EXPIRED' : expiringSoon ? `Expires in ${daysLeft} day${daysLeft!==1?'s':''}` : 'Valid';
+                      return (
+                        <div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.875rem',background:bg,border:`1px solid ${border}`,borderRadius:'10px'}}>
+                          <div>
+                            <div style={{fontSize:'0.875rem',fontWeight:600,color:'#111827'}}>{item.label}</div>
+                            <div style={{fontSize:'0.75rem',color:'#6b7280',marginTop:'0.125rem'}}>
+                              {item.type && <>{item.type} · </>}
+                              Expires {exp.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}
+                            </div>
+                          </div>
+                          <div style={{padding:'0.25rem 0.625rem',background: expired ? '#dc2626' : expiringSoon ? '#d97706' : '#16a34a',borderRadius:'6px',fontSize:'0.6875rem',fontWeight:700,color:'#fff'}}>
+                            {statusText}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Quick actions */}
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem',marginBottom:'1.25rem'}}>
               {[
