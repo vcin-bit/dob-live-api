@@ -363,12 +363,12 @@ function HRAuthenticated() {
       </div>
 
       {/* Tab bar */}
-      <div style={{background:'#fff',borderBottom:'1px solid #e2e8f0',position:'sticky',top:0,zIndex:10}}>
-        <div style={{maxWidth:'720px',margin:'0 auto',display:'flex',gap:0,padding:'0 1.25rem'}}>
+      <div style={{background:'#fff',borderBottom:'1px solid #e2e8f0',position:'sticky',top:0,zIndex:10,overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
+        <div style={{maxWidth:'720px',margin:'0 auto',display:'flex',gap:0,padding:'0 1.25rem',minWidth:'max-content'}}>
           {tabs.map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
-              style={{padding:'0.875rem 1rem',background:'none',border:'none',borderBottom: tab===t.key ? '2px solid #1a52a8' : '2px solid transparent',
-                color: tab===t.key ? '#1a52a8' : '#6b7280',fontSize:'0.8125rem',fontWeight: tab===t.key ? 700 : 500,cursor:'pointer',transition:'all 0.15s'}}>
+              style={{padding:'0.875rem 0.75rem',background:'none',border:'none',borderBottom: tab===t.key ? '2px solid #1a52a8' : '2px solid transparent',
+                color: tab===t.key ? '#1a52a8' : '#6b7280',fontSize:'0.75rem',fontWeight: tab===t.key ? 700 : 500,cursor:'pointer',transition:'all 0.15s',whiteSpace:'nowrap'}}>
               {t.label}
             </button>
           ))}
