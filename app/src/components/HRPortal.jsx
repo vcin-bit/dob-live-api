@@ -330,6 +330,7 @@ function HRAuthenticated() {
     { key:'hours', label:'Hours' },
     { key:'updates', label:'Updates' },
     { key:'training', label:'Training' },
+    { key:'resources', label:'Resources' },
     { key:'perks', label:'Perks' },
   ];
 
@@ -891,6 +892,20 @@ function HRAuthenticated() {
             <h2 style={{fontSize:'1.25rem',fontWeight:700,color:'#111827',margin:'0 0 0.5rem'}}>Training & Development</h2>
             <p style={{fontSize:'0.875rem',color:'#6b7280',lineHeight:1.6,maxWidth:'400px',margin:'0 auto 1.5rem'}}>
               Courses, certifications, and professional development resources for security professionals. Coming soon.
+            </p>
+            <div style={{display:'inline-block',padding:'0.5rem 1.25rem',background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:'20px',fontSize:'0.8125rem',fontWeight:600,color:'#1a52a8'}}>
+              Coming Soon
+            </div>
+          </div>
+        )}
+
+        {/* ── RESOURCES TAB ──────────────────────────────────────────── */}
+        {tab === 'resources' && (
+          <div style={{padding:'2rem',textAlign:'center'}}>
+            <div style={{fontSize:'2.5rem',marginBottom:'1rem'}}>📚</div>
+            <h2 style={{fontSize:'1.25rem',fontWeight:700,color:'#111827',margin:'0 0 0.5rem'}}>Officer Resources</h2>
+            <p style={{fontSize:'0.875rem',color:'#6b7280',lineHeight:1.6,maxWidth:'400px',margin:'0 auto 1.5rem'}}>
+              Useful links, guides, and reference materials for officers. Coming soon.
             </p>
             <div style={{display:'inline-block',padding:'0.5rem 1.25rem',background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:'20px',fontSize:'0.8125rem',fontWeight:600,color:'#1a52a8'}}>
               Coming Soon
