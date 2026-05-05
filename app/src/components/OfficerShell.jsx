@@ -11,6 +11,7 @@ import PlaybookAlerts from './PlaybookAlerts';
 import PatrolScreen, { PatrolHistoryOfficerScreen } from './PatrolScreen';
 import { HandoverScreen } from './HandoverScreen';
 import OfficerVisitorsScreen from './OfficerVisitors';
+import { OfficerUpdatesScreen } from './CompanyUpdates';
 import {
   HomeIcon, ClipboardDocumentListIcon, MapPinIcon, ClockIcon,
   UserGroupIcon, Cog6ToothIcon, PlusIcon, ArrowRightOnRectangleIcon,
@@ -378,6 +379,7 @@ function OfficerApp({ user }) {
         <Route path="/visitors" element={<OfficerVisitorsScreen site={selectedSite} />} />
           <Route path="/profile" element={<OfficerProfile user={user} />} />
         <Route path="/policies" element={<OfficerPoliciesScreen user={user} />} />
+        <Route path="/updates" element={<OfficerUpdatesScreen user={user} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </div>
@@ -827,6 +829,16 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift, onPatro
           </div>
         </div>
       )}
+
+      {/* Company Updates link */}
+      <Link to="/updates" style={{display:'flex',alignItems:'center',gap:'0.75rem',padding:'0.875rem',background:'rgba(26,82,168,0.06)',border:'1px solid rgba(26,82,168,0.15)',borderRadius:'10px',textDecoration:'none',marginBottom:'0.625rem'}}>
+        <span style={{fontSize:'1.25rem'}}>📢</span>
+        <div style={{flex:1}}>
+          <div style={{fontSize:'0.875rem',fontWeight:600,color:'#60a5fa'}}>Company Updates</div>
+          <div style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.35)'}}>News from the Managing Director</div>
+        </div>
+        <span style={{color:'rgba(255,255,255,0.2)',fontSize:'1rem'}}>›</span>
+      </Link>
 
       {/* Task completion modal */}
       {taskModal && (

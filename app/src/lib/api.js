@@ -192,6 +192,15 @@ export const api = {
     },
   },
 
+  // Company Updates
+  updates: {
+    list: () => request('/api/updates'),
+    create: (data) => request('/api/updates', { method: 'POST', body: JSON.stringify(data) }),
+    delete: (id) => request(`/api/updates/${id}`, { method: 'DELETE' }),
+    comments: (id) => request(`/api/updates/${id}/comments`),
+    comment: (id, content) => request(`/api/updates/${id}/comments`, { method: 'POST', body: JSON.stringify({ content }) }),
+  },
+
   // Tasks
   tasks: {
     list: (params = {}) => request(`/api/tasks?${new URLSearchParams(params)}`),
