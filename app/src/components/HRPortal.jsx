@@ -654,7 +654,29 @@ function HRAuthenticated() {
                   <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
                     <div>
                       <label style={S.fieldLabel}>Date of Birth</label>
-                      <input type="date" value={form.date_of_birth} onChange={e => f('date_of_birth', e.target.value)} style={S.fieldInput} />
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'0.375rem'}}>
+                        <select value={form.date_of_birth ? parseInt(form.date_of_birth.split('-')[2]) : ''} onChange={e => {
+                          const parts = (form.date_of_birth || '--').split('-');
+                          f('date_of_birth', `${parts[0]||'2000'}-${parts[1]||'01'}-${String(e.target.value).padStart(2,'0')}`);
+                        }} style={S.fieldInput}>
+                          <option value="">Day</option>
+                          {Array.from({length:31},(_,i)=>i+1).map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                        <select value={form.date_of_birth ? parseInt(form.date_of_birth.split('-')[1]) : ''} onChange={e => {
+                          const parts = (form.date_of_birth || '--').split('-');
+                          f('date_of_birth', `${parts[0]||'2000'}-${String(e.target.value).padStart(2,'0')}-${parts[2]||'01'}`);
+                        }} style={S.fieldInput}>
+                          <option value="">Month</option>
+                          {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m,i) => <option key={i} value={i+1}>{m}</option>)}
+                        </select>
+                        <select value={form.date_of_birth ? parseInt(form.date_of_birth.split('-')[0]) : ''} onChange={e => {
+                          const parts = (form.date_of_birth || '--').split('-');
+                          f('date_of_birth', `${e.target.value}-${parts[1]||'01'}-${parts[2]||'01'}`);
+                        }} style={S.fieldInput}>
+                          <option value="">Year</option>
+                          {Array.from({length:60},(_,i)=>new Date().getFullYear()-16-i).map(y => <option key={y} value={y}>{y}</option>)}
+                        </select>
+                      </div>
                     </div>
                     <div>
                       <label style={S.fieldLabel}>NI Number</label>
