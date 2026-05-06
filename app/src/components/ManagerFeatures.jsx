@@ -226,8 +226,10 @@ function PatrolRoutesScreen({ user }) {
     <div>
       <div className="topbar">
         <div className="topbar-title">Patrol Routes</div>
-        <div style={{display:'flex',gap:'0.75rem',alignItems:'center'}}>
-          <select className="input" style={{width:'200px'}} value={selectedSite} onChange={e => setSelectedSite(e.target.value)}>
+      </div>
+      <div className="page-content">
+        <div style={{display:'flex',gap:'0.75rem',alignItems:'center',marginBottom:'1.25rem',flexWrap:'wrap'}}>
+          <select className="input" style={{width:'250px',maxWidth:'100%'}} value={selectedSite} onChange={e => setSelectedSite(e.target.value)}>
             <option value="">Select site...</option>
             {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
@@ -235,8 +237,6 @@ function PatrolRoutesScreen({ user }) {
             <PlusIcon style={{width:'0.875rem',height:'0.875rem'}} /> Add Route
           </button>
         </div>
-      </div>
-      <div className="page-content">
         {!selectedSite ? (
           <div className="empty-state"><p>Select a site to manage patrol routes</p></div>
         ) : loading ? (
