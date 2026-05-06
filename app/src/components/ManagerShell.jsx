@@ -68,7 +68,7 @@ function ManagerSidebar({ user }) {
       items: [
         { to: '/on-duty',   icon: UsersIcon,                  label: 'Officers On Duty' },
         { to: '/alerts',    icon: BellAlertIcon,             label: 'Alerts' },
-        { to: '/logs',      icon: ClipboardDocumentListIcon, label: 'Log Review' },
+        { to: '/logs',      icon: ClipboardDocumentListIcon, label: 'Daily Occurrence Books' },
         { to: '/sites',     icon: BuildingOfficeIcon,        label: 'Sites' },
       ]
     },
