@@ -420,11 +420,11 @@ function ManagerDashboard({ user }) {
           <div className="card">
             <div className="section-title" style={{marginBottom:'0.75rem'}}>Quick Actions</div>
             <div style={{display:'flex',flexDirection:'column',gap:'0.5rem'}}>
-              <Link to="/tasks" className="btn btn-secondary" style={{justifyContent:'flex-start',gap:'0.5rem'}}><PlusIcon style={{width:'1rem',height:'1rem'}} /> Assign Task</Link>
-              <Link to="/logs" className="btn btn-secondary" style={{justifyContent:'flex-start',gap:'0.5rem'}}><EyeIcon style={{width:'1rem',height:'1rem'}} /> Review Logs</Link>
+              <Link to="/logs" className="btn btn-secondary" style={{justifyContent:'flex-start',gap:'0.5rem'}}><EyeIcon style={{width:'1rem',height:'1rem'}} /> Daily Occurrence Books</Link>
               <Link to="/on-duty" className="btn btn-secondary" style={{justifyContent:'flex-start',gap:'0.5rem'}}><UsersIcon style={{width:'1rem',height:'1rem'}} /> Officers On Duty</Link>
-              <Link to="/sites" className="btn btn-secondary" style={{justifyContent:'flex-start',gap:'0.5rem'}}><BuildingOfficeIcon style={{width:'1rem',height:'1rem'}} /> Sites & Playbooks</Link>
+              <Link to="/sites" className="btn btn-secondary" style={{justifyContent:'flex-start',gap:'0.5rem'}}><BuildingOfficeIcon style={{width:'1rem',height:'1rem'}} /> Site Locations</Link>
               <Link to="/reports" className="btn btn-secondary" style={{justifyContent:'flex-start',gap:'0.5rem'}}><ChartBarIcon style={{width:'1rem',height:'1rem'}} /> Reports</Link>
+              <Link to="/roster" className="btn btn-secondary" style={{justifyContent:'flex-start',gap:'0.5rem'}}><ClockIcon style={{width:'1rem',height:'1rem'}} /> Roster</Link>
             </div>
           </div>
         </div>
