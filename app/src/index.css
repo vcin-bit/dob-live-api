@@ -476,12 +476,32 @@ body {
 .officer-nav-item.active { color: var(--blue); }
 .officer-nav-item:hover { color: rgba(255,255,255,0.7); }
 
+.mobile-topbar {
+  display: none;
+  background: var(--navy);
+  padding: 0 1rem;
+  height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.sidebar-overlay {
+  display: none;
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 998;
+}
+
 /* ── Mobile base ── */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .auth-card { padding: 1.5rem 1.25rem; }
   .auth-logo { margin-bottom: 1.5rem; }
+  .mobile-topbar { display: flex; }
+  .sidebar-overlay { display: block; }
   .manager-shell { flex-direction: column; }
-  .sidebar { width: 100%; height: auto; flex-direction: row; flex-wrap: wrap; }
+  .sidebar {
+    position: fixed; top: 0; left: 0; bottom: 0; width: 260px; z-index: 999;
+    transform: translateX(-100%); transition: transform 0.25s ease;
+  }
+  .sidebar.sidebar-open { transform: translateX(0); }
   .main-content { overflow-y: auto; }
   .officer-shell * { box-sizing: border-box; max-width: 100%; }
   .log-type-label { font-size: 0.625rem; }

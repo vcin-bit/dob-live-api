@@ -17,9 +17,18 @@ import {
 } from '@heroicons/react/24/outline';
 
 function ManagerApp({ user }) {
+  const [sidebarOpen, setSidebarOpen] = React.useState(false);
   return (
     <div className="manager-shell">
-      <ManagerSidebar user={user} />
+      {/* Mobile hamburger */}
+      <div className="mobile-topbar">
+        <button onClick={() => setSidebarOpen(true)} style={{background:'none',border:'none',color:'#fff',fontSize:'1.5rem',cursor:'pointer',padding:'0.25rem'}}>☰</button>
+        <div style={{fontSize:'0.9375rem',fontWeight:700,color:'#fff'}}>{user.logo_url ? <img src={user.logo_url} alt="" style={{maxHeight:'28px',objectFit:'contain'}} /> : <><span style={{color:'var(--blue)'}}>DOB</span> Live</>}</div>
+        <div style={{width:'28px'}} />
+      </div>
+      {/* Overlay */}
+      {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
+      <ManagerSidebar user={user} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="main-content">
         <Routes>
           <Route path="/dashboard" element={<ManagerDashboard user={user} />} />
@@ -52,7 +61,7 @@ function ManagerApp({ user }) {
 }
 
 
-function ManagerSidebar({ user }) {
+function ManagerSidebar({ user, open, onClose }) {
   const location = useLocation();
   const { signOut } = useAuth();
   const [commentCount, setCommentCount] = React.useState(0);
@@ -138,7 +147,7 @@ function ManagerSidebar({ user }) {
   const navGroups = allGroups.filter(g => !g.section || hasAccess(g.section));
 
   return (
-    <div className="sidebar">
+    <div className={`sidebar${open ? ' sidebar-open' : ''}`}>
       <div className="sidebar-logo">
         {user.logo_url ? (
           <img src={user.logo_url} alt="Company logo" style={{maxHeight:'48px',maxWidth:'100%',objectFit:'contain'}} />
@@ -175,6 +184,7 @@ function ManagerSidebar({ user }) {
               <Link
                 key={to}
                 to={to}
+                onClick={() => onClose?.()}
                 className={`sidebar-nav-item${location.pathname === to || location.pathname.startsWith(to + '/') ? ' active' : ''}`}
                 style={{display:'flex',alignItems:'center',gap:'0.5rem'}}
               >
