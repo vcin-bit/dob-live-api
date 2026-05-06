@@ -81,6 +81,12 @@ function ManagerSidebar({ user }) {
       ]
     },
     {
+      label: 'Client Portal',
+      items: [
+        { to: '/portal-settings', icon: EyeIcon, label: 'Portal Settings' },
+      ]
+    },
+    {
       label: 'HR',
       items: [
         { to: '/team',      icon: UsersIcon,                 label: 'Team' },
@@ -104,11 +110,6 @@ function ManagerSidebar({ user }) {
         { to: '/contracts', icon: DocumentTextIcon, label: 'Contracts' },
       ]
     }] : []),
-    {
-      label: 'Client Portal',
-      items: [
-        { to: '/portal-settings', icon: EyeIcon, label: 'Portal Settings' },
-      ]
     },
     {
       label: 'Compliance',
