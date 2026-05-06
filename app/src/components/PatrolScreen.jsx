@@ -782,7 +782,7 @@ function ReportModal({ user, site, session, onClose }) {
     { key:'GENERAL', label:'Safety / Hazard', color:'#fbbf24' },
     { key:'VEHICLE_CHECK', label:'Suspicious Vehicle', color:'#a78bfa' },
     { key:'MAINTENANCE', label:'Maintenance', color:'rgba(255,255,255,0.5)' },
-    { key:'OTHER', label:'Other', color:'rgba(255,255,255,0.35)' },
+    { key:'GENERAL', label:'Other', color:'rgba(255,255,255,0.35)' },
   ];
   async function handleMedia(e) {
     const files = Array.from(e.target.files || []);
@@ -856,7 +856,7 @@ const SERIOUS_CATEGORIES = [
   { key:'INCIDENT', label:'INCIDENT', sub:'Crime · Disturbance · Threat', color:'#ef4444', bg:'rgba(239,68,68,0.12)', border:'rgba(239,68,68,0.4)' },
   { key:'FIRE_ALARM', label:'FIRE / EVACUATION', sub:'Fire alarm · Evacuation', color:'#ef4444', bg:'rgba(239,68,68,0.08)', border:'rgba(239,68,68,0.3)' },
   { key:'ALARM', label:'ALARM ACTIVATION', sub:'Intruder · Technical', color:'#f59e0b', bg:'rgba(245,158,11,0.1)', border:'rgba(245,158,11,0.35)' },
-  { key:'SUSPICIOUS_PERSON', label:'SUSPICIOUS PERSON', sub:'Person of interest', color:'#f59e0b', bg:'rgba(245,158,11,0.08)', border:'rgba(245,158,11,0.3)' },
+  { key:'INCIDENT', label:'SUSPICIOUS PERSON', sub:'Person of interest', color:'#f59e0b', bg:'rgba(245,158,11,0.08)', border:'rgba(245,158,11,0.3)' },
 ];
 const STANDARD_CATEGORIES = ['Abandoned Vehicle','Fly Tipping','H&S Hazard','Unsecured Building/Door','Criminal Damage','Trespass','Theft','Other'];
 
