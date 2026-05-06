@@ -2367,9 +2367,27 @@ function UserFormModal({ user, onClose, onSaved }) {
     bs7858_clearance_date: user?.bs7858_clearance_date ? user.bs7858_clearance_date.split('T')[0] : '',
     bs7858_expiry_date:    user?.bs7858_expiry_date ? user.bs7858_expiry_date.split('T')[0] : '',
     is_route_planner:  user?.is_route_planner || false,
+    permissions: user?.permissions || [],
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+
+  const PERMISSION_SECTIONS = [
+    { key: 'operations', label: 'Operations', desc: 'Officers on duty, alerts, occurrence books, sites, reports' },
+    { key: 'scheduling', label: 'Scheduling', desc: 'Roster, shift patterns' },
+    { key: 'client_portal', label: 'Client Portal', desc: 'Portal settings' },
+    { key: 'hr', label: 'HR', desc: 'Team, pay rates, company updates' },
+    { key: 'site_config', label: 'Site Config', desc: 'Documents, instructions, patrol routes' },
+    { key: 'pnl', label: 'P&L', desc: 'P&L dashboard, contracts' },
+    { key: 'compliance', label: 'Compliance', desc: 'Policies' },
+  ];
+
+  function togglePermission(key) {
+    setForm(prev => ({
+      ...prev,
+      permissions: prev.permissions.includes(key) ? prev.permissions.filter(p => p !== key) : [...prev.permissions, key],
+    }));
+  }
 
   async function save() {
     if (!form.first_name.trim() || !form.email.trim()) { setError('Name and email are required'); return; }
@@ -2383,6 +2401,7 @@ function UserFormModal({ user, onClose, onSaved }) {
         sia_licence_type_2: form.sia_licence_type_2 || null, sia_licence_number_2: form.sia_licence_number_2 || null,
         sia_expiry_date_2: form.sia_expiry_date_2 || null,
         bs7858_clearance_date: form.bs7858_clearance_date || null, bs7858_expiry_date: form.bs7858_expiry_date || null,
+        permissions: form.role === 'OFFICER' ? [] : form.permissions,
       };
       if (user) { await api.users.update(user.id, payload); onSaved(); }
       else { const res = await api.invite.send(payload); onSaved(res.message); }
@@ -2405,7 +2424,26 @@ function UserFormModal({ user, onClose, onSaved }) {
           <div className="field"><label className="label">Last Name</label><input className="input" value={form.last_name} onChange={e=>f('last_name',e.target.value)} /></div>
           <div className="field" style={{gridColumn:'1/-1'}}><label className="label">Email</label><input type="email" className="input" value={form.email} onChange={e=>f('email',e.target.value)} disabled={!!user} />{!user && <div style={{fontSize:'0.75rem',color:'var(--text-2)',marginTop:'0.25rem'}}>An invitation email will be sent to this address</div>}</div>
           <div className="field"><label className="label">Phone</label><input className="input" value={form.phone} onChange={e=>f('phone',e.target.value)} /></div>
-          <div className="field"><label className="label">Role</label><select className="input" value={form.role} onChange={e=>f('role',e.target.value)}><option value="OFFICER">Officer</option><option value="OPS_MANAGER">Ops Manager</option><option value="FD">Field Director</option><option value="COMPANY">Admin</option></select></div>
+          <div className="field"><label className="label">Role</label><select className="input" value={form.role} onChange={e=>f('role',e.target.value)}><option value="OFFICER">Officer</option><option value="OPS_MANAGER">Ops Manager</option><option value="FD">Field Director</option><option value="COMPANY">Admin</option><option value="SUPER_ADMIN">Super Admin</option></select></div>
+
+          {form.role !== 'OFFICER' && (
+            <div className="field" style={{gridColumn:'1/-1',borderTop:'1px solid var(--border)',paddingTop:'0.75rem',marginTop:'0.25rem'}}>
+              <div className="section-title" style={{marginBottom:'0.5rem'}}>Dashboard Access</div>
+              <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginBottom:'0.75rem'}}>Tick the sections this person can access. Super Admins have access to everything.</div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.5rem'}}>
+                {PERMISSION_SECTIONS.map(s => (
+                  <label key={s.key} style={{display:'flex',alignItems:'flex-start',gap:'0.5rem',padding:'0.5rem 0.625rem',background: form.permissions.includes(s.key) ? 'rgba(26,82,168,0.06)' : 'var(--surface-2)',border: form.permissions.includes(s.key) ? '1px solid rgba(26,82,168,0.25)' : '1px solid var(--border)',borderRadius:'6px',cursor:'pointer'}}>
+                    <input type="checkbox" checked={form.role === 'SUPER_ADMIN' || form.permissions.includes(s.key)} disabled={form.role === 'SUPER_ADMIN'}
+                      onChange={() => togglePermission(s.key)} style={{marginTop:'2px',accentColor:'var(--blue)'}} />
+                    <div>
+                      <div style={{fontSize:'0.8125rem',fontWeight:600,color:'var(--text)'}}>{s.label}</div>
+                      <div style={{fontSize:'0.6875rem',color:'var(--text-3)'}}>{s.desc}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="field" style={{gridColumn:'1/-1',borderTop:'1px solid var(--border)',paddingTop:'0.75rem',marginTop:'0.25rem'}}><div className="section-title" style={{marginBottom:'0.25rem'}}>SIA Primary Licence</div></div>
           <div className="field"><label className="label">Licence Type</label><select className="input" value={form.sia_licence_type||''} onChange={e=>f('sia_licence_type',e.target.value)}><option value="">Select...</option>{SIA_TYPES.map(t=><option key={t} value={t}>{t}</option>)}</select></div>

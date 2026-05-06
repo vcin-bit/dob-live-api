@@ -56,15 +56,18 @@ function ManagerSidebar({ user }) {
   const location = useLocation();
   const { signOut } = useAuth();
 
-  const navGroups = [
+  const perms = user.permissions || [];
+  const hasAccess = (section) => user.role === 'SUPER_ADMIN' || perms.includes(section);
+
+  const allGroups = [
     {
-      label: null,
+      label: null, section: null,
       items: [
-        { to: '/dashboard', icon: HomeIcon,                  label: 'Dashboard' },
+        { to: '/dashboard', icon: HomeIcon, label: 'Dashboard' },
       ]
     },
     {
-      label: 'Operations',
+      label: 'Operations', section: 'operations',
       items: [
         { to: '/on-duty',   icon: UsersIcon,                  label: 'Officers On Duty' },
         { to: '/alerts',    icon: BellAlertIcon,             label: 'Alerts' },
@@ -74,20 +77,20 @@ function ManagerSidebar({ user }) {
       ]
     },
     {
-      label: 'Scheduling',
+      label: 'Scheduling', section: 'scheduling',
       items: [
         { to: '/roster',    icon: ClockIcon,                 label: 'Roster' },
         { to: '/patterns',  icon: ClockIcon,                 label: 'Shift Patterns' },
       ]
     },
     {
-      label: 'Client Portal',
+      label: 'Client Portal', section: 'client_portal',
       items: [
         { to: '/portal-settings', icon: EyeIcon, label: 'Portal Settings' },
       ]
     },
     {
-      label: 'HR',
+      label: 'HR', section: 'hr',
       items: [
         { to: '/team',      icon: UsersIcon,                 label: 'Team' },
         { to: '/rates',     icon: ChartBarIcon,              label: 'Pay Rates' },
@@ -95,7 +98,7 @@ function ManagerSidebar({ user }) {
       ]
     },
     {
-      label: 'Site Config',
+      label: 'Site Config', section: 'site_config',
       items: [
         { to: '/docs',         icon: DocumentTextIcon, label: 'Documents' },
         { to: '/instructions', icon: DocumentTextIcon, label: 'Assignment Instructions' },
@@ -103,20 +106,22 @@ function ManagerSidebar({ user }) {
         { to: '/patrol-history', icon: ClockIcon,       label: 'Patrol History' },
       ]
     },
-    ...(['FD','COMPANY','SUPER_ADMIN'].includes(user.role) ? [{
-      label: 'P&L',
+    {
+      label: 'P&L', section: 'pnl',
       items: [
         { to: '/pnl', icon: ChartBarIcon, label: 'P&L Dashboard' },
         { to: '/contracts', icon: DocumentTextIcon, label: 'Contracts' },
       ]
-    }] : []),
+    },
     {
-      label: 'Compliance',
+      label: 'Compliance', section: 'compliance',
       items: [
         { to: '/policies',     icon: DocumentTextIcon, label: 'Policies' },
       ]
     },
   ];
+
+  const navGroups = allGroups.filter(g => !g.section || hasAccess(g.section));
 
   return (
     <div className="sidebar">
