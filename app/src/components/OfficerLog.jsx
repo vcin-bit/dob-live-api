@@ -991,6 +991,7 @@ function LogEntryScreen({ user, site, shift }) {
       )}
 
       {/* Photos */}
+      {createPortal(<input ref={mediaInputRef} type="file" accept="image/*,video/*" multiple style={{position:'absolute',top:0,left:0,width:'1px',height:'1px',opacity:0,pointerEvents:'none'}} onChange={uploadMedia} />, document.body)}
       <div style={{marginBottom:'14px'}}>
         <div style={S.label}>PHOTOS / VIDEO</div>
         <div style={{display:'flex',gap:'7px',flexWrap:'wrap'}}>
