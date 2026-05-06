@@ -70,6 +70,7 @@ function ManagerSidebar({ user }) {
         { to: '/alerts',    icon: BellAlertIcon,             label: 'Alerts' },
         { to: '/logs',      icon: ClipboardDocumentListIcon, label: 'Daily Occurrence Books' },
         { to: '/sites',     icon: BuildingOfficeIcon,        label: 'Sites' },
+        { to: '/reports',   icon: ChartBarIcon,              label: 'Reports' },
       ]
     },
     {
@@ -77,7 +78,6 @@ function ManagerSidebar({ user }) {
       items: [
         { to: '/roster',    icon: ClockIcon,                 label: 'Roster' },
         { to: '/patterns',  icon: ClockIcon,                 label: 'Shift Patterns' },
-        { to: '/reports',   icon: ChartBarIcon,              label: 'Reports' },
       ]
     },
     {
