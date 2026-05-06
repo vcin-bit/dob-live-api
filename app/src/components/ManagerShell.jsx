@@ -61,13 +61,13 @@ function ManagerSidebar({ user }) {
       label: null,
       items: [
         { to: '/dashboard', icon: HomeIcon,                  label: 'Dashboard' },
-        { to: '/on-duty',   icon: UsersIcon,                  label: 'On Duty' },
-        { to: '/alerts',    icon: BellAlertIcon,             label: 'Alerts' },
       ]
     },
     {
       label: 'Operations',
       items: [
+        { to: '/on-duty',   icon: UsersIcon,                  label: 'Officers On Duty' },
+        { to: '/alerts',    icon: BellAlertIcon,             label: 'Alerts' },
         { to: '/logs',      icon: ClipboardDocumentListIcon, label: 'Log Review' },
         { to: '/sites',     icon: BuildingOfficeIcon,        label: 'Sites' },
       ]
