@@ -85,6 +85,7 @@ function ManagerSidebar({ user }) {
       items: [
         { to: '/team',      icon: UsersIcon,                 label: 'Team' },
         { to: '/rates',     icon: ChartBarIcon,              label: 'Pay Rates' },
+        { to: '/updates',   icon: DocumentTextIcon,          label: 'Company Updates' },
       ]
     },
     {
@@ -113,7 +114,6 @@ function ManagerSidebar({ user }) {
       label: 'Compliance',
       items: [
         { to: '/policies',     icon: DocumentTextIcon, label: 'Policies' },
-        { to: '/updates',      icon: DocumentTextIcon, label: 'Company Updates' },
       ]
     },
   ];
