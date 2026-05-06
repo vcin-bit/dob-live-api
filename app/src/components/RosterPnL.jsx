@@ -64,6 +64,8 @@ function ProfitLoss({ user }) {
   const [addProductSite, setAddProductSite] = useState(null);
   const [editProduct, setEditProduct] = useState(null);
   const [productForm, setProductForm] = useState({ name:'', cost:'', charge:'', frequency:'monthly' });
+  const [expandedSite, setExpandedSite] = useState(null);
+  const [siteSearch, setSiteSearch] = useState('');
 
   function getRange() {
     const d = new Date(anchor); d.setHours(0,0,0,0);
@@ -235,126 +237,7 @@ function ProfitLoss({ user }) {
           <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>
         ) : (
           <>
-            {/* Per site breakdown */}
-            {siteRows.map(({ site, byOfficer, scheduledHrs, actualHrs, actualPay, chargeRevenue, chargeRate, contractedWeekly, siteProducts, productCost, productCharge }) => (
-              <div key={site.id} className="card" style={{marginBottom:'1.25rem',padding:'1rem',borderLeft:'3px solid #8b5cf6'}}>
-                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.75rem',flexWrap:'wrap',gap:'0.5rem'}}>
-                  <div style={{fontSize:'1.125rem',fontWeight:700,color:'#c4b5fd'}}>{site.name}</div>
-                  <div style={{display:'flex',alignItems:'center',gap:'0.375rem',fontSize:'0.8125rem'}}>
-                    <span style={{color:'var(--text-3)'}}>Contract hrs/wk:</span>
-                    <input type="number" step="0.5" min="0" value={site.contracted_hours_weekly || ''} style={{width:'70px',padding:'0.25rem 0.5rem',background:'var(--surface-2)',border:'1px solid var(--border)',borderRadius:'4px',fontSize:'0.8125rem',color:'var(--text)'}}
-                      onChange={e => setSites(prev => prev.map(s => s.id === site.id ? {...s, contracted_hours_weekly: e.target.value} : s))}
-                      onBlur={e => saveSiteRate(site.id, 'contracted_hours_weekly', e.target.value)} />
-                    {savingSite === site.id && <span style={{fontSize:'0.75rem',color:'var(--text-3)'}}>Saving...</span>}
-                  </div>
-                </div>
-
-                {/* Officer table */}
-                <table className="table" style={{marginBottom:'0.75rem'}}>
-                  <thead><tr><th>Officer</th><th style={{textAlign:'right'}}>Set Hrs</th><th style={{textAlign:'right'}}>Actual</th><th style={{textAlign:'right'}}>Variance</th><th style={{textAlign:'right'}}>Pay Rate</th><th style={{textAlign:'right'}}>Charge Rate</th><th style={{textAlign:'right'}}>Gross Profit</th></tr></thead>
-                  <tbody>
-                    {Object.entries(byOfficer).sort((a,b) => b[1].scheduledHrs - a[1].scheduledHrs).map(([name, o]) => {
-                      const avgPayRate = o.actualHrs > 0 ? o.actualPay / o.actualHrs : (o.scheduledHrs > 0 ? o.scheduledPay / o.scheduledHrs : 0);
-                      const variance = o.actualHrs - o.scheduledHrs;
-                      const gp = o.chargeRevenue - o.actualPay;
-                      return (
-                        <tr key={name}>
-                          <td style={{fontWeight:500}}>{name}</td>
-                          <td style={{textAlign:'right'}}>{o.scheduledHrs.toFixed(1)}</td>
-                          <td style={{textAlign:'right',color: o.actualHrs > 0 ? 'var(--text)' : 'var(--text-3)'}}>{o.actualHrs.toFixed(1)}</td>
-                          <td style={{textAlign:'right',fontWeight:700,color: variance === 0 ? 'var(--text-3)' : variance > 0 ? '#3b82f6' : '#ef4444'}}>
-                            {o.actualHrs > 0 ? `${variance > 0 ? '+' : ''}${variance.toFixed(1)}` : '—'}
-                          </td>
-                          <td style={{textAlign:'right',color:'#f59e0b',fontWeight:600}}>£{avgPayRate.toFixed(2)}</td>
-                          <td style={{textAlign:'right'}}>
-                            <input type="number" step="0.01" min="0" value={o.avgChargeRate.toFixed(2)}
-                              style={{width:'70px',padding:'0.125rem 0.375rem',background:'rgba(16,185,129,0.08)',border:'1px solid rgba(16,185,129,0.25)',borderRadius:'4px',fontSize:'0.8125rem',color:'#10b981',fontWeight:600,textAlign:'right'}}
-                              onChange={e => {
-                                const val = e.target.value;
-                                const newRate = parseFloat(val) || 0;
-                                // Update local state immediately
-                                byOfficer[name].avgChargeRate = newRate;
-                                byOfficer[name].chargeRevenue = byOfficer[name].scheduledHrs * newRate;
-                              }}
-                              onBlur={async e => {
-                                const newRate = parseFloat(e.target.value) || 0;
-                                // Update all shifts for this officer at this site
-                                const token = await window.__clerkGetToken?.() || '';
-                                const API = import.meta.env.VITE_API_URL || 'https://dob-live-api.onrender.com';
-                                await Promise.all(o.shiftIds.map(id =>
-                                  fetch(`${API}/api/shifts/${id}`, { method:'PATCH', headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`}, body:JSON.stringify({charge_rate:newRate}) })
-                                ));
-                                // Reload data
-                                const { from: f, to: t } = getRange();
-                                const [sr, shr] = await Promise.all([api.sites.list(), api.shifts.list({from:f.toISOString(),to:t.toISOString(),limit:1000})]);
-                                setSites(sr.data||[]); setShifts(shr.data||[]);
-                              }} />
-                          </td>
-                          <td style={{textAlign:'right',fontWeight:700,color: gp >= 0 ? '#10b981' : '#ef4444'}}>{fmt(gp)}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                  <tfoot>
-                    {(() => { const v = actualHrs - scheduledHrs; return (
-                    <tr style={{fontWeight:700,borderTop:'2px solid var(--border)'}}>
-                      <td>Site Total</td>
-                      <td style={{textAlign:'right'}}>{scheduledHrs.toFixed(1)}</td>
-                      <td style={{textAlign:'right'}}>{actualHrs.toFixed(1)}</td>
-                      <td style={{textAlign:'right',color: v === 0 ? 'var(--text-3)' : v > 0 ? '#3b82f6' : '#ef4444'}}>{actualHrs > 0 ? `${v > 0 ? '+' : ''}${v.toFixed(1)}` : '—'}</td>
-                      <td style={{textAlign:'right',color:'#f59e0b'}}>{fmt(actualPay)}</td>
-                      <td style={{textAlign:'right',color:'#10b981'}}>{fmt(chargeRevenue)}</td>
-                      <td style={{textAlign:'right',color: chargeRevenue - actualPay >= 0 ? '#10b981' : '#ef4444',fontWeight:700}}>{fmt(chargeRevenue - actualPay)}</td>
-                    </tr>
-                    ); })()}
-                  </tfoot>
-                </table>
-
-                {/* Contract reference */}
-                {contractedWeekly > 0 && (
-                  <div style={{padding:'0.5rem 0.75rem',marginBottom:'0.75rem',borderRadius:'6px',fontSize:'0.8125rem',background:'rgba(59,130,246,0.06)',border:'1px solid rgba(59,130,246,0.15)'}}>
-                    <span style={{color:'var(--text-2)'}}>Contract: <strong>{contractedWeekly}h/wk</strong></span>
-                    <span style={{margin:'0 0.5rem',color:'var(--text-3)'}}>|</span>
-                    <span style={{color:'var(--text-2)'}}>Roster total: <strong>{scheduledHrs.toFixed(1)}h</strong></span>
-                  </div>
-                )}
-
-                {/* Products & Services */}
-                <div style={{marginBottom:'0.75rem'}}>
-                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.5rem'}}>
-                    <div style={{fontSize:'0.75rem',fontWeight:700,color:'#a78bfa',textTransform:'uppercase',letterSpacing:'0.05em'}}>Products & Services</div>
-                    <button type="button" style={{padding:'0.375rem 0.625rem',fontSize:'0.75rem',background:'rgba(139,92,246,0.1)',border:'1px solid rgba(139,92,246,0.3)',borderRadius:'4px',color:'#a78bfa',cursor:'pointer',fontWeight:600}} onClick={() => { setAddProductSite(site.id); setEditProduct(null); setProductForm({ name:'', cost:'', charge:'', frequency:'monthly' }); }}>+ Add</button>
-                  </div>
-                  {siteProducts.length > 0 ? (
-                    <table className="table" style={{marginBottom:'0.5rem'}}>
-                      <thead><tr><th>Product</th><th style={{textAlign:'right'}}>Cost</th><th style={{textAlign:'right'}}>Charge</th><th style={{textAlign:'center'}}>Freq</th><th style={{textAlign:'right'}}>Profit</th><th></th></tr></thead>
-                      <tbody>
-                        {siteProducts.map(p => {
-                          const m = productMonthly(p, periodDays);
-                          return (
-                            <tr key={p.id}>
-                              <td style={{fontWeight:500}}>{p.name}</td>
-                              <td style={{textAlign:'right',color:'#f59e0b'}}>{fmt(m.cost)}</td>
-                              <td style={{textAlign:'right',color:'#10b981'}}>{fmt(m.charge)}</td>
-                              <td style={{textAlign:'center',color:'var(--text-3)',fontSize:'0.75rem'}}>{p.frequency}</td>
-                              <td style={{textAlign:'right',fontWeight:600,color: m.charge - m.cost >= 0 ? '#10b981' : '#ef4444'}}>{fmt(m.charge - m.cost)}</td>
-                              <td style={{textAlign:'right',whiteSpace:'nowrap'}}>
-                                <button type="button" style={{padding:'0.375rem 0.625rem',fontSize:'0.75rem',background:'rgba(59,130,246,0.1)',border:'1px solid rgba(59,130,246,0.3)',borderRadius:'4px',color:'#60a5fa',cursor:'pointer',marginRight:'0.25rem',fontWeight:600}} onClick={(e) => { e.stopPropagation(); setEditProduct(p); setAddProductSite(site.id); setProductForm({ name: p.name, cost: p.cost||'', charge: p.charge||'', frequency: p.frequency }); }}>Edit</button>
-                                <button type="button" style={{padding:'0.375rem 0.625rem',fontSize:'0.75rem',background:'rgba(220,38,38,0.1)',border:'1px solid rgba(220,38,38,0.3)',borderRadius:'4px',color:'#ef4444',cursor:'pointer',fontWeight:600}} onClick={(e) => { e.stopPropagation(); deleteProduct(p.id); }}>Del</button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  ) : (
-                    <div style={{fontSize:'0.8125rem',color:'var(--text-3)',padding:'0.25rem 0'}}>No products</div>
-                  )}
-                </div>
-              </div>
-            ))}
-
-            {/* Grand Totals */}
+            {/* Grand Totals — always visible at top */}
             <div className="card" style={{padding:'1rem',borderLeft:'3px solid #10b981',background:'rgba(16,185,129,0.03)'}}>
               {(() => { const gv = grandActualHrs - grandScheduled; return (
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr 1fr',gap:'1.25rem',fontSize:'0.9375rem'}}>
@@ -380,6 +263,96 @@ function ProfitLoss({ user }) {
                 </div>
               </div>
               ); })()}
+            </div>
+
+            {/* Site search */}
+            <div style={{marginTop:'1.25rem',marginBottom:'0.75rem'}}>
+              <input value={siteSearch} onChange={e => setSiteSearch(e.target.value)} placeholder="Search sites..."
+                style={{width:'100%',maxWidth:'300px',padding:'0.5rem 0.75rem',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'6px',fontSize:'0.8125rem',color:'var(--text)',outline:'none',boxSizing:'border-box'}} />
+            </div>
+
+            {/* Site summary table */}
+            <div className="card" style={{padding:0,overflow:'hidden'}}>
+              <table className="table" style={{margin:0}}>
+                <thead>
+                  <tr>
+                    <th style={{padding:'0.75rem 1rem'}}>Site</th>
+                    <th style={{textAlign:'right',padding:'0.75rem 0.5rem'}}>Set Hrs</th>
+                    <th style={{textAlign:'right',padding:'0.75rem 0.5rem'}}>Actual</th>
+                    <th style={{textAlign:'right',padding:'0.75rem 0.5rem'}}>Pay</th>
+                    <th style={{textAlign:'right',padding:'0.75rem 0.5rem'}}>Revenue</th>
+                    <th style={{textAlign:'right',padding:'0.75rem 0.5rem'}}>Profit</th>
+                    <th style={{textAlign:'right',padding:'0.75rem 1rem'}}>Margin</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {siteRows.filter(r => !siteSearch || r.site.name.toLowerCase().includes(siteSearch.toLowerCase())).map(({ site, byOfficer, scheduledHrs, actualHrs, actualPay, chargeRevenue, chargeRate, contractedWeekly, siteProducts, productCost, productCharge }) => {
+                    const totalRevenue = chargeRevenue + productCharge;
+                    const totalCost = actualPay + productCost;
+                    const profit = totalRevenue - totalCost;
+                    const margin = totalRevenue > 0 ? (profit / totalRevenue * 100).toFixed(1) : '0.0';
+                    const isExpanded = expandedSite === site.id;
+                    return (
+                      <React.Fragment key={site.id}>
+                        <tr onClick={() => setExpandedSite(isExpanded ? null : site.id)} style={{cursor:'pointer',background: isExpanded ? 'rgba(139,92,246,0.04)' : 'transparent'}}>
+                          <td style={{padding:'0.625rem 1rem',fontWeight:600}}>
+                            <span style={{color: isExpanded ? '#8b5cf6' : 'var(--text)',marginRight:'0.375rem'}}>{isExpanded ? '▾' : '▸'}</span>
+                            {site.name}
+                          </td>
+                          <td style={{textAlign:'right',padding:'0.625rem 0.5rem'}}>{scheduledHrs.toFixed(1)}</td>
+                          <td style={{textAlign:'right',padding:'0.625rem 0.5rem',color: actualHrs > 0 ? 'var(--text)' : 'var(--text-3)'}}>{actualHrs.toFixed(1)}</td>
+                          <td style={{textAlign:'right',padding:'0.625rem 0.5rem',color:'#f59e0b'}}>{fmt(actualPay)}</td>
+                          <td style={{textAlign:'right',padding:'0.625rem 0.5rem',color:'#10b981'}}>{fmt(totalRevenue)}</td>
+                          <td style={{textAlign:'right',padding:'0.625rem 0.5rem',fontWeight:700,color: profit >= 0 ? '#10b981' : '#ef4444'}}>{fmt(profit)}</td>
+                          <td style={{textAlign:'right',padding:'0.625rem 1rem',fontWeight:600,color: profit >= 0 ? '#10b981' : '#ef4444'}}>{margin}%</td>
+                        </tr>
+                        {isExpanded && (
+                          <tr><td colSpan={7} style={{padding:0,background:'rgba(139,92,246,0.02)'}}>
+                            <div style={{padding:'1rem 1.5rem',borderTop:'1px solid var(--border)'}}>
+                              {/* Officer breakdown */}
+                              <table className="table" style={{marginBottom:'0.75rem',fontSize:'0.8125rem'}}>
+                                <thead><tr><th>Officer</th><th style={{textAlign:'right'}}>Set Hrs</th><th style={{textAlign:'right'}}>Actual</th><th style={{textAlign:'right'}}>Pay Rate</th><th style={{textAlign:'right'}}>Charge Rate</th><th style={{textAlign:'right'}}>Profit</th></tr></thead>
+                                <tbody>
+                                  {Object.entries(byOfficer).sort((a,b) => b[1].scheduledHrs - a[1].scheduledHrs).map(([name, o]) => {
+                                    const avgPayRate = o.actualHrs > 0 ? o.actualPay / o.actualHrs : (o.scheduledHrs > 0 ? o.scheduledPay / o.scheduledHrs : 0);
+                                    const gp = o.chargeRevenue - o.actualPay;
+                                    return (
+                                      <tr key={name}>
+                                        <td style={{fontWeight:500}}>{name}</td>
+                                        <td style={{textAlign:'right'}}>{o.scheduledHrs.toFixed(1)}</td>
+                                        <td style={{textAlign:'right'}}>{o.actualHrs.toFixed(1)}</td>
+                                        <td style={{textAlign:'right',color:'#f59e0b'}}>£{avgPayRate.toFixed(2)}</td>
+                                        <td style={{textAlign:'right',color:'#10b981'}}>£{o.avgChargeRate.toFixed(2)}</td>
+                                        <td style={{textAlign:'right',fontWeight:700,color: gp >= 0 ? '#10b981' : '#ef4444'}}>{fmt(gp)}</td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                              {/* Products */}
+                              {siteProducts.length > 0 && (
+                                <div style={{marginBottom:'0.5rem'}}>
+                                  <div style={{fontSize:'0.6875rem',fontWeight:700,color:'#a78bfa',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.375rem'}}>Products & Services</div>
+                                  {siteProducts.map(p => { const m = productMonthly(p, periodDays); return (
+                                    <div key={p.id} style={{display:'flex',justifyContent:'space-between',fontSize:'0.8125rem',padding:'0.25rem 0'}}>
+                                      <span>{p.name} <span style={{color:'var(--text-3)',fontSize:'0.75rem'}}>({p.frequency})</span></span>
+                                      <span style={{fontWeight:600,color: m.charge - m.cost >= 0 ? '#10b981' : '#ef4444'}}>{fmt(m.charge - m.cost)}</span>
+                                    </div>
+                                  ); })}
+                                </div>
+                              )}
+                              <button type="button" style={{padding:'0.375rem 0.625rem',fontSize:'0.75rem',background:'rgba(139,92,246,0.1)',border:'1px solid rgba(139,92,246,0.3)',borderRadius:'4px',color:'#a78bfa',cursor:'pointer',fontWeight:600}} onClick={() => { setAddProductSite(site.id); setEditProduct(null); setProductForm({ name:'', cost:'', charge:'', frequency:'monthly' }); }}>+ Add Product</button>
+                            </div>
+                          </td></tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {siteRows.filter(r => !siteSearch || r.site.name.toLowerCase().includes(siteSearch.toLowerCase())).length === 0 && (
+                <div style={{padding:'1.5rem',textAlign:'center',color:'var(--text-3)',fontSize:'0.875rem'}}>No sites match your search.</div>
+              )}
             </div>
 
             {/* Add/Edit Product Modal */}
