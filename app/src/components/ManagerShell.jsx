@@ -23,7 +23,7 @@ function ManagerApp({ user }) {
       {/* Mobile hamburger */}
       <div className="mobile-topbar">
         <button onClick={() => setSidebarOpen(true)} style={{background:'none',border:'none',color:'#fff',fontSize:'1.5rem',cursor:'pointer',padding:'0.25rem'}}>☰</button>
-        <div style={{fontSize:'0.9375rem',fontWeight:700,color:'#fff'}}>{user.logo_url ? <img src={user.logo_url} alt="" style={{maxHeight:'28px',objectFit:'contain'}} /> : <><span style={{color:'var(--blue)'}}>DOB</span> Live</>}</div>
+        <div style={{fontSize:'0.9375rem',fontWeight:700,color:'#fff'}}>{user.logo_url ? <img src={user.logo_url} alt="" style={{maxHeight:'36px',objectFit:'contain'}} /> : <><span style={{color:'var(--blue)'}}>DOB</span> Live</>}</div>
         <div style={{width:'28px'}} />
       </div>
       {/* Overlay */}
@@ -150,7 +150,7 @@ function ManagerSidebar({ user, open, onClose }) {
     <div className={`sidebar${open ? ' sidebar-open' : ''}`}>
       <div className="sidebar-logo">
         {user.logo_url ? (
-          <img src={user.logo_url} alt="Company logo" style={{maxHeight:'48px',maxWidth:'100%',objectFit:'contain'}} />
+          <img src={user.logo_url} alt="Company logo" style={{maxHeight:'72px',maxWidth:'100%',objectFit:'contain'}} />
         ) : (
           <div className="wordmark"><span className="dob">DOB</span><span className="live"> Live</span></div>
         )}
