@@ -10,7 +10,7 @@ const ALL_FIELDS = ['name','address','city','postcode','active','client_id',
   'client_portal_enabled','client_portal_pin','client_name',
   'client_contact_name','client_contact_email','client_contact_phone',
   'contract_start_date','client_company_address',
-  'charge_rate','contracted_hours_weekly'];
+  'charge_rate','contracted_hours_weekly','service_types'];
 
 router.get('/', authenticate, async (req, res, next) => {
   try {

@@ -761,6 +761,7 @@ function SiteFormModal({ site, onClose, onSaved }) {
     client_name:             site?.client_name || '',
     contract_start_date:     site?.contract_start_date || '',
     client_company_address:  site?.client_company_address || '',
+    service_types:           site?.service_types || [],
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -813,6 +814,20 @@ function SiteFormModal({ site, onClose, onSaved }) {
           <div className="field" style={{gridColumn:'1/-1'}}>
             <label className="label">Client / Group Name</label>
             <input className="input" value={form.client_name} onChange={e=>f('client_name',e.target.value)} placeholder="e.g. Aldi Stores Ltd — leave blank for ungrouped" />
+          </div>
+
+          <div className="field" style={{gridColumn:'1/-1',borderTop:'1px solid var(--border)',paddingTop:'0.75rem',marginTop:'0.25rem'}}>
+            <div className="section-title" style={{marginBottom:'0.5rem'}}>Service Types</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.375rem'}}>
+              {['Static','Mobile Patrols','Alarm Response & Keyholding','CCTV Hire','CCTV Monitoring','Property Inspection'].map(st => (
+                <label key={st} style={{display:'flex',alignItems:'center',gap:'0.5rem',padding:'0.5rem 0.625rem',background: form.service_types.includes(st) ? 'rgba(26,82,168,0.06)' : 'var(--surface-2)',border: form.service_types.includes(st) ? '1px solid rgba(26,82,168,0.25)' : '1px solid var(--border)',borderRadius:'6px',cursor:'pointer',fontSize:'0.8125rem',color:'var(--text)'}}>
+                  <input type="checkbox" checked={form.service_types.includes(st)}
+                    onChange={() => f('service_types', form.service_types.includes(st) ? form.service_types.filter(s => s !== st) : [...form.service_types, st])}
+                    style={{accentColor:'var(--blue)'}} />
+                  {st}
+                </label>
+              ))}
+            </div>
           </div>
 
           <div className="field" style={{gridColumn:'1/-1',borderTop:'1px solid var(--border)',paddingTop:'0.75rem',marginTop:'0.25rem'}}>
