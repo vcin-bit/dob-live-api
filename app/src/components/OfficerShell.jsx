@@ -696,7 +696,7 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift, onPatro
           <MapPinIcon style={{width:'1.125rem',height:'1.125rem'}} />
           {activePatrol ? 'Resume Patrol' : 'Start Patrol'}
         </Link>
-        <Link to="/log?type=GENERAL" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.9375rem',marginBottom:0,background:'rgba(239,68,68,0.12)',borderColor:'rgba(239,68,68,0.3)',color:'#ef4444'}}>
+        <Link to="/log?type=INCIDENT" className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.9375rem',marginBottom:0,background:'rgba(239,68,68,0.12)',borderColor:'rgba(239,68,68,0.3)',color:'#ef4444'}}>
           Log an Incident
         </Link>
         <button onClick={() => setShowLogMenu(!showLogMenu)} className="officer-action-btn" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'0.375rem',fontSize:'0.9375rem',marginBottom:0,background: showLogMenu ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.08)',borderColor:'rgba(59,130,246,0.25)',color:'#60a5fa',cursor:'pointer'}}>
