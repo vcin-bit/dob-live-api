@@ -87,13 +87,6 @@ function ManagerSidebar({ user }) {
         { to: '/team',      icon: UsersIcon,                 label: 'Team' },
       ]
     },
-    ...(['FD','COMPANY','SUPER_ADMIN'].includes(user.role) ? [{
-      label: 'P&L',
-      items: [
-        { to: '/pnl', icon: ChartBarIcon, label: 'P&L Dashboard' },
-        { to: '/contracts', icon: DocumentTextIcon, label: 'Contracts' },
-      ]
-    }] : []),
     {
       label: 'Site Config',
       items: [
@@ -102,6 +95,13 @@ function ManagerSidebar({ user }) {
         { to: '/patrol-history', icon: ClockIcon,       label: 'Patrol History' },
       ]
     },
+    ...(['FD','COMPANY','SUPER_ADMIN'].includes(user.role) ? [{
+      label: 'P&L',
+      items: [
+        { to: '/pnl', icon: ChartBarIcon, label: 'P&L Dashboard' },
+        { to: '/contracts', icon: DocumentTextIcon, label: 'Contracts' },
+      ]
+    }] : []),
     {
       label: 'Client Portal',
       items: [
