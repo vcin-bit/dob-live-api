@@ -81,7 +81,7 @@ function ManagerSidebar({ user }) {
       ]
     },
     {
-      label: 'Operations', section: 'operations',
+      label: 'Operations', section: 'operations', color: '#3b82f6',
       items: [
         { to: '/on-duty',   icon: UsersIcon,                  label: 'Officers On Duty' },
         { to: '/alerts',    icon: BellAlertIcon,             label: 'Alerts' },
@@ -91,20 +91,20 @@ function ManagerSidebar({ user }) {
       ]
     },
     {
-      label: 'Scheduling', section: 'scheduling',
+      label: 'Scheduling', section: 'scheduling', color: '#f59e0b',
       items: [
         { to: '/roster',    icon: ClockIcon,                 label: 'Roster' },
         { to: '/patterns',  icon: ClockIcon,                 label: 'Shift Patterns' },
       ]
     },
     {
-      label: 'Client Portal', section: 'client_portal',
+      label: 'Client Portal', section: 'client_portal', color: '#10b981',
       items: [
         { to: '/portal-settings', icon: EyeIcon, label: 'Portal Settings' },
       ]
     },
     {
-      label: 'HR', section: 'hr',
+      label: 'HR', section: 'hr', color: '#ec4899',
       items: [
         { to: '/team',      icon: UsersIcon,                 label: 'Team' },
         { to: '/rates',     icon: ChartBarIcon,              label: 'Pay Rates' },
@@ -112,7 +112,7 @@ function ManagerSidebar({ user }) {
       ]
     },
     {
-      label: 'Site Config', section: 'site_config',
+      label: 'Site Config', section: 'site_config', color: '#8b5cf6',
       items: [
         { to: '/docs',         icon: DocumentTextIcon, label: 'Documents' },
         { to: '/instructions', icon: DocumentTextIcon, label: 'Assignment Instructions' },
@@ -121,14 +121,14 @@ function ManagerSidebar({ user }) {
       ]
     },
     {
-      label: 'P&L', section: 'pnl',
+      label: 'P&L', section: 'pnl', color: '#14b8a6',
       items: [
         { to: '/pnl', icon: ChartBarIcon, label: 'P&L Dashboard' },
         { to: '/contracts', icon: DocumentTextIcon, label: 'Contracts' },
       ]
     },
     {
-      label: 'Compliance', section: 'compliance',
+      label: 'Compliance', section: 'compliance', color: '#ef4444',
       items: [
         { to: '/policies',     icon: DocumentTextIcon, label: 'Policies' },
       ]
@@ -164,9 +164,12 @@ function ManagerSidebar({ user }) {
         {navGroups.map((group, gi) => (
           <div key={gi}>
             {group.label && (
-              <div style={{padding:'0.625rem 1rem 0.25rem',fontSize:'0.625rem',fontWeight:600,color:'rgba(255,255,255,0.25)',textTransform:'uppercase',letterSpacing:'0.1em'}}>
-                {group.label}
-              </div>
+              <>
+                <div style={{margin:'0.5rem 1rem 0',borderTop:'1px solid rgba(255,255,255,0.08)'}} />
+                <div style={{padding:'0.75rem 1rem 0.25rem',fontSize:'0.6875rem',fontWeight:700,color: group.color || 'rgba(255,255,255,0.25)',textTransform:'uppercase',letterSpacing:'0.08em'}}>
+                  {group.label}
+                </div>
+              </>
             )}
             {group.items.map(({ to, icon: Icon, label, badge }) => (
               <Link
