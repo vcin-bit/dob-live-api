@@ -897,7 +897,7 @@ function LogEntryScreen({ user, site, shift }) {
       <div style={{marginBottom:'14px'}}>
         <div style={S.label}>WHAT HAPPENED</div>
         <textarea value={narrative || form.description} onChange={e => { if (narrative) setNarrative(e.target.value); else f('description', e.target.value); }} rows={4}
-          placeholder="e.g. Saw a man trying car door handles in the car park..."
+          placeholder="Describe what you saw or what occurred. Include the sequence of events in the order they happened."
           style={{...S.input, ...(narrative ? {border:'1.5px solid rgba(139,92,246,0.3)', background:'rgba(139,92,246,0.05)'} : {})}} />
         {form.description.trim() && (
           <button type="button" onClick={generateNarrative} disabled={generatingAI}
@@ -908,11 +908,27 @@ function LogEntryScreen({ user, site, shift }) {
         {narrative && <div style={{fontSize:'10px',color:'rgba(139,92,246,0.6)',marginTop:'4px'}}>AI-generated — edit above before submitting</div>}
       </div>
 
-      {/* Location + people + actions — single combined notes field */}
+      {/* Location on site */}
       <div style={{marginBottom:'14px'}}>
-        <div style={S.label}>ADDITIONAL NOTES (location, persons involved, actions taken)</div>
+        <div style={S.label}>LOCATION ON SITE</div>
+        <input value={form.location_detail} onChange={e=>f('location_detail',e.target.value)}
+          placeholder="e.g. Main car park, rear fire exit, loading bay, reception area"
+          style={S.input} />
+      </div>
+
+      {/* Description of persons */}
+      <div style={{marginBottom:'14px'}}>
+        <div style={S.label}>DESCRIPTION OF PERSON(S) INVOLVED</div>
+        <textarea value={form.people_involved} onChange={e=>f('people_involved',e.target.value)} rows={3}
+          placeholder="Gender, approx age, height, build, hair colour, clothing (top to bottom), distinguishing features, accent, direction of travel"
+          style={S.input} />
+      </div>
+
+      {/* Actions taken */}
+      <div style={{marginBottom:'14px'}}>
+        <div style={S.label}>ACTIONS TAKEN</div>
         <textarea value={form.actions_taken} onChange={e=>f('actions_taken',e.target.value)} rows={2}
-          placeholder="e.g. Car park north — male 30s challenged and asked to leave..."
+          placeholder="e.g. Challenged individual, asked to leave, escorted from site, CCTV reviewed, police called, area secured"
           style={S.input} />
       </div>
 
