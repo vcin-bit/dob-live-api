@@ -16,26 +16,29 @@ router.post('/generate', authenticate, async (req, res, next) => {
       actions_taken, people_involved, location_detail
     } = req.body;
 
+    const officer = req.user;
+    const siaNumber = officer.sia_licence_number || 'not recorded';
     const time = occurred_at ? new Date(occurred_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }) + 'hrs' : 'an unspecified time';
     const date = occurred_at ? new Date(occurred_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : 'an unspecified date';
+    const dayOfWeek = occurred_at ? new Date(occurred_at).toLocaleDateString('en-GB', { weekday: 'long' }) : '';
 
-    const prompt = `You are writing a professional security incident report for a licensed security company. Write in formal, third-person British English appropriate for submission to a client. Be factual, precise, and professional — like a well-written police occurrence report.
+    const prompt = `You are writing a professional security officer's statement in the style of a UK police witness statement (MG11). Write in FIRST PERSON as the officer. Be factual, precise, and professional.
 
-The officer has provided these raw facts:
+The statement MUST begin with this exact preamble (fill in the details):
+"I am ${officer_name || officer.first_name + ' ' + officer.last_name}, a SIA licensed security officer (licence number: ${siaNumber}), employed by Risk Secured Ltd. On ${dayOfWeek} ${date} at approximately ${time}, I was carrying out my duties as the on-site security officer at ${site_name || 'the site'} when"
 
-- Site: ${site_name || 'the site'}
-- Date: ${date}
-- Time: ${time}
-- Attending officer: ${officer_name || 'the security officer'}
+Then continue naturally into what the officer observed/dealt with based on the facts below. Write in first person throughout ("I observed", "I approached", "I contacted"). Use formal British English. Do not use headings.
+
+Facts provided by the officer:
 - Incident type: ${log_type} ${incident_subtype ? `(${incident_subtype})` : ''}
 - Description: ${description || 'Not provided'}
 ${location_detail ? `- Location on site: ${location_detail}` : ''}
 ${people_involved ? `- Persons involved: ${people_involved}` : ''}
 ${actions_taken ? `- Actions taken: ${actions_taken}` : ''}
-${police_reported ? `- Police notified: Yes${police_force ? `, ${police_force}` : ''}${police_incident_number ? `, reference ${police_incident_number}` : ''}` : ''}
-${police_attended ? `- Police attended: Yes${police_officer_name ? `, Officer ${police_officer_name}` : ''}${police_shoulder_number ? ` (${police_shoulder_number})` : ''}` : ''}
+${police_reported ? `- Police notified: Yes${police_force ? `, ${police_force}` : ''}${police_incident_number ? `, crime reference ${police_incident_number}` : ''}` : ''}
+${police_attended ? `- Police attended: Yes${police_officer_name ? `, PC ${police_officer_name}` : ''}${police_shoulder_number ? ` (shoulder number ${police_shoulder_number})` : ''}` : ''}
 
-Write a professional incident report narrative of 3–5 sentences. Start with the time and date. Use "the attending officer" rather than "I". Do not include a heading. Do not add information not provided. Output ONLY the narrative text, nothing else.`;
+Write 4–8 sentences. End with a professional closing such as confirming what actions were taken and the current status. Do not add information not provided by the officer. Output ONLY the statement text, nothing else.`;
 
     const message = await anthropic.messages.create({
       model: 'claude-opus-4-5',
