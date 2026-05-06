@@ -77,7 +77,6 @@ function ManagerSidebar({ user }) {
       items: [
         { to: '/roster',    icon: ClockIcon,                 label: 'Roster' },
         { to: '/patterns',  icon: ClockIcon,                 label: 'Shift Patterns' },
-        { to: '/rates',     icon: ChartBarIcon,              label: 'Rates' },
         { to: '/reports',   icon: ChartBarIcon,              label: 'Reports' },
       ]
     },
@@ -85,6 +84,7 @@ function ManagerSidebar({ user }) {
       label: 'HR',
       items: [
         { to: '/team',      icon: UsersIcon,                 label: 'Team' },
+        { to: '/rates',     icon: ChartBarIcon,              label: 'Pay Rates' },
       ]
     },
     {
