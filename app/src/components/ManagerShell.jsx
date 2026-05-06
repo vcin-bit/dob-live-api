@@ -91,6 +91,7 @@ function ManagerSidebar({ user }) {
       label: 'Site Config',
       items: [
         { to: '/docs',         icon: DocumentTextIcon, label: 'Documents' },
+        { to: '/instructions', icon: DocumentTextIcon, label: 'Assignment Instructions' },
         { to: '/patrols',      icon: MapPinIcon,       label: 'Patrol Routes' },
         { to: '/patrol-history', icon: ClockIcon,       label: 'Patrol History' },
       ]
@@ -112,7 +113,6 @@ function ManagerSidebar({ user }) {
       label: 'Compliance',
       items: [
         { to: '/policies',     icon: DocumentTextIcon, label: 'Policies' },
-        { to: '/instructions', icon: DocumentTextIcon, label: 'Instructions' },
         { to: '/updates',      icon: DocumentTextIcon, label: 'Company Updates' },
       ]
     },
