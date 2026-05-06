@@ -110,7 +110,6 @@ function ManagerSidebar({ user }) {
         { to: '/contracts', icon: DocumentTextIcon, label: 'Contracts' },
       ]
     }] : []),
-    },
     {
       label: 'Compliance',
       items: [
