@@ -63,7 +63,6 @@ function ManagerSidebar({ user }) {
         { to: '/dashboard', icon: HomeIcon,                  label: 'Dashboard' },
         { to: '/on-duty',   icon: UsersIcon,                  label: 'On Duty' },
         { to: '/alerts',    icon: BellAlertIcon,             label: 'Alerts' },
-        { to: '/messages',  icon: BellAlertIcon,             label: 'Messages' },
       ]
     },
     {
