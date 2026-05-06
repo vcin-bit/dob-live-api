@@ -2,16 +2,18 @@ const router = require('express').Router();
 const supabase = require('../lib/supabase');
 const { authenticate, requireRole } = require('../middleware/auth');
 
-// GET /api/updates — list company updates
+// GET /api/updates — list company updates with comment counts
 router.get('/', authenticate, async (req, res, next) => {
   try {
     const { data, error } = await supabase
       .from('company_updates')
-      .select('*, author:users(id, first_name, last_name, role)')
+      .select('*, author:users(id, first_name, last_name, role), comments:company_update_comments(id)')
       .eq('company_id', req.user.company_id)
       .order('created_at', { ascending: false });
     if (error) throw error;
-    res.json({ data });
+    // Convert comments array to count
+    const withCounts = (data || []).map(u => ({ ...u, comment_count: u.comments?.length || 0, comments: undefined }));
+    res.json({ data: withCounts });
   } catch (err) { next(err); }
 });
 

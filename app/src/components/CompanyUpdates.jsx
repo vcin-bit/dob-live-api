@@ -126,6 +126,10 @@ export function ManagerUpdatesPanel() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [expandedId, setExpandedId] = useState(null);
+  const [comments, setComments] = useState({});
+  const [replyText, setReplyText] = useState('');
+  const [replying, setReplying] = useState(false);
 
   useEffect(() => {
     api.updates.list().then(res => setUpdates(res.data || [])).catch(() => {}).finally(() => setLoading(false));
@@ -149,6 +153,29 @@ export function ManagerUpdatesPanel() {
 
   function startEdit(u) {
     setEditingId(u.id); setTitle(u.title); setContent(u.content); setShowForm(true);
+  }
+
+  async function toggleComments(updateId) {
+    if (expandedId === updateId) { setExpandedId(null); return; }
+    setExpandedId(updateId);
+    if (!comments[updateId]) {
+      try {
+        const res = await api.updates.comments(updateId);
+        setComments(prev => ({ ...prev, [updateId]: res.data || [] }));
+      } catch {}
+    }
+  }
+
+  async function postReply(updateId) {
+    if (!replyText.trim()) return;
+    setReplying(true);
+    try {
+      const res = await api.updates.comment(updateId, replyText);
+      setComments(prev => ({ ...prev, [updateId]: [...(prev[updateId] || []), res.data] }));
+      setUpdates(prev => prev.map(u => u.id === updateId ? { ...u, comment_count: (u.comment_count || 0) + 1 } : u));
+      setReplyText('');
+    } catch (err) { alert(err.message); }
+    finally { setReplying(false); }
   }
 
   async function deleteUpdate(id) {
@@ -182,26 +209,60 @@ export function ManagerUpdatesPanel() {
       {loading && <div style={{color:'#9ca3af',fontSize:'0.875rem'}}>Loading...</div>}
 
       <div style={{display:'flex',flexDirection:'column',gap:'0.5rem'}}>
-        {updates.map(u => (
-          <div key={u.id} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'0.875rem',background:'#fff',border:'1px solid #e5e7eb',borderRadius:'8px'}}>
-            <div style={{flex:1}}>
-              <div style={{fontSize:'0.875rem',fontWeight:600,color:'#111827'}}>{u.title}</div>
-              <div style={{fontSize:'0.75rem',color:'#9ca3af',marginTop:'0.25rem'}}>
-                {new Date(u.created_at).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})} — {u.author?.first_name} {u.author?.last_name}
+        {updates.map(u => {
+          const isExpanded = expandedId === u.id;
+          const updateComments = comments[u.id] || [];
+          const totalComments = isExpanded ? updateComments.length : (u.comment_count || 0);
+          return (
+            <div key={u.id} style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:'8px',overflow:'hidden'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'0.875rem'}}>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:'0.875rem',fontWeight:600,color:'#111827'}}>{u.title}</div>
+                  <div style={{fontSize:'0.75rem',color:'#9ca3af',marginTop:'0.25rem'}}>
+                    {new Date(u.created_at).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})} — {u.author?.first_name} {u.author?.last_name}
+                  </div>
+                </div>
+                <div style={{display:'flex',gap:'0.5rem',flexShrink:0}}>
+                  <button onClick={() => toggleComments(u.id)}
+                    style={{background: totalComments > 0 ? 'rgba(26,82,168,0.08)' : 'none',border: totalComments > 0 ? '1px solid rgba(26,82,168,0.2)' : 'none',color:'#1a52a8',fontSize:'0.75rem',cursor:'pointer',padding:'0.25rem 0.5rem',borderRadius:'4px',fontWeight:600}}>
+                    {totalComments > 0 ? `${totalComments} comment${totalComments!==1?'s':''}` : 'Comments'}
+                  </button>
+                  <button onClick={() => startEdit(u)}
+                    style={{background:'none',border:'none',color:'#1a52a8',fontSize:'0.75rem',cursor:'pointer',padding:'0.25rem',fontWeight:600}}>
+                    Edit
+                  </button>
+                  <button onClick={() => deleteUpdate(u.id)}
+                    style={{background:'none',border:'none',color:'#dc2626',fontSize:'0.75rem',cursor:'pointer',padding:'0.25rem'}}>
+                    Delete
+                  </button>
+                </div>
               </div>
+              {isExpanded && (
+                <div style={{borderTop:'1px solid #f1f5f9',padding:'0.875rem',background:'#f8fafc'}}>
+                  {updateComments.length === 0 && <div style={{fontSize:'0.8125rem',color:'#9ca3af',marginBottom:'0.5rem'}}>No comments yet.</div>}
+                  {updateComments.map(c => (
+                    <div key={c.id} style={{marginBottom:'0.625rem',paddingBottom:'0.625rem',borderBottom:'1px solid #e5e7eb'}}>
+                      <div style={{display:'flex',alignItems:'center',gap:'0.375rem',marginBottom:'0.25rem'}}>
+                        <span style={{fontSize:'0.8125rem',fontWeight:600,color:'#374151'}}>{c.user?.first_name} {c.user?.last_name}</span>
+                        <span style={{fontSize:'0.6875rem',color:'#9ca3af'}}>{new Date(c.created_at).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})} {new Date(c.created_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}</span>
+                      </div>
+                      <div style={{fontSize:'0.8125rem',color:'#6b7280',lineHeight:1.5}}>{c.content}</div>
+                    </div>
+                  ))}
+                  <div style={{display:'flex',gap:'0.5rem',marginTop:'0.5rem'}}>
+                    <input value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Reply..."
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); postReply(u.id); } }}
+                      style={{flex:1,padding:'0.5rem 0.75rem',border:'1.5px solid #d1d5db',borderRadius:'6px',fontSize:'0.8125rem',color:'#111827',outline:'none'}} />
+                    <button onClick={() => postReply(u.id)} disabled={replying || !replyText.trim()}
+                      style={{padding:'0.5rem 0.75rem',background:'#1a52a8',border:'none',borderRadius:'6px',color:'#fff',fontSize:'0.8125rem',fontWeight:600,cursor:'pointer',opacity:(!replyText.trim()||replying)?0.5:1}}>
+                      Reply
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-            <div style={{display:'flex',gap:'0.5rem',flexShrink:0}}>
-              <button onClick={() => startEdit(u)}
-                style={{background:'none',border:'none',color:'#1a52a8',fontSize:'0.75rem',cursor:'pointer',padding:'0.25rem',fontWeight:600}}>
-                Edit
-              </button>
-              <button onClick={() => deleteUpdate(u.id)}
-                style={{background:'none',border:'none',color:'#dc2626',fontSize:'0.75rem',cursor:'pointer',padding:'0.25rem'}}>
-                Delete
-              </button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

@@ -55,6 +55,20 @@ function ManagerApp({ user }) {
 function ManagerSidebar({ user }) {
   const location = useLocation();
   const { signOut } = useAuth();
+  const [commentCount, setCommentCount] = React.useState(0);
+
+  React.useEffect(() => {
+    async function fetchComments() {
+      try {
+        const res = await api.updates.list();
+        const total = (res.data || []).reduce((sum, u) => sum + (u.comment_count || 0), 0);
+        setCommentCount(total);
+      } catch {}
+    }
+    fetchComments();
+    const t = setInterval(fetchComments, 60000);
+    return () => clearInterval(t);
+  }, []);
 
   const perms = user.permissions || [];
   const hasAccess = (section) => user.role === 'SUPER_ADMIN' || perms.includes(section);
@@ -94,7 +108,7 @@ function ManagerSidebar({ user }) {
       items: [
         { to: '/team',      icon: UsersIcon,                 label: 'Team' },
         { to: '/rates',     icon: ChartBarIcon,              label: 'Pay Rates' },
-        { to: '/updates',   icon: DocumentTextIcon,          label: 'Company Updates' },
+        { to: '/updates',   icon: DocumentTextIcon,          label: 'Company Updates', badge: commentCount || null },
       ]
     },
     {
@@ -154,14 +168,16 @@ function ManagerSidebar({ user }) {
                 {group.label}
               </div>
             )}
-            {group.items.map(({ to, icon: Icon, label }) => (
+            {group.items.map(({ to, icon: Icon, label, badge }) => (
               <Link
                 key={to}
                 to={to}
                 className={`sidebar-nav-item${location.pathname === to || location.pathname.startsWith(to + '/') ? ' active' : ''}`}
+                style={{display:'flex',alignItems:'center',gap:'0.5rem'}}
               >
                 <Icon style={{width:'1rem',height:'1rem'}} />
-                {label}
+                <span style={{flex:1}}>{label}</span>
+                {badge > 0 && <span style={{background:'#1a52a8',color:'#fff',fontSize:'0.625rem',fontWeight:700,padding:'0.125rem 0.375rem',borderRadius:'8px',minWidth:'16px',textAlign:'center'}}>{badge}</span>}
               </Link>
             ))}
           </div>
