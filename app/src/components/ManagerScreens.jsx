@@ -569,8 +569,19 @@ function IncidentReviewModal({ log, user, onClose, onUpdated }) {
           </div>
         </div>
 
-        <div className="modal-footer">
+        <div className="modal-footer" style={{display:'flex',gap:'0.5rem',flexWrap:'wrap'}}>
           <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn btn-secondary" onClick={async () => {
+            try {
+              const res = await api.report.pdf(log.id);
+              if (res.pdf) {
+                const blob = new Blob([Uint8Array.from(atob(res.pdf), c => c.charCodeAt(0))], { type: 'application/pdf' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href = url; a.download = res.filename || 'incident-report.pdf'; a.click();
+                URL.revokeObjectURL(url);
+              }
+            } catch (err) { alert('PDF generation failed: ' + err.message); }
+          }}>Download PDF</button>
           <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? 'Saving...' : 'Save Review'}</button>
         </div>
       </div>

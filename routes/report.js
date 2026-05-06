@@ -53,145 +53,134 @@ Write 4–8 sentences. End with a professional closing such as confirming what a
   }
 });
 
-// POST /api/report/pdf - Generate PDF and return base64
+// POST /api/report/pdf - Generate branded PDF incident report, store in site file
 router.post('/pdf', authenticate, async (req, res, next) => {
   try {
+    const PDFDocument = require('pdfkit');
     const { log_id } = req.body;
 
-    // Get log with all details
     const { data: log, error } = await supabase
       .from('occurrence_logs')
-      .select('*, site:sites(name), officer:users!occurrence_logs_officer_id_fkey(first_name, last_name, sia_licence_number)')
+      .select('*, site:sites(id, name), officer:users!occurrence_logs_officer_id_fkey(first_name, last_name, sia_licence_number, sia_licence_type)')
       .eq('id', log_id)
       .eq('company_id', req.user.company_id)
       .single();
-
     if (error || !log) return res.status(404).json({ error: 'Log not found' });
 
-    const { data: company } = await supabase.from('companies').select('name').eq('id', req.user.company_id).single();
+    const { data: company } = await supabase.from('companies').select('name, logo_url').eq('id', req.user.company_id).single();
+    const companyName = company?.name || 'Risk Secured Ltd';
+    const td = log.type_data || {};
+    const officer = log.officer || {};
+    const offName = `${officer.first_name || ''} ${officer.last_name || ''}`.trim();
+    const siteName = log.site?.name || 'Unknown';
+    const ref = log.id.slice(0,8).toUpperCase();
+    const dateStr = log.occurred_at ? new Date(log.occurred_at).toLocaleDateString('en-GB', { weekday:'long', day:'2-digit', month:'long', year:'numeric', timeZone:'Europe/London' }) : '';
+    const timeStr = log.occurred_at ? new Date(log.occurred_at).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', timeZone:'Europe/London' }) + 'hrs' : '';
 
-    // Generate PDF using Python
-    const { execSync } = require('child_process');
-    const fs = require('fs');
-    const path = require('path');
-    const tmpFile = `/tmp/report_${log_id}.pdf`;
+    const pdfBuffer = await new Promise((resolve, reject) => {
+      const doc = new PDFDocument({ size: 'A4', margin: 0, bufferPages: true });
+      const chunks = [];
+      doc.on('data', c => chunks.push(c));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
 
-    const py = `
-import sys
-sys.path.insert(0, '/usr/local/lib/python3/dist-packages')
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import cm
-from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
-from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
-import json, datetime
+      const W = 595, M = 40, CW = W - M * 2;
+      const isIncident = ['INCIDENT','ALARM','FIRE_ALARM','EMERGENCY'].includes(log.log_type);
+      const accentColor = isIncident ? '#dc2626' : log.log_type === 'ALARM' ? '#d97706' : '#1a52a8';
 
-log = json.loads(sys.argv[1])
-company = sys.argv[2]
-outfile = sys.argv[3]
+      // Header band
+      doc.rect(0, 0, W, 70).fill('#0b1a3e');
+      doc.rect(0, 70, W, 3).fill(accentColor);
+      doc.fontSize(16).font('Helvetica-Bold').fillColor('#ffffff').text(companyName, M, 16, { width: CW * 0.6 });
+      doc.fontSize(11).font('Helvetica-Bold').fillColor('#93c5fd').text('INCIDENT REPORT', M + CW * 0.6, 18, { width: CW * 0.4, align: 'right' });
+      doc.fontSize(8).font('Helvetica').fillColor('rgba(255,255,255,0.5)').text('24/7 National Control Room: 01384 218829', M, 50, { width: CW });
 
-doc = SimpleDocTemplate(outfile, pagesize=A4,
-    rightMargin=2*cm, leftMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm)
+      let y = 85;
 
-styles = getSampleStyleSheet()
-navy = colors.HexColor('#0b1222')
-blue = colors.HexColor('#1a52a8')
-red  = colors.HexColor('#dc2626')
-grey = colors.HexColor('#64748b')
-lt   = colors.HexColor('#f8fafc')
+      // Reference bar
+      doc.rect(M, y, CW, 28).fill('#f8fafc');
+      doc.rect(M, y, CW, 28).lineWidth(0.5).strokeColor('#e2e8f0').stroke();
+      doc.fontSize(8).font('Helvetica').fillColor('#6b7280');
+      doc.text(`Ref: ${ref}`, M + 10, y + 9);
+      doc.text(`Date: ${dateStr}`, M + CW * 0.33, y + 9);
+      doc.text(`Site: ${siteName}`, M + CW * 0.66, y + 9);
+      y += 38;
 
-def sty(name, **kw):
-    s = ParagraphStyle(name, **kw)
-    return s
+      // Type badge
+      doc.fontSize(14).font('Helvetica-Bold').fillColor(accentColor)
+        .text(log.log_type.replace(/_/g, ' '), M, y);
+      y += 20;
+      if (log.title) {
+        doc.fontSize(11).font('Helvetica-Bold').fillColor('#0f172a').text(log.title, M, y, { width: CW });
+        y += doc.heightOfString(log.title, { width: CW, fontSize: 11 }) + 6;
+      }
+      doc.rect(M, y, CW, 2).fill(accentColor); y += 14;
 
-story = []
+      // Officer statement / narrative
+      if (log.description) {
+        doc.fontSize(8).font('Helvetica-Bold').fillColor('#6b7280').text('OFFICER STATEMENT', M, y); y += 14;
+        doc.fontSize(10).font('Helvetica').fillColor('#0f172a').text(log.description, M, y, { width: CW, lineGap: 4 });
+        y += doc.heightOfString(log.description, { width: CW, fontSize: 10, lineGap: 4 }) + 16;
+      }
 
-# Header bar
-story.append(Table(
-    [[Paragraph(f'<font color="#ffffff"><b>{company}</b></font>', sty('h', fontName='Helvetica-Bold', fontSize=14, textColor=colors.white)),
-      Paragraph('<font color="#93c5fd">INCIDENT REPORT</font>', sty('hr', fontName='Helvetica-Bold', fontSize=11, textColor=colors.HexColor('#93c5fd'), alignment=2))]],
-    colWidths=['60%','40%'],
-    style=[('BACKGROUND', (0,0),(-1,-1), navy),
-           ('TOPPADDING',(0,0),(-1,-1),12),('BOTTOMPADDING',(0,0),(-1,-1),12),
-           ('LEFTPADDING',(0,0),(0,-1),14),('RIGHTPADDING',(-1,0),(-1,-1),14)]
-))
-story.append(Spacer(1, 0.4*cm))
+      // Details table
+      doc.fontSize(8).font('Helvetica-Bold').fillColor('#6b7280').text('INCIDENT DETAILS', M, y); y += 14;
+      const rows = [
+        ['ATTENDING OFFICER', offName || 'Not recorded'],
+        ['SIA LICENCE', `${officer.sia_licence_number || 'Not recorded'}${officer.sia_licence_type ? ` (${officer.sia_licence_type})` : ''}`],
+        ['DATE & TIME', `${dateStr} at ${timeStr}`],
+        ['SITE', siteName],
+      ];
+      if (td.location_detail) rows.push(['LOCATION ON SITE', td.location_detail]);
+      if (td.people_involved) rows.push(['PERSONS INVOLVED', td.people_involved]);
+      if (td.actions_taken) rows.push(['ACTIONS TAKEN', td.actions_taken]);
+      if (td.police_reported) rows.push(['POLICE NOTIFIED', `Yes${td.police_force ? ` — ${td.police_force}` : ''}${td.police_incident_number ? `, crime ref: ${td.police_incident_number}` : ''}`]);
+      if (td.police_attended) rows.push(['POLICE ATTENDED', `Yes${td.police_officer_name ? ` — PC ${td.police_officer_name}` : ''}${td.police_shoulder_number ? ` (${td.police_shoulder_number})` : ''}`]);
+      if (log.latitude) rows.push(['GPS COORDINATES', `${parseFloat(log.latitude).toFixed(5)}, ${parseFloat(log.longitude).toFixed(5)}`]);
+      if (log.client_reportable) rows.push(['CLIENT NOTIFICATION', 'Sent to client']);
 
-# Reference + Date row
-ts = log.get('occurred_at','')[:19].replace('T',' ') if log.get('occurred_at') else ''
-ref = log.get('id','')[:8].upper()
-story.append(Table(
-    [[Paragraph(f'<b>Ref:</b> {ref}', sty('r', fontName='Helvetica', fontSize=9, textColor=grey)),
-      Paragraph(f'<b>Date/Time:</b> {ts}', sty('d', fontName='Helvetica', fontSize=9, textColor=grey)),
-      Paragraph(f'<b>Site:</b> {log.get("site",{}).get("name","") if isinstance(log.get("site"),dict) else ""}', sty('s', fontName='Helvetica', fontSize=9, textColor=grey))]],
-    colWidths=['33%','34%','33%'],
-    style=[('BACKGROUND',(0,0),(-1,-1),lt),('TOPPADDING',(0,0),(-1,-1),8),('BOTTOMPADDING',(0,0),(-1,-1),8),
-           ('LEFTPADDING',(0,0),(-1,-1),10),('BOX',(0,0),(-1,-1),0.5,colors.HexColor('#e2e8f0'))]
-))
-story.append(Spacer(1, 0.5*cm))
+      rows.forEach((r, i) => {
+        if (y > 740) { doc.addPage(); y = 40; }
+        const rowH = 22;
+        doc.rect(M, y, CW, rowH).fill(i % 2 === 0 ? '#f8fafc' : '#ffffff');
+        doc.rect(M, y, CW, rowH).lineWidth(0.25).strokeColor('#e2e8f0').stroke();
+        doc.fontSize(7.5).font('Helvetica-Bold').fillColor('#6b7280').text(r[0], M + 10, y + 7, { width: CW * 0.3 });
+        doc.fontSize(8.5).font('Helvetica').fillColor('#0f172a').text(r[1], M + CW * 0.35, y + 6, { width: CW * 0.6 });
+        y += rowH;
+      });
+      y += 16;
 
-# Type badge
-lt_map = {'INCIDENT':'#dc2626','ALARM':'#d97706','PATROL':'#2563eb','FIRE_ALARM':'#dc2626','EMERGENCY':'#dc2626'}
-tc = lt_map.get(log.get('log_type',''),'#1a52a8')
-story.append(Paragraph(f'<font color="{tc}"><b>{log.get("log_type","").replace("_"," ")}</b></font>', 
-    sty('type', fontName='Helvetica-Bold', fontSize=16, spaceAfter=6)))
-story.append(Paragraph(log.get('title',''), sty('title', fontName='Helvetica-Bold', fontSize=12, textColor=colors.HexColor('#0f172a'), spaceAfter=10)))
-story.append(HRFlowable(width="100%", thickness=2, color=colors.HexColor(tc), spaceAfter=10))
+      // Confidentiality notice
+      if (y > 700) { doc.addPage(); y = 40; }
+      doc.rect(M, y, CW, 0.5).fill('#e2e8f0'); y += 10;
+      doc.fontSize(7).font('Helvetica-Bold').fillColor('#6b7280').text('CONFIDENTIAL', M, y); y += 12;
+      doc.fontSize(7).font('Helvetica').fillColor('#9ca3af')
+        .text('This incident report is confidential and intended solely for the use of the addressee. It may contain information that is privileged or otherwise protected from disclosure. If you are not the intended recipient, please notify Risk Secured Ltd immediately.', M, y, { width: CW, lineGap: 2 });
+      y += 40;
 
-# Narrative
-if log.get('description'):
-    story.append(Paragraph('OCCURRENCE NARRATIVE', sty('sh', fontName='Helvetica-Bold', fontSize=8, textColor=grey, spaceBefore=4, spaceAfter=6)))
-    story.append(Paragraph(log['description'], sty('body', fontName='Helvetica', fontSize=10, leading=16, textColor=colors.HexColor('#0f172a'), spaceAfter=14)))
+      // Footer on all pages
+      const pageCount = doc.bufferedPageRange().count;
+      for (let i = 0; i < pageCount; i++) {
+        doc.switchToPage(i);
+        const fY = doc.page.height - 40;
+        doc.rect(0, fY, W, 0.5).fill('#e2e8f0');
+        doc.fontSize(7).fillColor('#9ca3af').font('Helvetica')
+          .text(`${companyName} · Generated by DOB Live · ${new Date().toLocaleDateString('en-GB')} · Page ${i+1} of ${pageCount}`, M, fY + 8, { width: CW, align: 'center' });
+      }
 
-# Details table
-td = log.get('type_data', {}) or {}
-officer = log.get('officer', {}) or {}
-off_name = f"{officer.get('first_name','')} {officer.get('last_name','')}".strip()
-sia = officer.get('sia_licence_number','')
-rows = [
-    ['ATTENDING OFFICER', off_name or 'Not recorded'],
-    ['SIA LICENCE', sia or 'Not recorded'],
-]
-if td.get('police_reported'): rows.append(['POLICE NOTIFIED', 'Yes' + (f' — {td.get("police_force","")}' if td.get('police_force') else '') + (f' Ref: {td.get("police_incident_number","")}' if td.get('police_incident_number') else '')])
-if td.get('police_attended'): rows.append(['POLICE ATTENDED', f'Yes — {td.get("police_officer_name","")} {td.get("police_shoulder_number","")}'])
-if log.get('latitude'): rows.append(['GPS LOCATION', f'{round(float(log["latitude"]),5)}, {round(float(log["longitude"]),5)}'])
-if log.get('client_reportable'): rows.append(['CLIENT NOTIFICATION', 'SENT TO CLIENT'])
+      doc.end();
+    });
 
-story.append(Paragraph('INCIDENT DETAILS', sty('sh2', fontName='Helvetica-Bold', fontSize=8, textColor=grey, spaceAfter=6)))
-t = Table([[Paragraph(f'<b>{r[0]}</b>', sty('k', fontName='Helvetica-Bold', fontSize=9, textColor=grey)), 
-            Paragraph(r[1], sty('v', fontName='Helvetica', fontSize=9, textColor=colors.HexColor('#0f172a')))] for r in rows],
-    colWidths=['35%','65%'],
-    style=[('BACKGROUND',(0,0),(-1,-1),lt),('TOPPADDING',(0,0),(-1,-1),7),('BOTTOMPADDING',(0,0),(-1,-1),7),
-           ('LEFTPADDING',(0,0),(-1,-1),10),('LINEBELOW',(0,0),(-1,-2),0.5,colors.HexColor('#e2e8f0'))])
-story.append(t)
+    // Upload to Supabase storage for site file
+    const filename = `incident-${ref}-${Date.now()}.pdf`;
+    const storagePath = `${req.user.company_id}/${log.site?.id || 'general'}/${filename}`;
+    await supabase.storage.from('incident-reports').upload(storagePath, pdfBuffer, { contentType: 'application/pdf', upsert: true });
+    const { data: urlData } = supabase.storage.from('incident-reports').getPublicUrl(storagePath);
 
-# Footer
-story.append(Spacer(1, 1*cm))
-story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor('#e2e8f0')))
-story.append(Spacer(1, 0.3*cm))
-story.append(Paragraph(
-    f'Generated by DOB Live · {company} · {datetime.datetime.now().strftime("%d %b %Y %H:%M")}',
-    sty('ft', fontName='Helvetica', fontSize=7, textColor=grey, alignment=1)))
+    // Store reference on the log
+    await supabase.from('occurrence_logs').update({ pdf_path: storagePath }).eq('id', log_id);
 
-doc.build(story)
-print('OK')
-`;
-
-    const pyFile = `/tmp/gen_${Date.now()}.py`;
-    fs.writeFileSync(pyFile, py);
-
-    try {
-      execSync(`python3 "${pyFile}" '${JSON.stringify(log).replace(/'/g, "'\\''")}' '${company?.name || 'DOB Live'}' '${tmpFile}'`, { timeout: 30000 });
-      const pdfBuffer = fs.readFileSync(tmpFile);
-      const base64 = pdfBuffer.toString('base64');
-      fs.unlinkSync(tmpFile);
-      fs.unlinkSync(pyFile);
-      res.json({ pdf: base64, filename: `incident-report-${log_id.slice(0,8)}.pdf` });
-    } catch (pyErr) {
-      console.error('PDF gen error:', pyErr.message);
-      res.status(500).json({ error: 'PDF generation failed: ' + pyErr.message });
-    }
+    res.json({ pdf: pdfBuffer.toString('base64'), filename: `Incident-Report-${ref}.pdf`, url: urlData?.publicUrl || null });
   } catch (err) { next(err); }
 });
 
