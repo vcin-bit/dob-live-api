@@ -240,16 +240,16 @@ router.post('/invoice', authenticate, async (req, res, next) => {
       y += 16; doc.rect(M, y - 2, CW, 0.5).fill('#e5e7eb');
 
       // Line items
-      doc.fontSize(8).font('Helvetica').fillColor('#111827');
       for (const s of shifts) {
         if (y > 720) { doc.addPage(); y = 40; }
-        doc.text(s.date, cols[0], y);
-        doc.text(s.site, cols[1], y, { width: 115 });
-        doc.text(s.times, cols[2], y);
-        doc.text(s.hours, cols[3], y, { width: 60, align: 'right' });
-        doc.text(`£${s.rate}`, cols[4], y, { width: 50, align: 'right' });
-        doc.font('Helvetica-Bold').text(`£${s.amount}`, cols[5], y, { width: 65, align: 'right' });
-        doc.font('Helvetica');
+        doc.fontSize(8).font('Helvetica').fillColor('#111827');
+        doc.text(s.date, cols[0], y, { lineBreak: false });
+        doc.text(s.site, cols[1], y, { width: 115, lineBreak: false });
+        doc.text(s.times, cols[2], y, { lineBreak: false });
+        doc.text(s.hours, cols[3], y, { width: 60, align: 'right', lineBreak: false });
+        doc.text(`£${s.rate}`, cols[4], y, { width: 50, align: 'right', lineBreak: false });
+        doc.font('Helvetica-Bold').fillColor('#111827');
+        doc.text(`£${s.amount}`, cols[5], y, { width: 65, align: 'right', lineBreak: false });
         y += 16;
         doc.rect(M, y - 2, CW, 0.25).fill('#f1f5f9');
       }
