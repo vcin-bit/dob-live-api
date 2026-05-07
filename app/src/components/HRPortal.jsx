@@ -1098,7 +1098,8 @@ function HRAuthenticated() {
 function MyRosterTab() {
   const [shifts, setShifts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState('upcoming'); // upcoming | past
+  const [month, setMonth] = useState(() => { const n = new Date(); return { year: n.getFullYear(), month: n.getMonth() }; });
+  const [selectedDate, setSelectedDate] = useState(null);
 
   useEffect(() => {
     api.shifts.list({})
@@ -1107,20 +1108,39 @@ function MyRosterTab() {
       .finally(() => setLoading(false));
   }, []);
 
-  const now = new Date();
-  const upcoming = shifts.filter(s => ['SCHEDULED','ACTIVE'].includes(s.status) || new Date(s.end_time || s.start_time) >= now).sort((a,b) => new Date(a.start_time) - new Date(b.start_time));
-  const past = shifts.filter(s => s.status === 'COMPLETED' || (s.status !== 'ACTIVE' && s.status !== 'SCHEDULED' && new Date(s.end_time || s.start_time) < now)).sort((a,b) => new Date(b.start_time) - new Date(a.start_time));
-  const displayed = view === 'upcoming' ? upcoming : past;
-
   const statusColor = { SCHEDULED: '#3b82f6', ACTIVE: '#16a34a', COMPLETED: '#6b7280' };
   const statusLabel = { SCHEDULED: 'Scheduled', ACTIVE: 'On Duty', COMPLETED: 'Completed' };
+  function formatTime(d) { return new Date(d).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', timeZone:'Europe/London' }); }
 
-  function formatShiftDate(d) {
-    return new Date(d).toLocaleDateString('en-GB', { weekday:'short', day:'2-digit', month:'short', timeZone:'Europe/London' });
+  // Calendar helpers
+  const firstDay = new Date(month.year, month.month, 1);
+  const lastDay = new Date(month.year, month.month + 1, 0);
+  const startPad = (firstDay.getDay() + 6) % 7; // Monday start
+  const daysInMonth = lastDay.getDate();
+  const monthLabel = firstDay.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
+
+  // Map shifts to dates
+  const shiftsByDate = {};
+  shifts.forEach(s => {
+    const d = new Date(s.start_time);
+    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    if (!shiftsByDate[key]) shiftsByDate[key] = [];
+    shiftsByDate[key].push(s);
+  });
+
+  function nav(dir) {
+    setMonth(prev => {
+      let m = prev.month + dir, y = prev.year;
+      if (m < 0) { m = 11; y--; } else if (m > 11) { m = 0; y++; }
+      return { year: y, month: m };
+    });
+    setSelectedDate(null);
   }
-  function formatTime(d) {
-    return new Date(d).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', timeZone:'Europe/London' });
-  }
+
+  const selectedKey = selectedDate ? `${month.year}-${month.month}-${selectedDate}` : null;
+  const selectedShifts = selectedKey ? (shiftsByDate[selectedKey] || []) : [];
 
   if (loading) return <div style={{padding:'2rem',textAlign:'center',color:'#9ca3af'}}>Loading roster...</div>;
 
@@ -1128,66 +1148,85 @@ function MyRosterTab() {
     <>
       <div style={{marginBottom:'1rem'}}>
         <h2 style={{fontSize:'1.125rem',fontWeight:700,color:'#111827',margin:'0 0 0.25rem'}}>My Roster</h2>
-        <p style={{fontSize:'0.8125rem',color:'#6b7280',margin:0}}>Your scheduled and completed shifts.</p>
+        <p style={{fontSize:'0.8125rem',color:'#6b7280',margin:0}}>Tap a day to see shift details.</p>
       </div>
 
-      {/* Toggle */}
-      <div style={{display:'flex',gap:'2px',background:'#f3f4f6',borderRadius:'8px',padding:'3px',marginBottom:'1rem'}}>
-        {[['upcoming','Upcoming'],['past','Previous']].map(([k,l]) => (
-          <button key={k} onClick={() => setView(k)}
-            style={{flex:1,padding:'0.5rem',borderRadius:'6px',border:'none',cursor:'pointer',fontSize:'0.8125rem',fontWeight:600,
-              background: view===k ? '#fff' : 'transparent', color: view===k ? '#111827' : '#9ca3af',
-              boxShadow: view===k ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'}}>
-            {l} ({k === 'upcoming' ? upcoming.length : past.length})
-          </button>
-        ))}
+      {/* Month nav */}
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.75rem'}}>
+        <button onClick={() => nav(-1)} style={{width:'36px',height:'36px',background:'#f3f4f6',border:'1px solid #e5e7eb',borderRadius:'8px',fontSize:'1rem',cursor:'pointer',color:'#374151'}}>‹</button>
+        <div style={{fontSize:'1rem',fontWeight:700,color:'#111827'}}>{monthLabel}</div>
+        <button onClick={() => nav(1)} style={{width:'36px',height:'36px',background:'#f3f4f6',border:'1px solid #e5e7eb',borderRadius:'8px',fontSize:'1rem',cursor:'pointer',color:'#374151'}}>›</button>
       </div>
 
-      {displayed.length === 0 ? (
-        <div style={{padding:'2rem',textAlign:'center',background:'#f9fafb',borderRadius:'10px',border:'1px dashed #d1d5db'}}>
-          <div style={{fontSize:'0.875rem',color:'#9ca3af'}}>{view === 'upcoming' ? 'No upcoming shifts scheduled.' : 'No previous shifts.'}</div>
+      {/* Calendar grid */}
+      <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:'10px',overflow:'hidden',marginBottom:'0.75rem'}}>
+        {/* Day headers */}
+        <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',background:'#f8fafc',borderBottom:'1px solid #e5e7eb'}}>
+          {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => (
+            <div key={d} style={{padding:'0.375rem 0',textAlign:'center',fontSize:'0.6875rem',fontWeight:700,color:'#9ca3af'}}>{d}</div>
+          ))}
         </div>
-      ) : (
-        <div style={{display:'flex',flexDirection:'column',gap:'0.5rem'}}>
-          {displayed.map(s => {
-            const start = s.start_time;
-            const end = s.end_time;
-            const checkedIn = s.checked_in_at;
-            const checkedOut = s.checked_out_at;
-            const status = s.status || 'SCHEDULED';
-            const hrs = (checkedIn && checkedOut) ? ((new Date(checkedOut) - new Date(checkedIn)) / 3600000).toFixed(1) : end ? ((new Date(end) - new Date(start)) / 3600000).toFixed(1) : '—';
-            const isToday = new Date(start).toDateString() === now.toDateString();
+        {/* Date cells */}
+        <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)'}}>
+          {Array.from({ length: startPad }).map((_, i) => <div key={`pad-${i}`} style={{padding:'0.25rem',minHeight:'44px'}} />)}
+          {Array.from({ length: daysInMonth }).map((_, i) => {
+            const day = i + 1;
+            const key = `${month.year}-${month.month}-${day}`;
+            const dayShifts = shiftsByDate[key] || [];
+            const isToday = key === todayStr;
+            const isSelected = selectedDate === day;
+            const hasShift = dayShifts.length > 0;
+            const hasCompleted = dayShifts.some(s => s.status === 'COMPLETED');
+            const hasScheduled = dayShifts.some(s => s.status === 'SCHEDULED');
+            const hasActive = dayShifts.some(s => s.status === 'ACTIVE');
+            const dotColor = hasActive ? '#16a34a' : hasScheduled ? '#3b82f6' : hasCompleted ? '#6b7280' : null;
 
             return (
-              <div key={s.id} style={{background:'#fff',border: isToday ? '2px solid #3b82f6' : '1px solid #e5e7eb',borderRadius:'10px',padding:'0.875rem',position:'relative'}}>
-                {isToday && <div style={{position:'absolute',top:'-1px',right:'12px',background:'#3b82f6',color:'#fff',fontSize:'0.625rem',fontWeight:700,padding:'2px 8px',borderRadius:'0 0 6px 6px',textTransform:'uppercase',letterSpacing:'0.05em'}}>Today</div>}
+              <button key={day} onClick={() => setSelectedDate(isSelected ? null : day)}
+                style={{padding:'0.25rem',minHeight:'44px',background: isSelected ? '#eff6ff' : isToday ? '#f0fdf4' : 'transparent',
+                  border: isSelected ? '2px solid #3b82f6' : isToday ? '2px solid #86efac' : '1px solid #f3f4f6',
+                  cursor: hasShift ? 'pointer' : 'default',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:'2px'}}>
+                <div style={{fontSize:'0.8125rem',fontWeight: isToday || isSelected ? 700 : 500,color: isSelected ? '#1a52a8' : isToday ? '#16a34a' : '#374151'}}>{day}</div>
+                {dotColor && <div style={{width:'6px',height:'6px',borderRadius:'50%',background:dotColor}} />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
-                {/* Date + Status */}
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.5rem'}}>
-                  <div style={{fontSize:'0.9375rem',fontWeight:700,color:'#111827'}}>{formatShiftDate(start)}</div>
+      {/* Legend */}
+      <div style={{display:'flex',gap:'1rem',justifyContent:'center',marginBottom:'0.75rem',fontSize:'0.6875rem',color:'#9ca3af'}}>
+        <div style={{display:'flex',alignItems:'center',gap:'4px'}}><div style={{width:'6px',height:'6px',borderRadius:'50%',background:'#3b82f6'}} /> Scheduled</div>
+        <div style={{display:'flex',alignItems:'center',gap:'4px'}}><div style={{width:'6px',height:'6px',borderRadius:'50%',background:'#16a34a'}} /> On Duty</div>
+        <div style={{display:'flex',alignItems:'center',gap:'4px'}}><div style={{width:'6px',height:'6px',borderRadius:'50%',background:'#6b7280'}} /> Completed</div>
+      </div>
+
+      {/* Selected day detail */}
+      {selectedDate && (
+        <div style={{display:'flex',flexDirection:'column',gap:'0.5rem'}}>
+          <div style={{fontSize:'0.8125rem',fontWeight:700,color:'#111827',marginBottom:'0.25rem'}}>
+            {new Date(month.year, month.month, selectedDate).toLocaleDateString('en-GB', { weekday:'long', day:'2-digit', month:'long' })}
+          </div>
+          {selectedShifts.length === 0 ? (
+            <div style={{padding:'1rem',background:'#f9fafb',borderRadius:'8px',fontSize:'0.8125rem',color:'#9ca3af',textAlign:'center'}}>No shifts this day.</div>
+          ) : selectedShifts.map(s => {
+            const status = s.status || 'SCHEDULED';
+            const hrs = (s.checked_in_at && s.checked_out_at) ? ((new Date(s.checked_out_at) - new Date(s.checked_in_at)) / 3600000).toFixed(1) : s.end_time ? ((new Date(s.end_time) - new Date(s.start_time)) / 3600000).toFixed(1) : '—';
+            return (
+              <div key={s.id} style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:'10px',padding:'0.875rem'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.375rem'}}>
+                  <div style={{fontSize:'0.9375rem',fontWeight:700,color:'#111827'}}>{s.site?.name || 'Site'}</div>
                   <div style={{padding:'0.125rem 0.5rem',background:`${statusColor[status]}15`,border:`1px solid ${statusColor[status]}35`,borderRadius:'6px',fontSize:'0.6875rem',fontWeight:700,color:statusColor[status]}}>
                     {statusLabel[status] || status}
                   </div>
                 </div>
-
-                {/* Site */}
-                <div style={{fontSize:'0.875rem',fontWeight:600,color:'#374151',marginBottom:'0.375rem'}}>{s.site?.name || 'Site'}</div>
-
-                {/* Times */}
-                <div style={{display:'flex',gap:'1rem',fontSize:'0.8125rem',color:'#6b7280'}}>
-                  <div>
-                    <span style={{fontWeight:600,color:'#374151'}}>{formatTime(start)}</span>
-                    <span> – </span>
-                    <span style={{fontWeight:600,color:'#374151'}}>{end ? formatTime(end) : 'TBC'}</span>
-                  </div>
-                  <div style={{color:'#9ca3af'}}>{hrs}h</div>
+                <div style={{fontSize:'0.8125rem',color:'#6b7280'}}>
+                  <span style={{fontWeight:600,color:'#374151'}}>{formatTime(s.start_time)}</span> – <span style={{fontWeight:600,color:'#374151'}}>{s.end_time ? formatTime(s.end_time) : 'TBC'}</span>
+                  <span style={{marginLeft:'0.5rem',color:'#9ca3af'}}>{hrs}h</span>
                 </div>
-
-                {/* Actual times if different */}
-                {checkedIn && (
-                  <div style={{marginTop:'0.375rem',fontSize:'0.75rem',color:'#6b7280',display:'flex',gap:'0.5rem',flexWrap:'wrap'}}>
-                    <span>Signed on: {formatTime(checkedIn)}</span>
-                    {checkedOut && <span>Signed off: {formatTime(checkedOut)}</span>}
+                {s.checked_in_at && (
+                  <div style={{marginTop:'0.25rem',fontSize:'0.75rem',color:'#6b7280'}}>
+                    Signed on: {formatTime(s.checked_in_at)}{s.checked_out_at ? ` · Off: ${formatTime(s.checked_out_at)}` : ''}
                   </div>
                 )}
               </div>
