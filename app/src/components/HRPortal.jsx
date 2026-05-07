@@ -1446,17 +1446,6 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
             </div>
           </div>
 
-          {/* Self-employment declaration — accepted once, shown as confirmation */}
-          <div style={{marginTop:'1.5rem',padding:'1rem',background:'#f0fdf4',border:'1px solid #86efac',borderRadius:'8px',fontSize:'0.8125rem',color:'#16a34a',lineHeight:1.6}}>
-            <div style={{display:'flex',alignItems:'center',gap:'0.5rem',marginBottom:'0.25rem'}}>
-              <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M3 7l3 3 5-5" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              <span style={{fontWeight:700}}>Self-Employment Declaration & Terms Accepted</span>
-            </div>
-            <div style={{fontSize:'0.75rem',color:'#374151'}}>
-              Signed electronically by {dbUser?.first_name} {dbUser?.last_name} on {hr?.self_employment_declaration_at ? new Date(hr.self_employment_declaration_at).toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'}) : 'record'}
-            </div>
-          </div>
-
           {/* Bank details */}
           {(form.bank_account_holder || hr?.bank_account_holder) && (
             <div style={{marginTop:'1rem',padding:'0.875rem',background:'#f8fafc',borderRadius:'8px',fontSize:'0.8125rem',color:'#374151'}}>

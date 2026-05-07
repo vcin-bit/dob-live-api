@@ -270,20 +270,8 @@ router.post('/invoice', authenticate, async (req, res, next) => {
         y += 20;
       }
 
-      // Declaration
-      y += 8;
-      if (y > 600) { doc.addPage(); y = 40; }
-      doc.rect(M, y, CW, 0.5).fill('#e2e8f0'); y += 10;
-      doc.fontSize(8).font('Helvetica-Bold').fillColor('#92400e').text('Self-Employment Declaration', M, y); y += 14;
-      doc.fontSize(7).font('Helvetica').fillColor('#6b7280');
-      const decl = `I confirm that I am ${contractor.is_ltd ? 'operating through a limited company' : 'self-employed'} for the purposes of this engagement and that this is not a contract of employment. I am responsible for the payment of my own Income Tax and National Insurance Contributions in accordance with the Income Tax (Earnings and Pensions) Act 2003 and the Social Security Contributions and Benefits Act 1992. I am not entitled to employment rights under the Employment Rights Act 1996. I am responsible for registering with HMRC for Self Assessment and submitting my own tax returns. I hold a valid SIA licence as required under the Private Security Industry Act 2001.`;
-      doc.text(decl, M, y, { width: CW, lineGap: 2 });
-      y += doc.heightOfString(decl, { width: CW, lineGap: 2 }) + 12;
-      doc.fontSize(8).font('Helvetica-Bold').fillColor('#374151')
-        .text(`Signed electronically by ${officer.first_name} ${officer.last_name} on ${today}`, M, y);
-      y += 20;
-
       // Bank details & Payment terms
+      y += 8;
       doc.rect(M, y, CW, 0.5).fill('#e2e8f0'); y += 10;
       if (contractor.bank_account_holder || contractor.bank_sort_code) {
         doc.fontSize(8).font('Helvetica-Bold').fillColor('#374151').text('Bank Details for Payment', M, y); y += 14;
