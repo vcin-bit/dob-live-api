@@ -655,27 +655,32 @@ function HRAuthenticated() {
                     <div>
                       <label style={S.fieldLabel}>Date of Birth</label>
                       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'0.375rem'}}>
-                        <select value={form.date_of_birth ? parseInt(form.date_of_birth.split('-')[2]) : ''} onChange={e => {
-                          const parts = (form.date_of_birth || '--').split('-');
-                          f('date_of_birth', `${parts[0]||'2000'}-${parts[1]||'01'}-${String(e.target.value).padStart(2,'0')}`);
-                        }} style={S.fieldInput}>
-                          <option value="">Day</option>
-                          {Array.from({length:31},(_,i)=>i+1).map(d => <option key={d} value={d}>{d}</option>)}
-                        </select>
-                        <select value={form.date_of_birth ? parseInt(form.date_of_birth.split('-')[1]) : ''} onChange={e => {
-                          const parts = (form.date_of_birth || '--').split('-');
-                          f('date_of_birth', `${parts[0]||'2000'}-${String(e.target.value).padStart(2,'0')}-${parts[2]||'01'}`);
-                        }} style={S.fieldInput}>
-                          <option value="">Month</option>
-                          {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m,i) => <option key={i} value={i+1}>{m}</option>)}
-                        </select>
-                        <select value={form.date_of_birth ? parseInt(form.date_of_birth.split('-')[0]) : ''} onChange={e => {
-                          const parts = (form.date_of_birth || '--').split('-');
-                          f('date_of_birth', `${e.target.value}-${parts[1]||'01'}-${parts[2]||'01'}`);
-                        }} style={S.fieldInput}>
-                          <option value="">Year</option>
-                          {Array.from({length:60},(_,i)=>new Date().getFullYear()-16-i).map(y => <option key={y} value={y}>{y}</option>)}
-                        </select>
+                        {(() => {
+                          const parts = form.date_of_birth ? form.date_of_birth.split('-') : ['','',''];
+                          const selDay = parts[2] ? String(parseInt(parts[2])) : '';
+                          const selMonth = parts[1] ? String(parseInt(parts[1])) : '';
+                          const selYear = parts[0] || '';
+                          return <>
+                            <select value={selDay} onChange={e => {
+                              f('date_of_birth', `${selYear||'2000'}-${(selMonth||'1').padStart(2,'0')}-${e.target.value.padStart(2,'0')}`);
+                            }} style={S.fieldInput}>
+                              <option value="">Day</option>
+                              {Array.from({length:31},(_,i)=>String(i+1)).map(d => <option key={d} value={d}>{d}</option>)}
+                            </select>
+                            <select value={selMonth} onChange={e => {
+                              f('date_of_birth', `${selYear||'2000'}-${e.target.value.padStart(2,'0')}-${(selDay||'1').padStart(2,'0')}`);
+                            }} style={S.fieldInput}>
+                              <option value="">Month</option>
+                              {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m,i) => <option key={i} value={String(i+1)}>{m}</option>)}
+                            </select>
+                            <select value={selYear} onChange={e => {
+                              f('date_of_birth', `${e.target.value}-${(selMonth||'1').padStart(2,'0')}-${(selDay||'1').padStart(2,'0')}`);
+                            }} style={S.fieldInput}>
+                              <option value="">Year</option>
+                              {Array.from({length:60},(_,i)=>String(new Date().getFullYear()-16-i)).map(y => <option key={y} value={y}>{y}</option>)}
+                            </select>
+                          </>;
+                        })()}
                       </div>
                     </div>
                     <div>
