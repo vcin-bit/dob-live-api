@@ -531,7 +531,7 @@ function HRAuthenticated() {
                 </div>
 
                 <div style={S.section}>
-                  <div style={S.sectionTitle}>Address</div>
+                  <div style={S.sectionTitle}>Home Address</div>
                   <div style={{fontSize:'0.875rem',color:'#374151',lineHeight:1.6}}>
                     {hr.address_line_1}{hr.address_line_2 ? `, ${hr.address_line_2}` : ''}<br/>
                     {hr.city}{hr.postcode ? `, ${hr.postcode}` : ''}
@@ -680,7 +680,7 @@ function HRAuthenticated() {
                 )}
 
                 <div style={S.section}>
-                  <div style={S.sectionTitle}>Address</div>
+                  <div style={S.sectionTitle}>Home Address</div>
                   <div style={{marginBottom:'0.75rem'}}>
                     <label style={S.fieldLabel}>Address Line 1</label>
                     <input value={form.address_line_1} onChange={e => f('address_line_1', e.target.value)} style={S.fieldInput} />
