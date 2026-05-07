@@ -654,6 +654,25 @@ function LogEntryScreen({ user, site, shift }) {
           style={S.input} />
       </div>
 
+      {/* Photos */}
+      {createPortal(<input ref={mediaInputRef} type="file" accept="image/*,video/*" multiple style={{position:'absolute',top:0,left:0,width:'1px',height:'1px',opacity:0,pointerEvents:'none'}} onChange={uploadMedia} />, document.body)}
+      <div style={{marginBottom:'12px'}}>
+        <div style={S.label}>PHOTOS</div>
+        <div style={{display:'flex',gap:'7px',flexWrap:'wrap'}}>
+          {form.media.map((m, i) => (
+            <div key={i} style={{width:64,height:64,borderRadius:'8px',background:'#1a2535',border:'1px solid rgba(255,255,255,0.1)',overflow:'hidden',position:'relative'}}>
+              {m.type?.startsWith('image') ? <img src={m.url} style={{width:'100%',height:'100%',objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',color:'rgba(255,255,255,0.4)'}}>VIDEO</div>}
+              <button onClick={() => f('media', form.media.filter((_,j)=>j!==i))} style={{position:'absolute',top:1,right:1,width:16,height:16,background:'rgba(239,68,68,0.9)',borderRadius:'50%',border:'none',color:'#fff',fontSize:10,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>x</button>
+            </div>
+          ))}
+          {uploadingMedia && <div style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)',display:'flex',alignItems:'center',justifyContent:'center'}}><div style={{width:20,height:20,border:'2px solid rgba(255,255,255,0.1)',borderTop:'2px solid #3b82f6',borderRadius:'50%',animation:'spin 1s linear infinite'}}/></div>}
+          <button type="button" onClick={() => mediaInputRef.current?.click()} style={{width:64,height:64,borderRadius:'8px',background:'rgba(255,255,255,0.03)',border:'1.5px dashed rgba(59,130,246,0.35)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'2px'}}>
+            <div style={{fontSize:'22px',color:'rgba(59,130,246,0.5)',lineHeight:1}}>+</div>
+            <div style={{fontSize:'9px',color:'rgba(255,255,255,0.3)',fontWeight:600}}>ADD PHOTO</div>
+          </button>
+        </div>
+      </div>
+
       <button onClick={async () => {
         if (!form.visitor_name.trim() || !form.visitor_who_visiting.trim()) { setError('Name and who visiting are required'); return; }
         setSubmitting(true); setError('');
@@ -663,7 +682,7 @@ function LogEntryScreen({ user, site, shift }) {
             title: `VISITOR — ${form.visitor_name.trim()}`,
             description: `${form.visitor_name.trim()} visiting ${form.visitor_who_visiting.trim()}. ${form.visitor_personnel_count || 1} person(s). Time: ${form.visitor_time_in}.${form.visitor_vehicle_reg ? ' Vehicle: ' + form.visitor_vehicle_reg : ''}${form.visitor_pass_number ? ' Pass: ' + form.visitor_pass_number : ''}${form.description.trim() ? '\n' + form.description.trim() : ''}`,
             occurred_at: new Date().toISOString(),
-            type_data: { visitor_name: form.visitor_name, visitor_who_visiting: form.visitor_who_visiting, visitor_pass_number: form.visitor_pass_number, visitor_vehicle_reg: form.visitor_vehicle_reg, visitor_personnel_count: form.visitor_personnel_count, visitor_time_in: form.visitor_time_in },
+            type_data: { visitor_name: form.visitor_name, visitor_who_visiting: form.visitor_who_visiting, visitor_pass_number: form.visitor_pass_number, visitor_vehicle_reg: form.visitor_vehicle_reg, visitor_personnel_count: form.visitor_personnel_count, visitor_time_in: form.visitor_time_in, ...(form.media.length ? { media: form.media } : {}) },
           });
           // Also create visitor record for on-site tracking
           try {
