@@ -496,13 +496,13 @@ body {
   .auth-logo { margin-bottom: 1.5rem; }
   .mobile-topbar { display: flex; }
   .sidebar-overlay { display: block; }
-  .manager-shell { flex-direction: column; }
+  .manager-shell { flex-direction: column; overflow: visible; height: 100vh; }
   .sidebar {
     position: fixed; top: 0; left: 0; bottom: 0; width: 260px; z-index: 999;
     transform: translateX(-100%); transition: transform 0.25s ease;
   }
   .sidebar.sidebar-open { transform: translateX(0); }
-  .main-content { overflow-y: auto; }
+  .main-content { overflow-y: auto; flex: 1; }
   .officer-shell * { box-sizing: border-box; max-width: 100%; }
   .log-type-label { font-size: 0.625rem; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
