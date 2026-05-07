@@ -348,8 +348,8 @@ router.post('/invoice', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// GET /api/hr/test-email — test SendGrid delivery
-router.get('/test-email', authenticate, async (req, res) => {
+// GET /api/hr/test-email — test SendGrid delivery (no auth needed for testing)
+router.get('/test-email', async (req, res) => {
   try {
     if (!process.env.SENDGRID_API_KEY) return res.json({ error: 'SENDGRID_API_KEY not set' });
     const sg = require('@sendgrid/mail');
