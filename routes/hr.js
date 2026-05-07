@@ -42,6 +42,8 @@ router.put('/', authenticate, async (req, res, next) => {
       bank_name, bank_sort_code, bank_account_number, bank_account_holder,
       employment_status, utr_number,
       company_name, company_address, company_vat_number, company_reg_number,
+      self_employment_declaration, self_employment_declaration_at,
+      terms_accepted, terms_accepted_at,
       gdpr_consent, gdpr_consent_at,
     } = req.body;
 
@@ -68,6 +70,10 @@ router.put('/', authenticate, async (req, res, next) => {
       company_address: company_address || null,
       company_vat_number: company_vat_number || null,
       company_reg_number: company_reg_number || null,
+      self_employment_declaration: self_employment_declaration || false,
+      self_employment_declaration_at: self_employment_declaration_at || null,
+      terms_accepted: terms_accepted || false,
+      terms_accepted_at: terms_accepted_at || null,
       gdpr_consent: gdpr_consent || false,
       gdpr_consent_at: gdpr_consent_at || null,
       updated_at: new Date().toISOString(),
