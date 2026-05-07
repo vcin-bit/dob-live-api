@@ -1098,13 +1098,14 @@ function HRAuthenticated() {
 function MyRosterTab() {
   const [shifts, setShifts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [month, setMonth] = useState(() => { const n = new Date(); return { year: n.getFullYear(), month: n.getMonth() }; });
   const [selectedDate, setSelectedDate] = useState(null);
 
   useEffect(() => {
     api.shifts.list({})
-      .then(res => setShifts(res.data || []))
-      .catch(() => {})
+      .then(res => { console.log('Roster shifts:', res.data?.length); setShifts(res.data || []); })
+      .catch(err => { console.error('Roster fetch error:', err); setError(err.message || 'Failed to load shifts'); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -1148,8 +1149,9 @@ function MyRosterTab() {
     <>
       <div style={{marginBottom:'1rem'}}>
         <h2 style={{fontSize:'1.125rem',fontWeight:700,color:'#111827',margin:'0 0 0.25rem'}}>My Roster</h2>
-        <p style={{fontSize:'0.8125rem',color:'#6b7280',margin:0}}>Tap a day to see shift details.</p>
+        <p style={{fontSize:'0.8125rem',color:'#6b7280',margin:0}}>Tap a day to see shift details. {shifts.length > 0 ? `${shifts.length} shift${shifts.length!==1?'s':''} loaded.` : ''}</p>
       </div>
+      {error && <div style={{background:'#fef2f2',border:'1px solid #fca5a5',borderRadius:'8px',padding:'0.75rem',marginBottom:'1rem',fontSize:'0.8125rem',color:'#dc2626'}}>{error}</div>}
 
       {/* Month nav */}
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.75rem'}}>
