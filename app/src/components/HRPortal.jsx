@@ -1251,7 +1251,7 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
   useEffect(() => {
     setShiftsLoading(true); setShiftsError('');
     api.shifts.list({ status: 'COMPLETED' })
-      .then(res => setShifts(res.data || []))
+      .then(res => { console.log('Hours shifts loaded:', res.data?.length, JSON.stringify(res.data?.map(s=>s.id))); setShifts(res.data || []); })
       .catch(err => { console.error('Shifts load failed:', err); setShiftsError(err.message || 'Failed to load shifts'); })
       .finally(() => setShiftsLoading(false));
   }, []);
@@ -1490,7 +1490,7 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'1.25rem'}}>
         <div>
           <h2 style={{fontSize:'1.125rem',fontWeight:700,color:'#111827',margin:'0 0 0.25rem'}}>Hours Worked</h2>
-          <p style={{fontSize:'0.8125rem',color:'#6b7280',margin:0,lineHeight:1.5}}>Your completed shifts by month.</p>
+          <p style={{fontSize:'0.8125rem',color:'#6b7280',margin:0,lineHeight:1.5}}>Your completed shifts by month.{shifts.length > 0 ? ` ${shifts.length} shift${shifts.length!==1?'s':''} found.` : ''}</p>
         </div>
         {!shiftsLoading && availableMonths.length > 0 && (
           <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}
