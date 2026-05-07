@@ -647,6 +647,12 @@ function LogEntryScreen({ user, site, shift }) {
           <input type="time" value={form.visitor_time_in} onChange={e=>f('visitor_time_in',e.target.value)} style={S.input} />
         </div>
       </div>
+      <div style={{marginBottom:'12px'}}>
+        <div style={S.label}>ADDITIONAL INFO</div>
+        <textarea value={form.description} onChange={e=>f('description',e.target.value)} rows={3}
+          placeholder="e.g. Reason for visit, items brought on site, PPE issued, expected duration, special instructions..."
+          style={S.input} />
+      </div>
 
       <button onClick={async () => {
         if (!form.visitor_name.trim() || !form.visitor_who_visiting.trim()) { setError('Name and who visiting are required'); return; }
@@ -655,7 +661,7 @@ function LogEntryScreen({ user, site, shift }) {
           await api.logs.create({
             site_id: site?.id, shift_id: shift?.id || null, log_type: 'VISITOR',
             title: `VISITOR — ${form.visitor_name.trim()}`,
-            description: `${form.visitor_name.trim()} visiting ${form.visitor_who_visiting.trim()}. ${form.visitor_personnel_count || 1} person(s). Time: ${form.visitor_time_in}.${form.visitor_vehicle_reg ? ' Vehicle: ' + form.visitor_vehicle_reg : ''}${form.visitor_pass_number ? ' Pass: ' + form.visitor_pass_number : ''}`,
+            description: `${form.visitor_name.trim()} visiting ${form.visitor_who_visiting.trim()}. ${form.visitor_personnel_count || 1} person(s). Time: ${form.visitor_time_in}.${form.visitor_vehicle_reg ? ' Vehicle: ' + form.visitor_vehicle_reg : ''}${form.visitor_pass_number ? ' Pass: ' + form.visitor_pass_number : ''}${form.description.trim() ? '\n' + form.description.trim() : ''}`,
             occurred_at: new Date().toISOString(),
             type_data: { visitor_name: form.visitor_name, visitor_who_visiting: form.visitor_who_visiting, visitor_pass_number: form.visitor_pass_number, visitor_vehicle_reg: form.visitor_vehicle_reg, visitor_personnel_count: form.visitor_personnel_count, visitor_time_in: form.visitor_time_in },
           });
