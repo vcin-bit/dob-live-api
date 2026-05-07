@@ -1292,6 +1292,7 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
 
   async function sendInvoice(ref) {
     setInvoiceSending(true);
+    console.log('[Invoice] Sending with', selectedShifts.length, 'shifts, selectedIds:', [...selectedIds]);
     try {
       const invoiceData = {
         invoiceRef: ref,
