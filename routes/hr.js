@@ -25,6 +25,25 @@ router.get('/test-email', async (req, res) => {
   }
 });
 
+// GET /api/hr/test-email
+router.get('/test-email', async (req, res) => {
+  try {
+    if (!process.env.SENDGRID_API_KEY) return res.json({ error: 'SENDGRID_API_KEY not set' });
+    const sg = require('@sendgrid/mail');
+    sg.setApiKey(process.env.SENDGRID_API_KEY);
+    await sg.send({
+      to: 'accounts@risksecured.co.uk',
+      cc: 'david@risksecured.co.uk',
+      from: { email: 'onboarding@doblive.co.uk', name: 'DOB Live' },
+      subject: `DOB Live Test — ${new Date().toLocaleTimeString('en-GB')}`,
+      html: '<p>Test email from onboarding@doblive.co.uk to accounts@risksecured.co.uk</p>',
+    });
+    res.json({ success: true, from: 'onboarding@doblive.co.uk' });
+  } catch (err) {
+    res.json({ success: false, error: err.message, details: err.response?.body || null });
+  }
+});
+
 // GET /api/hr — get my HR record
 router.get('/', authenticate, async (req, res, next) => {
   try {
@@ -320,7 +339,7 @@ router.post('/invoice', authenticate, async (req, res, next) => {
     if (process.env.SENDGRID_API_KEY) {
       const sg = require('@sendgrid/mail');
       sg.setApiKey(process.env.SENDGRID_API_KEY);
-      const fromEmail = process.env.RS_INSPECTION_FROM_EMAIL || 'reports@risksecured.co.uk';
+      const fromEmail = 'onboarding@doblive.co.uk';
       const toEmail = 'accounts@risksecured.co.uk';
       // CC the officer if they have a personal email on file
       const { data: hrRec } = await supabase.from('officer_hr').select('personal_email').eq('user_id', officer.id).maybeSingle();
