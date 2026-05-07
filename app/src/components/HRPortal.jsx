@@ -331,6 +331,7 @@ function HRAuthenticated() {
     { key:'nok', label:'Next of Kin' },
     { key:'documents', label:'Documents' },
     { key:'licence', label:'Licence' },
+    { key:'roster', label:'My Roster' },
     { key:'hours', label:'Hours' },
     { key:'updates', label:'Updates' },
     { key:'training', label:'Training' },
@@ -987,6 +988,9 @@ function HRAuthenticated() {
           </>
         )}
 
+        {/* ── MY ROSTER TAB ──────────────────────────────────────────── */}
+        {tab === 'roster' && <MyRosterTab />}
+
         {/* ── HOURS TAB ──────────────────────────────────────────────── */}
         {tab === 'hours' && (
           <HoursTab
@@ -1088,6 +1092,110 @@ function HRAuthenticated() {
         )}
       </div>
     </div>
+  );
+}
+
+function MyRosterTab() {
+  const [shifts, setShifts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [view, setView] = useState('upcoming'); // upcoming | past
+
+  useEffect(() => {
+    api.shifts.list({})
+      .then(res => setShifts(res.data || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const now = new Date();
+  const upcoming = shifts.filter(s => ['SCHEDULED','ACTIVE'].includes(s.status) || new Date(s.end_time || s.start_time) >= now).sort((a,b) => new Date(a.start_time) - new Date(b.start_time));
+  const past = shifts.filter(s => s.status === 'COMPLETED' || (s.status !== 'ACTIVE' && s.status !== 'SCHEDULED' && new Date(s.end_time || s.start_time) < now)).sort((a,b) => new Date(b.start_time) - new Date(a.start_time));
+  const displayed = view === 'upcoming' ? upcoming : past;
+
+  const statusColor = { SCHEDULED: '#3b82f6', ACTIVE: '#16a34a', COMPLETED: '#6b7280' };
+  const statusLabel = { SCHEDULED: 'Scheduled', ACTIVE: 'On Duty', COMPLETED: 'Completed' };
+
+  function formatShiftDate(d) {
+    return new Date(d).toLocaleDateString('en-GB', { weekday:'short', day:'2-digit', month:'short', timeZone:'Europe/London' });
+  }
+  function formatTime(d) {
+    return new Date(d).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', timeZone:'Europe/London' });
+  }
+
+  if (loading) return <div style={{padding:'2rem',textAlign:'center',color:'#9ca3af'}}>Loading roster...</div>;
+
+  return (
+    <>
+      <div style={{marginBottom:'1rem'}}>
+        <h2 style={{fontSize:'1.125rem',fontWeight:700,color:'#111827',margin:'0 0 0.25rem'}}>My Roster</h2>
+        <p style={{fontSize:'0.8125rem',color:'#6b7280',margin:0}}>Your scheduled and completed shifts.</p>
+      </div>
+
+      {/* Toggle */}
+      <div style={{display:'flex',gap:'2px',background:'#f3f4f6',borderRadius:'8px',padding:'3px',marginBottom:'1rem'}}>
+        {[['upcoming','Upcoming'],['past','Previous']].map(([k,l]) => (
+          <button key={k} onClick={() => setView(k)}
+            style={{flex:1,padding:'0.5rem',borderRadius:'6px',border:'none',cursor:'pointer',fontSize:'0.8125rem',fontWeight:600,
+              background: view===k ? '#fff' : 'transparent', color: view===k ? '#111827' : '#9ca3af',
+              boxShadow: view===k ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'}}>
+            {l} ({k === 'upcoming' ? upcoming.length : past.length})
+          </button>
+        ))}
+      </div>
+
+      {displayed.length === 0 ? (
+        <div style={{padding:'2rem',textAlign:'center',background:'#f9fafb',borderRadius:'10px',border:'1px dashed #d1d5db'}}>
+          <div style={{fontSize:'0.875rem',color:'#9ca3af'}}>{view === 'upcoming' ? 'No upcoming shifts scheduled.' : 'No previous shifts.'}</div>
+        </div>
+      ) : (
+        <div style={{display:'flex',flexDirection:'column',gap:'0.5rem'}}>
+          {displayed.map(s => {
+            const start = s.start_time;
+            const end = s.end_time;
+            const checkedIn = s.checked_in_at;
+            const checkedOut = s.checked_out_at;
+            const status = s.status || 'SCHEDULED';
+            const hrs = (checkedIn && checkedOut) ? ((new Date(checkedOut) - new Date(checkedIn)) / 3600000).toFixed(1) : end ? ((new Date(end) - new Date(start)) / 3600000).toFixed(1) : '—';
+            const isToday = new Date(start).toDateString() === now.toDateString();
+
+            return (
+              <div key={s.id} style={{background:'#fff',border: isToday ? '2px solid #3b82f6' : '1px solid #e5e7eb',borderRadius:'10px',padding:'0.875rem',position:'relative'}}>
+                {isToday && <div style={{position:'absolute',top:'-1px',right:'12px',background:'#3b82f6',color:'#fff',fontSize:'0.625rem',fontWeight:700,padding:'2px 8px',borderRadius:'0 0 6px 6px',textTransform:'uppercase',letterSpacing:'0.05em'}}>Today</div>}
+
+                {/* Date + Status */}
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.5rem'}}>
+                  <div style={{fontSize:'0.9375rem',fontWeight:700,color:'#111827'}}>{formatShiftDate(start)}</div>
+                  <div style={{padding:'0.125rem 0.5rem',background:`${statusColor[status]}15`,border:`1px solid ${statusColor[status]}35`,borderRadius:'6px',fontSize:'0.6875rem',fontWeight:700,color:statusColor[status]}}>
+                    {statusLabel[status] || status}
+                  </div>
+                </div>
+
+                {/* Site */}
+                <div style={{fontSize:'0.875rem',fontWeight:600,color:'#374151',marginBottom:'0.375rem'}}>{s.site?.name || 'Site'}</div>
+
+                {/* Times */}
+                <div style={{display:'flex',gap:'1rem',fontSize:'0.8125rem',color:'#6b7280'}}>
+                  <div>
+                    <span style={{fontWeight:600,color:'#374151'}}>{formatTime(start)}</span>
+                    <span> – </span>
+                    <span style={{fontWeight:600,color:'#374151'}}>{end ? formatTime(end) : 'TBC'}</span>
+                  </div>
+                  <div style={{color:'#9ca3af'}}>{hrs}h</div>
+                </div>
+
+                {/* Actual times if different */}
+                {checkedIn && (
+                  <div style={{marginTop:'0.375rem',fontSize:'0.75rem',color:'#6b7280',display:'flex',gap:'0.5rem',flexWrap:'wrap'}}>
+                    <span>Signed on: {formatTime(checkedIn)}</span>
+                    {checkedOut && <span>Signed off: {formatTime(checkedOut)}</span>}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </>
   );
 }
 
