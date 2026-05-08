@@ -1251,7 +1251,18 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
   useEffect(() => {
     setShiftsLoading(true); setShiftsError('');
     api.shifts.list({ status: 'COMPLETED' })
-      .then(res => { console.log('Hours shifts loaded:', res.data?.length, JSON.stringify(res.data?.map(s=>s.id))); setShifts(res.data || []); })
+      .then(res => {
+        const data = res.data || [];
+        setShifts(data);
+        // Default to most recent month with shifts
+        if (data.length > 0) {
+          const months = [...new Set(data.map(s => {
+            const d = new Date(s.start_time);
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+          }))].sort().reverse();
+          if (months.length > 0) setSelectedMonth(months[0]);
+        }
+      })
       .catch(err => { console.error('Shifts load failed:', err); setShiftsError(err.message || 'Failed to load shifts'); })
       .finally(() => setShiftsLoading(false));
   }, []);
