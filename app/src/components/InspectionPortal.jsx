@@ -161,9 +161,9 @@ function InspectAuthenticated() {
       try {
         const [userRes, sitesRes] = await Promise.all([api.users.me(), api.sites.list()]);
         setDbUser(userRes.data);
-        const aldiSites = (sitesRes.data || []).filter(s => s.client_name === 'Aldi Stores Ltd');
-        setSites(aldiSites);
-        if (aldiSites.length === 1) setForm(f => ({ ...f, site_id: aldiSites[0].id }));
+        const inspectionSites = (sitesRes.data || []).filter(s => s.service_types?.includes('Property Inspection') || s.client_name === 'Aldi Stores Ltd');
+        setSites(inspectionSites);
+        if (inspectionSites.length === 1) setForm(f => ({ ...f, site_id: inspectionSites[0].id }));
       } catch (e) { console.error(e); }
       finally { setLoading(false); }
     }
