@@ -193,6 +193,19 @@ export const api = {
   },
 
   // Company Updates
+  personnel: {
+    get: (userId) => request(`/api/personnel/${userId}`),
+    addEmployment: (userId, data) => request(`/api/personnel/${userId}/employment`, { method: 'POST', body: JSON.stringify(data) }),
+    updateEmployment: (userId, id, data) => request(`/api/personnel/${userId}/employment/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    deleteEmployment: (userId, id) => request(`/api/personnel/${userId}/employment/${id}`, { method: 'DELETE' }),
+    addAddress: (userId, data) => request(`/api/personnel/${userId}/address`, { method: 'POST', body: JSON.stringify(data) }),
+    deleteAddress: (userId, id) => request(`/api/personnel/${userId}/address/${id}`, { method: 'DELETE' }),
+    setVetting: (userId, data) => request(`/api/personnel/${userId}/vetting`, { method: 'POST', body: JSON.stringify(data) }),
+    addNote: (userId, content) => request(`/api/personnel/${userId}/notes`, { method: 'POST', body: JSON.stringify({ content }) }),
+    deleteNote: (userId, id) => request(`/api/personnel/${userId}/notes/${id}`, { method: 'DELETE' }),
+    updateVettingStatus: (userId, status) => request(`/api/personnel/${userId}/vetting-status`, { method: 'PATCH', body: JSON.stringify({ vetting_status: status }) }),
+  },
+
   updates: {
     list: () => request('/api/updates'),
     create: (data) => request('/api/updates', { method: 'POST', body: JSON.stringify(data) }),

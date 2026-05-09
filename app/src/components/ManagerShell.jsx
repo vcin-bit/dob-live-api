@@ -9,6 +9,7 @@ import { DocumentsScreen, PatrolRoutesScreen, ShiftPatternsScreen, RatesScreen, 
 import { PortalSettingsModal } from './Portal';
 import { ContractsScreen } from './ContractsScreen';
 import { ManagerUpdatesPanel } from './CompanyUpdates';
+import { PersonnelFilesScreen } from './PersonnelFiles';
 import {
   HomeIcon, ClipboardDocumentListIcon, MapPinIcon, ClockIcon,
   UserGroupIcon, Cog6ToothIcon, PlusIcon, ArrowRightOnRectangleIcon,
@@ -52,6 +53,7 @@ function ManagerApp({ user }) {
           <Route path="/messages"     element={<MessagesScreen user={user} />} />
           <Route path="/contracts"   element={<ContractsScreen user={user} />} />
           <Route path="/updates"     element={<div className="page-content"><ManagerUpdatesPanel /></div>} />
+          <Route path="/personnel"  element={<PersonnelFilesScreen user={user} />} />
           <Route path="/portal-settings" element={<PortalManagement user={user} />} />
           <Route path="*"          element={<Navigate to="/dashboard" replace />} />
         </Routes>
@@ -116,6 +118,7 @@ function ManagerSidebar({ user, open, onClose }) {
       label: 'HR', section: 'hr', color: '#ec4899',
       items: [
         { to: '/team',      icon: UsersIcon,                 label: 'Team' },
+        { to: '/personnel', icon: DocumentTextIcon,          label: 'Personnel Files' },
         { to: '/rates',     icon: ChartBarIcon,              label: 'Pay Rates' },
         { to: '/updates',   icon: DocumentTextIcon,          label: 'Company Updates', badge: commentCount || null },
       ]
