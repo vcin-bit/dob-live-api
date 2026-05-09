@@ -515,8 +515,9 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift, onPatro
         const done = new Set();
         (todayResponse.data || []).forEach(l => { if (l.type_data?.scheduled_task_id) done.add(l.type_data.scheduled_task_id); });
         setCompletedTaskIds(done);
-        // Set last check call from server data
-        const lastSafetyCheck = (todayResponse.data || []).find(l => l.type_data?.check_call === true && !l.type_data?.missed_check);
+        // Set last check call from server data — only from current shift
+        const shiftStart = shift?.checked_in_at || shift?.start_time;
+        const lastSafetyCheck = (todayResponse.data || []).find(l => l.type_data?.check_call === true && !l.type_data?.missed_check && shiftStart && new Date(l.occurred_at) >= new Date(shiftStart));
         if (lastSafetyCheck) setLastCheckCall(new Date(lastSafetyCheck.occurred_at));
         // Load client tasks for this site
         try {
