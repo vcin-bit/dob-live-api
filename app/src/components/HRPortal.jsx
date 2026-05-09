@@ -1661,24 +1661,46 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
                 </div>
               )}
 
-              {/* Summary + Invoice button */}
-              <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:'10px',padding:'1rem',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                <div>
-                  <div style={{fontSize:'0.6875rem',color:'#6b7280',textTransform:'uppercase',fontWeight:600}}>{formatMonth(selectedMonth)}</div>
-                  <div style={{fontSize:'1rem',fontWeight:700,color:'#111827'}}>
-                    {isSelfEmployed && selectedShifts.length > 0
-                      ? `${selectedShifts.length} selected · ${totalHours.toFixed(1)}h · £${totalAmount.toFixed(2)}`
-                      : `${monthShifts.reduce((sum, s) => sum + getHours(s), 0).toFixed(1)} hours · ${monthShifts.length} shift${monthShifts.length!==1?'s':''}`
-                    }
+              {/* Summary + Actions */}
+              {(() => {
+                const allAgreed = monthShifts.length > 0 && monthShifts.every(s => confirmedIds.has(s.id));
+                const agreedCount = monthShifts.filter(s => confirmedIds.has(s.id)).length;
+                const totalMonthHrs = monthShifts.reduce((sum, s) => sum + getHours(s), 0);
+                return (
+                  <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:'10px',padding:'1rem'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom: (hasDisputes || (isSelfEmployed && allAgreed)) ? '0.75rem' : 0}}>
+                      <div>
+                        <div style={{fontSize:'0.6875rem',color:'#6b7280',textTransform:'uppercase',fontWeight:600}}>{formatMonth(selectedMonth)}</div>
+                        <div style={{fontSize:'1rem',fontWeight:700,color:'#111827'}}>{totalMonthHrs.toFixed(1)} hours · {monthShifts.length} shift{monthShifts.length!==1?'s':''}</div>
+                        <div style={{fontSize:'0.75rem',color: allAgreed ? '#16a34a' : '#9ca3af',fontWeight:600}}>{agreedCount}/{monthShifts.length} agreed</div>
+                      </div>
+                      {allAgreed && !hasDisputes && (
+                        <div style={{display:'flex',alignItems:'center',gap:'0.375rem',color:'#16a34a',fontSize:'0.8125rem',fontWeight:700}}>
+                          <svg width="18" height="18" viewBox="0 0 14 14" fill="none"><path d="M3 7l3 3 5-5" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          All Hours Agreed
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Invoice button — only when all agreed and no disputes */}
+                    {isSelfEmployed && allAgreed && !hasDisputes && selectedShifts.length > 0 && (
+                      <button onClick={() => { setInvoiceRef(''); setInvoiceSent(false); setShowInvoice(true); }}
+                        style={{width:'100%',padding:'0.875rem',background:'#1a52a8',border:'none',borderRadius:'8px',color:'#fff',fontSize:'0.875rem',fontWeight:700,cursor:'pointer'}}>
+                        Generate Invoice ({selectedShifts.length} shifts)
+                      </button>
+                    )}
+
+                    {/* Prompt to agree or select for invoice */}
+                    {isSelfEmployed && allAgreed && !hasDisputes && selectedShifts.length === 0 && (
+                      <div style={{fontSize:'0.8125rem',color:'#6b7280',textAlign:'center'}}>Tick the <strong style={{color:'#1a52a8'}}>Inv</strong> boxes above to select shifts for invoicing.</div>
+                    )}
+
+                    {!allAgreed && !hasDisputes && (
+                      <div style={{fontSize:'0.8125rem',color:'#9ca3af',textAlign:'center'}}>Please tick <strong style={{color:'#16a34a'}}>Agree</strong> on each shift to confirm your hours are correct, or enter a dispute.</div>
+                    )}
                   </div>
-                </div>
-                {isSelfEmployed && selectedShifts.length > 0 && (
-                  <button onClick={() => { setInvoiceRef(''); setInvoiceSent(false); setShowInvoice(true); }}
-                    style={{padding:'0.75rem 1.25rem',background:'#1a52a8',border:'none',borderRadius:'8px',color:'#fff',fontSize:'0.8125rem',fontWeight:700,cursor:'pointer'}}>
-                    Generate Invoice ({selectedShifts.length})
-                  </button>
-                )}
-              </div>
+                );
+              })()}
             </>
           )}
         </>
