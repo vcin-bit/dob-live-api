@@ -89,8 +89,55 @@ function PersonnelFile({ userId, officers, onBack, currentUser }) {
   const vettingPct = Math.round((vettingComplete / vettingTotal) * 100);
   const vettingStatus = hr?.vetting_status || 'NOT_STARTED';
 
+  const [editForm, setEditForm] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  function startEdit() {
+    setEditForm({
+      first_name: officer.first_name || '', last_name: officer.last_name || '',
+      email: officer.email || '', phone: officer.phone || '',
+      sia_licence_number: officer.sia_licence_number || '', sia_licence_type: officer.sia_licence_type || '',
+      sia_expiry_date: officer.sia_expiry_date ? officer.sia_expiry_date.split('T')[0] : '',
+      // HR fields
+      nok_name: hr?.nok_name || '', nok_relationship: hr?.nok_relationship || '', nok_phone: hr?.nok_phone || '',
+      address_line_1: hr?.address_line_1 || '', address_line_2: hr?.address_line_2 || '', city: hr?.city || '', postcode: hr?.postcode || '',
+      date_of_birth: hr?.date_of_birth ? hr.date_of_birth.split('T')[0] : '', ni_number: hr?.ni_number || '',
+      personal_email: hr?.personal_email || '',
+      bank_name: hr?.bank_name || '', bank_sort_code: hr?.bank_sort_code || '', bank_account_number: hr?.bank_account_number || '', bank_account_holder: hr?.bank_account_holder || '',
+      employment_status: hr?.employment_status || '', utr_number: hr?.utr_number || '',
+      nationality: hr?.nationality || '', right_to_work_status: hr?.right_to_work_status || '',
+    });
+  }
+
+  async function saveEdit() {
+    if (!editForm) return;
+    setSaving(true);
+    try {
+      // Update user record
+      await api.users.update(userId, {
+        first_name: editForm.first_name, last_name: editForm.last_name, phone: editForm.phone,
+        sia_licence_number: editForm.sia_licence_number || null, sia_licence_type: editForm.sia_licence_type || null,
+        sia_expiry_date: editForm.sia_expiry_date || null,
+      });
+      // Update HR record
+      await api.personnel.updateHR(userId, {
+        nok_name: editForm.nok_name, nok_relationship: editForm.nok_relationship, nok_phone: editForm.nok_phone,
+        address_line_1: editForm.address_line_1, address_line_2: editForm.address_line_2, city: editForm.city, postcode: editForm.postcode,
+        date_of_birth: editForm.date_of_birth, ni_number: editForm.ni_number, personal_email: editForm.personal_email,
+        bank_name: editForm.bank_name, bank_sort_code: editForm.bank_sort_code, bank_account_number: editForm.bank_account_number, bank_account_holder: editForm.bank_account_holder,
+        employment_status: editForm.employment_status, utr_number: editForm.utr_number,
+        nationality: editForm.nationality, right_to_work_status: editForm.right_to_work_status,
+        gdpr_consent: hr?.gdpr_consent || false, gdpr_consent_at: hr?.gdpr_consent_at || null,
+      });
+      setEditForm(null);
+      load();
+    } catch (err) { alert('Save failed: ' + err.message); }
+    finally { setSaving(false); }
+  }
+
   const tabs = [
     { key: 'overview', label: 'Overview' },
+    { key: 'details', label: 'Details' },
     { key: 'employment', label: 'Employment' },
     { key: 'addresses', label: 'Addresses' },
     { key: 'vetting', label: 'BS7858' },
@@ -242,6 +289,157 @@ function PersonnelFile({ userId, officers, onBack, currentUser }) {
                   </div>
                 ))}
               </div>
+            )}
+          </>
+        )}
+
+        {/* ── DETAILS (EDITABLE) ──────────────────────────────── */}
+        {tab === 'details' && (
+          <>
+            {!editForm ? (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <div style={{ fontWeight: 700 }}>Personal Details</div>
+                  <button className="btn btn-primary btn-sm" onClick={startEdit}>Edit</button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  {[
+                    ['Name', `${officer.first_name} ${officer.last_name}`],
+                    ['Email', officer.email],
+                    ['Phone', officer.phone || '—'],
+                    ['DOB', hr?.date_of_birth ? fmtDate(hr.date_of_birth) : '—'],
+                    ['NI Number', hr?.ni_number || '—'],
+                    ['Personal Email', hr?.personal_email || '—'],
+                    ['Nationality', hr?.nationality || '—'],
+                    ['Right to Work', hr?.right_to_work_status || '—'],
+                    ['Employment Status', hr?.employment_status === 'self_employed' ? 'Self-Employed' : hr?.employment_status === 'ltd_company' ? 'Ltd Company' : hr?.employment_status === 'employed' ? 'Employed (PAYE)' : '—'],
+                    ['UTR', hr?.utr_number || '—'],
+                  ].map(([label, value], i) => (
+                    <div key={i} className="card" style={{ padding: '0.75rem' }}>
+                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', marginBottom: '0.25rem' }}>{label}</div>
+                      <div style={{ fontSize: '0.875rem', fontWeight: 500 }}>{value}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop: '1rem' }}>
+                  <div style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Home Address</div>
+                  <div className="card" style={{ padding: '0.75rem' }}>
+                    <div>{hr?.address_line_1 || '—'}{hr?.address_line_2 ? `, ${hr.address_line_2}` : ''}</div>
+                    <div style={{ color: 'var(--text-2)' }}>{hr?.city || ''} {hr?.postcode || ''}</div>
+                  </div>
+                </div>
+                <div style={{ marginTop: '1rem' }}>
+                  <div style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Next of Kin</div>
+                  <div className="card" style={{ padding: '0.75rem' }}>
+                    <div style={{ fontWeight: 600 }}>{hr?.nok_name || '—'}</div>
+                    <div style={{ color: 'var(--text-2)', fontSize: '0.8125rem' }}>{hr?.nok_relationship || '—'} · {hr?.nok_phone || '—'}</div>
+                  </div>
+                </div>
+                <div style={{ marginTop: '1rem' }}>
+                  <div style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Bank Details</div>
+                  <div className="card" style={{ padding: '0.75rem' }}>
+                    <div style={{ fontWeight: 600 }}>{hr?.bank_account_holder || '—'}</div>
+                    <div style={{ color: 'var(--text-2)', fontSize: '0.8125rem' }}>{hr?.bank_name || '—'} · {hr?.bank_sort_code || '—'} · {hr?.bank_account_number || '—'}</div>
+                  </div>
+                </div>
+                <div style={{ marginTop: '1rem' }}>
+                  <div style={{ fontWeight: 700, marginBottom: '0.75rem' }}>SIA Licence</div>
+                  <div className="card" style={{ padding: '0.75rem' }}>
+                    <div style={{ fontWeight: 600 }}>{officer.sia_licence_number || '—'}</div>
+                    <div style={{ color: 'var(--text-2)', fontSize: '0.8125rem' }}>{officer.sia_licence_type || '—'} · Exp: {officer.sia_expiry_date ? fmtDate(officer.sia_expiry_date) : '—'}</div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <div style={{ fontWeight: 700 }}>Edit Personal Details</div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div className="field"><label className="label">First Name</label><input className="input" value={editForm.first_name} onChange={e => setEditForm(f => ({ ...f, first_name: e.target.value }))} /></div>
+                  <div className="field"><label className="label">Last Name</label><input className="input" value={editForm.last_name} onChange={e => setEditForm(f => ({ ...f, last_name: e.target.value }))} /></div>
+                  <div className="field"><label className="label">Phone</label><input className="input" value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} /></div>
+                  <div className="field"><label className="label">Personal Email</label><input className="input" value={editForm.personal_email} onChange={e => setEditForm(f => ({ ...f, personal_email: e.target.value }))} /></div>
+                  <div className="field"><label className="label">Date of Birth</label><input type="date" className="input" value={editForm.date_of_birth} onChange={e => setEditForm(f => ({ ...f, date_of_birth: e.target.value }))} /></div>
+                  <div className="field"><label className="label">NI Number</label><input className="input" value={editForm.ni_number} onChange={e => setEditForm(f => ({ ...f, ni_number: e.target.value.toUpperCase() }))} /></div>
+                  <div className="field"><label className="label">Nationality</label><input className="input" value={editForm.nationality} onChange={e => setEditForm(f => ({ ...f, nationality: e.target.value }))} placeholder="e.g. British" /></div>
+                  <div className="field"><label className="label">Right to Work</label>
+                    <select className="input" value={editForm.right_to_work_status} onChange={e => setEditForm(f => ({ ...f, right_to_work_status: e.target.value }))}>
+                      <option value="">Select...</option>
+                      <option value="British Citizen">British Citizen</option>
+                      <option value="EU Settled Status">EU Settled Status</option>
+                      <option value="EU Pre-Settled Status">EU Pre-Settled Status</option>
+                      <option value="Work Visa">Work Visa</option>
+                      <option value="Indefinite Leave">Indefinite Leave to Remain</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div className="field"><label className="label">Employment Status</label>
+                    <select className="input" value={editForm.employment_status} onChange={e => setEditForm(f => ({ ...f, employment_status: e.target.value }))}>
+                      <option value="">Select...</option>
+                      <option value="employed">Employed (PAYE)</option>
+                      <option value="self_employed">Self-Employed</option>
+                      <option value="ltd_company">Ltd Company</option>
+                    </select>
+                  </div>
+                  {(editForm.employment_status === 'self_employed' || editForm.employment_status === 'ltd_company') && (
+                    <div className="field"><label className="label">UTR Number</label><input className="input" value={editForm.utr_number} onChange={e => setEditForm(f => ({ ...f, utr_number: e.target.value }))} /></div>
+                  )}
+                </div>
+
+                <div style={{ borderTop: '1px solid var(--border)', marginTop: '1rem', paddingTop: '1rem' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Home Address</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                    <div className="field" style={{ gridColumn: '1/-1' }}><label className="label">Address Line 1</label><input className="input" value={editForm.address_line_1} onChange={e => setEditForm(f => ({ ...f, address_line_1: e.target.value }))} /></div>
+                    <div className="field" style={{ gridColumn: '1/-1' }}><label className="label">Address Line 2</label><input className="input" value={editForm.address_line_2} onChange={e => setEditForm(f => ({ ...f, address_line_2: e.target.value }))} /></div>
+                    <div className="field"><label className="label">City</label><input className="input" value={editForm.city} onChange={e => setEditForm(f => ({ ...f, city: e.target.value }))} /></div>
+                    <div className="field"><label className="label">Postcode</label><input className="input" value={editForm.postcode} onChange={e => setEditForm(f => ({ ...f, postcode: e.target.value }))} /></div>
+                  </div>
+                </div>
+
+                <div style={{ borderTop: '1px solid var(--border)', marginTop: '1rem', paddingTop: '1rem' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Next of Kin</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                    <div className="field"><label className="label">Name</label><input className="input" value={editForm.nok_name} onChange={e => setEditForm(f => ({ ...f, nok_name: e.target.value }))} /></div>
+                    <div className="field"><label className="label">Relationship</label>
+                      <select className="input" value={editForm.nok_relationship} onChange={e => setEditForm(f => ({ ...f, nok_relationship: e.target.value }))}>
+                        <option value="">Select...</option>
+                        {['Spouse','Partner','Parent','Sibling','Child','Friend','Other'].map(r => <option key={r} value={r}>{r}</option>)}
+                      </select>
+                    </div>
+                    <div className="field"><label className="label">Phone</label><input className="input" value={editForm.nok_phone} onChange={e => setEditForm(f => ({ ...f, nok_phone: e.target.value }))} /></div>
+                  </div>
+                </div>
+
+                <div style={{ borderTop: '1px solid var(--border)', marginTop: '1rem', paddingTop: '1rem' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Bank Details</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                    <div className="field"><label className="label">Account Holder</label><input className="input" value={editForm.bank_account_holder} onChange={e => setEditForm(f => ({ ...f, bank_account_holder: e.target.value }))} /></div>
+                    <div className="field"><label className="label">Bank Name</label><input className="input" value={editForm.bank_name} onChange={e => setEditForm(f => ({ ...f, bank_name: e.target.value }))} /></div>
+                    <div className="field"><label className="label">Sort Code</label><input className="input" value={editForm.bank_sort_code} onChange={e => setEditForm(f => ({ ...f, bank_sort_code: e.target.value }))} /></div>
+                    <div className="field"><label className="label">Account Number</label><input className="input" value={editForm.bank_account_number} onChange={e => setEditForm(f => ({ ...f, bank_account_number: e.target.value }))} /></div>
+                  </div>
+                </div>
+
+                <div style={{ borderTop: '1px solid var(--border)', marginTop: '1rem', paddingTop: '1rem' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>SIA Licence</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+                    <div className="field"><label className="label">Licence Number</label><input className="input" value={editForm.sia_licence_number} onChange={e => setEditForm(f => ({ ...f, sia_licence_number: e.target.value }))} /></div>
+                    <div className="field"><label className="label">Licence Type</label>
+                      <select className="input" value={editForm.sia_licence_type} onChange={e => setEditForm(f => ({ ...f, sia_licence_type: e.target.value }))}>
+                        <option value="">Select...</option>
+                        {['Security Guarding','Door Supervisor','CCTV Operator','Close Protection','Vehicle Immobiliser','Key Holding'].map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+                    <div className="field"><label className="label">Expiry Date</label><input type="date" className="input" value={editForm.sia_expiry_date} onChange={e => setEditForm(f => ({ ...f, sia_expiry_date: e.target.value }))} /></div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.5rem' }}>
+                  <button className="btn btn-secondary" onClick={() => setEditForm(null)}>Cancel</button>
+                  <button className="btn btn-primary" onClick={saveEdit} disabled={saving}>{saving ? 'Saving...' : 'Save All Changes'}</button>
+                </div>
+              </>
             )}
           </>
         )}

@@ -204,6 +204,7 @@ export const api = {
     addNote: (userId, content) => request(`/api/personnel/${userId}/notes`, { method: 'POST', body: JSON.stringify({ content }) }),
     deleteNote: (userId, id) => request(`/api/personnel/${userId}/notes/${id}`, { method: 'DELETE' }),
     updateVettingStatus: (userId, status) => request(`/api/personnel/${userId}/vetting-status`, { method: 'PATCH', body: JSON.stringify({ vetting_status: status }) }),
+    updateHR: (userId, data) => request(`/api/personnel/${userId}/hr`, { method: 'PUT', body: JSON.stringify(data) }),
   },
 
   updates: {

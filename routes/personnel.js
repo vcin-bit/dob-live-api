@@ -125,6 +125,23 @@ router.delete('/:userId/notes/:id', authenticate, requireRole(...HR_ROLES), asyn
   } catch (err) { next(err); }
 });
 
+// ── Update HR record on behalf of officer ────────────────────────────────────
+router.put('/:userId/hr', authenticate, requireRole(...HR_ROLES), async (req, res, next) => {
+  try {
+    const allowed = ['nok_name','nok_relationship','nok_phone','address_line_1','address_line_2','city','postcode',
+      'date_of_birth','ni_number','personal_email','bank_name','bank_sort_code','bank_account_number','bank_account_holder',
+      'employment_status','utr_number','company_name','company_address','company_vat_number','company_reg_number',
+      'nationality','right_to_work_status','right_to_work_expiry','gdpr_consent','gdpr_consent_at',
+      'self_employment_declaration','self_employment_declaration_at','terms_accepted','terms_accepted_at'];
+    const record = { user_id: req.params.userId, company_id: req.user.company_id, updated_at: new Date().toISOString() };
+    allowed.forEach(k => { if (req.body[k] !== undefined) record[k] = req.body[k] || null; });
+    const { data, error } = await supabase.from('officer_hr')
+      .upsert(record, { onConflict: 'user_id' }).select().single();
+    if (error) throw error;
+    res.json({ data });
+  } catch (err) { next(err); }
+});
+
 // ── Vetting Status Update ────────────────────────────────────────────────────
 router.patch('/:userId/vetting-status', authenticate, requireRole(...HR_ROLES), async (req, res, next) => {
   try {
