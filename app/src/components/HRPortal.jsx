@@ -1546,11 +1546,10 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
 
       {!shiftsLoading && shifts.length > 0 && (
         <>
-          <div style={{background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:'8px',padding:'0.875rem',fontSize:'0.8125rem',color:'#1e40af',lineHeight:1.5,marginBottom:'1rem'}}>
-            <strong>{formatMonth(selectedMonth)}</strong> — Review your shifts below.
-            <span style={{color:'#16a34a',fontWeight:600}}> ✓ Tick "Agree"</span> to confirm hours are correct.
-            If hours are wrong, enter your actual hours and tap <span style={{color:'#dc2626',fontWeight:600}}>Send Wage Query</span>.
-            {isSelfEmployed && <> Use <span style={{color:'#1a52a8',fontWeight:600}}>Inv</span> checkboxes to select shifts for invoicing.</>}
+          <div style={{background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:'8px',padding:'0.875rem',fontSize:'0.8125rem',color:'#1e40af',lineHeight:1.6,marginBottom:'1rem'}}>
+            <strong>{formatMonth(selectedMonth)}</strong> — Review each shift below.<br/>
+            Tap <strong style={{color:'#16a34a'}}>Agree</strong> if the hours are correct.<br/>
+            Tap <strong style={{color:'#dc2626'}}>Dispute</strong> if you worked different hours.
           </div>
 
           {monthShifts.length === 0 ? (
@@ -1559,57 +1558,83 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
             </div>
           ) : (
             <>
-              {/* Shift list */}
-              <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:'10px',overflow:'hidden',marginBottom:'1rem'}}>
-                {/* Header */}
-                <div style={{display:'grid',gridTemplateColumns: isSelfEmployed ? '28px 28px 1fr 60px 45px 50px 55px' : '28px 1fr 60px 45px 50px 55px',gap:'0.375rem',padding:'0.625rem 0.75rem',background:'#f8fafc',borderBottom:'1px solid #e5e7eb',fontSize:'0.5625rem',fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.05em',alignItems:'center'}}>
-                  {isSelfEmployed && <div style={{color:'#1a52a8',textAlign:'center'}}>Inv</div>}
-                  <div style={{color:'#16a34a',textAlign:'center'}}>Agree</div>
-                  <div>Date / Site</div>
-                  <div style={{textAlign:'center'}}>Times</div>
-                  <div style={{textAlign:'right'}}>Hrs</div>
-                  <div style={{textAlign:'right'}}>Rate</div>
-                  <div style={{textAlign:'right'}}>Total</div>
-                </div>
-                {monthShifts.map((s, i) => {
+              {/* Shift list — simple cards */}
+              <div style={{display:'flex',flexDirection:'column',gap:'0.5rem',marginBottom:'1rem'}}>
+                {monthShifts.map(s => {
                   const hrs = getHours(s);
                   const rate = s.pay_rate || 0;
-                  const selected = selectedIds.has(s.id);
                   const confirmed = confirmedIds.has(s.id);
                   const disputed = disputedHours[s.id];
+                  const hasDispute = disputed?.hours;
                   return (
-                    <div key={s.id}>
-                      <div style={{display:'grid',gridTemplateColumns: isSelfEmployed ? '28px 28px 1fr 60px 45px 50px 55px' : '28px 1fr 60px 45px 50px 55px',gap:'0.375rem',alignItems:'center',padding:'0.625rem 0.75rem',borderBottom: (disputed || i < monthShifts.length-1) ? '1px solid #f1f5f9' : 'none',background: disputed ? '#fef2f2' : confirmed ? '#f0fdf4' : selected ? '#eff6ff' : '#fff'}}>
-                        {isSelfEmployed && <input type="checkbox" checked={selected} onChange={() => toggleShift(s.id)} style={{width:'16px',height:'16px',accentColor:'#1a52a8',cursor:'pointer'}} title="Select for invoice" />}
-                        <input type="checkbox" checked={confirmed} onChange={() => { toggleConfirm(s.id); if (!confirmed) { const d = {...disputedHours}; delete d[s.id]; setDisputedHours(d); } }}
-                          style={{width:'18px',height:'18px',accentColor:'#16a34a',cursor:'pointer'}} title="I agree these hours are correct" />
-                        <div style={{minWidth:0}}>
-                          <div style={{fontSize:'0.75rem',fontWeight:600,color:'#111827',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.site?.name || 'Site'}</div>
-                          <div style={{fontSize:'0.625rem',color:'#6b7280'}}>{new Date(s.start_time).toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short'})}</div>
-                        </div>
-                        <div style={{textAlign:'center',fontSize:'0.6875rem',color:'#374151'}}>
-                          {new Date(s.checked_in_at || s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}–{new Date(s.checked_out_at || s.end_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}
-                        </div>
-                        <div style={{textAlign:'right',fontSize:'0.75rem',fontWeight:600,color: disputed ? '#dc2626' : '#111827'}}>{hrs.toFixed(1)}</div>
-                        <div style={{textAlign:'right',fontSize:'0.6875rem',color:'#6b7280'}}>£{rate.toFixed(2)}</div>
-                        <div style={{textAlign:'right',fontSize:'0.75rem',fontWeight:700,color:'#111827'}}>£{(hrs * rate).toFixed(2)}</div>
-                      </div>
-                      {/* Dispute row — shows when NOT confirmed */}
-                      {!confirmed && (
-                        <div style={{padding:'0.5rem 0.75rem',paddingLeft: isSelfEmployed ? '4.5rem' : '3rem',borderBottom: i < monthShifts.length-1 ? '1px solid #f1f5f9' : 'none',background: disputed?.hours ? '#fef2f2' : '#fff'}}>
-                          <div style={{fontSize:'0.625rem',color:'#9ca3af',fontWeight:600,marginBottom:'0.25rem'}}>DISPUTE — Enter your actual times:</div>
-                          <div style={{display:'flex',alignItems:'center',gap:'0.375rem',flexWrap:'wrap'}}>
-                            <input type="time" value={disputed?.start || ''} onChange={e => setDisputedHours(prev => ({...prev, [s.id]: {...(prev[s.id]||{}), start: e.target.value}}))}
-                              style={{width:'75px',padding:'0.25rem',border:'1px solid #d1d5db',borderRadius:'4px',fontSize:'0.75rem',color:'#111827'}} />
-                            <span style={{fontSize:'0.6875rem',color:'#9ca3af'}}>to</span>
-                            <input type="time" value={disputed?.end || ''} onChange={e => setDisputedHours(prev => ({...prev, [s.id]: {...(prev[s.id]||{}), end: e.target.value}}))}
-                              style={{width:'75px',padding:'0.25rem',border:'1px solid #d1d5db',borderRadius:'4px',fontSize:'0.75rem',color:'#111827'}} />
-                            <span style={{fontSize:'0.6875rem',color:'#9ca3af'}}>=</span>
-                            <input type="number" step="0.5" min="0" value={disputed?.hours || ''} onChange={e => setDisputedHours(prev => ({...prev, [s.id]: {...(prev[s.id]||{}), hours: e.target.value}}))}
-                              placeholder={hrs.toFixed(1)} style={{width:'50px',padding:'0.25rem 0.375rem',border: disputed?.hours ? '1.5px solid #fca5a5' : '1px solid #d1d5db',borderRadius:'4px',fontSize:'0.75rem',textAlign:'right',color: disputed?.hours ? '#dc2626' : '#111827'}} />
-                            <span style={{fontSize:'0.625rem',color:'#9ca3af'}}>hrs</span>
-                            {disputed?.hours && <span style={{fontSize:'0.625rem',color:'#dc2626',fontWeight:600}}>({(parseFloat(disputed.hours) - hrs) > 0 ? '+' : ''}{(parseFloat(disputed.hours) - hrs).toFixed(1)}h)</span>}
+                    <div key={s.id} style={{background:'#fff',border: hasDispute ? '1.5px solid #fca5a5' : confirmed ? '1.5px solid #86efac' : '1px solid #e5e7eb',borderRadius:'10px',overflow:'hidden'}}>
+                      {/* Shift info */}
+                      <div style={{padding:'0.875rem'}}>
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'0.375rem'}}>
+                          <div>
+                            <div style={{fontSize:'0.9375rem',fontWeight:700,color:'#111827'}}>{s.site?.name || 'Site'}</div>
+                            <div style={{fontSize:'0.75rem',color:'#6b7280'}}>{new Date(s.start_time).toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short',year:'numeric'})}</div>
                           </div>
+                          <div style={{textAlign:'right'}}>
+                            <div style={{fontSize:'1rem',fontWeight:700,color:'#111827'}}>{hrs.toFixed(1)}h</div>
+                            <div style={{fontSize:'0.6875rem',color:'#6b7280'}}>£{(hrs * rate).toFixed(2)}</div>
+                          </div>
+                        </div>
+                        <div style={{fontSize:'0.8125rem',color:'#374151'}}>
+                          {new Date(s.checked_in_at || s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})} – {new Date(s.checked_out_at || s.end_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}
+                          <span style={{marginLeft:'0.5rem',color:'#9ca3af'}}>@ £{rate.toFixed(2)}/hr</span>
+                        </div>
+
+                        {/* Action buttons */}
+                        {!confirmed && !hasDispute && (
+                          <div style={{display:'flex',gap:'0.5rem',marginTop:'0.625rem'}}>
+                            <button onClick={() => { toggleConfirm(s.id); const d = {...disputedHours}; delete d[s.id]; setDisputedHours(d); }}
+                              style={{flex:1,padding:'0.5rem',background:'#f0fdf4',border:'1.5px solid #86efac',borderRadius:'8px',color:'#16a34a',fontSize:'0.8125rem',fontWeight:700,cursor:'pointer'}}>
+                              ✓ Agree
+                            </button>
+                            <button onClick={() => setDisputedHours(prev => ({...prev, [s.id]: { start:'', end:'', hours:'' }}))}
+                              style={{flex:1,padding:'0.5rem',background:'#fef2f2',border:'1.5px solid #fca5a5',borderRadius:'8px',color:'#dc2626',fontSize:'0.8125rem',fontWeight:700,cursor:'pointer'}}>
+                              ✗ Dispute
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Agreed badge */}
+                        {confirmed && (
+                          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:'0.5rem'}}>
+                            <div style={{display:'flex',alignItems:'center',gap:'0.375rem',color:'#16a34a',fontSize:'0.8125rem',fontWeight:600}}>
+                              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 7l3 3 5-5" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                              Hours Agreed
+                            </div>
+                            <button onClick={() => toggleConfirm(s.id)} style={{background:'none',border:'none',color:'#9ca3af',fontSize:'0.6875rem',cursor:'pointer'}}>Undo</button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Dispute form — expanded */}
+                      {hasDispute !== undefined && disputed && !confirmed && (
+                        <div style={{padding:'0.875rem',background:'#fef2f2',borderTop:'1px solid #fca5a5'}}>
+                          <div style={{fontSize:'0.75rem',fontWeight:700,color:'#dc2626',marginBottom:'0.5rem'}}>Enter your actual hours:</div>
+                          <div style={{display:'flex',gap:'0.5rem',alignItems:'center',marginBottom:'0.5rem',flexWrap:'wrap'}}>
+                            <div>
+                              <div style={{fontSize:'0.625rem',color:'#6b7280',fontWeight:600,marginBottom:'0.125rem'}}>START</div>
+                              <input type="time" value={disputed.start || ''} onChange={e => setDisputedHours(prev => ({...prev, [s.id]: {...prev[s.id], start: e.target.value}}))}
+                                style={{width:'90px',padding:'0.375rem',border:'1px solid #d1d5db',borderRadius:'6px',fontSize:'0.875rem',color:'#111827'}} />
+                            </div>
+                            <div>
+                              <div style={{fontSize:'0.625rem',color:'#6b7280',fontWeight:600,marginBottom:'0.125rem'}}>FINISH</div>
+                              <input type="time" value={disputed.end || ''} onChange={e => setDisputedHours(prev => ({...prev, [s.id]: {...prev[s.id], end: e.target.value}}))}
+                                style={{width:'90px',padding:'0.375rem',border:'1px solid #d1d5db',borderRadius:'6px',fontSize:'0.875rem',color:'#111827'}} />
+                            </div>
+                            <div>
+                              <div style={{fontSize:'0.625rem',color:'#6b7280',fontWeight:600,marginBottom:'0.125rem'}}>TOTAL HRS</div>
+                              <input type="number" step="0.5" min="0" value={disputed.hours || ''} onChange={e => setDisputedHours(prev => ({...prev, [s.id]: {...prev[s.id], hours: e.target.value}}))}
+                                placeholder={hrs.toFixed(1)} style={{width:'65px',padding:'0.375rem',border: disputed.hours ? '1.5px solid #dc2626' : '1px solid #d1d5db',borderRadius:'6px',fontSize:'0.875rem',textAlign:'right',color:'#dc2626',fontWeight:700}} />
+                            </div>
+                          </div>
+                          {disputed.hours && <div style={{fontSize:'0.75rem',color:'#dc2626',fontWeight:600}}>Difference: {(parseFloat(disputed.hours) - hrs) > 0 ? '+' : ''}{(parseFloat(disputed.hours) - hrs).toFixed(1)} hours</div>}
+                          <button onClick={() => { const d = {...disputedHours}; delete d[s.id]; setDisputedHours(d); }}
+                            style={{marginTop:'0.375rem',background:'none',border:'none',color:'#9ca3af',fontSize:'0.6875rem',cursor:'pointer'}}>Cancel dispute</button>
                         </div>
                       )}
                     </div>
@@ -1683,20 +1708,15 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
                     </div>
 
                     {/* Invoice button — only when all agreed and no disputes */}
-                    {isSelfEmployed && allAgreed && !hasDisputes && selectedShifts.length > 0 && (
-                      <button onClick={() => { setInvoiceRef(''); setInvoiceSent(false); setShowInvoice(true); }}
-                        style={{width:'100%',padding:'0.875rem',background:'#1a52a8',border:'none',borderRadius:'8px',color:'#fff',fontSize:'0.875rem',fontWeight:700,cursor:'pointer'}}>
-                        Generate Invoice ({selectedShifts.length} shifts)
+                    {isSelfEmployed && allAgreed && !hasDisputes && (
+                      <button onClick={() => { setSelectedIds(new Set(monthShifts.map(s => s.id))); setInvoiceRef(''); setInvoiceSent(false); setShowInvoice(true); }}
+                        style={{width:'100%',padding:'0.875rem',background:'#1a52a8',border:'none',borderRadius:'8px',color:'#fff',fontSize:'0.875rem',fontWeight:700,cursor:'pointer',marginTop:'0.5rem'}}>
+                        Generate Invoice ({monthShifts.length} shifts · £{totalMonthHrs.toFixed(1)}h)
                       </button>
                     )}
 
-                    {/* Prompt to agree or select for invoice */}
-                    {isSelfEmployed && allAgreed && !hasDisputes && selectedShifts.length === 0 && (
-                      <div style={{fontSize:'0.8125rem',color:'#6b7280',textAlign:'center'}}>Tick the <strong style={{color:'#1a52a8'}}>Inv</strong> boxes above to select shifts for invoicing.</div>
-                    )}
-
                     {!allAgreed && !hasDisputes && (
-                      <div style={{fontSize:'0.8125rem',color:'#9ca3af',textAlign:'center'}}>Please tick <strong style={{color:'#16a34a'}}>Agree</strong> on each shift to confirm your hours are correct, or enter a dispute.</div>
+                      <div style={{fontSize:'0.8125rem',color:'#9ca3af',textAlign:'center',marginTop:'0.5rem'}}>Tap <strong style={{color:'#16a34a'}}>Agree</strong> or <strong style={{color:'#dc2626'}}>Dispute</strong> on each shift above.</div>
                     )}
                   </div>
                 );
