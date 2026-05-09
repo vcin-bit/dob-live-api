@@ -1317,7 +1317,7 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
 
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [confirmedIds, setConfirmedIds] = useState(new Set());
-  const [disputedHours, setDisputedHours] = useState({});
+  const [disputedHours, setDisputedHours] = useState({}); // { shiftId: { start: '18:00', end: '06:00', hours: '12' } }
   const [querySending, setQuerySending] = useState(false);
   const [querySent, setQuerySent] = useState(false);
   const allSelected = monthShifts.length > 0 && monthShifts.every(s => selectedIds.has(s.id));
@@ -1325,7 +1325,7 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
   function toggleAll() { setSelectedIds(allSelected ? new Set() : new Set(monthShifts.map(s => s.id))); }
   function toggleConfirm(id) { setConfirmedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; }); }
   const selectedShifts = monthShifts.filter(s => selectedIds.has(s.id));
-  const hasDisputes = Object.keys(disputedHours).some(id => disputedHours[id] && monthShifts.find(s => s.id === id));
+  const hasDisputes = Object.keys(disputedHours).some(id => disputedHours[id]?.hours && monthShifts.find(s => s.id === id));
   const totalHours = selectedShifts.reduce((sum, s) => sum + getHours(s), 0);
   const totalAmount = selectedShifts.reduce((sum, s) => sum + (getHours(s) * (s.pay_rate || 0)), 0);
 
@@ -1596,12 +1596,19 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
                       </div>
                       {/* Dispute row — shows when NOT confirmed */}
                       {!confirmed && (
-                        <div style={{padding:'0.375rem 0.75rem',paddingLeft: isSelfEmployed ? '4.5rem' : '3rem',borderBottom: i < monthShifts.length-1 ? '1px solid #f1f5f9' : 'none',background: disputed ? '#fef2f2' : '#fff'}}>
-                          <div style={{display:'flex',alignItems:'center',gap:'0.5rem'}}>
-                            <span style={{fontSize:'0.6875rem',color:'#9ca3af',whiteSpace:'nowrap'}}>My hours:</span>
-                            <input type="number" step="0.5" min="0" value={disputed || ''} onChange={e => setDisputedHours(prev => ({...prev, [s.id]: e.target.value}))}
-                              placeholder={hrs.toFixed(1)} style={{width:'60px',padding:'0.25rem 0.375rem',border: disputed ? '1.5px solid #fca5a5' : '1px solid #d1d5db',borderRadius:'4px',fontSize:'0.75rem',textAlign:'right',color: disputed ? '#dc2626' : '#111827'}} />
-                            {disputed && <span style={{fontSize:'0.625rem',color:'#dc2626',fontWeight:600}}>Disputed ({(parseFloat(disputed) - hrs).toFixed(1)}h diff)</span>}
+                        <div style={{padding:'0.5rem 0.75rem',paddingLeft: isSelfEmployed ? '4.5rem' : '3rem',borderBottom: i < monthShifts.length-1 ? '1px solid #f1f5f9' : 'none',background: disputed?.hours ? '#fef2f2' : '#fff'}}>
+                          <div style={{fontSize:'0.625rem',color:'#9ca3af',fontWeight:600,marginBottom:'0.25rem'}}>DISPUTE — Enter your actual times:</div>
+                          <div style={{display:'flex',alignItems:'center',gap:'0.375rem',flexWrap:'wrap'}}>
+                            <input type="time" value={disputed?.start || ''} onChange={e => setDisputedHours(prev => ({...prev, [s.id]: {...(prev[s.id]||{}), start: e.target.value}}))}
+                              style={{width:'75px',padding:'0.25rem',border:'1px solid #d1d5db',borderRadius:'4px',fontSize:'0.75rem',color:'#111827'}} />
+                            <span style={{fontSize:'0.6875rem',color:'#9ca3af'}}>to</span>
+                            <input type="time" value={disputed?.end || ''} onChange={e => setDisputedHours(prev => ({...prev, [s.id]: {...(prev[s.id]||{}), end: e.target.value}}))}
+                              style={{width:'75px',padding:'0.25rem',border:'1px solid #d1d5db',borderRadius:'4px',fontSize:'0.75rem',color:'#111827'}} />
+                            <span style={{fontSize:'0.6875rem',color:'#9ca3af'}}>=</span>
+                            <input type="number" step="0.5" min="0" value={disputed?.hours || ''} onChange={e => setDisputedHours(prev => ({...prev, [s.id]: {...(prev[s.id]||{}), hours: e.target.value}}))}
+                              placeholder={hrs.toFixed(1)} style={{width:'50px',padding:'0.25rem 0.375rem',border: disputed?.hours ? '1.5px solid #fca5a5' : '1px solid #d1d5db',borderRadius:'4px',fontSize:'0.75rem',textAlign:'right',color: disputed?.hours ? '#dc2626' : '#111827'}} />
+                            <span style={{fontSize:'0.625rem',color:'#9ca3af'}}>hrs</span>
+                            {disputed?.hours && <span style={{fontSize:'0.625rem',color:'#dc2626',fontWeight:600}}>({(parseFloat(disputed.hours) - hrs) > 0 ? '+' : ''}{(parseFloat(disputed.hours) - hrs).toFixed(1)}h)</span>}
                           </div>
                         </div>
                       )}
@@ -1623,14 +1630,15 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
                       try {
                         const allShiftsData = monthShifts.map(s => {
                           const hrs = getHours(s);
-                          const disputed = disputedHours[s.id];
+                          const d = disputedHours[s.id];
                           const isConfirmed = confirmedIds.has(s.id);
-                          const status = disputed ? `DISPUTED (Officer claims ${disputed}h)` : isConfirmed ? 'AGREED' : 'NOT CONFIRMED';
+                          const recordedTimes = `${new Date(s.checked_in_at||s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}–${new Date(s.checked_out_at||s.end_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}`;
+                          const status = d?.hours ? `DISPUTED — Officer: ${d.start||'?'}–${d.end||'?'} = ${d.hours}h` : isConfirmed ? 'AGREED' : 'NOT CONFIRMED';
                           return {
                             date: new Date(s.start_time).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}),
                             site: s?.site?.name || '—',
-                            times: `${new Date(s.checked_in_at||s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}–${new Date(s.checked_out_at||s.end_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}`,
-                            hours: `${hrs.toFixed(1)}${disputed ? ` → ${disputed}` : ''}`,
+                            times: recordedTimes,
+                            hours: `${hrs.toFixed(1)}${d?.hours ? ` → ${d.hours}` : ''}`,
                             rate: `£${(s.pay_rate||0).toFixed(2)}`,
                             amount: status,
                           };
