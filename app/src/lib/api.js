@@ -175,6 +175,7 @@ export const api = {
   // HR
   hr: {
     get: () => request('/api/hr'),
+    listAll: () => request('/api/hr?all=true'),
     getForUser: (userId) => request(`/api/hr/${userId}`),
     save: (data) => request('/api/hr', { method: 'PUT', body: JSON.stringify(data) }),
     getDocUrl: (docType, userId) => request(`/api/hr/documents/${docType}${userId ? `?user_id=${userId}` : ''}`),

@@ -19,14 +19,19 @@ const STATUS_COLORS = { NOT_STARTED: '#9ca3af', IN_PROGRESS: '#f59e0b', COMPLETE
 
 export function PersonnelFilesScreen({ user }) {
   const [officers, setOfficers] = useState([]);
+  const [hrRecords, setHrRecords] = useState({});
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    api.users.list().then(res => {
-      setOfficers((res.data || []).sort((a, b) => (a.last_name || '').localeCompare(b.last_name || '')));
-    }).finally(() => setLoading(false));
+    Promise.all([api.users.list(), api.hr.listAll()])
+      .then(([usersRes, hrRes]) => {
+        setOfficers((usersRes.data || []).sort((a, b) => (a.last_name || '').localeCompare(b.last_name || '')));
+        const hrMap = {};
+        (hrRes.data || []).forEach(h => { hrMap[h.user_id] = h; });
+        setHrRecords(hrMap);
+      }).finally(() => setLoading(false));
   }, []);
 
   if (selectedId) return <PersonnelFile userId={selectedId} officers={officers} onBack={() => setSelectedId(null)} currentUser={user} />;
@@ -44,16 +49,28 @@ export function PersonnelFilesScreen({ user }) {
         <input className="input" style={{ width: '250px', marginBottom: '1rem' }} placeholder="Search by name or email..." value={search} onChange={e => setSearch(e.target.value)} />
         {loading ? <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}><div className="spinner" /></div> : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {filtered.map(o => (
-              <button key={o.id} onClick={() => setSelectedId(o.id)}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.875rem 1rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
-                <div>
-                  <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text)' }}>{o.first_name} {o.last_name}</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>{o.email} · {o.role}</div>
-                </div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>›</div>
-              </button>
-            ))}
+            {filtered.map(o => {
+              const hrRec = hrRecords[o.id];
+              const vs = hrRec?.vetting_status || 'NOT_STARTED';
+              const isVetted = vs === 'COMPLETE';
+              return (
+                <button key={o.id} onClick={() => setSelectedId(o.id)}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.875rem 1rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+                    {isVetted && <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#dcfce7', border: '1.5px solid #86efac', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M3 7l3 3 5-5" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg></div>}
+                    {!isVetted && <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: vs === 'IN_PROGRESS' ? '#fef3c7' : '#f3f4f6', border: `1.5px solid ${vs === 'IN_PROGRESS' ? '#fde68a' : '#d1d5db'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '0.625rem', fontWeight: 700, color: vs === 'IN_PROGRESS' ? '#d97706' : '#9ca3af' }}>{vs === 'IN_PROGRESS' ? '…' : '○'}</div>}
+                    <div>
+                      <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text)' }}>
+                        {o.first_name} {o.last_name}
+                        {isVetted && <span style={{ marginLeft: '0.375rem', fontSize: '0.6875rem', fontWeight: 700, color: '#16a34a' }}>BS7858 ✓</span>}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>{o.email} · {o.role}</div>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: STATUS_COLORS[vs], whiteSpace: 'nowrap' }}>{vs.replace(/_/g, ' ')}</div>
+                </button>
+              );
+            })}
           </div>
         )}
       </div>

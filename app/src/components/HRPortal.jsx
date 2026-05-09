@@ -428,6 +428,31 @@ function HRAuthenticated() {
               )}
             </div>
 
+            {/* Vetting Status */}
+            <div style={S.section}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.75rem'}}>
+                <div style={{fontSize:'0.875rem',fontWeight:700,color:'#111827'}}>BS7858 Vetting Status</div>
+                <div style={{fontSize:'0.875rem',fontWeight:700,color: hr?.vetting_status === 'COMPLETE' ? '#16a34a' : hr?.vetting_status === 'IN_PROGRESS' ? '#d97706' : '#9ca3af'}}>
+                  {hr?.vetting_status === 'COMPLETE' ? '✓ Vetted' : hr?.vetting_status === 'IN_PROGRESS' ? 'In Progress' : hr?.vetting_status === 'EXPIRED' ? 'Expired' : 'Not Started'}
+                </div>
+              </div>
+              {hr?.vetting_status === 'COMPLETE' ? (
+                <div style={{display:'flex',alignItems:'center',gap:'0.75rem',padding:'1rem',background:'#f0fdf4',border:'1px solid #86efac',borderRadius:'10px'}}>
+                  <div style={{width:'40px',height:'40px',borderRadius:'50%',background:'#dcfce7',border:'2px solid #86efac',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                    <svg width="20" height="20" viewBox="0 0 14 14" fill="none"><path d="M3 7l3 3 5-5" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </div>
+                  <div>
+                    <div style={{fontSize:'0.9375rem',fontWeight:700,color:'#16a34a'}}>BS7858 Vetted</div>
+                    <div style={{fontSize:'0.75rem',color:'#6b7280'}}>You have been vetted to the British Standard for security screening.</div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{padding:'0.75rem',background:'#fffbeb',border:'1px solid #fde68a',borderRadius:'10px',fontSize:'0.8125rem',color:'#92400e',lineHeight:1.5}}>
+                  {hr?.vetting_status === 'IN_PROGRESS' ? 'Your vetting is being processed. Please ensure all sections of your profile are complete.' : 'Your BS7858 vetting has not yet started. Complete your profile to begin the process.'}
+                </div>
+              )}
+            </div>
+
             {/* Expiry Dates */}
             {(() => {
               const expiryItems = [

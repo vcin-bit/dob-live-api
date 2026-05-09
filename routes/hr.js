@@ -5,9 +5,14 @@ const { authenticate, requireRole } = require('../middleware/auth');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-// GET /api/hr — get my HR record
+// GET /api/hr — get my HR record (or all if manager with ?all=true)
 router.get('/', authenticate, async (req, res, next) => {
   try {
+    if (req.query.all && ['SUPER_ADMIN','COMPANY','OPS_MANAGER','FD'].includes(req.user.role)) {
+      const { data, error } = await supabase.from('officer_hr').select('user_id, vetting_status, onboarding_completed, gdpr_consent').eq('company_id', req.user.company_id);
+      if (error) throw error;
+      return res.json({ data: data || [] });
+    }
     const { data, error } = await supabase
       .from('officer_hr')
       .select('*')
