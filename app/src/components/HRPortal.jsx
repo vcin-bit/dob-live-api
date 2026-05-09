@@ -1546,11 +1546,12 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
 
       {!shiftsLoading && shifts.length > 0 && (
         <>
-          {isSelfEmployed && (
-            <div style={{background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:'8px',padding:'0.875rem',fontSize:'0.8125rem',color:'#1e40af',lineHeight:1.5,marginBottom:'1rem'}}>
-              Showing shifts for <strong>{formatMonth(selectedMonth)}</strong>. Tap "Generate Invoice" to create an invoice for this month.
-            </div>
-          )}
+          <div style={{background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:'8px',padding:'0.875rem',fontSize:'0.8125rem',color:'#1e40af',lineHeight:1.5,marginBottom:'1rem'}}>
+            <strong>{formatMonth(selectedMonth)}</strong> — Review your shifts below.
+            <span style={{color:'#16a34a',fontWeight:600}}> ✓ Tick "Agree"</span> to confirm hours are correct.
+            If hours are wrong, enter your actual hours and tap <span style={{color:'#dc2626',fontWeight:600}}>Send Wage Query</span>.
+            {isSelfEmployed && <> Use <span style={{color:'#1a52a8',fontWeight:600}}>Inv</span> checkboxes to select shifts for invoicing.</>}
+          </div>
 
           {monthShifts.length === 0 ? (
             <div style={{padding:'2rem',textAlign:'center',background:'#f9fafb',borderRadius:'10px',border:'1px dashed #d1d5db',marginBottom:'1rem'}}>
@@ -1561,9 +1562,9 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
               {/* Shift list */}
               <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:'10px',overflow:'hidden',marginBottom:'1rem'}}>
                 {/* Header */}
-                <div style={{display:'grid',gridTemplateColumns: isSelfEmployed ? '28px 24px 1fr 65px 50px 55px 55px' : '24px 1fr 65px 50px 55px 55px',gap:'0.375rem',padding:'0.625rem 0.75rem',background:'#f8fafc',borderBottom:'1px solid #e5e7eb',fontSize:'0.625rem',fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.05em',alignItems:'center'}}>
-                  {isSelfEmployed && <input type="checkbox" checked={allSelected} onChange={toggleAll} style={{width:'14px',height:'14px',accentColor:'#1a52a8',cursor:'pointer'}} />}
-                  <div title="Confirm hours">OK</div>
+                <div style={{display:'grid',gridTemplateColumns: isSelfEmployed ? '28px 28px 1fr 60px 45px 50px 55px' : '28px 1fr 60px 45px 50px 55px',gap:'0.375rem',padding:'0.625rem 0.75rem',background:'#f8fafc',borderBottom:'1px solid #e5e7eb',fontSize:'0.5625rem',fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.05em',alignItems:'center'}}>
+                  {isSelfEmployed && <div style={{color:'#1a52a8',textAlign:'center'}}>Inv</div>}
+                  <div style={{color:'#16a34a',textAlign:'center'}}>Agree</div>
                   <div>Date / Site</div>
                   <div style={{textAlign:'center'}}>Times</div>
                   <div style={{textAlign:'right'}}>Hrs</div>
@@ -1578,10 +1579,10 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
                   const disputed = disputedHours[s.id];
                   return (
                     <div key={s.id}>
-                      <div style={{display:'grid',gridTemplateColumns: isSelfEmployed ? '28px 24px 1fr 65px 50px 55px 55px' : '24px 1fr 65px 50px 55px 55px',gap:'0.375rem',alignItems:'center',padding:'0.625rem 0.75rem',borderBottom: (disputed || i < monthShifts.length-1) ? '1px solid #f1f5f9' : 'none',background: disputed ? '#fef2f2' : confirmed ? '#f0fdf4' : selected ? '#eff6ff' : '#fff'}}>
-                        {isSelfEmployed && <input type="checkbox" checked={selected} onChange={() => toggleShift(s.id)} style={{width:'14px',height:'14px',accentColor:'#1a52a8',cursor:'pointer'}} />}
+                      <div style={{display:'grid',gridTemplateColumns: isSelfEmployed ? '28px 28px 1fr 60px 45px 50px 55px' : '28px 1fr 60px 45px 50px 55px',gap:'0.375rem',alignItems:'center',padding:'0.625rem 0.75rem',borderBottom: (disputed || i < monthShifts.length-1) ? '1px solid #f1f5f9' : 'none',background: disputed ? '#fef2f2' : confirmed ? '#f0fdf4' : selected ? '#eff6ff' : '#fff'}}>
+                        {isSelfEmployed && <input type="checkbox" checked={selected} onChange={() => toggleShift(s.id)} style={{width:'16px',height:'16px',accentColor:'#1a52a8',cursor:'pointer'}} title="Select for invoice" />}
                         <input type="checkbox" checked={confirmed} onChange={() => { toggleConfirm(s.id); if (!confirmed) { const d = {...disputedHours}; delete d[s.id]; setDisputedHours(d); } }}
-                          style={{width:'16px',height:'16px',accentColor:'#16a34a',cursor:'pointer'}} title="Confirm these hours are correct" />
+                          style={{width:'18px',height:'18px',accentColor:'#16a34a',cursor:'pointer'}} title="I agree these hours are correct" />
                         <div style={{minWidth:0}}>
                           <div style={{fontSize:'0.75rem',fontWeight:600,color:'#111827',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.site?.name || 'Site'}</div>
                           <div style={{fontSize:'0.625rem',color:'#6b7280'}}>{new Date(s.start_time).toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short'})}</div>
@@ -1620,16 +1621,26 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
                     <button onClick={async () => {
                       setQuerySending(true);
                       try {
-                        const disputes = Object.entries(disputedHours).filter(([id, val]) => val).map(([id, val]) => {
-                          const s = monthShifts.find(sh => sh.id === id);
-                          return { date: new Date(s.start_time).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}), site: s?.site?.name || '—', recorded: getHours(s).toFixed(1), claimed: val };
+                        const allShiftsData = monthShifts.map(s => {
+                          const hrs = getHours(s);
+                          const disputed = disputedHours[s.id];
+                          const isConfirmed = confirmedIds.has(s.id);
+                          const status = disputed ? `DISPUTED (Officer claims ${disputed}h)` : isConfirmed ? 'AGREED' : 'NOT CONFIRMED';
+                          return {
+                            date: new Date(s.start_time).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}),
+                            site: s?.site?.name || '—',
+                            times: `${new Date(s.checked_in_at||s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}–${new Date(s.checked_out_at||s.end_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}`,
+                            hours: `${hrs.toFixed(1)}${disputed ? ` → ${disputed}` : ''}`,
+                            rate: `£${(s.pay_rate||0).toFixed(2)}`,
+                            amount: status,
+                          };
                         });
                         await api.hr.sendInvoice({
                           invoiceRef: `WQ-${Date.now().toString(36).toUpperCase().slice(-6)}`,
-                          month: formatMonth(selectedMonth),
-                          shifts: disputes.map(d => ({ date: d.date, site: d.site, times: '', hours: `Recorded: ${d.recorded} / Claimed: ${d.claimed}`, rate: '', amount: '' })),
+                          month: `WAGE QUERY — ${formatMonth(selectedMonth)}`,
+                          shifts: allShiftsData,
                           contractor: { name: `${dbUser?.first_name} ${dbUser?.last_name}` },
-                          totals: { hours: disputes.map(d => d.claimed).join(', '), subtotal: 'WAGE QUERY', total: 'WAGE QUERY' },
+                          totals: { hours: `${monthShifts.reduce((s,sh) => s + getHours(sh), 0).toFixed(1)} recorded`, subtotal: 'WAGE QUERY — SEE DISPUTES ABOVE', total: 'URGENT' },
                         });
                         setQuerySent(true);
                       } catch (err) { alert('Failed to send: ' + err.message); }
