@@ -68,6 +68,8 @@ function PersonnelFile({ userId, officers, onBack, currentUser }) {
   const [noteText, setNoteText] = useState('');
   const [empForm, setEmpForm] = useState(null);
   const [addrForm, setAddrForm] = useState(null);
+  const [editForm, setEditForm] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   async function load() {
     try {
@@ -88,9 +90,6 @@ function PersonnelFile({ userId, officers, onBack, currentUser }) {
   const vettingTotal = BS7858_ITEMS.length;
   const vettingPct = Math.round((vettingComplete / vettingTotal) * 100);
   const vettingStatus = hr?.vetting_status || 'NOT_STARTED';
-
-  const [editForm, setEditForm] = useState(null);
-  const [saving, setSaving] = useState(false);
 
   function startEdit() {
     setEditForm({
