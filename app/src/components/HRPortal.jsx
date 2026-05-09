@@ -1296,7 +1296,7 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
     const start = shift.checked_in_at || shift.start_time;
     const end = shift.checked_out_at || shift.end_time;
     if (!start || !end) return 0;
-    return Math.round(((new Date(end) - new Date(start)) / 3600000) * 100) / 100;
+    return Math.round((new Date(end) - new Date(start)) / 3600000 * 2) / 2; // round to nearest 0.5
   }
 
   function toggleInvoiceShift(shiftId) {
