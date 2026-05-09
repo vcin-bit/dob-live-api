@@ -219,6 +219,26 @@ router.post('/:id/checkout', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// GET /api/shifts/previous — get the last completed shift at a site by a different officer (for handover)
+router.get('/previous', authenticate, async (req, res, next) => {
+  try {
+    const { site_id } = req.query;
+    if (!site_id) return res.status(400).json({ error: 'site_id required' });
+    const { data, error } = await supabase
+      .from('shifts')
+      .select('*, officer:users(id, first_name, last_name), site:sites(id, name)')
+      .eq('company_id', req.user.company_id)
+      .eq('site_id', site_id)
+      .eq('status', 'COMPLETED')
+      .neq('officer_id', req.user.id)
+      .order('checked_out_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    res.json({ data });
+  } catch (err) { next(err); }
+});
+
 // DELETE /api/shifts/:id
 router.delete('/:id', authenticate, requireRole('SUPER_ADMIN','COMPANY','OPS_MANAGER','FD'), async (req, res, next) => {
   try {

@@ -131,6 +131,7 @@ export const api = {
   // Shifts
   shifts: {
     list: (params = {}) => request(`/api/shifts?${new URLSearchParams(params)}`),
+    previous: (siteId) => request(`/api/shifts/previous?site_id=${siteId}`),
     get: (id) => request(`/api/shifts/${id}`),
     start: (data) => request('/api/shifts/start', { method: 'POST', body: JSON.stringify(data) }),
     checkin: (id, data) => request(`/api/shifts/${id}/checkin`, { method: 'POST', body: JSON.stringify(data) }),

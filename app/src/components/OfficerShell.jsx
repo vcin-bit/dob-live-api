@@ -41,11 +41,8 @@ function OfficerApp({ user }) {
       const yesterday = new Date(now); yesterday.setDate(yesterday.getDate() - 1);
 
       // Get previous shift at this site by a DIFFERENT officer (last COMPLETED)
-      const prevShiftsRes = await api.shifts.list({ site_id: selectedSite.id, status: 'COMPLETED' });
-      const prevShifts = (prevShiftsRes.data || [])
-        .filter(s => s.officer?.id !== user.id)
-        .sort((a,b) => new Date(b.checked_out_at || b.end_time) - new Date(a.checked_out_at || a.end_time));
-      const prevShift = prevShifts[0] || null;
+      const prevShiftRes = await api.shifts.previous(selectedSite.id);
+      const prevShift = prevShiftRes.data || null;
 
       // Get logs from previous shift period
       let logs = [];
