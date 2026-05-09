@@ -609,6 +609,7 @@ function ShiftModal({ shift, prefillDate, officers, allOfficers, sites, rates, s
     start_time: shift ? fmtTime(shift.start_time) : '19:00',
     end_time: shift?.end_time ? fmtTime(shift.end_time) : '07:00', notes: shift?.notes || '',
     pay_rate: shift?.pay_rate || '', charge_rate: shift?.charge_rate || '',
+    is_bank_holiday: shift?.notes?.includes('[BANK HOLIDAY]') || false,
     actual_start: shift?.checked_in_at ? fmtTime(shift.checked_in_at) : '',
     actual_end: shift?.checked_out_at ? fmtTime(shift.checked_out_at) : '',
   });
@@ -640,7 +641,9 @@ function ShiftModal({ shift, prefillDate, officers, allOfficers, sites, rates, s
       if (endDt && new Date(endDt) <= new Date(startDt)) {
         adjustedEnd = localISOString(isoDate(addDays(new Date(form.date), 1)), form.end_time);
       }
-      const payload = { site_id: form.site_id, officer_id: form.officer_id, start_time: startDt, end_time: adjustedEnd, notes: form.notes || null,
+      const bhTag = form.is_bank_holiday ? '[BANK HOLIDAY] ' : '';
+      const notesClean = (form.notes || '').replace(/\[BANK HOLIDAY\]\s*/g, '');
+      const payload = { site_id: form.site_id, officer_id: form.officer_id, start_time: startDt, end_time: adjustedEnd, notes: (bhTag + notesClean).trim() || null,
         pay_rate: form.pay_rate !== '' ? parseFloat(form.pay_rate) : null,
         charge_rate: form.charge_rate !== '' ? parseFloat(form.charge_rate) : null,
       };
@@ -716,6 +719,22 @@ function ShiftModal({ shift, prefillDate, officers, allOfficers, sites, rates, s
             )}
           </div>
         )}
+        {/* Bank Holiday toggle */}
+        {canSeePay(user?.role) && (
+          <div style={{marginTop:'0.75rem'}}>
+            <label style={{display:'flex',alignItems:'center',gap:'0.5rem',padding:'0.625rem 0.75rem',background: form.is_bank_holiday ? 'rgba(220,38,38,0.06)' : 'var(--surface-2)',border: form.is_bank_holiday ? '1.5px solid rgba(220,38,38,0.3)' : '1px solid var(--border)',borderRadius:'8px',cursor:'pointer',fontSize:'0.8125rem'}}>
+              <input type="checkbox" checked={form.is_bank_holiday} onChange={e => {
+                const bh = e.target.checked;
+                f('is_bank_holiday', bh);
+                if (bh && form.pay_rate) f('pay_rate', (parseFloat(form.pay_rate) * 2).toFixed(2));
+                if (bh && form.charge_rate) f('charge_rate', (parseFloat(form.charge_rate) * 2).toFixed(2));
+                if (!bh && form.pay_rate) f('pay_rate', (parseFloat(form.pay_rate) / 2).toFixed(2));
+                if (!bh && form.charge_rate) f('charge_rate', (parseFloat(form.charge_rate) / 2).toFixed(2));
+              }} style={{accentColor:'#dc2626'}} />
+              <span style={{fontWeight:600,color: form.is_bank_holiday ? '#dc2626' : 'var(--text-2)'}}>Bank Holiday — Double Rate</span>
+            </label>
+          </div>
+        )}
         {(form.pay_rate || form.charge_rate) && form.start_time && form.end_time && form.date && (() => {
           const startDt = new Date(`${form.date}T${form.start_time}:00`);
           let endDt = new Date(`${form.date}T${form.end_time}:00`);
@@ -724,8 +743,8 @@ function ShiftModal({ shift, prefillDate, officers, allOfficers, sites, rates, s
           const showPay = canSeePay(user?.role) && form.pay_rate;
           const showCharge = canSeeCharge(user?.role) && form.charge_rate;
           return (showPay || showCharge) ? (
-            <div style={{padding:'0.5rem 0.75rem',background:'var(--surface-2)',borderRadius:'6px',marginTop:'0.5rem',fontSize:'0.8125rem',color:'var(--text-2)',display:'flex',gap:'1rem',flexWrap:'wrap'}}>
-              <span>{hrs.toFixed(1)} hrs</span>
+            <div style={{padding:'0.5rem 0.75rem',background: form.is_bank_holiday ? 'rgba(220,38,38,0.06)' : 'var(--surface-2)',borderRadius:'6px',marginTop:'0.5rem',fontSize:'0.8125rem',color:'var(--text-2)',display:'flex',gap:'1rem',flexWrap:'wrap'}}>
+              <span>{hrs.toFixed(1)} hrs{form.is_bank_holiday ? ' (Bank Holiday)' : ''}</span>
               {showPay && <span style={{color:'#f59e0b'}}>Pay: <strong>£{(hrs * parseFloat(form.pay_rate)).toFixed(2)}</strong></span>}
               {showCharge && <span style={{color:'#10b981'}}>Charge: <strong>£{(hrs * parseFloat(form.charge_rate)).toFixed(2)}</strong></span>}
             </div>
