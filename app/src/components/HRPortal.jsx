@@ -1316,10 +1316,16 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
   }))].sort().reverse();
 
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [confirmedIds, setConfirmedIds] = useState(new Set());
+  const [disputedHours, setDisputedHours] = useState({});
+  const [querySending, setQuerySending] = useState(false);
+  const [querySent, setQuerySent] = useState(false);
   const allSelected = monthShifts.length > 0 && monthShifts.every(s => selectedIds.has(s.id));
   function toggleShift(id) { setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; }); }
   function toggleAll() { setSelectedIds(allSelected ? new Set() : new Set(monthShifts.map(s => s.id))); }
+  function toggleConfirm(id) { setConfirmedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; }); }
   const selectedShifts = monthShifts.filter(s => selectedIds.has(s.id));
+  const hasDisputes = Object.keys(disputedHours).some(id => disputedHours[id] && monthShifts.find(s => s.id === id));
   const totalHours = selectedShifts.reduce((sum, s) => sum + getHours(s), 0);
   const totalAmount = selectedShifts.reduce((sum, s) => sum + (getHours(s) * (s.pay_rate || 0)), 0);
 
@@ -1554,12 +1560,13 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
             <>
               {/* Shift list */}
               <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:'10px',overflow:'hidden',marginBottom:'1rem'}}>
-                {/* Header with select all */}
-                <div style={{display:'grid',gridTemplateColumns: isSelfEmployed ? '28px 1fr 80px 60px 55px 65px' : '1fr 80px 60px 55px 65px',gap:'0.5rem',padding:'0.625rem 1rem',background:'#f8fafc',borderBottom:'1px solid #e5e7eb',fontSize:'0.6875rem',fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.05em',alignItems:'center'}}>
-                  {isSelfEmployed && <input type="checkbox" checked={allSelected} onChange={toggleAll} style={{width:'16px',height:'16px',accentColor:'#1a52a8',cursor:'pointer'}} />}
+                {/* Header */}
+                <div style={{display:'grid',gridTemplateColumns: isSelfEmployed ? '28px 24px 1fr 65px 50px 55px 55px' : '24px 1fr 65px 50px 55px 55px',gap:'0.375rem',padding:'0.625rem 0.75rem',background:'#f8fafc',borderBottom:'1px solid #e5e7eb',fontSize:'0.625rem',fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.05em',alignItems:'center'}}>
+                  {isSelfEmployed && <input type="checkbox" checked={allSelected} onChange={toggleAll} style={{width:'14px',height:'14px',accentColor:'#1a52a8',cursor:'pointer'}} />}
+                  <div title="Confirm hours">OK</div>
                   <div>Date / Site</div>
-                  <div style={{textAlign:'center'}}>From–To</div>
-                  <div style={{textAlign:'right'}}>Hours</div>
+                  <div style={{textAlign:'center'}}>Times</div>
+                  <div style={{textAlign:'right'}}>Hrs</div>
                   <div style={{textAlign:'right'}}>Rate</div>
                   <div style={{textAlign:'right'}}>Total</div>
                 </div>
@@ -1567,23 +1574,73 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
                   const hrs = getHours(s);
                   const rate = s.pay_rate || 0;
                   const selected = selectedIds.has(s.id);
+                  const confirmed = confirmedIds.has(s.id);
+                  const disputed = disputedHours[s.id];
                   return (
-                    <div key={s.id} style={{display:'grid',gridTemplateColumns: isSelfEmployed ? '28px 1fr 80px 60px 55px 65px' : '1fr 80px 60px 55px 65px',gap:'0.5rem',alignItems:'center',padding:'0.75rem 1rem',borderBottom: i < monthShifts.length-1 ? '1px solid #f1f5f9' : 'none',background: selected ? '#eff6ff' : '#fff'}}>
-                      {isSelfEmployed && <input type="checkbox" checked={selected} onChange={() => toggleShift(s.id)} style={{width:'16px',height:'16px',accentColor:'#1a52a8',cursor:'pointer'}} />}
-                      <div style={{minWidth:0}}>
-                        <div style={{fontSize:'0.8125rem',fontWeight:600,color:'#111827',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.site?.name || 'Site'}</div>
-                        <div style={{fontSize:'0.6875rem',color:'#6b7280'}}>{new Date(s.start_time).toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short'})}</div>
+                    <div key={s.id}>
+                      <div style={{display:'grid',gridTemplateColumns: isSelfEmployed ? '28px 24px 1fr 65px 50px 55px 55px' : '24px 1fr 65px 50px 55px 55px',gap:'0.375rem',alignItems:'center',padding:'0.625rem 0.75rem',borderBottom: (disputed || i < monthShifts.length-1) ? '1px solid #f1f5f9' : 'none',background: disputed ? '#fef2f2' : confirmed ? '#f0fdf4' : selected ? '#eff6ff' : '#fff'}}>
+                        {isSelfEmployed && <input type="checkbox" checked={selected} onChange={() => toggleShift(s.id)} style={{width:'14px',height:'14px',accentColor:'#1a52a8',cursor:'pointer'}} />}
+                        <input type="checkbox" checked={confirmed} onChange={() => { toggleConfirm(s.id); if (!confirmed) { const d = {...disputedHours}; delete d[s.id]; setDisputedHours(d); } }}
+                          style={{width:'16px',height:'16px',accentColor:'#16a34a',cursor:'pointer'}} title="Confirm these hours are correct" />
+                        <div style={{minWidth:0}}>
+                          <div style={{fontSize:'0.75rem',fontWeight:600,color:'#111827',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.site?.name || 'Site'}</div>
+                          <div style={{fontSize:'0.625rem',color:'#6b7280'}}>{new Date(s.start_time).toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short'})}</div>
+                        </div>
+                        <div style={{textAlign:'center',fontSize:'0.6875rem',color:'#374151'}}>
+                          {new Date(s.checked_in_at || s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}–{new Date(s.checked_out_at || s.end_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}
+                        </div>
+                        <div style={{textAlign:'right',fontSize:'0.75rem',fontWeight:600,color: disputed ? '#dc2626' : '#111827'}}>{hrs.toFixed(1)}</div>
+                        <div style={{textAlign:'right',fontSize:'0.6875rem',color:'#6b7280'}}>£{rate.toFixed(2)}</div>
+                        <div style={{textAlign:'right',fontSize:'0.75rem',fontWeight:700,color:'#111827'}}>£{(hrs * rate).toFixed(2)}</div>
                       </div>
-                      <div style={{textAlign:'center',fontSize:'0.75rem',color:'#374151'}}>
-                        {new Date(s.checked_in_at || s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}–{new Date(s.checked_out_at || s.end_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}
-                      </div>
-                      <div style={{textAlign:'right',fontSize:'0.8125rem',fontWeight:600,color:'#111827'}}>{hrs.toFixed(1)}</div>
-                      <div style={{textAlign:'right',fontSize:'0.75rem',color:'#6b7280'}}>£{rate.toFixed(2)}</div>
-                      <div style={{textAlign:'right',fontSize:'0.8125rem',fontWeight:700,color:'#111827'}}>£{(hrs * rate).toFixed(2)}</div>
+                      {/* Dispute row — shows when NOT confirmed */}
+                      {!confirmed && (
+                        <div style={{padding:'0.375rem 0.75rem',paddingLeft: isSelfEmployed ? '4.5rem' : '3rem',borderBottom: i < monthShifts.length-1 ? '1px solid #f1f5f9' : 'none',background: disputed ? '#fef2f2' : '#fff'}}>
+                          <div style={{display:'flex',alignItems:'center',gap:'0.5rem'}}>
+                            <span style={{fontSize:'0.6875rem',color:'#9ca3af',whiteSpace:'nowrap'}}>My hours:</span>
+                            <input type="number" step="0.5" min="0" value={disputed || ''} onChange={e => setDisputedHours(prev => ({...prev, [s.id]: e.target.value}))}
+                              placeholder={hrs.toFixed(1)} style={{width:'60px',padding:'0.25rem 0.375rem',border: disputed ? '1.5px solid #fca5a5' : '1px solid #d1d5db',borderRadius:'4px',fontSize:'0.75rem',textAlign:'right',color: disputed ? '#dc2626' : '#111827'}} />
+                            {disputed && <span style={{fontSize:'0.625rem',color:'#dc2626',fontWeight:600}}>Disputed ({(parseFloat(disputed) - hrs).toFixed(1)}h diff)</span>}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
               </div>
+
+              {/* Wage query button */}
+              {hasDisputes && (
+                <div style={{marginBottom:'1rem'}}>
+                  {querySent ? (
+                    <div style={{padding:'0.875rem',background:'#f0fdf4',border:'1px solid #86efac',borderRadius:'8px',fontSize:'0.8125rem',color:'#16a34a',fontWeight:600,textAlign:'center'}}>
+                      Wage query sent to accounts. You will be contacted shortly.
+                    </div>
+                  ) : (
+                    <button onClick={async () => {
+                      setQuerySending(true);
+                      try {
+                        const disputes = Object.entries(disputedHours).filter(([id, val]) => val).map(([id, val]) => {
+                          const s = monthShifts.find(sh => sh.id === id);
+                          return { date: new Date(s.start_time).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}), site: s?.site?.name || '—', recorded: getHours(s).toFixed(1), claimed: val };
+                        });
+                        await api.hr.sendInvoice({
+                          invoiceRef: `WQ-${Date.now().toString(36).toUpperCase().slice(-6)}`,
+                          month: formatMonth(selectedMonth),
+                          shifts: disputes.map(d => ({ date: d.date, site: d.site, times: '', hours: `Recorded: ${d.recorded} / Claimed: ${d.claimed}`, rate: '', amount: '' })),
+                          contractor: { name: `${dbUser?.first_name} ${dbUser?.last_name}` },
+                          totals: { hours: disputes.map(d => d.claimed).join(', '), subtotal: 'WAGE QUERY', total: 'WAGE QUERY' },
+                        });
+                        setQuerySent(true);
+                      } catch (err) { alert('Failed to send: ' + err.message); }
+                      finally { setQuerySending(false); }
+                    }} disabled={querySending}
+                      style={{width:'100%',padding:'0.875rem',background:'#dc2626',border:'none',borderRadius:'8px',color:'#fff',fontSize:'0.875rem',fontWeight:700,cursor:'pointer',opacity:querySending?0.7:1}}>
+                      {querySending ? 'Sending...' : '⚠ Send Wage Query to Accounts (Urgent)'}
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* Summary + Invoice button */}
               <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:'10px',padding:'1rem',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
