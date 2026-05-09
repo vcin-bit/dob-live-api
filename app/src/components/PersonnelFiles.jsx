@@ -2,16 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 
 const BS7858_ITEMS = [
-  { key: 'identity_verified', label: 'Identity Verified', desc: 'Passport, driving licence or birth certificate checked' },
-  { key: 'right_to_work', label: 'Right to Work', desc: 'UK/EU citizen confirmed or visa/share code verified' },
-  { key: 'dbs_check', label: 'DBS Check', desc: 'Disclosure and Barring Service certificate received' },
-  { key: 'sia_licence', label: 'SIA Licence Verified', desc: 'Valid SIA licence confirmed on SIA register' },
-  { key: 'employment_history_5yr', label: '5-Year Employment History', desc: 'Complete with no unexplained gaps' },
-  { key: 'address_history_3yr', label: '3-Year Address History', desc: 'Complete with no unexplained gaps' },
-  { key: 'references_verified', label: 'References Verified', desc: 'All employer references received and checked' },
-  { key: 'financial_check', label: 'Financial Probity', desc: 'Credit check / bankruptcy search completed' },
-  { key: 'gdpr_consent', label: 'GDPR Consent', desc: 'Data processing agreement accepted' },
-  { key: 'self_employment_declaration', label: 'Employment Declaration', desc: 'Employment status declared and terms accepted' },
+  { key: 'application_form', label: 'Step 1: Application Form', desc: 'Signed application/consent form authorising screening checks', evidence: 'Signed application form' },
+  { key: 'identity_verified', label: 'Step 2: Identity Verification', desc: 'Confirmed via passport, driving licence, or birth certificate. Must verify full legal name, DOB, and photo ID', evidence: 'Copy of passport/driving licence/birth certificate' },
+  { key: 'right_to_work', label: 'Step 3: Right to Work', desc: 'Verified UK/EU citizen, settled status, or valid work visa. Check via GOV.UK share code if applicable', evidence: 'Passport, share code result, or visa copy' },
+  { key: 'address_history_3yr', label: 'Step 4: Address History (3 Years)', desc: 'Full 3-year address history with no unexplained gaps. Verified via utility bills, council tax, or bank statements', evidence: 'Utility bills or council tax statements per address' },
+  { key: 'employment_history_5yr', label: 'Step 5: Employment History (5 Years)', desc: 'Complete 5-year employment history with no gaps exceeding 31 days. All periods accounted for including unemployment, education, travel', evidence: 'Employment references, P45/P60, payslips' },
+  { key: 'references_verified', label: 'Step 6: References', desc: 'Written references obtained from all employers in the 5-year history. Each reference must confirm dates, role, and reason for leaving', evidence: 'Signed reference letters or completed reference forms' },
+  { key: 'criminal_record_check', label: 'Step 7: Criminal Record Check (DBS)', desc: 'Enhanced DBS certificate obtained. Must be less than 3 years old or registered on DBS Update Service', evidence: 'DBS certificate or Update Service check result' },
+  { key: 'financial_check', label: 'Step 8: Financial Probity Check', desc: 'Credit check and bankruptcy/IVA/CCJ search completed. Identifies financial vulnerability that could pose a security risk', evidence: 'Credit check report (Experian/Equifax/TransUnion)' },
+  { key: 'sia_licence', label: 'Step 9: SIA Licence Verification', desc: 'Valid SIA licence confirmed on the SIA public register. Licence type, number, and expiry verified', evidence: 'SIA register screenshot or licence copy (front + back)' },
+  { key: 'interview_assessment', label: 'Step 10: Interview & Assessment', desc: 'Face-to-face or video screening interview conducted. Assessed character, suitability, and any discrepancies in application', evidence: 'Interview notes signed by screener' },
+  { key: 'gdpr_consent', label: 'Data Protection Consent', desc: 'Written consent for data processing, storage, and sharing with third parties for vetting purposes under UK GDPR', evidence: 'Signed GDPR consent form' },
+  { key: 'self_employment_declaration', label: 'Employment Declaration', desc: 'Employment status confirmed (PAYE/self-employed/Ltd). Terms of engagement accepted', evidence: 'Signed declaration' },
 ];
 
 const VETTING_STATUSES = ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETE', 'EXPIRED'];
@@ -533,22 +535,55 @@ function PersonnelFile({ userId, officers, onBack, currentUser }) {
         {/* ── ADDRESS HISTORY ──────────────────────────────────── */}
         {tab === 'addresses' && (
           <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            {/* Current address from HR record */}
+            {hr?.address_line_1 && (
+              <div className="card" style={{ padding: '1rem', marginBottom: '1rem', borderLeft: '3px solid #16a34a' }}>
+                <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.375rem' }}>Current Home Address</div>
+                <div style={{ fontWeight: 600 }}>{hr.address_line_1}{hr.address_line_2 ? `, ${hr.address_line_2}` : ''}</div>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--text-2)' }}>{hr.city}{hr.postcode ? `, ${hr.postcode}` : ''}</div>
+                {(() => {
+                  const currentAddr = address_history.find(a => a.is_current);
+                  if (currentAddr?.start_date) {
+                    const months = Math.floor((new Date() - new Date(currentAddr.start_date)) / (30.44 * 86400000));
+                    const yrs = Math.floor(months / 12);
+                    const mths = months % 12;
+                    return <div style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginTop: '0.25rem' }}>At this address: {yrs > 0 ? `${yrs} year${yrs !== 1 ? 's' : ''} ` : ''}{mths} month{mths !== 1 ? 's' : ''} (since {fmtDate(currentAddr.start_date)})</div>;
+                  }
+                  return <div style={{ fontSize: '0.75rem', color: '#d97706', marginTop: '0.25rem' }}>Duration at this address not recorded — add to address history below</div>;
+                })()}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
               <div style={{ fontWeight: 700 }}>3-Year Address History</div>
               <button className="btn btn-primary btn-sm" onClick={() => setAddrForm({ address_line_1: '', address_line_2: '', city: '', postcode: '', start_date: '', end_date: '', is_current: false })}>+ Add</button>
             </div>
+
+            <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '0.75rem', marginBottom: '1rem', fontSize: '0.75rem', color: '#1e40af', lineHeight: 1.5 }}>
+              <strong>BS7858 Requirement:</strong> A complete 3-year address history must be provided with no unexplained gaps. Each address should be verified with a utility bill, council tax statement, or bank statement showing the address and date.
+            </div>
+
             {address_history.length === 0 ? <div className="empty-state"><p>No address history recorded</p></div> : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {address_history.map(a => (
-                  <div key={a.id} className="card" style={{ padding: '1rem', display: 'flex', justifyContent: 'space-between' }}>
-                    <div>
-                      <div style={{ fontWeight: 600 }}>{a.address_line_1}{a.address_line_2 ? `, ${a.address_line_2}` : ''}</div>
-                      <div style={{ fontSize: '0.8125rem', color: 'var(--text-2)' }}>{a.city}{a.postcode ? `, ${a.postcode}` : ''}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginTop: '0.25rem' }}>{fmtDate(a.start_date)} — {a.is_current ? 'Present' : fmtDate(a.end_date)}</div>
+                {address_history.map(a => {
+                  const months = a.start_date ? Math.floor(((a.is_current ? new Date() : a.end_date ? new Date(a.end_date) : new Date()) - new Date(a.start_date)) / (30.44 * 86400000)) : 0;
+                  const yrs = Math.floor(months / 12);
+                  const mths = months % 12;
+                  return (
+                    <div key={a.id} className="card" style={{ padding: '1rem', display: 'flex', justifyContent: 'space-between', borderLeft: a.is_current ? '3px solid #16a34a' : '3px solid var(--border)' }}>
+                      <div>
+                        <div style={{ fontWeight: 600 }}>{a.address_line_1}{a.address_line_2 ? `, ${a.address_line_2}` : ''}</div>
+                        <div style={{ fontSize: '0.8125rem', color: 'var(--text-2)' }}>{a.city}{a.postcode ? `, ${a.postcode}` : ''}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginTop: '0.25rem' }}>
+                          {fmtDate(a.start_date)} — {a.is_current ? 'Present' : fmtDate(a.end_date)}
+                          <span style={{ marginLeft: '0.5rem', fontWeight: 600 }}>({yrs > 0 ? `${yrs}y ` : ''}{mths}m)</span>
+                          {a.is_current && <span style={{ marginLeft: '0.5rem', color: '#16a34a', fontWeight: 600 }}>Current</span>}
+                        </div>
+                      </div>
+                      <button onClick={() => api.personnel.deleteAddress(userId, a.id).then(load)} style={{ background: 'none', border: 'none', color: '#dc2626', fontSize: '0.75rem', cursor: 'pointer' }}>Del</button>
                     </div>
-                    <button onClick={() => api.personnel.deleteAddress(userId, a.id).then(load)} style={{ background: 'none', border: 'none', color: '#dc2626', fontSize: '0.75rem', cursor: 'pointer' }}>Del</button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
             {addrForm && (
@@ -581,18 +616,30 @@ function PersonnelFile({ userId, officers, onBack, currentUser }) {
         {/* ── BS7858 VETTING ───────────────────────────────────── */}
         {tab === 'vetting' && (
           <>
-            <div style={{ fontWeight: 700, marginBottom: '1rem' }}>BS7858 Vetting Checklist</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <div style={{ fontWeight: 700 }}>BS7858 Vetting Checklist</div>
+              <div style={{ fontSize: '0.875rem', fontWeight: 700, color: vettingPct === 100 ? '#16a34a' : 'var(--blue)' }}>{vettingComplete}/{vettingTotal} ({vettingPct}%)</div>
+            </div>
+            <div style={{ height: '6px', background: 'var(--surface-2)', borderRadius: '3px', overflow: 'hidden', marginBottom: '1rem' }}>
+              <div style={{ height: '100%', background: vettingPct === 100 ? '#16a34a' : 'var(--blue)', width: `${vettingPct}%`, borderRadius: '3px', transition: 'width 0.3s' }} />
+            </div>
+
+            <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '0.75rem', marginBottom: '1rem', fontSize: '0.75rem', color: '#1e40af', lineHeight: 1.5 }}>
+              <strong>BS7858:2019</strong> — Screening of individuals working in a secure environment. All items must be verified and evidenced before an officer can be deployed. Tick each item once the evidence has been obtained and checked.
+            </div>
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {BS7858_ITEMS.map(item => {
                 const v = vettingMap[item.key];
                 return (
-                  <div key={item.key} className="card" style={{ padding: '0.875rem', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                  <div key={item.key} className="card" style={{ padding: '0.875rem', display: 'flex', alignItems: 'flex-start', gap: '0.75rem', borderLeft: v?.verified ? '3px solid #16a34a' : '3px solid #d1d5db' }}>
                     <input type="checkbox" checked={!!v?.verified} onChange={() => toggleVetting(item.key, v?.verified)}
                       style={{ width: '20px', height: '20px', accentColor: 'var(--blue)', cursor: 'pointer', marginTop: '2px', flexShrink: 0 }} />
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600, color: v?.verified ? '#16a34a' : 'var(--text)' }}>{item.label}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>{item.desc}</div>
-                      {v?.verified && v?.verifier && <div style={{ fontSize: '0.6875rem', color: 'var(--text-3)', marginTop: '0.25rem' }}>Verified by {v.verifier.first_name} {v.verifier.last_name} on {fmtDate(v.verified_at)}</div>}
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-2)', marginTop: '0.125rem' }}>{item.desc}</div>
+                      <div style={{ fontSize: '0.6875rem', color: 'var(--text-3)', marginTop: '0.25rem', fontStyle: 'italic' }}>Evidence required: {item.evidence}</div>
+                      {v?.verified && v?.verifier && <div style={{ fontSize: '0.6875rem', color: '#16a34a', marginTop: '0.25rem', fontWeight: 600 }}>✓ Verified by {v.verifier.first_name} {v.verifier.last_name} — {fmtDate(v.verified_at)}</div>}
                     </div>
                   </div>
                 );
