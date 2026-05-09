@@ -1615,24 +1615,46 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
                       {hasDispute !== undefined && disputed && !confirmed && (
                         <div style={{padding:'0.875rem',background:'#fef2f2',borderTop:'1px solid #fca5a5'}}>
                           <div style={{fontSize:'0.75rem',fontWeight:700,color:'#dc2626',marginBottom:'0.5rem'}}>Enter your actual hours:</div>
-                          <div style={{display:'flex',gap:'0.5rem',alignItems:'center',marginBottom:'0.5rem',flexWrap:'wrap'}}>
+                          <div style={{display:'flex',gap:'0.5rem',alignItems:'flex-end',marginBottom:'0.5rem',flexWrap:'wrap'}}>
                             <div>
-                              <div style={{fontSize:'0.625rem',color:'#6b7280',fontWeight:600,marginBottom:'0.125rem'}}>START</div>
-                              <input type="time" value={disputed.start || ''} onChange={e => setDisputedHours(prev => ({...prev, [s.id]: {...prev[s.id], start: e.target.value}}))}
-                                style={{width:'90px',padding:'0.375rem',border:'1px solid #d1d5db',borderRadius:'6px',fontSize:'0.875rem',color:'#111827'}} />
+                              <div style={{fontSize:'0.625rem',color:'#6b7280',fontWeight:600,marginBottom:'0.125rem'}}>I STARTED</div>
+                              <input type="time" value={disputed.start || ''} onChange={e => {
+                                const start = e.target.value;
+                                const end = disputed.end || '';
+                                let calcHrs = '';
+                                if (start && end) {
+                                  const [sh,sm] = start.split(':').map(Number);
+                                  const [eh,em] = end.split(':').map(Number);
+                                  let diff = (eh*60+em) - (sh*60+sm);
+                                  if (diff <= 0) diff += 24*60;
+                                  calcHrs = (Math.round(diff/30)*0.5).toFixed(1);
+                                }
+                                setDisputedHours(prev => ({...prev, [s.id]: {...prev[s.id], start, hours: calcHrs}}));
+                              }} style={{width:'90px',padding:'0.375rem',border:'1px solid #d1d5db',borderRadius:'6px',fontSize:'0.875rem',color:'#111827'}} />
                             </div>
                             <div>
-                              <div style={{fontSize:'0.625rem',color:'#6b7280',fontWeight:600,marginBottom:'0.125rem'}}>FINISH</div>
-                              <input type="time" value={disputed.end || ''} onChange={e => setDisputedHours(prev => ({...prev, [s.id]: {...prev[s.id], end: e.target.value}}))}
-                                style={{width:'90px',padding:'0.375rem',border:'1px solid #d1d5db',borderRadius:'6px',fontSize:'0.875rem',color:'#111827'}} />
+                              <div style={{fontSize:'0.625rem',color:'#6b7280',fontWeight:600,marginBottom:'0.125rem'}}>I FINISHED</div>
+                              <input type="time" value={disputed.end || ''} onChange={e => {
+                                const end = e.target.value;
+                                const start = disputed.start || '';
+                                let calcHrs = '';
+                                if (start && end) {
+                                  const [sh,sm] = start.split(':').map(Number);
+                                  const [eh,em] = end.split(':').map(Number);
+                                  let diff = (eh*60+em) - (sh*60+sm);
+                                  if (diff <= 0) diff += 24*60;
+                                  calcHrs = (Math.round(diff/30)*0.5).toFixed(1);
+                                }
+                                setDisputedHours(prev => ({...prev, [s.id]: {...prev[s.id], end, hours: calcHrs}}));
+                              }} style={{width:'90px',padding:'0.375rem',border:'1px solid #d1d5db',borderRadius:'6px',fontSize:'0.875rem',color:'#111827'}} />
                             </div>
-                            <div>
-                              <div style={{fontSize:'0.625rem',color:'#6b7280',fontWeight:600,marginBottom:'0.125rem'}}>TOTAL HRS</div>
-                              <input type="number" step="0.5" min="0" value={disputed.hours || ''} onChange={e => setDisputedHours(prev => ({...prev, [s.id]: {...prev[s.id], hours: e.target.value}}))}
-                                placeholder={hrs.toFixed(1)} style={{width:'65px',padding:'0.375rem',border: disputed.hours ? '1.5px solid #dc2626' : '1px solid #d1d5db',borderRadius:'6px',fontSize:'0.875rem',textAlign:'right',color:'#dc2626',fontWeight:700}} />
-                            </div>
+                            {disputed.hours && (
+                              <div style={{padding:'0.375rem 0.625rem',background:'#dc2626',borderRadius:'6px',color:'#fff',fontSize:'0.875rem',fontWeight:700}}>
+                                = {disputed.hours}h
+                              </div>
+                            )}
                           </div>
-                          {disputed.hours && <div style={{fontSize:'0.75rem',color:'#dc2626',fontWeight:600}}>Difference: {(parseFloat(disputed.hours) - hrs) > 0 ? '+' : ''}{(parseFloat(disputed.hours) - hrs).toFixed(1)} hours</div>}
+                          {disputed.hours && <div style={{fontSize:'0.75rem',color:'#dc2626',fontWeight:600}}>Recorded: {hrs.toFixed(1)}h · You claim: {disputed.hours}h · Difference: {(parseFloat(disputed.hours) - hrs) > 0 ? '+' : ''}{(parseFloat(disputed.hours) - hrs).toFixed(1)}h</div>}
                           <button onClick={() => { const d = {...disputedHours}; delete d[s.id]; setDisputedHours(d); }}
                             style={{marginTop:'0.375rem',background:'none',border:'none',color:'#9ca3af',fontSize:'0.6875rem',cursor:'pointer'}}>Cancel dispute</button>
                         </div>
