@@ -42,12 +42,14 @@ function ShiftRoster({ user }) {
 // ── P&L DASHBOARD (FD / COMPANY / SUPER_ADMIN only) ──────────────────────────
 function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
 function startOfWeek(d) { const r = new Date(d); r.setDate(r.getDate() - ((r.getDay() + 6) % 7)); r.setHours(0,0,0,0); return r; }
-function calcScheduledHours(s) { return s.start_time && s.end_time ? Math.max(0, (new Date(s.end_time) - new Date(s.start_time)) / 3600000) : 0; }
+function isBankHoliday(s) { return (s.notes || '').includes('[BANK HOLIDAY]'); }
+function calcScheduledHours(s) { const h = s.start_time && s.end_time ? Math.max(0, (new Date(s.end_time) - new Date(s.start_time)) / 3600000) : 0; return isBankHoliday(s) ? h * 2 : h; }
 function calcActualHours(s) {
   if (!s.checked_in_at) return 0;
   const end = s.checked_out_at || s.end_time;
   if (!end) return 0;
-  return Math.max(0, (new Date(end) - new Date(s.checked_in_at)) / 3600000);
+  const h = Math.max(0, (new Date(end) - new Date(s.checked_in_at)) / 3600000);
+  return isBankHoliday(s) ? h * 2 : h;
 }
 const fmt = n => `£${n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
 

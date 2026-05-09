@@ -40,7 +40,8 @@ function shiftTimeLabel(s) {
 
 function shiftHours(s) {
   if (!s.start_time || !s.end_time) return 0;
-  return Math.max(0, (new Date(s.end_time) - new Date(s.start_time)) / 3600000);
+  const hrs = Math.max(0, (new Date(s.end_time) - new Date(s.start_time)) / 3600000);
+  return (s.notes || '').includes('[BANK HOLIDAY]') ? hrs * 2 : hrs;
 }
 
 function canSeePay(role) { return ['COMPANY','OPS_MANAGER','SUPER_ADMIN','FD'].includes(role); }
@@ -723,15 +724,8 @@ function ShiftModal({ shift, prefillDate, officers, allOfficers, sites, rates, s
         {canSeePay(user?.role) && (
           <div style={{marginTop:'0.75rem'}}>
             <label style={{display:'flex',alignItems:'center',gap:'0.5rem',padding:'0.625rem 0.75rem',background: form.is_bank_holiday ? 'rgba(220,38,38,0.06)' : 'var(--surface-2)',border: form.is_bank_holiday ? '1.5px solid rgba(220,38,38,0.3)' : '1px solid var(--border)',borderRadius:'8px',cursor:'pointer',fontSize:'0.8125rem'}}>
-              <input type="checkbox" checked={form.is_bank_holiday} onChange={e => {
-                const bh = e.target.checked;
-                f('is_bank_holiday', bh);
-                if (bh && form.pay_rate) f('pay_rate', (parseFloat(form.pay_rate) * 2).toFixed(2));
-                if (bh && form.charge_rate) f('charge_rate', (parseFloat(form.charge_rate) * 2).toFixed(2));
-                if (!bh && form.pay_rate) f('pay_rate', (parseFloat(form.pay_rate) / 2).toFixed(2));
-                if (!bh && form.charge_rate) f('charge_rate', (parseFloat(form.charge_rate) / 2).toFixed(2));
-              }} style={{accentColor:'#dc2626'}} />
-              <span style={{fontWeight:600,color: form.is_bank_holiday ? '#dc2626' : 'var(--text-2)'}}>Bank Holiday — Double Rate</span>
+              <input type="checkbox" checked={form.is_bank_holiday} onChange={e => f('is_bank_holiday', e.target.checked)} style={{accentColor:'#dc2626'}} />
+              <span style={{fontWeight:600,color: form.is_bank_holiday ? '#dc2626' : 'var(--text-2)'}}>Bank Holiday — Double Hours</span>
             </label>
           </div>
         )}
@@ -739,12 +733,13 @@ function ShiftModal({ shift, prefillDate, officers, allOfficers, sites, rates, s
           const startDt = new Date(`${form.date}T${form.start_time}:00`);
           let endDt = new Date(`${form.date}T${form.end_time}:00`);
           if (endDt <= startDt) endDt = new Date(`${isoDate(addDays(new Date(form.date), 1))}T${form.end_time}:00`);
-          const hrs = Math.max(0, (endDt - startDt) / 3600000);
+          const rawHrs = Math.max(0, (endDt - startDt) / 3600000);
+          const hrs = form.is_bank_holiday ? rawHrs * 2 : rawHrs;
           const showPay = canSeePay(user?.role) && form.pay_rate;
           const showCharge = canSeeCharge(user?.role) && form.charge_rate;
           return (showPay || showCharge) ? (
             <div style={{padding:'0.5rem 0.75rem',background: form.is_bank_holiday ? 'rgba(220,38,38,0.06)' : 'var(--surface-2)',borderRadius:'6px',marginTop:'0.5rem',fontSize:'0.8125rem',color:'var(--text-2)',display:'flex',gap:'1rem',flexWrap:'wrap'}}>
-              <span>{hrs.toFixed(1)} hrs{form.is_bank_holiday ? ' (Bank Holiday)' : ''}</span>
+              <span>{form.is_bank_holiday ? `${rawHrs.toFixed(1)} hrs × 2 = ${hrs.toFixed(1)} hrs (Bank Holiday)` : `${hrs.toFixed(1)} hrs`}</span>
               {showPay && <span style={{color:'#f59e0b'}}>Pay: <strong>£{(hrs * parseFloat(form.pay_rate)).toFixed(2)}</strong></span>}
               {showCharge && <span style={{color:'#10b981'}}>Charge: <strong>£{(hrs * parseFloat(form.charge_rate)).toFixed(2)}</strong></span>}
             </div>
