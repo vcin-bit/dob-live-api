@@ -34,16 +34,17 @@ router.post('/', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// GET /api/handovers/pending/:siteId — get pending handover for incoming officer
+// GET /api/handovers/pending/:siteId — get most recent handover (last 24hrs) for incoming officer
 router.get('/pending/:siteId', authenticate, async (req, res, next) => {
   try {
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { data, error } = await supabase
       .from('handover_briefs')
       .select('*, author:users!handover_briefs_authored_by_fkey(first_name, last_name)')
       .eq('site_id', req.params.siteId)
       .eq('company_id', req.user.company_id)
-      .eq('status', 'PENDING')
       .neq('authored_by', req.user.id)
+      .gte('created_at', cutoff)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
