@@ -16,11 +16,16 @@ function officerColour(id) {
 function isoDate(d) { return d.toLocaleDateString('en-CA', { timeZone: 'Europe/London' }); }
 function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
 function localISOString(dateStr, timeStr) {
-  const d = new Date(`${dateStr}T${timeStr}:00`);
-  const offset = -d.getTimezoneOffset();
-  const sign = offset >= 0 ? '+' : '-';
-  const pad = n => String(Math.floor(Math.abs(n))).padStart(2, '0');
-  return `${dateStr}T${timeStr}:00${sign}${pad(offset / 60)}:${pad(offset % 60)}`;
+  // Always use UK timezone (GMT/BST)
+  // Check if the date falls in BST (last Sunday in March to last Sunday in October)
+  const d = new Date(`${dateStr}T12:00:00Z`);
+  const year = d.getUTCFullYear();
+  const marchLast = new Date(Date.UTC(year, 2, 31));
+  while (marchLast.getUTCDay() !== 0) marchLast.setUTCDate(marchLast.getUTCDate() - 1);
+  const octLast = new Date(Date.UTC(year, 9, 31));
+  while (octLast.getUTCDay() !== 0) octLast.setUTCDate(octLast.getUTCDate() - 1);
+  const isBST = d >= marchLast && d < octLast;
+  return `${dateStr}T${timeStr}:00${isBST ? '+01:00' : '+00:00'}`;
 }
 function startOfWeek(d) { const r = new Date(d); r.setDate(r.getDate() - ((r.getDay() + 6) % 7)); r.setHours(0,0,0,0); return r; }
 function startOfMonth(d) { return new Date(d.getFullYear(), d.getMonth(), 1); }
