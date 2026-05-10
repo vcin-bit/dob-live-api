@@ -554,26 +554,29 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift, onPatro
     }
   }, [site, user]);
 
-  // Hourly check call timer — uses lastCheckCall from server data (set in dashboard fetch)
+  // Hourly check call timer — ticks every 15 seconds for smooth countdown
   useEffect(() => {
-    if (!shift) { setCheckCallDue(false); return; }
+    if (!shift) { setCheckCallDue(false); setCheckCallMinsLeft(null); return; }
+    let audioPlayed = false;
     const check = () => {
-      // Use server-loaded lastCheckCall, or shift checked_in_at from current active shift
       const last = lastCheckCall || (shift.checked_in_at ? new Date(shift.checked_in_at) : new Date());
       const elapsed = (Date.now() - last.getTime()) / 60000;
-      const remaining = Math.ceil(60 - elapsed);
-      setCheckCallMinsLeft(remaining > 0 ? remaining : 0);
-      if (elapsed >= 55 && elapsed < 40000) { // Warning at 55 mins, cron escalates at 60
+      const remaining = Math.max(0, Math.ceil(60 - elapsed));
+      setCheckCallMinsLeft(remaining);
+      if (elapsed >= 55 && elapsed < 40000) {
         setCheckCallDue(true);
-        try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); const o = ctx.createOscillator(); o.frequency.value = 800; o.connect(ctx.destination); o.start(); setTimeout(() => o.stop(), 500); } catch {}
+        if (!audioPlayed) {
+          audioPlayed = true;
+          try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); const o = ctx.createOscillator(); o.frequency.value = 800; o.connect(ctx.destination); o.start(); setTimeout(() => o.stop(), 500); } catch {}
+        }
       } else {
         setCheckCallDue(false);
+        audioPlayed = false;
       }
     };
-    // Don't run timer until dashboard has loaded (lastCheckCall will be set from server)
-    const delay = setTimeout(check, 3000);
-    const t = setInterval(check, 60000);
-    return () => { clearTimeout(delay); clearInterval(t); };
+    check(); // run immediately
+    const t = setInterval(check, 15000); // tick every 15 seconds
+    return () => clearInterval(t);
   }, [shift, lastCheckCall]);
 
   // Fetch logs for selected history date
@@ -734,7 +737,7 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift, onPatro
         <div style={{display:'flex',gap:'0.5rem',marginBottom:'0.625rem'}}>
           <button onClick={() => { setShowCheckCall(true); setCheckPin(''); }}
             style={{flex:2,padding:'0.875rem',background: checkCallDue ? 'rgba(239,68,68,0.2)' : 'rgba(59,130,246,0.1)',border:`2px solid ${checkCallDue ? 'rgba(239,68,68,0.5)' : 'rgba(59,130,246,0.25)'}`,borderRadius:'10px',color: checkCallDue ? '#ef4444' : '#60a5fa',fontSize:'0.9375rem',fontWeight:700,cursor:'pointer',animation: checkCallDue ? 'pulse 1s infinite' : 'none'}}>
-            📞 {checkCallDue ? 'SAFETY CHECK DUE' : checkCallMinsLeft != null ? `Safety Check — ${checkCallMinsLeft} min` : 'Safety Check'}
+            📞 {checkCallDue ? 'SAFETY CHECK DUE NOW' : checkCallMinsLeft != null ? `Safety Check — ${checkCallMinsLeft} min${checkCallMinsLeft !== 1 ? 's' : ''}` : 'Safety Check'}
           </button>
           <button onClick={async () => {
             if (!confirm('ACTIVATE PANIC ALERT? This will immediately alert the control room.')) return;
