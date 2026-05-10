@@ -1282,8 +1282,8 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
         // Default to most recent month with shifts
         if (data.length > 0) {
           const months = [...new Set(data.map(s => {
-            const d = new Date(s.start_time);
-            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+            const parts = new Date(s.start_time).toLocaleDateString('en-GB', { timeZone:'Europe/London', year:'numeric', month:'2-digit' }).split('/');
+            return `${parts[1]}-${parts[0]}`;
           }))].sort().reverse();
           if (months.length > 0) setSelectedMonth(months[0]);
         }
@@ -1304,16 +1304,12 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
   }
 
   // Filter shifts by selected month
-  const monthShifts = shifts.filter(s => {
-    const d = new Date(s.start_time);
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` === selectedMonth;
-  });
-
-  // Get available months from shifts
-  const availableMonths = [...new Set(shifts.map(s => {
-    const d = new Date(s.start_time);
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-  }))].sort().reverse();
+  function getShiftMonth(s) {
+    const parts = new Date(s.start_time).toLocaleDateString('en-GB', { timeZone:'Europe/London', year:'numeric', month:'2-digit' }).split('/');
+    return `${parts[1]}-${parts[0]}`;
+  }
+  const monthShifts = shifts.filter(s => getShiftMonth(s) === selectedMonth);
+  const availableMonths = [...new Set(shifts.map(s => getShiftMonth(s)))].sort().reverse();
 
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [confirmedIds, setConfirmedIds] = useState(new Set());

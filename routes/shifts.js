@@ -89,6 +89,7 @@ router.post('/expire', async (req, res, next) => {
       .lt('end_time', new Date().toISOString())
       .not('end_time', 'is', null)
       .not('checked_in_at', 'is', null)
+      .is('checked_out_at', null)
       .select('id, officer_id, end_time, site_id, company_id');
     if (error) throw error;
     // Create auto off-duty log for each expired shift
@@ -233,7 +234,9 @@ router.get('/previous', authenticate, async (req, res, next) => {
       .eq('site_id', site_id)
       .eq('status', 'COMPLETED')
       .neq('officer_id', req.user.id)
+      .not('checked_out_at', 'is', null)
       .order('checked_out_at', { ascending: false })
+      .order('id', { ascending: false })
       .limit(1)
       .maybeSingle();
     if (error) throw error;

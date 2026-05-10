@@ -17,14 +17,16 @@ function isoDate(d) { return d.toLocaleDateString('en-CA', { timeZone: 'Europe/L
 function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
 function localISOString(dateStr, timeStr) {
   // Always use UK timezone (GMT/BST)
-  // Check if the date falls in BST (last Sunday in March to last Sunday in October)
-  const d = new Date(`${dateStr}T12:00:00Z`);
-  const year = d.getUTCFullYear();
-  const marchLast = new Date(Date.UTC(year, 2, 31));
+  // BST: clocks go forward at 01:00 on last Sunday in March
+  // GMT: clocks go back at 02:00 on last Sunday in October
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const marchLast = new Date(Date.UTC(year, 2, 31, 1, 0)); // 01:00 UTC
   while (marchLast.getUTCDay() !== 0) marchLast.setUTCDate(marchLast.getUTCDate() - 1);
-  const octLast = new Date(Date.UTC(year, 9, 31));
+  const octLast = new Date(Date.UTC(year, 9, 31, 1, 0)); // 01:00 UTC
   while (octLast.getUTCDay() !== 0) octLast.setUTCDate(octLast.getUTCDate() - 1);
-  const isBST = d >= marchLast && d < octLast;
+  // Create date at noon to avoid edge issues
+  const checkDate = new Date(Date.UTC(year, month - 1, day, 12, 0));
+  const isBST = checkDate >= marchLast && checkDate < octLast;
   return `${dateStr}T${timeStr}:00${isBST ? '+01:00' : '+00:00'}`;
 }
 function startOfWeek(d) { const r = new Date(d); r.setDate(r.getDate() - ((r.getDay() + 6) % 7)); r.setHours(0,0,0,0); return r; }
@@ -32,8 +34,9 @@ function startOfMonth(d) { return new Date(d.getFullYear(), d.getMonth(), 1); }
 function fmtTime(iso) { return new Date(iso).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', timeZone:'Europe/London' }); }
 
 function isOvernight(s) {
-  if (!s.end_time) return false;
-  return new Date(s.end_time) > addDays(new Date(isoDate(new Date(s.start_time))), 1);
+  if (!s.end_time || !s.start_time) return false;
+  try { return new Date(s.end_time) > addDays(new Date(isoDate(new Date(s.start_time))), 1); }
+  catch { return false; }
 }
 
 function shiftTimeLabel(s) {

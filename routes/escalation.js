@@ -205,7 +205,7 @@ router.post('/cron-check', async (req, res) => {
     if (!activeShifts || activeShifts.length === 0) return res.json({ ...results, message: 'No active shifts' });
 
     for (const shift of activeShifts) {
-      if (!shift.officer) continue;
+      if (!shift.officer?.id || !shift.officer?.first_name) continue;
       results.checked++;
 
       const officerName = `${shift.officer.first_name} ${shift.officer.last_name}`;

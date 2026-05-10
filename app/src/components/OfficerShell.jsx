@@ -415,7 +415,7 @@ function OfficerApp({ user }) {
             if (check.data && check.data.length > 0) {
               await api.shifts.checkout(check.data[0].id);
             }
-          } catch {}
+          } catch (err) { console.error('Checkout failed:', err); }
           setActiveShift(null);
         }
         signOut();
