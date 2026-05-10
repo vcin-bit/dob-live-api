@@ -479,6 +479,7 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift, onPatro
   const [activePatrol, setActivePatrol] = useState(false);
   const [showLogMenu, setShowLogMenu] = useState(false);
   const [clientTasks, setClientTasks] = useState([]);
+  const [onSiteVisitors, setOnSiteVisitors] = useState([]);
   const [clientTaskModal, setClientTaskModal] = useState(null);
   const [clientTaskNotes, setClientTaskNotes] = useState('');
   const [clientTaskSubmitting, setClientTaskSubmitting] = useState(false);
@@ -520,6 +521,10 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift, onPatro
         try {
           const clientTasksRes = await api.alerts.list({ site_id: site.id, status: 'open' });
           setClientTasks(clientTasksRes.data || []);
+        } catch {}
+        try {
+          const visRes = await api.visitors.list({ site_id: site.id, status: 'on_site' });
+          setOnSiteVisitors(visRes.data || []);
         } catch {}
         // Check for active patrol + last completed patrol time
         try {
@@ -792,8 +797,17 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift, onPatro
       )}
 
       {/* On Site Now */}
-      <Link to="/visitors" className="officer-action-btn secondary" style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.625rem'}}>
-        <span>👥 Visitors / Contractors On Site Now</span>
+      <Link to="/visitors" style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.875rem',background: onSiteVisitors.length > 0 ? 'rgba(245,158,11,0.08)' : 'rgba(255,255,255,0.04)',border:`1px solid ${onSiteVisitors.length > 0 ? 'rgba(245,158,11,0.25)' : 'rgba(255,255,255,0.08)'}`,borderRadius:'10px',textDecoration:'none',marginBottom:'0.625rem'}}>
+        <div style={{display:'flex',alignItems:'center',gap:'0.5rem'}}>
+          <span style={{fontSize:'1.25rem'}}>👥</span>
+          <div>
+            <div style={{fontSize:'0.875rem',fontWeight:600,color: onSiteVisitors.length > 0 ? '#f59e0b' : 'rgba(255,255,255,0.5)'}}>
+              {onSiteVisitors.length > 0 ? `${onSiteVisitors.length} Visitor${onSiteVisitors.length!==1?'s':''} On Site` : 'No Visitors On Site'}
+            </div>
+            {onSiteVisitors.length > 0 && <div style={{fontSize:'0.6875rem',color:'rgba(255,255,255,0.35)'}}>Remember to sign out before end of shift</div>}
+          </div>
+        </div>
+        {onSiteVisitors.length > 0 && <span style={{background:'#f59e0b',color:'#fff',fontSize:'0.75rem',fontWeight:700,padding:'0.125rem 0.5rem',borderRadius:'8px'}}>{onSiteVisitors.length}</span>}
       </Link>
 
 

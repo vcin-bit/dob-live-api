@@ -42,5 +42,17 @@ async function runChecks(env) {
     console.error('Safety check failed:', e.message);
   }
 
+  // Auto sign-out visitors at midnight
+  try {
+    const res = await fetch('https://dob-live-api.onrender.com/api/visitors/expire', {
+      method: 'POST', headers,
+    });
+    results.visitor_expiry = await res.json();
+    console.log('Visitor expiry:', JSON.stringify(results.visitor_expiry));
+  } catch (e) {
+    results.visitor_expiry = { error: e.message };
+    console.error('Visitor expiry failed:', e.message);
+  }
+
   return results;
 }

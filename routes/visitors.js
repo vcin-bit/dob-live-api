@@ -85,4 +85,19 @@ router.delete('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_M
   } catch (err) { next(err); }
 });
 
+// POST /api/visitors/expire — auto sign-out visitors still on site at midnight
+router.post('/expire', async (req, res) => {
+  try {
+    const now = new Date();
+    const { data, error } = await supabase
+      .from('visitors')
+      .update({ status: 'signed_out', time_out: now.toISOString(), notes: 'Auto signed out at midnight' })
+      .eq('status', 'on_site')
+      .select('id, visitor_name, site_id');
+    if (error) throw error;
+    console.log(`[Visitors] Auto-expired ${(data || []).length} visitors at midnight`);
+    res.json({ expired: (data || []).length, visitors: data || [] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 module.exports = router;
