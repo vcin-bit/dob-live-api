@@ -20,13 +20,49 @@ router.get('/', authenticate, async (req, res, next) => {
 
 router.post('/', authenticate, async (req, res, next) => {
   try {
-    const { site_id, shift_id, handed_to, content } = req.body;
+    const { site_id, shift_id, handed_to, content, site_status, equipment_checklist, outstanding_issues, keys_handed_over, radio_handed_over } = req.body;
     const { data, error } = await supabase
       .from('handover_briefs')
-      .insert({ company_id: req.user.company_id, authored_by: req.user.id, site_id, shift_id, handed_to, content })
+      .insert({
+        company_id: req.user.company_id, authored_by: req.user.id, site_id, shift_id, handed_to,
+        content, site_status, equipment_checklist: equipment_checklist || [], outstanding_issues,
+        keys_handed_over, radio_handed_over, status: 'PENDING',
+      })
       .select().single();
     if (error) throw error;
     res.status(201).json({ data });
+  } catch (err) { next(err); }
+});
+
+// GET /api/handovers/pending/:siteId — get pending handover for incoming officer
+router.get('/pending/:siteId', authenticate, async (req, res, next) => {
+  try {
+    const { data, error } = await supabase
+      .from('handover_briefs')
+      .select('*, author:users!handover_briefs_authored_by_fkey(first_name, last_name)')
+      .eq('site_id', req.params.siteId)
+      .eq('company_id', req.user.company_id)
+      .eq('status', 'PENDING')
+      .neq('authored_by', req.user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    res.json({ data });
+  } catch (err) { next(err); }
+});
+
+// PATCH /api/handovers/:id/acknowledge — incoming officer acknowledges
+router.patch('/:id/acknowledge', authenticate, async (req, res, next) => {
+  try {
+    const { data, error } = await supabase
+      .from('handover_briefs')
+      .update({ acknowledged_by: req.user.id, acknowledged_at: new Date().toISOString(), status: 'ACKNOWLEDGED' })
+      .eq('id', req.params.id)
+      .eq('company_id', req.user.company_id)
+      .select().single();
+    if (error) throw error;
+    res.json({ data });
   } catch (err) { next(err); }
 });
 

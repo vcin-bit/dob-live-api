@@ -77,6 +77,7 @@ app.use('/api/hr',           require('./routes/hr'));
 app.use('/api/inspections',  require('./routes/inspections'));
 app.use('/api/updates',      require('./routes/updates'));
 app.use('/api/personnel',    require('./routes/personnel'));
+app.use('/api/site-checks',  require('./routes/site-checks'));
 
 // ── 404 handler ──────────────────────────────────────────────
 app.use((req, res) => {

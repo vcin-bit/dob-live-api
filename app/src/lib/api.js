@@ -254,6 +254,16 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+    pending: (siteId) => request(`/api/handovers/pending/${siteId}`),
+    acknowledge: (id) => request(`/api/handovers/${id}/acknowledge`, { method: 'PATCH' }),
+  },
+
+  siteChecks: {
+    list: (siteId) => request(`/api/site-checks/${siteId}`),
+    create: (siteId, label, sort_order) => request(`/api/site-checks/${siteId}`, { method: 'POST', body: JSON.stringify({ label, sort_order }) }),
+    delete: (siteId, id) => request(`/api/site-checks/${siteId}/${id}`, { method: 'DELETE' }),
+    complete: (shiftId, checks) => request(`/api/site-checks/complete/${shiftId}`, { method: 'POST', body: JSON.stringify({ checks }) }),
+    completed: (shiftId) => request(`/api/site-checks/completed/${shiftId}`),
   },
 
   instructions: {

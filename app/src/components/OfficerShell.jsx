@@ -33,57 +33,37 @@ function OfficerApp({ user }) {
   const [handoverLoading, setHandoverLoading] = useState(false);
   const [handoverAcked, setHandoverAcked] = useState(false);
 
+  const [siteChecks, setSiteChecks] = useState([]);
+  const [checksCompleted, setChecksCompleted] = useState(false);
+  const [checkStates, setCheckStates] = useState({});
+
   async function loadHandover() {
     if (!selectedSite) return;
     setHandoverLoading(true);
     try {
-      const now = new Date();
-      const yesterday = new Date(now); yesterday.setDate(yesterday.getDate() - 1);
+      // Get the actual handover brief from the previous officer
+      const pendingRes = await api.handovers.pending(selectedSite.id);
+      const handoverBrief = pendingRes.data || null;
 
-      // Get previous shift at this site by a DIFFERENT officer (last COMPLETED)
-      const prevShiftRes = await api.shifts.previous(selectedSite.id);
-      const prevShift = prevShiftRes.data || null;
-
-      // Get logs from previous shift period
-      let logs = [];
-      if (prevShift) {
-        const from = prevShift.checked_in_at || prevShift.start_time;
-        const to = prevShift.checked_out_at || prevShift.end_time || now.toISOString();
-        const logsRes = await api.logs.list({ site_id: selectedSite.id, from, to, limit: 200 });
-        logs = (logsRes.data || []).filter(l => !l.type_data?.checkpoint);
-      }
-
-      // Get visitors still on site
+      // Also get visitors on site
       let visitors = [];
       try {
         const visRes = await api.visitors.list({ site_id: selectedSite.id, status: 'on_site' });
         visitors = visRes.data || [];
       } catch {}
 
-      // Get playbook tasks completion
-      let tasksDone = [];
+      // Load site checks
       try {
-        const pbRes = await api.playbooks.get(selectedSite.id);
-        tasksDone = (pbRes.tasks || []);
+        const checksRes = await api.siteChecks.list(selectedSite.id);
+        setSiteChecks(checksRes.data || []);
       } catch {}
 
-      const incidents = logs.filter(l => ['INCIDENT','ALARM','FIRE_ALARM','EMERGENCY'].includes(l.log_type));
-      const genInfo = logs.filter(l => l.log_type === 'GENERAL' && !l.type_data?.shift_event && !l.type_data?.scheduled_task_id);
-      const openIncidents = incidents.filter(l => l.review_status !== 'RESOLVED');
-
       setHandover({
-        prevShift,
-        prevOfficer: prevShift?.officer ? `${prevShift.officer.first_name} ${prevShift.officer.last_name}` : 'Unknown',
-        prevStart: prevShift?.checked_in_at || prevShift?.start_time,
-        prevEnd: prevShift?.checked_out_at || prevShift?.end_time,
-        incidents,
-        openIncidents,
-        genInfo,
+        brief: handoverBrief,
+        prevOfficer: handoverBrief?.author ? `${handoverBrief.author.first_name} ${handoverBrief.author.last_name}` : null,
         visitors,
-        tasksDone,
-        logs,
       });
-    } catch (e) { console.error('Handover load failed:', e); setHandover({ prevShift: null, prevOfficer: 'N/A', incidents: [], openIncidents: [], genInfo: [], visitors: [], tasksDone: [], logs: [] }); }
+    } catch (e) { console.error('Handover load failed:', e); setHandover({ brief: null, prevOfficer: null, visitors: [] }); }
     finally { setHandoverLoading(false); }
   }
 
@@ -242,52 +222,55 @@ function OfficerApp({ user }) {
             )}
             {handoverLoading && <div style={{padding:'1rem',color:'rgba(255,255,255,0.4)',fontSize:'0.875rem'}}>Loading handover...</div>}
 
-            {/* Step 2: Show handover */}
+            {/* Step 2: Show handover from previous officer */}
             {handover && !handoverAcked && (
               <div style={{textAlign:'left',width:'100%'}}>
                 <div style={{fontSize:'0.75rem',fontWeight:700,color:'#3b82f6',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.75rem'}}>Shift Handover</div>
 
-                {/* Previous shift */}
-                <div style={{padding:'0.75rem',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'8px',marginBottom:'0.625rem',fontSize:'0.8125rem'}}>
-                  <div style={{fontWeight:600,color:'#fff',marginBottom:'0.25rem'}}>Previous Shift</div>
-                  {handover.prevShift ? (
-                    <div style={{color:'rgba(255,255,255,0.5)'}}>
-                      {handover.prevOfficer} · {new Date(handover.prevStart).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}–{new Date(handover.prevEnd).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})} · {new Date(handover.prevStart).toLocaleDateString('en-GB',{day:'2-digit',month:'short',timeZone:'Europe/London'})}
+                {handover.brief ? (
+                  <>
+                    {/* Who handed over */}
+                    <div style={{padding:'0.75rem',background:'rgba(59,130,246,0.08)',border:'1px solid rgba(59,130,246,0.2)',borderRadius:'8px',marginBottom:'0.625rem',fontSize:'0.8125rem'}}>
+                      <div style={{fontWeight:600,color:'#60a5fa',marginBottom:'0.25rem'}}>Handover from {handover.prevOfficer}</div>
+                      <div style={{fontSize:'0.6875rem',color:'rgba(255,255,255,0.35)'}}>{new Date(handover.brief.created_at).toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short',timeZone:'Europe/London'})} at {new Date(handover.brief.created_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}</div>
                     </div>
-                  ) : <div style={{color:'rgba(255,255,255,0.3)'}}>No previous shift data</div>}
-                </div>
 
-                {/* Incidents */}
-                <div style={{padding:'0.75rem',background: handover.incidents.length > 0 ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.04)',border:`1px solid ${handover.incidents.length > 0 ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.08)'}`,borderRadius:'8px',marginBottom:'0.625rem',fontSize:'0.8125rem'}}>
-                  <div style={{fontWeight:600,color: handover.incidents.length > 0 ? '#ef4444' : '#fff',marginBottom:'0.25rem'}}>Incidents ({handover.incidents.length})</div>
-                  {handover.incidents.length === 0 ? <div style={{color:'rgba(255,255,255,0.3)'}}>No incidents last shift</div> : (
-                    handover.incidents.map((l,i) => {
-                      const td = l.type_data || {};
-                      return (
-                        <div key={i} style={{padding:'0.5rem',background:'rgba(239,68,68,0.05)',border:'1px solid rgba(239,68,68,0.12)',borderRadius:'6px',marginTop:'0.375rem'}}>
-                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.25rem'}}>
-                            <div style={{fontWeight:700,color:'#ef4444',fontSize:'0.8125rem'}}>{td.incident_type || l.title}</div>
-                            <div style={{fontSize:'0.6875rem',color:'rgba(255,255,255,0.35)'}}>{new Date(l.occurred_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}</div>
-                          </div>
-                          {l.description && <div style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.55)',lineHeight:1.4,marginBottom:'0.25rem'}}>{l.description.length > 200 ? l.description.slice(0,200) + '...' : l.description}</div>}
-                          <div style={{display:'flex',gap:'0.5rem',flexWrap:'wrap',fontSize:'0.6875rem'}}>
-                            {td.police_reported && <span style={{padding:'1px 6px',background:'rgba(239,68,68,0.15)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:'3px',color:'#ef4444',fontWeight:600}}>Police{td.police_reported_via ? ` ${td.police_reported_via}` : ''}{td.police_force ? ` — ${td.police_force}` : ''}</span>}
-                            {td.police_incident_number && <span style={{color:'rgba(255,255,255,0.4)'}}>Ref: {td.police_incident_number}</span>}
-                            {td.services_attended?.length > 0 && td.services_attended.map(s => <span key={s} style={{padding:'1px 6px',background:'rgba(59,130,246,0.12)',border:'1px solid rgba(59,130,246,0.25)',borderRadius:'3px',color:'#60a5fa',fontWeight:600}}>{s}</span>)}
-                          </div>
-                          {l.review_status && l.review_status !== 'RESOLVED' && <div style={{fontSize:'0.6875rem',color:'#f59e0b',fontWeight:600,marginTop:'0.25rem'}}>Status: {l.review_status}</div>}
-                        </div>
-                      );
-                    })
-                  )}
-                  {handover.openIncidents.length > 0 && <div style={{color:'#ef4444',fontWeight:600,marginTop:'0.375rem',fontSize:'0.8125rem'}}>⚠ {handover.openIncidents.length} unresolved incident{handover.openIncidents.length !== 1 ? 's' : ''}</div>}
-                </div>
+                    {/* Site status */}
+                    <div style={{padding:'0.75rem',background: handover.brief.site_status === 'ALL_SECURE' ? 'rgba(74,222,128,0.08)' : handover.brief.site_status === 'REQUIRES_ATTENTION' ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)',
+                      border:`1px solid ${handover.brief.site_status === 'ALL_SECURE' ? 'rgba(74,222,128,0.2)' : handover.brief.site_status === 'REQUIRES_ATTENTION' ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)'}`,borderRadius:'8px',marginBottom:'0.625rem'}}>
+                      <div style={{fontSize:'0.875rem',fontWeight:700,color: handover.brief.site_status === 'ALL_SECURE' ? '#4ade80' : handover.brief.site_status === 'REQUIRES_ATTENTION' ? '#ef4444' : '#f59e0b'}}>
+                        Site: {handover.brief.site_status === 'ALL_SECURE' ? 'All Secure' : handover.brief.site_status === 'REQUIRES_ATTENTION' ? 'Requires Attention' : 'Issues Noted'}
+                      </div>
+                    </div>
 
-                {/* Gen info */}
-                {handover.genInfo.length > 0 && (
-                  <div style={{padding:'0.75rem',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'8px',marginBottom:'0.625rem',fontSize:'0.8125rem'}}>
-                    <div style={{fontWeight:600,color:'#fff',marginBottom:'0.25rem'}}>General Info ({handover.genInfo.length})</div>
-                    {handover.genInfo.slice(0,5).map((l,i) => <div key={i} style={{color:'rgba(255,255,255,0.5)',marginTop:'0.25rem'}}>• {l.title || l.description?.slice(0,60)}</div>)}
+                    {/* Equipment */}
+                    <div style={{display:'flex',gap:'0.5rem',marginBottom:'0.625rem'}}>
+                      <div style={{flex:1,padding:'0.625rem',background: handover.brief.keys_handed_over ? 'rgba(74,222,128,0.08)' : 'rgba(239,68,68,0.08)',border:`1px solid ${handover.brief.keys_handed_over ? 'rgba(74,222,128,0.2)' : 'rgba(239,68,68,0.2)'}`,borderRadius:'8px',textAlign:'center',fontSize:'0.8125rem',fontWeight:600,color: handover.brief.keys_handed_over ? '#4ade80' : '#ef4444'}}>
+                        {handover.brief.keys_handed_over ? '✓' : '✗'} Keys
+                      </div>
+                      <div style={{flex:1,padding:'0.625rem',background: handover.brief.radio_handed_over ? 'rgba(74,222,128,0.08)' : 'rgba(239,68,68,0.08)',border:`1px solid ${handover.brief.radio_handed_over ? 'rgba(74,222,128,0.2)' : 'rgba(239,68,68,0.2)'}`,borderRadius:'8px',textAlign:'center',fontSize:'0.8125rem',fontWeight:600,color: handover.brief.radio_handed_over ? '#4ade80' : '#ef4444'}}>
+                        {handover.brief.radio_handed_over ? '✓' : '✗'} Radio
+                      </div>
+                    </div>
+
+                    {/* Outstanding issues */}
+                    {handover.brief.outstanding_issues && (
+                      <div style={{padding:'0.75rem',background:'rgba(245,158,11,0.08)',border:'1px solid rgba(245,158,11,0.2)',borderRadius:'8px',marginBottom:'0.625rem',fontSize:'0.8125rem'}}>
+                        <div style={{fontWeight:600,color:'#f59e0b',marginBottom:'0.25rem'}}>Outstanding Issues</div>
+                        <div style={{color:'rgba(255,255,255,0.6)',lineHeight:1.5,whiteSpace:'pre-wrap'}}>{handover.brief.outstanding_issues}</div>
+                      </div>
+                    )}
+
+                    {/* Key points */}
+                    <div style={{padding:'0.75rem',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'8px',marginBottom:'0.625rem',fontSize:'0.8125rem'}}>
+                      <div style={{fontWeight:600,color:'#fff',marginBottom:'0.25rem'}}>Key Points</div>
+                      <div style={{color:'rgba(255,255,255,0.6)',lineHeight:1.5,whiteSpace:'pre-wrap'}}>{handover.brief.content}</div>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{padding:'1rem',background:'rgba(245,158,11,0.08)',border:'1px solid rgba(245,158,11,0.2)',borderRadius:'8px',marginBottom:'0.625rem',textAlign:'center'}}>
+                    <div style={{fontSize:'0.875rem',fontWeight:600,color:'#f59e0b'}}>No handover submitted</div>
+                    <div style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.4)',marginTop:'0.25rem'}}>The previous officer did not submit a handover report.</div>
                   </div>
                 )}
 
@@ -300,19 +283,64 @@ function OfficerApp({ user }) {
                 )}
 
                 {/* Acknowledge */}
-                <button onClick={() => {
+                <button onClick={async () => {
+                  // Acknowledge the handover record
+                  if (handover.brief?.id) {
+                    try { await api.handovers.acknowledge(handover.brief.id); } catch {}
+                  }
+                  // Log it
+                  api.logs.create({ site_id: selectedSite.id, log_type: 'GENERAL', title: `Handover Acknowledged — ${user.first_name} ${user.last_name}`, description: `Incoming officer acknowledged shift handover from ${handover.prevOfficer || 'previous shift'}.`, occurred_at: new Date().toISOString(), type_data: { shift_event: 'HANDOVER_ACK', prev_officer: handover.prevOfficer, handover_id: handover.brief?.id } }).catch(() => {});
                   setHandoverAcked(true);
-                  // Log the acknowledgement
-                  api.logs.create({ site_id: selectedSite.id, log_type: 'GENERAL', title: `Handover Acknowledged — ${user.first_name} ${user.last_name}`, description: `Incoming officer acknowledged shift handover from ${handover.prevOfficer || 'previous shift'}.`, occurred_at: new Date().toISOString(), type_data: { shift_event: 'HANDOVER_ACK', prev_officer: handover.prevOfficer } }).catch(() => {});
                 }} style={{width:'100%',padding:'16px',background:'rgba(59,130,246,0.15)',border:'2px solid rgba(59,130,246,0.5)',borderRadius:'12px',color:'#60a5fa',fontSize:'1rem',fontWeight:700,cursor:'pointer',marginTop:'0.5rem'}}>
                   I ACKNOWLEDGE THIS HANDOVER
                 </button>
               </div>
             )}
 
-            {/* Step 3: Go on duty */}
-            {handoverAcked && (
-              <button onClick={startShift}
+            {/* Step 3: Site checks (if configured) */}
+            {handoverAcked && siteChecks.length > 0 && !checksCompleted && (
+              <div style={{textAlign:'left',width:'100%'}}>
+                <div style={{fontSize:'0.75rem',fontWeight:700,color:'#f59e0b',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.75rem'}}>Start-of-Shift Checks</div>
+                <div style={{fontSize:'0.8125rem',color:'rgba(255,255,255,0.4)',marginBottom:'0.75rem'}}>Complete all checks before going on duty.</div>
+                <div style={{display:'flex',flexDirection:'column',gap:'0.5rem',marginBottom:'1rem'}}>
+                  {siteChecks.map(c => (
+                    <button key={c.id} onClick={() => setCheckStates(prev => ({...prev, [c.id]: !prev[c.id]}))}
+                      style={{display:'flex',alignItems:'center',gap:'0.75rem',padding:'0.875rem',background: checkStates[c.id] ? 'rgba(74,222,128,0.08)' : 'rgba(255,255,255,0.04)',
+                        border:`1.5px solid ${checkStates[c.id] ? 'rgba(74,222,128,0.3)' : 'rgba(255,255,255,0.08)'}`,borderRadius:'8px',cursor:'pointer',width:'100%',textAlign:'left'}}>
+                      <div style={{width:'22px',height:'22px',borderRadius:'50%',background: checkStates[c.id] ? 'rgba(74,222,128,0.2)' : 'rgba(255,255,255,0.06)',border:`1.5px solid ${checkStates[c.id] ? '#4ade80' : 'rgba(255,255,255,0.15)'}`,
+                        display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:'0.75rem',color:'#4ade80',fontWeight:700}}>
+                        {checkStates[c.id] ? '✓' : ''}
+                      </div>
+                      <span style={{fontSize:'0.875rem',fontWeight:600,color: checkStates[c.id] ? '#4ade80' : '#fff'}}>{c.label}</span>
+                    </button>
+                  ))}
+                </div>
+                {siteChecks.every(c => checkStates[c.id]) ? (
+                  <button onClick={async () => {
+                    // Save completed checks
+                    setChecksCompleted(true);
+                  }} style={{width:'100%',padding:'16px',background:'rgba(74,222,128,0.15)',border:'2px solid rgba(74,222,128,0.5)',borderRadius:'12px',color:'#4ade80',fontSize:'1rem',fontWeight:700,cursor:'pointer'}}>
+                    ALL CHECKS COMPLETE — CONTINUE
+                  </button>
+                ) : (
+                  <div style={{textAlign:'center',fontSize:'0.8125rem',color:'rgba(255,255,255,0.3)'}}>
+                    {Object.values(checkStates).filter(Boolean).length}/{siteChecks.length} checks completed
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Step 4: Go on duty */}
+            {handoverAcked && (siteChecks.length === 0 || checksCompleted) && (
+              <button onClick={async () => {
+                // Save site checks if any
+                if (siteChecks.length > 0 && activeShift?.id) {
+                  try {
+                    await api.siteChecks.complete(activeShift.id, siteChecks.map(c => ({ check_id: c.id })));
+                  } catch {}
+                }
+                startShift();
+              }}
                 style={{width:'100%',padding:'18px',background:'rgba(74,222,128,0.15)',border:'2px solid rgba(74,222,128,0.5)',borderRadius:'12px',color:'#4ade80',fontSize:'1.125rem',fontWeight:700,cursor:'pointer'}}>
                 GO ON DUTY
               </button>

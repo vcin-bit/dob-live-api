@@ -54,6 +54,7 @@ function ManagerApp({ user }) {
           <Route path="/contracts"   element={<ContractsScreen user={user} />} />
           <Route path="/updates"     element={<div className="page-content"><ManagerUpdatesPanel /></div>} />
           <Route path="/personnel"  element={<PersonnelFilesScreen user={user} />} />
+          <Route path="/site-checks" element={<SiteChecksScreen />} />
           <Route path="/portal-settings" element={<PortalManagement user={user} />} />
           <Route path="*"          element={<Navigate to="/dashboard" replace />} />
         </Routes>
@@ -62,6 +63,71 @@ function ManagerApp({ user }) {
   );
 }
 
+
+function SiteChecksScreen() {
+  const [sites, setSites] = React.useState([]);
+  const [selectedSite, setSelectedSite] = React.useState('');
+  const [checks, setChecks] = React.useState([]);
+  const [loading, setLoading] = React.useState(false);
+  const [newLabel, setNewLabel] = React.useState('');
+
+  React.useEffect(() => { api.sites.list().then(r => setSites(r.data || [])); }, []);
+  React.useEffect(() => {
+    if (!selectedSite) return;
+    setLoading(true);
+    api.siteChecks.list(selectedSite).then(r => setChecks(r.data || [])).finally(() => setLoading(false));
+  }, [selectedSite]);
+
+  async function addCheck() {
+    if (!newLabel.trim() || !selectedSite) return;
+    await api.siteChecks.create(selectedSite, newLabel.trim(), checks.length);
+    setNewLabel('');
+    const r = await api.siteChecks.list(selectedSite);
+    setChecks(r.data || []);
+  }
+
+  async function removeCheck(id) {
+    await api.siteChecks.delete(selectedSite, id);
+    setChecks(prev => prev.filter(c => c.id !== id));
+  }
+
+  return (
+    <div>
+      <div className="topbar"><div className="topbar-title">Start-of-Shift Checks</div></div>
+      <div className="page-content">
+        <div style={{display:'flex',gap:'0.75rem',alignItems:'center',marginBottom:'1.25rem',flexWrap:'wrap'}}>
+          <select className="input" style={{width:'250px'}} value={selectedSite} onChange={e => setSelectedSite(e.target.value)}>
+            <option value="">Select site...</option>
+            {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </div>
+        {!selectedSite ? <div className="empty-state"><p>Select a site to configure its start-of-shift checks</p></div> : loading ? <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div> : (
+          <>
+            <div style={{fontSize:'0.8125rem',color:'var(--text-3)',marginBottom:'1rem'}}>Officers must complete all checks before going on duty at this site. Add checks specific to this site's requirements.</div>
+            <div style={{display:'flex',gap:'0.5rem',marginBottom:'1rem'}}>
+              <input className="input" style={{flex:1}} placeholder="e.g. Check fire panel, Count keys, Test radio..." value={newLabel} onChange={e => setNewLabel(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') addCheck(); }} />
+              <button className="btn btn-primary btn-sm" onClick={addCheck} disabled={!newLabel.trim()}>Add</button>
+            </div>
+            {checks.length === 0 ? <div className="empty-state"><p>No checks configured for this site. Officers will skip straight to Go On Duty.</p></div> : (
+              <div style={{display:'flex',flexDirection:'column',gap:'0.5rem'}}>
+                {checks.map((c, i) => (
+                  <div key={c.id} className="card" style={{padding:'0.875rem',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
+                      <span style={{fontSize:'0.75rem',color:'var(--text-3)',fontWeight:700,width:'20px'}}>{i+1}.</span>
+                      <span style={{fontWeight:600}}>{c.label}</span>
+                    </div>
+                    <button onClick={() => removeCheck(c.id)} style={{background:'none',border:'none',color:'#dc2626',fontSize:'0.75rem',cursor:'pointer'}}>Remove</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function ManagerSidebar({ user, open, onClose }) {
   const location = useLocation();
@@ -128,6 +194,7 @@ function ManagerSidebar({ user, open, onClose }) {
       items: [
         { to: '/docs',         icon: DocumentTextIcon, label: 'Documents' },
         { to: '/instructions', icon: DocumentTextIcon, label: 'Assignment Instructions' },
+        { to: '/site-checks',  icon: ClipboardDocumentListIcon, label: 'Start-of-Shift Checks' },
         { to: '/patrols',      icon: MapPinIcon,       label: 'Patrol Routes' },
         { to: '/patrol-history', icon: ClockIcon,       label: 'Patrol History' },
       ]
