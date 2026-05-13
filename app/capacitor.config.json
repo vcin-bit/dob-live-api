@@ -1,0 +1,28 @@
+{
+  "appId": "co.uk.doblive.app",
+  "appName": "DOB Live",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https",
+    "iosScheme": "https"
+  },
+  "plugins": {
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    },
+    "Geolocation": {
+      "requestPermissionsOnFirstCall": true
+    },
+    "Camera": {
+      "presentationStyle": "fullscreen"
+    }
+  },
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#0b1222"
+  },
+  "ios": {
+    "backgroundColor": "#0b1222",
+    "contentInset": "always"
+  }
+}

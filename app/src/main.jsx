@@ -2,6 +2,17 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import './index.css'
+import { isNative, setStatusBarDark, onAppStateChange } from './lib/native.js'
+
+// Initialise native shell (no-ops on web)
+if (isNative) {
+  setStatusBarDark();
+  onAppStateChange((state) => {
+    if (state.isActive) {
+      console.log('[Native] App resumed');
+    }
+  });
+}
 
 window.onerror = function(msg, src, line, col, err) {
   if (!msg || msg === 'Script error.' || msg.includes('ResizeObserver')) return;

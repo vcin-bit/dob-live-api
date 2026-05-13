@@ -1281,9 +1281,12 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
         setShifts(data);
         // Default to most recent month with shifts
         if (data.length > 0) {
-          const months = [...new Set(data.map(s => {
-            const parts = new Date(s.start_time).toLocaleDateString('en-GB', { timeZone:'Europe/London', year:'numeric', month:'2-digit' }).split('/');
-            return `${parts[1]}-${parts[0]}`;
+          const months = [...new Set(data.flatMap(s => {
+            const startParts = new Date(s.start_time).toLocaleDateString('en-GB', { timeZone:'Europe/London', year:'numeric', month:'2-digit' }).split('/');
+            const endParts = new Date(s.end_time).toLocaleDateString('en-GB', { timeZone:'Europe/London', year:'numeric', month:'2-digit' }).split('/');
+            const startMonth = `${startParts[1]}-${startParts[0]}`;
+            const endMonth = `${endParts[1]}-${endParts[0]}`;
+            return startMonth === endMonth ? [startMonth] : [startMonth, endMonth];
           }))].sort().reverse();
           if (months.length > 0) setSelectedMonth(months[0]);
         }
@@ -1303,13 +1306,17 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
     setInvoiceShifts(prev => prev.includes(shiftId) ? prev.filter(id => id !== shiftId) : [...prev, shiftId]);
   }
 
-  // Filter shifts by selected month
-  function getShiftMonth(s) {
-    const parts = new Date(s.start_time).toLocaleDateString('en-GB', { timeZone:'Europe/London', year:'numeric', month:'2-digit' }).split('/');
-    return `${parts[1]}-${parts[0]}`;
+  // Filter shifts by selected month — include shifts that overlap with the month
+  // (overnight shifts crossing month boundaries should appear in both months)
+  function getShiftMonths(s) {
+    const startParts = new Date(s.start_time).toLocaleDateString('en-GB', { timeZone:'Europe/London', year:'numeric', month:'2-digit' }).split('/');
+    const endParts = new Date(s.end_time).toLocaleDateString('en-GB', { timeZone:'Europe/London', year:'numeric', month:'2-digit' }).split('/');
+    const startMonth = `${startParts[1]}-${startParts[0]}`;
+    const endMonth = `${endParts[1]}-${endParts[0]}`;
+    return startMonth === endMonth ? [startMonth] : [startMonth, endMonth];
   }
-  const monthShifts = shifts.filter(s => getShiftMonth(s) === selectedMonth);
-  const availableMonths = [...new Set(shifts.map(s => getShiftMonth(s)))].sort().reverse();
+  const monthShifts = shifts.filter(s => getShiftMonths(s).includes(selectedMonth));
+  const availableMonths = [...new Set(shifts.flatMap(s => getShiftMonths(s)))].sort().reverse();
 
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [confirmedIds, setConfirmedIds] = useState(new Set());
