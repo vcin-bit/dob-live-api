@@ -48,8 +48,7 @@ function shiftTimeLabel(s) {
 
 function shiftHours(s) {
   if (!s.start_time || !s.end_time) return 0;
-  const hrs = Math.max(0, (new Date(s.end_time) - new Date(s.start_time)) / 3600000);
-  return (s.notes || '').includes('[BANK HOLIDAY]') ? hrs * 2 : hrs;
+  return Math.max(0, (new Date(s.end_time) - new Date(s.start_time)) / 3600000);
 }
 
 function canSeePay(role) { return ['COMPANY','OPS_MANAGER','SUPER_ADMIN','FD'].includes(role); }
