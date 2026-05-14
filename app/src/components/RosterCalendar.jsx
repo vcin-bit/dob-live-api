@@ -514,7 +514,7 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
                                 {isCompact ? `£${(shiftHours(s) * parseFloat(s.pay_rate)).toFixed(0)}` : `£${parseFloat(s.pay_rate).toFixed(2)}/hr · £${(shiftHours(s) * parseFloat(s.pay_rate)).toFixed(2)}`}
                               </div>
                             ) : (
-                              <div style={{fontSize: isCompact ? '0.5rem' : '0.5625rem',color:'#f59e0b',marginLeft:bulkMode?'1rem':'0',marginTop:'1px',opacity:0.8}}>{isCompact ? '!' : 'Rate not set'}</div>
+                              null
                             )
                           )}
                         </div>
