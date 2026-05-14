@@ -535,23 +535,38 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
             const byOfficer = {};
             weekShifts.forEach(s => {
               const name = s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unassigned';
-              if (!byOfficer[name]) byOfficer[name] = { hours: 0, pay: 0 };
+              if (!byOfficer[name]) byOfficer[name] = { hours: 0, pay: 0, bhHours: 0, bhPay: 0 };
               const h = shiftHours(s);
-              byOfficer[name].hours += h;
-              byOfficer[name].pay += h * (parseFloat(s.pay_rate) || 0);
+              const pay = h * (parseFloat(s.pay_rate) || 0);
+              if (s.shift_type === 'bank_holiday') { byOfficer[name].bhHours += h; byOfficer[name].bhPay += pay; }
+              else { byOfficer[name].hours += h; byOfficer[name].pay += pay; }
             });
-            const entries = Object.entries(byOfficer).sort((a,b) => b[1].pay - a[1].pay);
+            const entries = Object.entries(byOfficer).sort((a,b) => (b[1].pay + b[1].bhPay) - (a[1].pay + a[1].bhPay));
+            const totalBhHrs = entries.reduce((t, [,d]) => t + d.bhHours, 0);
+            const totalBhPay = entries.reduce((t, [,d]) => t + d.bhPay, 0);
+            const totalRegHrs = entries.reduce((t, [,d]) => t + d.hours, 0);
+            const totalRegPay = entries.reduce((t, [,d]) => t + d.pay, 0);
             return (
               <div style={{background:'var(--surface-2)',padding:'0.5rem 0.75rem',fontSize:'0.75rem',color:'var(--text-2)'}}>
                 {entries.map(([name, d]) => (
-                  <div key={name} style={{display:'flex',justifyContent:'space-between',padding:'2px 0'}}>
-                    <span>{name}</span>
-                    <span>{d.hours.toFixed(1)} hrs{d.pay > 0 ? <span style={{color:'#f59e0b',marginLeft:'0.5rem'}}>£{d.pay.toFixed(2)}</span> : ''}</span>
+                  <div key={name}>
+                    <div style={{display:'flex',justifyContent:'space-between',padding:'2px 0'}}>
+                      <span>{name}</span>
+                      <span>{d.hours.toFixed(1)} hrs{d.pay > 0 ? <span style={{color:'#f59e0b',marginLeft:'0.5rem'}}>£{d.pay.toFixed(2)}</span> : ''}</span>
+                    </div>
+                    {d.bhHours > 0 && <div style={{display:'flex',justifyContent:'space-between',padding:'2px 0',color:'#1a52a8'}}>
+                      <span style={{fontWeight:600}}>Bank Holiday</span>
+                      <span>{d.bhHours.toFixed(1)} hrs<span style={{marginLeft:'0.5rem'}}>£{d.bhPay.toFixed(2)}</span></span>
+                    </div>}
                   </div>
                 ))}
-                <div style={{display:'flex',justifyContent:'space-between',borderTop:'1px solid var(--border)',marginTop:'4px',paddingTop:'4px',fontWeight:700,color:'var(--text)'}}>
+                {totalBhHrs > 0 && <div style={{display:'flex',justifyContent:'space-between',borderTop:'1px solid var(--border)',marginTop:'4px',paddingTop:'4px',fontWeight:600,color:'#1a52a8'}}>
+                  <span>Bank Holiday</span>
+                  <span>{totalBhHrs.toFixed(1)} hrs<span style={{marginLeft:'0.5rem'}}>£{totalBhPay.toFixed(2)}</span></span>
+                </div>}
+                <div style={{display:'flex',justifyContent:'space-between',borderTop: totalBhHrs > 0 ? 'none' : '1px solid var(--border)',marginTop: totalBhHrs > 0 ? '2px' : '4px',paddingTop: totalBhHrs > 0 ? '2px' : '4px',fontWeight:700,color:'var(--text)'}}>
                   <span>Total</span>
-                  <span>{weekHours.toFixed(1)} hrs<span style={{color:'#f59e0b',marginLeft:'0.5rem'}}>£{weekPayCost.toFixed(2)}</span></span>
+                  <span>{(totalRegHrs + totalBhHrs).toFixed(1)} hrs<span style={{color:'#f59e0b',marginLeft:'0.5rem'}}>£{(totalRegPay + totalBhPay).toFixed(2)}</span></span>
                 </div>
               </div>
             );
@@ -565,26 +580,39 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
           const byOfficer = {};
           monthShifts.forEach(s => {
             const name = s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unassigned';
-            if (!byOfficer[name]) byOfficer[name] = { hours: 0, pay: 0 };
+            if (!byOfficer[name]) byOfficer[name] = { hours: 0, pay: 0, bhHours: 0, bhPay: 0 };
             const h = shiftHours(s);
-            byOfficer[name].hours += h;
-            byOfficer[name].pay += h * (parseFloat(s.pay_rate) || 0);
+            const pay = h * (parseFloat(s.pay_rate) || 0);
+            if (s.shift_type === 'bank_holiday') { byOfficer[name].bhHours += h; byOfficer[name].bhPay += pay; }
+            else { byOfficer[name].hours += h; byOfficer[name].pay += pay; }
           });
-          const entries = Object.entries(byOfficer).sort((a,b) => b[1].pay - a[1].pay);
-          const totalHrs = entries.reduce((t, [,d]) => t + d.hours, 0);
-          const totalPay = entries.reduce((t, [,d]) => t + d.pay, 0);
+          const entries = Object.entries(byOfficer).sort((a,b) => (b[1].pay + b[1].bhPay) - (a[1].pay + a[1].bhPay));
+          const totalRegHrs = entries.reduce((t, [,d]) => t + d.hours, 0);
+          const totalRegPay = entries.reduce((t, [,d]) => t + d.pay, 0);
+          const totalBhHrs = entries.reduce((t, [,d]) => t + d.bhHours, 0);
+          const totalBhPay = entries.reduce((t, [,d]) => t + d.bhPay, 0);
           return (
             <div style={{background:'var(--surface-2)',borderRadius:'0 0 8px 8px',padding:'0.75rem 1rem',fontSize:'0.8125rem',color:'var(--text-2)',marginTop:'1px'}}>
               <div style={{fontWeight:700,color:'var(--text)',marginBottom:'0.5rem',fontSize:'0.875rem'}}>Monthly Pay Summary</div>
               {entries.map(([name, d]) => (
-                <div key={name} style={{display:'flex',justifyContent:'space-between',padding:'3px 0'}}>
-                  <span>{name}</span>
-                  <span>{d.hours.toFixed(1)} hrs{d.pay > 0 ? <span style={{color:'#f59e0b',marginLeft:'0.5rem'}}>£{d.pay.toFixed(2)}</span> : ''}</span>
+                <div key={name}>
+                  <div style={{display:'flex',justifyContent:'space-between',padding:'3px 0'}}>
+                    <span>{name}</span>
+                    <span>{d.hours.toFixed(1)} hrs{d.pay > 0 ? <span style={{color:'#f59e0b',marginLeft:'0.5rem'}}>£{d.pay.toFixed(2)}</span> : ''}</span>
+                  </div>
+                  {d.bhHours > 0 && <div style={{display:'flex',justifyContent:'space-between',padding:'3px 0',color:'#1a52a8',fontWeight:600}}>
+                    <span>Bank Holiday</span>
+                    <span>{d.bhHours.toFixed(1)} hrs<span style={{marginLeft:'0.5rem'}}>£{d.bhPay.toFixed(2)}</span></span>
+                  </div>}
                 </div>
               ))}
-              <div style={{display:'flex',justifyContent:'space-between',borderTop:'1px solid var(--border)',marginTop:'6px',paddingTop:'6px',fontWeight:700,color:'var(--text)',fontSize:'0.875rem'}}>
+              {totalBhHrs > 0 && <div style={{display:'flex',justifyContent:'space-between',borderTop:'1px solid var(--border)',marginTop:'6px',paddingTop:'6px',fontWeight:700,color:'#1a52a8',fontSize:'0.875rem'}}>
+                <span>Bank Holiday</span>
+                <span>{totalBhHrs.toFixed(1)} hrs<span style={{marginLeft:'0.5rem'}}>£{totalBhPay.toFixed(2)}</span></span>
+              </div>}
+              <div style={{display:'flex',justifyContent:'space-between',borderTop:'1px solid var(--border)',marginTop:'4px',paddingTop:'4px',fontWeight:700,color:'var(--text)',fontSize:'0.875rem'}}>
                 <span>Total pay this month</span>
-                <span>{totalHrs.toFixed(1)} hrs<span style={{color:'#f59e0b',marginLeft:'0.5rem'}}>£{totalPay.toFixed(2)}</span></span>
+                <span>{(totalRegHrs + totalBhHrs).toFixed(1)} hrs<span style={{color:'#f59e0b',marginLeft:'0.5rem'}}>£{(totalRegPay + totalBhPay).toFixed(2)}</span></span>
               </div>
             </div>
           );
