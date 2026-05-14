@@ -1265,7 +1265,7 @@ function MyRosterTab() {
   );
 }
 
-function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShiftsLoading, invoiceShifts, setInvoiceShifts, showInvoice, setShowInvoice, invoiceRef, setInvoiceRef }) {
+export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShiftsLoading, invoiceShifts, setInvoiceShifts, showInvoice, setShowInvoice, invoiceRef, setInvoiceRef }) {
   const isSelfEmployed = hr?.employment_status === 'self_employed' || hr?.employment_status === 'ltd_company';
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
