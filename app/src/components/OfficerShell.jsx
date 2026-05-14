@@ -7,6 +7,7 @@ import { LogEntryScreen, LogHistoryScreen } from './OfficerLog';
 import { TasksScreen } from './OfficerTasks';
 import { OfficerInstructionsScreen, OfficerPoliciesScreen, OfficerNavigation } from './OfficerInfo';
 import OfficerProfile from './OfficerProfile';
+import OfficerHR from './OfficerHR';
 import PlaybookAlerts from './PlaybookAlerts';
 import PatrolScreen, { PatrolHistoryOfficerScreen } from './PatrolScreen';
 import { HandoverScreen } from './HandoverScreen';
@@ -402,6 +403,7 @@ function OfficerApp({ user }) {
         <Route path="/handover" element={<HandoverScreen user={user} site={selectedSite} shift={activeShift} onShiftEnded={() => { setActiveShift(null); }} />} />
         <Route path="/visitors" element={<OfficerVisitorsScreen site={selectedSite} />} />
           <Route path="/profile" element={<OfficerProfile user={user} />} />
+        <Route path="/my-hours" element={<OfficerHR user={user} />} />
         <Route path="/policies" element={<OfficerPoliciesScreen user={user} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
