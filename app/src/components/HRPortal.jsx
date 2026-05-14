@@ -1728,7 +1728,10 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
                         <div style={{fontSize:'0.6875rem',color:'#6b7280',textTransform:'uppercase',fontWeight:600}}>{formatMonth(selectedMonth)}</div>
                         <div style={{fontSize:'1rem',fontWeight:700,color:'#111827'}}>{totalMonthHrs.toFixed(1)} hours · {monthShifts.length} shift{monthShifts.length!==1?'s':''}</div>
                         {bankHolHrs > 0 && (
-                          <div style={{fontSize:'0.75rem',color:'#1a52a8',fontWeight:600}}>{regularHrs.toFixed(1)}h regular · {bankHolHrs.toFixed(1)}h bank holiday</div>
+                          <>
+                            <div style={{fontSize:'0.75rem',color:'#374151',fontWeight:600}}>{regularHrs.toFixed(1)}h regular · £{(regularShifts.reduce((sum, s) => sum + getHours(s) * (s.pay_rate || 0), 0)).toFixed(2)}</div>
+                            <div style={{fontSize:'0.75rem',color:'#1a52a8',fontWeight:600}}>{bankHolHrs.toFixed(1)}h bank holiday · £{(bankHolShifts.reduce((sum, s) => sum + getHours(s) * (s.pay_rate || 0), 0)).toFixed(2)}</div>
+                          </>
                         )}
                         <div style={{fontSize:'0.75rem',color: allAgreed ? '#16a34a' : '#9ca3af',fontWeight:600}}>{agreedCount}/{monthShifts.length} agreed</div>
                       </div>

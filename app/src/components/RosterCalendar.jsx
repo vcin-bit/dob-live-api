@@ -548,8 +548,9 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
             const totalRegPay = entries.reduce((t, [,d]) => t + d.pay, 0);
             return (
               <div style={{background:'var(--surface-2)',padding:'0.5rem 0.75rem',fontSize:'0.75rem',color:'var(--text-2)'}}>
-                {entries.map(([name, d]) => (
+                {entries.map(([name, d], i) => (
                   <div key={name}>
+                    {i > 0 && <div style={{borderTop:'1px solid var(--border)',margin:'2px 0'}} />}
                     <div style={{display:'flex',justifyContent:'space-between',padding:'2px 0'}}>
                       <span>{name}</span>
                       <span>{d.hours.toFixed(1)} hrs{d.pay > 0 ? <span style={{color:'#f59e0b',marginLeft:'0.5rem'}}>£{d.pay.toFixed(2)}</span> : ''}</span>
@@ -594,8 +595,9 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
           return (
             <div style={{background:'var(--surface-2)',borderRadius:'0 0 8px 8px',padding:'0.75rem 1rem',fontSize:'0.8125rem',color:'var(--text-2)',marginTop:'1px'}}>
               <div style={{fontWeight:700,color:'var(--text)',marginBottom:'0.5rem',fontSize:'0.875rem'}}>Monthly Pay Summary</div>
-              {entries.map(([name, d]) => (
+              {entries.map(([name, d], i) => (
                 <div key={name}>
+                  {i > 0 && <div style={{borderTop:'1px solid var(--border)',margin:'4px 0'}} />}
                   <div style={{display:'flex',justifyContent:'space-between',padding:'3px 0'}}>
                     <span>{name}</span>
                     <span>{d.hours.toFixed(1)} hrs{d.pay > 0 ? <span style={{color:'#f59e0b',marginLeft:'0.5rem'}}>£{d.pay.toFixed(2)}</span> : ''}</span>
