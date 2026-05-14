@@ -266,11 +266,13 @@ export default function RosterCalendar({ siteId, user }) {
                 const sel = selected.has(s.id);
                 return (
                   <div key={s.id} onClick={() => handleShiftClick(s)}
-                    style={{display:'flex',alignItems:'center',gap:'0.875rem',padding:'0.75rem 1rem',borderRadius:'8px',background:'var(--surface)',
-                      border: sel ? '2px solid var(--blue)' : '1px solid var(--border)',
-                      cursor: bulkMode || isManager ? 'pointer' : 'default', borderLeft:`4px solid ${officerColour(s.officer_id)}`}}>
+                    style={{display:'flex',alignItems:'center',gap:'0.875rem',padding:'0.75rem 1rem',borderRadius:'8px',
+                      background: s.shift_type === 'bank_holiday' ? 'rgba(220,38,38,0.05)' : 'var(--surface)',
+                      border: sel ? '2px solid var(--blue)' : s.shift_type === 'bank_holiday' ? '1px solid rgba(220,38,38,0.3)' : '1px solid var(--border)',
+                      cursor: bulkMode || isManager ? 'pointer' : 'default', borderLeft:`4px solid ${s.shift_type === 'bank_holiday' ? '#dc2626' : officerColour(s.officer_id)}`}}>
                     {bulkMode && <input type="checkbox" checked={sel} readOnly style={{width:'1rem',height:'1rem',accentColor:'var(--blue)',flexShrink:0}} />}
                     <div style={{flex:1}}>
+                      {s.shift_type === 'bank_holiday' && <div style={{fontSize:'0.6875rem',color:'#dc2626',fontWeight:700,marginBottom:'2px'}}>BANK HOLIDAY</div>}
                       <div style={{fontWeight:600,fontSize:'0.9375rem'}}>{s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unassigned'}</div>
                       {!siteId && <div style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>{s.site?.name || '—'}</div>}
                       <div style={{fontSize:'0.8125rem',color:'var(--text-3)',marginTop:'2px'}}>{shiftTimeLabel(s)}</div>
@@ -484,8 +486,8 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
                         <div key={s.id} onClick={() => onShiftClick(s)}
                           style={{
                             padding: isCompact ? '3px 4px' : '4px 6px', borderRadius:'5px',
-                            background: col + '20',
-                            border: sel ? '2px solid var(--blue)' : `1px solid ${col}40`,
+                            background: s.shift_type === 'bank_holiday' ? 'rgba(220,38,38,0.1)' : col + '20',
+                            border: sel ? '2px solid var(--blue)' : s.shift_type === 'bank_holiday' ? '1px solid rgba(220,38,38,0.4)' : `1px solid ${col}40`,
                             cursor: bulkMode || isManager ? 'pointer' : 'default',
                             position:'relative',
                           }}>
@@ -493,6 +495,7 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
                             <input type="checkbox" checked={sel} readOnly
                               style={{position:'absolute',top:2,left:2,width:'0.75rem',height:'0.75rem',accentColor:'var(--blue)'}} />
                           )}
+                          {s.shift_type === 'bank_holiday' && <div style={{fontSize: isCompact ? '0.5rem' : '0.5625rem',color:'#dc2626',fontWeight:700,marginLeft:bulkMode?'1rem':'0'}}>BANK HOLIDAY</div>}
                           <div style={{display:'flex',alignItems:'center',gap:'3px',marginLeft:bulkMode?'1rem':'0'}}>
                             {s.status === 'ACTIVE' && <span style={{width:5,height:5,borderRadius:'50%',background:'#4ade80',flexShrink:0,animation:'pulse 2s infinite'}} />}
                             <span style={{fontWeight:700,fontSize: isCompact ? '0.625rem' : '0.75rem', color:'var(--text)', overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis'}}>
@@ -602,6 +605,7 @@ function ShiftModal({ shift, prefillDate, officers, allOfficers, sites, rates, s
     date: shift ? isoDate(new Date(shift.start_time)) : (prefillDate || ''),
     start_time: shift ? fmtTime(shift.start_time) : '19:00',
     end_time: shift?.end_time ? fmtTime(shift.end_time) : '07:00', notes: shift?.notes || '',
+    shift_type: shift?.shift_type || 'regular',
     pay_rate: shift?.pay_rate || '', charge_rate: shift?.charge_rate || '',
     actual_start: shift?.checked_in_at ? fmtTime(shift.checked_in_at) : '',
     actual_end: shift?.checked_out_at ? fmtTime(shift.checked_out_at) : '',
@@ -634,7 +638,7 @@ function ShiftModal({ shift, prefillDate, officers, allOfficers, sites, rates, s
       if (endDt && new Date(endDt) <= new Date(startDt)) {
         adjustedEnd = localISOString(isoDate(addDays(new Date(form.date), 1)), form.end_time);
       }
-      const payload = { site_id: form.site_id, officer_id: form.officer_id, start_time: startDt, end_time: adjustedEnd, notes: form.notes?.trim() || null,
+      const payload = { site_id: form.site_id, officer_id: form.officer_id, start_time: startDt, end_time: adjustedEnd, shift_type: form.shift_type, notes: form.notes?.trim() || null,
         pay_rate: form.pay_rate !== '' ? parseFloat(form.pay_rate) : null,
         charge_rate: form.charge_rate !== '' ? parseFloat(form.charge_rate) : null,
       };
@@ -664,6 +668,17 @@ function ShiftModal({ shift, prefillDate, officers, allOfficers, sites, rates, s
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
+        <div style={{display:'flex',gap:'0.5rem',marginBottom:'0.75rem'}}>
+          {['regular','bank_holiday'].map(t => (
+            <button key={t} type="button" onClick={() => f('shift_type', t)}
+              style={{flex:1,padding:'0.625rem',border: form.shift_type === t ? (t === 'bank_holiday' ? '2px solid #dc2626' : '2px solid var(--blue)') : '1px solid var(--border)',
+                borderRadius:'8px',background: form.shift_type === t ? (t === 'bank_holiday' ? 'rgba(220,38,38,0.06)' : 'rgba(26,82,168,0.06)') : 'var(--surface)',
+                cursor:'pointer',fontSize:'0.8125rem',fontWeight:form.shift_type === t ? 700 : 500,
+                color: form.shift_type === t ? (t === 'bank_holiday' ? '#dc2626' : 'var(--blue)') : 'var(--text-2)'}}>
+              {t === 'regular' ? 'Regular Shift' : 'Bank Holiday'}
+            </button>
+          ))}
+        </div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
           <div className="field" style={{gridColumn:'1/-1'}}><label className="label">Date</label><input type="date" className="input" value={form.date} onChange={e => f('date', e.target.value)} /></div>
           {!siteId && <div className="field" style={{gridColumn:'1/-1'}}><label className="label">Site</label><select className="input" value={form.site_id} onChange={e => f('site_id', e.target.value)}><option value="">Select site</option>{sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>}
