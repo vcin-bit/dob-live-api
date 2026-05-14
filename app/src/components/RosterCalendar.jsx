@@ -553,21 +553,21 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
                     {i > 0 && <div style={{borderTop:'1px solid var(--border)',margin:'2px 0'}} />}
                     <div style={{display:'flex',justifyContent:'space-between',padding:'2px 0'}}>
                       <span>{name}</span>
-                      <span>{d.hours.toFixed(1)} hrs{d.pay > 0 ? <span style={{color:'#f59e0b',marginLeft:'0.5rem'}}>£{d.pay.toFixed(2)}</span> : ''}</span>
+                      <span>{d.hours.toFixed(1)} hrs {d.pay > 0 ? <span style={{color:'#f59e0b'}}>· £{d.pay.toFixed(2)}</span> : ''}</span>
                     </div>
                     {d.bhHours > 0 && <div style={{display:'flex',justifyContent:'space-between',padding:'2px 0',color:'#1a52a8'}}>
                       <span style={{fontWeight:600}}>Bank Holiday</span>
-                      <span>{d.bhHours.toFixed(1)} hrs<span style={{marginLeft:'0.5rem'}}>£{d.bhPay.toFixed(2)}</span></span>
+                      <span>{d.bhHours.toFixed(1)} hrs · £{d.bhPay.toFixed(2)}</span>
                     </div>}
                   </div>
                 ))}
                 {totalBhHrs > 0 && <div style={{display:'flex',justifyContent:'space-between',borderTop:'1px solid var(--border)',marginTop:'4px',paddingTop:'4px',fontWeight:600,color:'#1a52a8'}}>
                   <span>Bank Holiday</span>
-                  <span>{totalBhHrs.toFixed(1)} hrs<span style={{marginLeft:'0.5rem'}}>£{totalBhPay.toFixed(2)}</span></span>
+                  <span>{totalBhHrs.toFixed(1)} hrs · £{totalBhPay.toFixed(2)}</span>
                 </div>}
-                <div style={{display:'flex',justifyContent:'space-between',borderTop: totalBhHrs > 0 ? 'none' : '1px solid var(--border)',marginTop: totalBhHrs > 0 ? '2px' : '4px',paddingTop: totalBhHrs > 0 ? '2px' : '4px',fontWeight:700,color:'var(--text)'}}>
+                <div style={{display:'flex',justifyContent:'space-between',borderTop:'1px solid var(--border)',marginTop:'4px',paddingTop:'4px',fontWeight:700,color:'var(--text)'}}>
                   <span>Total</span>
-                  <span>{(totalRegHrs + totalBhHrs).toFixed(1)} hrs<span style={{color:'#f59e0b',marginLeft:'0.5rem'}}>£{(totalRegPay + totalBhPay).toFixed(2)}</span></span>
+                  <span>{(totalRegHrs + totalBhHrs).toFixed(1)} hrs <span style={{color:'#f59e0b'}}>· £{(totalRegPay + totalBhPay).toFixed(2)}</span></span>
                 </div>
               </div>
             );
@@ -600,21 +600,21 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
                   {i > 0 && <div style={{borderTop:'1px solid var(--border)',margin:'4px 0'}} />}
                   <div style={{display:'flex',justifyContent:'space-between',padding:'3px 0'}}>
                     <span>{name}</span>
-                    <span>{d.hours.toFixed(1)} hrs{d.pay > 0 ? <span style={{color:'#f59e0b',marginLeft:'0.5rem'}}>£{d.pay.toFixed(2)}</span> : ''}</span>
+                    <span>{d.hours.toFixed(1)} hrs {d.pay > 0 ? <span style={{color:'#f59e0b'}}>· £{d.pay.toFixed(2)}</span> : ''}</span>
                   </div>
                   {d.bhHours > 0 && <div style={{display:'flex',justifyContent:'space-between',padding:'3px 0',color:'#1a52a8',fontWeight:600}}>
                     <span>Bank Holiday</span>
-                    <span>{d.bhHours.toFixed(1)} hrs<span style={{marginLeft:'0.5rem'}}>£{d.bhPay.toFixed(2)}</span></span>
+                    <span>{d.bhHours.toFixed(1)} hrs · £{d.bhPay.toFixed(2)}</span>
                   </div>}
                 </div>
               ))}
               {totalBhHrs > 0 && <div style={{display:'flex',justifyContent:'space-between',borderTop:'1px solid var(--border)',marginTop:'6px',paddingTop:'6px',fontWeight:700,color:'#1a52a8',fontSize:'0.875rem'}}>
                 <span>Bank Holiday</span>
-                <span>{totalBhHrs.toFixed(1)} hrs<span style={{marginLeft:'0.5rem'}}>£{totalBhPay.toFixed(2)}</span></span>
+                <span>{totalBhHrs.toFixed(1)} hrs · £{totalBhPay.toFixed(2)}</span>
               </div>}
               <div style={{display:'flex',justifyContent:'space-between',borderTop:'1px solid var(--border)',marginTop:'4px',paddingTop:'4px',fontWeight:700,color:'var(--text)',fontSize:'0.875rem'}}>
                 <span>Total pay this month</span>
-                <span>{(totalRegHrs + totalBhHrs).toFixed(1)} hrs<span style={{color:'#f59e0b',marginLeft:'0.5rem'}}>£{(totalRegPay + totalBhPay).toFixed(2)}</span></span>
+                <span>{(totalRegHrs + totalBhHrs).toFixed(1)} hrs <span style={{color:'#f59e0b'}}>· £{(totalRegPay + totalBhPay).toFixed(2)}</span></span>
               </div>
             </div>
           );

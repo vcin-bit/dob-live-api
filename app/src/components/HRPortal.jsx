@@ -1738,7 +1738,7 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
                     {isSelfEmployed && allAgreed && !hasDisputes && (
                       <button onClick={() => { setSelectedIds(new Set(monthShifts.map(s => s.id))); setInvoiceRef(''); setInvoiceSent(false); setShowInvoice(true); }}
                         style={{width:'100%',padding:'0.875rem',background:'#1a52a8',border:'none',borderRadius:'8px',color:'#fff',fontSize:'0.875rem',fontWeight:700,cursor:'pointer',marginTop:'0.5rem'}}>
-                        Generate Invoice ({monthShifts.length} shifts · £{totalMonthHrs.toFixed(1)}h)
+                        Generate Invoice ({monthShifts.length} shifts · {totalMonthHrs.toFixed(1)}h)
                       </button>
                     )}
 
