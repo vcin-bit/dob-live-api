@@ -1377,8 +1377,15 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
 
     return (
       <>
+        {/* Draft banner */}
+        {!invoiceSent && (
+          <div style={{background:'#fefce8',border:'1px solid #fde68a',borderRadius:'8px',padding:'0.75rem',marginBottom:'1rem',fontSize:'0.8125rem',color:'#92400e',fontWeight:600,textAlign:'center'}}>
+            DRAFT — Review your invoice below before sending
+          </div>
+        )}
+
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'0.5rem',marginBottom:'1rem',flexWrap:'wrap'}}>
-          <button onClick={() => { setShowInvoice(false); setInvoiceSent(false); }} style={{padding:'0.5rem 0.75rem',background:'#fff',border:'1px solid #d1d5db',borderRadius:'6px',fontSize:'0.8125rem',fontWeight:600,color:'#374151',cursor:'pointer'}}>← Back</button>
+          <button onClick={() => { setShowInvoice(false); setInvoiceSent(false); }} style={{padding:'0.5rem 0.75rem',background:'#fff',border:'1px solid #d1d5db',borderRadius:'6px',fontSize:'0.8125rem',fontWeight:600,color:'#374151',cursor:'pointer'}}>← Back to Hours</button>
           <div style={{display:'flex',gap:'0.5rem'}}>
             <button onClick={() => window.print()} style={{padding:'0.5rem 0.75rem',background:'#fff',border:'1px solid #d1d5db',borderRadius:'6px',fontSize:'0.8125rem',fontWeight:600,color:'#374151',cursor:'pointer'}}>Print / PDF</button>
             {invoiceSent ? (
@@ -1389,7 +1396,7 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
             ) : (
               <button onClick={() => sendInvoice(ref)} disabled={invoiceSending}
                 style={{padding:'0.5rem 0.75rem',background:'#1a52a8',border:'none',borderRadius:'6px',fontSize:'0.8125rem',fontWeight:600,color:'#fff',cursor:'pointer',opacity:invoiceSending?0.5:1}}>
-                {invoiceSending ? 'Sending...' : 'Email to Accounts'}
+                {invoiceSending ? 'Sending...' : 'Send to Accounts'}
               </button>
             )}
           </div>
@@ -1406,12 +1413,16 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
             </div>
             <div style={{textAlign:'right'}}>
               <div style={{fontWeight:700,fontSize:'1rem',color:'#0b1a3e'}}>{hr?.employment_status === 'ltd_company' ? (form.company_name || 'Company Name') : `${dbUser?.first_name || ''} ${dbUser?.last_name || ''}`}</div>
-              {hr?.address_line_1 && <div style={{fontSize:'0.8125rem',color:'#374151',marginTop:'0.375rem',lineHeight:1.5}}>
-                {hr.address_line_1}<br/>
-                {hr.address_line_2 && <>{hr.address_line_2}<br/></>}
-                {hr.city && <>{hr.city}<br/></>}
-                {hr.postcode}
-              </div>}
+              {hr?.employment_status === 'ltd_company' ? (
+                form.company_address && <div style={{fontSize:'0.8125rem',color:'#374151',marginTop:'0.375rem',lineHeight:1.5}}>{form.company_address}</div>
+              ) : (
+                hr?.address_line_1 && <div style={{fontSize:'0.8125rem',color:'#374151',marginTop:'0.375rem',lineHeight:1.5}}>
+                  {hr.address_line_1}<br/>
+                  {hr.address_line_2 && <>{hr.address_line_2}<br/></>}
+                  {hr.city && <>{hr.city}<br/></>}
+                  {hr.postcode}
+                </div>
+              )}
               {hr?.employment_status === 'ltd_company' && form.company_reg_number && <div style={{fontSize:'0.75rem',color:'#6b7280',marginTop:'0.375rem'}}>Company No: {form.company_reg_number}</div>}
               {hr?.employment_status === 'ltd_company' && form.company_vat_number && <div style={{fontSize:'0.75rem',color:'#6b7280'}}>VAT Reg: {form.company_vat_number}</div>}
               {hr?.personal_email && <div style={{fontSize:'0.75rem',color:'#6b7280',marginTop:'0.25rem'}}>{hr.personal_email}</div>}
