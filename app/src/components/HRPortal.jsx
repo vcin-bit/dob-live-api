@@ -1570,9 +1570,10 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
                   const disputed = disputedHours[s.id];
                   const hasDispute = disputed?.hours;
                   return (
-                    <div key={s.id} style={{background:'#fff',border: hasDispute ? '1.5px solid #fca5a5' : confirmed ? '1.5px solid #86efac' : '1px solid #e5e7eb',borderRadius:'10px',overflow:'hidden'}}>
+                    <div key={s.id} style={{background: s.shift_type === 'bank_holiday' ? '#f0f4ff' : '#fff',border: hasDispute ? '1.5px solid #fca5a5' : confirmed ? '1.5px solid #86efac' : s.shift_type === 'bank_holiday' ? '1.5px solid #1a52a8' : '1px solid #e5e7eb',borderRadius:'10px',overflow:'hidden'}}>
                       {/* Shift info */}
                       <div style={{padding:'0.875rem'}}>
+                        {s.shift_type === 'bank_holiday' && <div style={{fontSize:'0.6875rem',fontWeight:700,color:'#1a52a8',marginBottom:'0.375rem',letterSpacing:'0.5px'}}>BANK HOLIDAY</div>}
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'0.375rem'}}>
                           <div>
                             <div style={{fontSize:'0.9375rem',fontWeight:700,color:'#111827'}}>{s.site?.name || 'Site'}</div>
@@ -1715,13 +1716,20 @@ function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, setShift
               {(() => {
                 const allAgreed = monthShifts.length > 0 && monthShifts.every(s => confirmedIds.has(s.id));
                 const agreedCount = monthShifts.filter(s => confirmedIds.has(s.id)).length;
-                const totalMonthHrs = monthShifts.reduce((sum, s) => sum + getHours(s), 0);
+                const regularShifts = monthShifts.filter(s => s.shift_type !== 'bank_holiday');
+                const bankHolShifts = monthShifts.filter(s => s.shift_type === 'bank_holiday');
+                const regularHrs = regularShifts.reduce((sum, s) => sum + getHours(s), 0);
+                const bankHolHrs = bankHolShifts.reduce((sum, s) => sum + getHours(s), 0);
+                const totalMonthHrs = regularHrs + bankHolHrs;
                 return (
                   <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:'10px',padding:'1rem'}}>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom: (hasDisputes || (isSelfEmployed && allAgreed)) ? '0.75rem' : 0}}>
                       <div>
                         <div style={{fontSize:'0.6875rem',color:'#6b7280',textTransform:'uppercase',fontWeight:600}}>{formatMonth(selectedMonth)}</div>
                         <div style={{fontSize:'1rem',fontWeight:700,color:'#111827'}}>{totalMonthHrs.toFixed(1)} hours · {monthShifts.length} shift{monthShifts.length!==1?'s':''}</div>
+                        {bankHolHrs > 0 && (
+                          <div style={{fontSize:'0.75rem',color:'#1a52a8',fontWeight:600}}>{regularHrs.toFixed(1)}h regular · {bankHolHrs.toFixed(1)}h bank holiday</div>
+                        )}
                         <div style={{fontSize:'0.75rem',color: allAgreed ? '#16a34a' : '#9ca3af',fontWeight:600}}>{agreedCount}/{monthShifts.length} agreed</div>
                       </div>
                       {allAgreed && !hasDisputes && (
