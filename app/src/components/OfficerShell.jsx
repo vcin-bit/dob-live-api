@@ -187,13 +187,13 @@ function OfficerApp({ user }) {
     );
   }
 
-  // If no site selected and not on site picker page, redirect to site picker
-  if (!selectedSite && location.pathname !== '/sites') {
+  // If no site selected and not on site picker page, redirect to site picker (except My Hours and Profile)
+  if (!selectedSite && !['/sites', '/my-hours', '/profile'].includes(location.pathname)) {
     return <Navigate to="/sites" replace />;
   }
 
-  // LOCK SCREEN — must go on duty before accessing anything
-  if (selectedSite && !activeShift) {
+  // LOCK SCREEN — must go on duty before accessing anything (except My Hours and Profile)
+  if (selectedSite && !activeShift && !['/my-hours', '/profile'].includes(location.pathname)) {
     return (
       <div style={{minHeight:'100vh',background:'#0b1222',display:'flex',flexDirection:'column'}}>
         <OfficerHeader user={user} selectedSite={selectedSite} activeShift={null} />
