@@ -77,12 +77,12 @@ function OfficerApp({ user }) {
         lat = pos.coords.latitude; lng = pos.coords.longitude;
       } catch {}
 
-      // Find the SCHEDULED roster shift for this officer at this site (today or tonight)
-      const now = new Date();
-      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-      const tomorrowEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2).toISOString();
+      // Find the next SCHEDULED roster shift for this officer at this site
+      const todayStart = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()).toISOString();
       const scheduled = await api.shifts.list({ officer_id: user.id, status: 'SCHEDULED', site_id: selectedSite.id });
-      const rShift = (scheduled.data || []).find(s => s.start_time >= todayStart && s.start_time < tomorrowEnd);
+      const rShift = (scheduled.data || [])
+        .filter(s => new Date(s.start_time) >= new Date(todayStart))
+        .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))[0];
 
       if (!rShift) {
         setNoRosterShift(true);
@@ -122,16 +122,15 @@ function OfficerApp({ user }) {
           setActiveShift(activeShifts[0]);
           setSelectedSite(activeShifts[0].site);
         } else {
-          // Check for a scheduled shift today — auto-select that site
+          // Check for next upcoming scheduled shift — auto-select that site
           try {
-            const now = new Date();
-            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-            const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
             const schedRes = await api.shifts.list({ officer_id: user.id, status: 'SCHEDULED' });
-            const todayShift = (schedRes.data || []).find(s => s.start_time >= todayStart && s.start_time < todayEnd);
-            if (todayShift?.site) {
-              setSelectedSite(todayShift.site);
-              setRosterShift(todayShift);
+            const upcoming = (schedRes.data || [])
+              .filter(s => new Date(s.start_time) >= new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()))
+              .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+            if (upcoming.length > 0 && upcoming[0].site) {
+              setSelectedSite(upcoming[0].site);
+              setRosterShift(upcoming[0]);
             } else if ((sitesResponse.data || []).length === 1) {
               setSelectedSite(sitesResponse.data[0]);
             }
@@ -160,16 +159,16 @@ function OfficerApp({ user }) {
       }).catch(() => {});
   }, [selectedSite?.id, activeShift?.id]);
 
-  // Check for roster shift on lock screen
+  // Check for next roster shift on lock screen
   useEffect(() => {
     if (!selectedSite || activeShift) return;
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-    const tomorrowEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2).toISOString();
+    const todayStart = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()).toISOString();
     api.shifts.list({ officer_id: user.id, status: 'SCHEDULED', site_id: selectedSite.id })
       .then(res => {
-        const rShift = (res.data || []).find(s => s.start_time >= todayStart && s.start_time < tomorrowEnd);
-        if (rShift) { setRosterShift(rShift); setNoRosterShift(false); }
+        const upcoming = (res.data || [])
+          .filter(s => new Date(s.start_time) >= new Date(todayStart))
+          .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+        if (upcoming.length > 0) { setRosterShift(upcoming[0]); setNoRosterShift(false); }
         else { setRosterShift(null); setNoRosterShift(true); }
       }).catch(() => setNoRosterShift(true));
   }, [selectedSite, activeShift]);
