@@ -85,7 +85,7 @@ router.get('/dashboard', authenticate, async (req, res, next) => {
 });
 
 // PUT /api/compliance/indicators/:id — Update indicator assessment
-router.put('/indicators/:indicatorId', authenticate, requireRole('COMPANY', 'SUPER_ADMIN', 'OPS_MANAGER'), async (req, res, next) => {
+router.put('/indicators/:indicatorId', authenticate, requireRole('COMPANY', 'SUPER_ADMIN', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
   try {
     const { indicatorId } = req.params;
     const {
@@ -160,7 +160,7 @@ router.get('/criteria/:criterionId', authenticate, async (req, res, next) => {
 });
 
 // POST /api/compliance/auto-collect — Auto-score indicators from DOB Live data
-router.post('/auto-collect', authenticate, requireRole('COMPANY', 'SUPER_ADMIN', 'OPS_MANAGER'), async (req, res, next) => {
+router.post('/auto-collect', authenticate, requireRole('COMPANY', 'SUPER_ADMIN', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
   try {
     const companyId = req.user.company_id;
     const results = [];
