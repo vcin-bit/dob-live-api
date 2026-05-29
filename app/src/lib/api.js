@@ -381,6 +381,11 @@ export const api = {
     update: (id, data) => request(`/api/products/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     delete: (id) => request(`/api/products/${id}`, { method: 'DELETE' }),
   },
+  compliance: {
+    dashboard: () => request('/api/compliance/dashboard'),
+    getCriteria: (criterionId) => request(`/api/compliance/criteria/${criterionId}`),
+    updateIndicator: (indicatorId, data) => request(`/api/compliance/indicators/${indicatorId}`, { method: 'PUT', body: JSON.stringify(data) }),
+  },
   escalation: {
     checkCall: (data) => request('/api/escalation/check-call', { method: 'POST', body: JSON.stringify(data) }),
     panic: (data) => request('/api/escalation/panic', { method: 'POST', body: JSON.stringify(data) }),

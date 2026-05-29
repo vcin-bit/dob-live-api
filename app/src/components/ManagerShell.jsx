@@ -10,6 +10,7 @@ import { PortalSettingsModal } from './Portal';
 import { ContractsScreen } from './ContractsScreen';
 import { ManagerUpdatesPanel } from './CompanyUpdates';
 import { PersonnelFilesScreen } from './PersonnelFiles';
+import ComplianceDashboard from './ComplianceDashboard';
 import {
   HomeIcon, ClipboardDocumentListIcon, MapPinIcon, ClockIcon,
   UserGroupIcon, Cog6ToothIcon, PlusIcon, ArrowRightOnRectangleIcon,
@@ -54,6 +55,7 @@ function ManagerApp({ user }) {
           <Route path="/contracts"   element={<ContractsScreen user={user} />} />
           <Route path="/updates"     element={<div className="page-content"><ManagerUpdatesPanel /></div>} />
           <Route path="/personnel"  element={<PersonnelFilesScreen user={user} />} />
+          <Route path="/compliance" element={<ComplianceDashboard user={user} />} />
           <Route path="/site-checks" element={<SiteChecksScreen />} />
           <Route path="/portal-settings" element={<PortalManagement user={user} />} />
           <Route path="*"          element={<Navigate to="/dashboard" replace />} />
@@ -207,9 +209,10 @@ function ManagerSidebar({ user, open, onClose }) {
       ]
     },
     {
-      label: 'Compliance', section: 'compliance', color: '#ef4444',
+      label: 'ACS Compliance', section: 'compliance', color: '#ef4444',
       items: [
-        { to: '/policies',     icon: DocumentTextIcon, label: 'Policies' },
+        { to: '/compliance', icon: ChartBarIcon, label: 'Dashboard' },
+        { to: '/policies',   icon: DocumentTextIcon, label: 'Policies' },
       ]
     },
   ];
