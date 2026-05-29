@@ -195,37 +195,131 @@ router.post('/auto-collect', authenticate, requireRole('COMPANY', 'SUPER_ADMIN',
       let level = 0;
       let notes = [];
       let status = 'not_started';
+      const code = indicator.indicator_code;
 
-      // Criterion 1: Strategy — score based on operational maturity
+      // Criterion 1: Strategy
       if (indicator.criterion_id === 1) {
-        if (indicator.indicator_code === '1.1.1') {
-          // "Clear approach to business communicated to all staff"
+        if (code === '1.1.1') {
           if (counts.active_users > 0) { level = 1; notes.push(`${counts.active_users} active users on platform`); }
-          if (counts.total_sites > 3) { level = 2; notes.push(`${counts.total_sites} sites under management`); }
-          if (counts.total_shifts > 100 && counts.total_logs > 1000) { level = 2; notes.push('Established operational activity'); }
-        } else if (indicator.indicator_code === '1.1.2') {
-          // "Key stakeholders aware of approach"
+          if (counts.total_sites > 3 && counts.total_shifts > 100) { level = 2; notes.push(`${counts.total_sites} sites, ${counts.total_shifts} shifts — established operations`); }
+        } else if (code === '1.1.2') {
           if (counts.total_sites > 0) { level = 1; notes.push(`${counts.total_sites} client sites configured`); }
           if (counts.total_logs > 500) { level = 2; notes.push(`${counts.total_logs} occurrence logs — active client reporting`); }
-        } else if (indicator.indicator_code === '1.1.3') {
-          // "Business plan with review schedule"
+        } else if (code === '1.1.3') {
           if (counts.shift_patterns > 0) { level = 1; notes.push(`${counts.shift_patterns} shift patterns defined`); }
           if (counts.shift_patterns > 5 && counts.total_patrols > 100) { level = 2; notes.push('Structured scheduling and patrol operations'); }
+        } else if (code === '1.2.1') {
+          if (counts.total_shifts > 50) { level = 1; notes.push('Shift tracking active — operational KPIs measurable'); }
+          if (counts.total_logs > 1000 && counts.total_patrols > 200) { level = 2; notes.push('Comprehensive operational data for performance monitoring'); }
+        } else if (code === '1.2.2') {
+          if (counts.active_users > 3) { level = 1; notes.push(`${counts.active_users} users with platform access — objectives visible`); }
+        } else if (code === '1.2.3') {
+          if (counts.shift_patterns > 0 && counts.total_patrols > 0) { level = 1; notes.push('SOPs evidenced through shift patterns and patrol routes'); }
+          if (counts.total_patrols > 200) { level = 2; notes.push(`${counts.total_patrols} patrols — procedures actively followed`); }
+        } else if (code === '1.3.1') {
+          if (counts.total_logs > 100) { level = 1; notes.push('Occurrence logs demonstrate communication flow'); }
+          if (counts.total_logs > 1000) { level = 2; notes.push(`${counts.total_logs} logs — effective communication management`); }
+        } else if (code === '1.5.1') {
+          if (counts.total_shifts > 50 && counts.total_logs > 100) { level = 1; notes.push('Operational data available for performance review'); }
+          if (counts.total_patrols > 200 && counts.total_logs > 1000) { level = 2; notes.push('Rich performance data for regular review'); }
         }
       }
 
-      // Criterion 2: Service delivery — score from operational data
+      // Criterion 2: Service delivery
       if (indicator.criterion_id === 2) {
-        if (counts.total_logs > 100) { level = 1; notes.push(`${counts.total_logs} occurrence logs recorded`); }
-        if (counts.total_patrols > 50) { level = Math.max(level, 1); notes.push(`${counts.total_patrols} patrols completed`); }
-        if (counts.total_logs > 1000 && counts.total_patrols > 200) { level = 2; notes.push('Strong service delivery evidence'); }
+        if (code === '2.1.1') {
+          if (counts.shift_patterns > 0) { level = 1; notes.push(`${counts.shift_patterns} shift patterns — service processes defined`); }
+          if (counts.shift_patterns > 5 && counts.total_patrols > 100) { level = 2; notes.push('Mature service delivery processes'); }
+        } else if (code === '2.2.1') {
+          if (counts.active_users > 3 && counts.total_sites > 1) { level = 1; notes.push('Multiple officers and sites — continuity capability'); }
+        } else if (code === '2.3.1') {
+          if (counts.total_shifts > 100) { level = 1; notes.push(`${counts.total_shifts} shifts delivered`); }
+          if (counts.total_shifts > 100 && counts.total_logs > 1000) { level = 2; notes.push('Sustained service delivery with reporting'); }
+        } else if (code === '2.3.3') {
+          if (counts.total_sites > 0) { level = 1; notes.push(`${counts.total_sites} client sites under contract`); }
+        } else if (code === '2.4.2') {
+          if (counts.total_logs > 500) { level = 1; notes.push('Incident logging demonstrates SLA tracking'); }
+          if (counts.total_logs > 1000) { level = 2; notes.push(`${counts.total_logs} logs — comprehensive performance tracking`); }
+        } else if (code === '2.4.3') {
+          if (counts.total_logs > 100) { level = 1; notes.push('Incident procedures in use via occurrence logging'); }
+          if (counts.total_logs > 1000) { level = 2; notes.push(`${counts.total_logs} incidents recorded — procedures embedded`); }
+        } else if (code === '2.4.5') {
+          if (counts.total_shifts > 50) { level = 1; notes.push('Shift system tracks attendance'); }
+          if (counts.total_shifts > 100) { level = 2; notes.push(`${counts.total_shifts} shifts — attendance management evidenced`); }
+        } else if (code === '2.5.1') {
+          if (counts.total_patrols > 100) { level = 1; notes.push(`${counts.total_patrols} patrols — site activity tracked`); }
+          if (counts.total_patrols > 300) { level = 2; notes.push('Patrol data enables performance improvement'); }
+        } else if (code === '2.6.1') {
+          if (counts.total_logs > 500 && counts.total_shifts > 100) { level = 1; notes.push('Data available for SLA review'); }
+          if (counts.total_logs > 1000) { level = 2; notes.push('Comprehensive data for performance reviews'); }
+        }
       }
 
-      // Criterion 6: People — score from HR data
+      // Criterion 3: Commercial relationship management
+      if (indicator.criterion_id === 3) {
+        if (code === '3.2.1') {
+          if (counts.total_sites > 3) { level = 1; notes.push(`${counts.total_sites} client relationships active`); }
+        } else if (code === '3.3.1') {
+          if (counts.total_sites > 0) { level = 1; notes.push('Site management demonstrates client engagement'); }
+        } else if (code === '3.3.2') {
+          if (counts.total_logs > 100) { level = 1; notes.push('Occurrence log system can capture complaints'); }
+        }
+      }
+
+      // Criterion 4: Financial management
+      if (indicator.criterion_id === 4) {
+        if (code === '4.2.1') {
+          if (counts.hr_records > 0) { level = 1; notes.push(`${counts.hr_records} HR/payroll records on file`); }
+          if (counts.hr_records > 3) { level = 2; notes.push('Payroll records evidenced for workforce'); }
+        } else if (code === '4.2.3') {
+          if (counts.active_users > 3) { level = 1; notes.push('Defined user roles in platform demonstrate authority levels'); }
+        }
+      }
+
+      // Criterion 5: Resource management
+      if (indicator.criterion_id === 5) {
+        if (code === '5.1.1') {
+          if (counts.total_sites > 0) { level = 1; notes.push('DOB Live delivers documents to point of use'); }
+          if (counts.total_sites > 3) { level = 2; notes.push(`Documents available across ${counts.total_sites} sites via platform`); }
+        } else if (code === '5.1.2') {
+          if (counts.active_users > 0) { level = 1; notes.push('Platform manages data with role-based access'); }
+        } else if (code === '5.2.4') {
+          if (counts.total_patrols > 0 && counts.total_logs > 0) { level = 1; notes.push('DOB Live platform investment in technology'); }
+          if (counts.total_patrols > 200 && counts.total_logs > 1000) { level = 2; notes.push('Technology driving service delivery and safety'); }
+        }
+      }
+
+      // Criterion 6: People
       if (indicator.criterion_id === 6) {
-        if (counts.users_with_sia > 0) { level = 1; notes.push(`${counts.users_with_sia} officers with SIA licences recorded`); }
-        if (counts.hr_records > 0) { level = Math.max(level, 1); notes.push(`${counts.hr_records} HR records on file`); }
-        if (counts.users_with_sia > 3 && counts.hr_records > 3) { level = 2; notes.push('HR documentation in place'); }
+        if (code === '6.1.3') {
+          if (counts.users_with_sia > 0) { level = 1; notes.push(`${counts.users_with_sia} officers with SIA licences recorded`); }
+          if (counts.users_with_sia > 3) { level = 2; notes.push('SIA licensing tracked across workforce'); }
+        } else if (code === '6.1.4') {
+          if (counts.hr_records > 0) { level = 1; notes.push(`${counts.hr_records} BS 7858 vetting records on file`); }
+          if (counts.hr_records > 3) { level = 2; notes.push('Vetting records maintained for workforce'); }
+        } else if (code === '6.1.5') {
+          if (counts.hr_records > 0) { level = 1; notes.push('HR records include right to work checks'); }
+          if (counts.hr_records > 3) { level = 2; notes.push('Right to work verified across workforce'); }
+        } else if (code === '6.2.3') {
+          if (counts.total_shifts > 50) { level = 1; notes.push('Shift assignments match officers to sites'); }
+          if (counts.total_shifts > 100) { level = 2; notes.push(`${counts.total_shifts} assignments — deployment management evidenced`); }
+        } else if (code === '6.2.5') {
+          if (counts.users_with_sia > 0) { level = 1; notes.push('SIA licences serve as staff identification'); }
+        } else if (code === '6.2.6') {
+          if (counts.total_patrols > 0) { level = 1; notes.push('Patrol system demonstrates H&S awareness in practice'); }
+        } else if (code === '6.5.2') {
+          if (counts.total_logs > 500) { level = 1; notes.push('Communication through occurrence log system'); }
+          if (counts.total_logs > 1000) { level = 2; notes.push(`${counts.total_logs} logs — workforce kept informed`); }
+        }
+      }
+
+      // Criterion 7: Leadership
+      if (indicator.criterion_id === 7) {
+        if (code === '7.1.1') {
+          if (counts.total_sites > 3 && counts.active_users > 5) { level = 1; notes.push('Operational scale demonstrates leadership capability'); }
+        } else if (code === '7.3.1') {
+          if (counts.total_patrols > 200 && counts.total_logs > 1000) { level = 1; notes.push('Operational data enables continuous improvement culture'); }
+        }
       }
 
       if (level > 0) {
