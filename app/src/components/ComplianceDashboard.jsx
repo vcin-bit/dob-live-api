@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import { ChartBarIcon, ClockIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
@@ -170,7 +171,11 @@ const ComplianceDashboard = ({ user }) => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
           {Object.entries(criteria).map(([criterionNum, criterion]) => (
-            <div key={criterionNum} className="text-center">
+            <Link
+              key={criterionNum}
+              to={`/compliance/criteria/${criterionNum}`}
+              className="block text-center hover:bg-gray-50 rounded-lg p-4 transition-colors cursor-pointer"
+            >
               <RingProgress
                 percentage={criterion.percentage}
                 color={criterion.ringColor}
@@ -192,7 +197,7 @@ const ComplianceDashboard = ({ user }) => {
                    criterion.ringColor === 'amber' ? 'In Progress' : 'Needs Work'}
                 </span>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </div>

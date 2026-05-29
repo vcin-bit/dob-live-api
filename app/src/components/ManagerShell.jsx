@@ -11,6 +11,7 @@ import { ContractsScreen } from './ContractsScreen';
 import { ManagerUpdatesPanel } from './CompanyUpdates';
 import { PersonnelFilesScreen } from './PersonnelFiles';
 import ComplianceDashboard from './ComplianceDashboard';
+import ComplianceCriterionDetail from './ComplianceCriterionDetail';
 import {
   HomeIcon, ClipboardDocumentListIcon, MapPinIcon, ClockIcon,
   UserGroupIcon, Cog6ToothIcon, PlusIcon, ArrowRightOnRectangleIcon,
@@ -56,6 +57,7 @@ function ManagerApp({ user }) {
           <Route path="/updates"     element={<div className="page-content"><ManagerUpdatesPanel /></div>} />
           <Route path="/personnel"  element={<PersonnelFilesScreen user={user} />} />
           <Route path="/compliance" element={<ComplianceDashboard user={user} />} />
+          <Route path="/compliance/criteria/:criterionId" element={<ComplianceCriterionDetail user={user} />} />
           <Route path="/site-checks" element={<SiteChecksScreen />} />
           <Route path="/portal-settings" element={<PortalManagement user={user} />} />
           <Route path="*"          element={<Navigate to="/dashboard" replace />} />
