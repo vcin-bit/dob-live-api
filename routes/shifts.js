@@ -162,6 +162,30 @@ router.post('/start', authenticate, async (req, res, next) => {
 router.post('/:id/checkin', authenticate, async (req, res, next) => {
   try {
     const { lat, lng } = req.body;
+
+    // Fetch shift and enforce check-in time window
+    const { data: shift, error: fetchErr } = await supabase
+      .from('shifts')
+      .select('id, start_time, end_time, status')
+      .eq('id', req.params.id)
+      .eq('officer_id', req.user.id)
+      .single();
+    if (fetchErr || !shift) return res.status(404).json({ error: 'Shift not found' });
+
+    const now = new Date();
+    const opensAt = new Date(new Date(shift.start_time).getTime() - 60 * 60 * 1000);
+    const closesAt = shift.end_time
+      ? new Date(shift.end_time)
+      : new Date(new Date(shift.start_time).getTime() + 12 * 60 * 60 * 1000);
+
+    if (now < opensAt) {
+      const fmt = opensAt.toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short', timeZone: 'Europe/London' });
+      return res.status(400).json({ error: 'check_in_window', message: `This shift can't be started yet. Check-in opens at ${fmt}.` });
+    }
+    if (now > closesAt) {
+      return res.status(400).json({ error: 'check_in_window', message: 'This shift has ended and can no longer be started.' });
+    }
+
     const { data, error } = await supabase
       .from('shifts')
       .update({
