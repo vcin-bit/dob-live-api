@@ -24,6 +24,20 @@ const ComplianceDashboard = ({ user }) => {
     }
   };
 
+  const runAssessment = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      await api.compliance.autoCollect();
+      await loadDashboard();
+    } catch (err) {
+      setError(`Assessment failed: ${err.message}`);
+      console.error('Auto-assessment error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getRingColor = (color) => {
     switch (color) {
       case 'green': return '#10b981';
@@ -187,10 +201,16 @@ const ComplianceDashboard = ({ user }) => {
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+          <button
+            onClick={runAssessment}
+            disabled={loading}
+            className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+          >
             <CheckCircleIcon className="h-8 w-8 text-green-500 mr-3" />
             <div className="text-left">
-              <div className="font-medium text-gray-900">Run Assessment</div>
+              <div className="font-medium text-gray-900">
+                {loading ? 'Running Assessment...' : 'Run Assessment'}
+              </div>
               <div className="text-sm text-gray-500">Auto-collect evidence from DOB Live</div>
             </div>
           </button>

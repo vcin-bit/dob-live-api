@@ -159,4 +159,103 @@ router.get('/criteria/:criterionId', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// POST /api/compliance/auto-collect — Auto-score indicators from DOB Live data
+router.post('/auto-collect', authenticate, requireRole('COMPANY', 'SUPER_ADMIN', 'OPS_MANAGER'), async (req, res, next) => {
+  try {
+    const companyId = req.user.company_id;
+    const results = [];
+
+    // Get all indicators
+    const { data: indicators, error: indErr } = await supabase
+      .from('acs_indicators')
+      .select('id, indicator_code, criterion_id');
+    if (indErr) throw indErr;
+
+    // Collect data counts for evidence scoring
+    const counts = {};
+
+    const queries = [
+      ['active_users',  supabase.from('users').select('id', { count: 'exact', head: true }).eq('company_id', companyId).eq('active', true)],
+      ['users_with_sia', supabase.from('users').select('id', { count: 'exact', head: true }).eq('company_id', companyId).not('sia_licence_number', 'is', null)],
+      ['total_logs',    supabase.from('occurrence_logs').select('id', { count: 'exact', head: true }).eq('company_id', companyId)],
+      ['total_shifts',  supabase.from('shifts').select('id', { count: 'exact', head: true }).eq('company_id', companyId)],
+      ['total_sites',   supabase.from('sites').select('id', { count: 'exact', head: true }).eq('company_id', companyId)],
+      ['total_patrols', supabase.from('patrol_sessions').select('id', { count: 'exact', head: true }).eq('company_id', companyId)],
+      ['shift_patterns', supabase.from('shift_patterns').select('id', { count: 'exact', head: true }).eq('company_id', companyId)],
+      ['hr_records',    supabase.from('officer_hr').select('id', { count: 'exact', head: true }).eq('company_id', companyId)],
+    ];
+
+    for (const [key, query] of queries) {
+      const { count } = await query;
+      counts[key] = count || 0;
+    }
+
+    // Score each indicator based on available evidence
+    for (const indicator of indicators) {
+      let level = 0;
+      let notes = [];
+      let status = 'not_started';
+
+      // Criterion 1: Strategy — score based on operational maturity
+      if (indicator.criterion_id === 1) {
+        if (indicator.indicator_code === '1.1.1') {
+          // "Clear approach to business communicated to all staff"
+          if (counts.active_users > 0) { level = 1; notes.push(`${counts.active_users} active users on platform`); }
+          if (counts.total_sites > 3) { level = 2; notes.push(`${counts.total_sites} sites under management`); }
+          if (counts.total_shifts > 100 && counts.total_logs > 1000) { level = 2; notes.push('Established operational activity'); }
+        } else if (indicator.indicator_code === '1.1.2') {
+          // "Key stakeholders aware of approach"
+          if (counts.total_sites > 0) { level = 1; notes.push(`${counts.total_sites} client sites configured`); }
+          if (counts.total_logs > 500) { level = 2; notes.push(`${counts.total_logs} occurrence logs — active client reporting`); }
+        } else if (indicator.indicator_code === '1.1.3') {
+          // "Business plan with review schedule"
+          if (counts.shift_patterns > 0) { level = 1; notes.push(`${counts.shift_patterns} shift patterns defined`); }
+          if (counts.shift_patterns > 5 && counts.total_patrols > 100) { level = 2; notes.push('Structured scheduling and patrol operations'); }
+        }
+      }
+
+      // Criterion 2: Service delivery — score from operational data
+      if (indicator.criterion_id === 2) {
+        if (counts.total_logs > 100) { level = 1; notes.push(`${counts.total_logs} occurrence logs recorded`); }
+        if (counts.total_patrols > 50) { level = Math.max(level, 1); notes.push(`${counts.total_patrols} patrols completed`); }
+        if (counts.total_logs > 1000 && counts.total_patrols > 200) { level = 2; notes.push('Strong service delivery evidence'); }
+      }
+
+      // Criterion 6: People — score from HR data
+      if (indicator.criterion_id === 6) {
+        if (counts.users_with_sia > 0) { level = 1; notes.push(`${counts.users_with_sia} officers with SIA licences recorded`); }
+        if (counts.hr_records > 0) { level = Math.max(level, 1); notes.push(`${counts.hr_records} HR records on file`); }
+        if (counts.users_with_sia > 3 && counts.hr_records > 3) { level = 2; notes.push('HR documentation in place'); }
+      }
+
+      if (level > 0) {
+        status = level >= 2 ? 'completed' : 'in_progress';
+
+        const { data, error } = await supabase
+          .from('company_acs_assessment')
+          .upsert({
+            company_id: companyId,
+            indicator_id: indicator.id,
+            your_level: level,
+            evidence_notes: `Auto-collected ${new Date().toISOString().slice(0,10)}: ${notes.join('. ')}`,
+            compliance_status: status,
+            updated_by: req.user.id,
+            last_updated: new Date().toISOString()
+          }, { onConflict: 'company_id,indicator_id' })
+          .select()
+          .single();
+
+        if (error) throw error;
+        results.push({ indicator_code: indicator.indicator_code, level, status, notes });
+      }
+    }
+
+    res.json({
+      collected: results.length,
+      evidence_summary: counts,
+      results
+    });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;

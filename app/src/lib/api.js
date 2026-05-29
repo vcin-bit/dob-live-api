@@ -385,6 +385,7 @@ export const api = {
     dashboard: () => request('/api/compliance/dashboard'),
     getCriteria: (criterionId) => request(`/api/compliance/criteria/${criterionId}`),
     updateIndicator: (indicatorId, data) => request(`/api/compliance/indicators/${indicatorId}`, { method: 'PUT', body: JSON.stringify(data) }),
+    autoCollect: () => request('/api/compliance/auto-collect', { method: 'POST' }),
   },
   escalation: {
     checkCall: (data) => request('/api/escalation/check-call', { method: 'POST', body: JSON.stringify(data) }),
