@@ -553,87 +553,46 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
   );
 }
 
-// ── Pay Summary (columnar: officers as columns, metrics as rows) ────────────
+// ── Pay Summary ─────────────────────────────────────────────────────────────
 
 function PaySummary({ shifts, title }) {
   const byOfficer = {};
   shifts.forEach(s => {
-    const first = s.officer?.first_name || '?';
-    const last = s.officer?.last_name || '';
-    const key = `${first} ${last}`.trim();
-    if (!byOfficer[key]) byOfficer[key] = { first, hours: 0, bhHours: 0, basePay: 0, bhPremium: 0, rates: [] };
+    const name = s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unassigned';
+    if (!byOfficer[name]) byOfficer[name] = { hours: 0, bhHours: 0, totalPay: 0 };
     const h = shiftHours(s);
     const rate = parseFloat(s.pay_rate) || 0;
     const bhH = getBhHours(s);
     const bhRate = getBhPayRate(s);
-    byOfficer[key].hours += h;
-    byOfficer[key].basePay += h * rate;
-    byOfficer[key].bhHours += bhH;
-    byOfficer[key].bhPremium += bhH * bhRate;
-    if (rate > 0) byOfficer[key].rates.push(rate);
+    byOfficer[name].hours += h;
+    byOfficer[name].bhHours += bhH;
+    byOfficer[name].totalPay += (h * rate) + (bhH * bhRate);
   });
-  const cols = Object.entries(byOfficer).sort((a,b) => b[1].basePay - a[1].basePay);
-  if (cols.length === 0) return null;
-  const totH = cols.reduce((t,[,o]) => t + o.hours, 0);
-  const totBhH = cols.reduce((t,[,o]) => t + o.bhHours, 0);
-  const totPay = cols.reduce((t,[,o]) => t + o.basePay, 0);
-  const totBhP = cols.reduce((t,[,o]) => t + o.bhPremium, 0);
+  const rows = Object.entries(byOfficer).sort((a,b) => b[1].totalPay - a[1].totalPay);
+  if (!rows.length) return null;
+  const totH = rows.reduce((t,[,o]) => t + o.hours, 0);
+  const totBhH = rows.reduce((t,[,o]) => t + o.bhHours, 0);
+  const totPay = rows.reduce((t,[,o]) => t + o.totalPay, 0);
   const f = n => `£${n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
-  const avgRate = o => { const r = o.rates.filter(Boolean); return r.length ? r.reduce((a,b)=>a+b,0)/r.length : 0; };
-
-  const lbl = {padding:'4px 0',fontSize:'0.6875rem',color:'var(--text-3)',fontWeight:600,whiteSpace:'nowrap'};
-  const val = {padding:'4px 6px',fontSize:'0.75rem',textAlign:'right',whiteSpace:'nowrap',fontWeight:500};
 
   return (
-    <div style={{background:'var(--surface-2)',borderRadius: title ? '0 0 8px 8px' : '0',padding:'0.5rem 0.625rem',marginTop: title ? '1px' : '0',overflowX:'auto'}}>
+    <div style={{background:'var(--surface-2)',borderRadius: title ? '0 0 8px 8px' : '0',padding:'0.625rem 0.75rem',marginTop: title ? '1px' : '0',fontSize:'0.75rem',color:'var(--text-2)'}}>
       {title && <div style={{fontWeight:700,color:'var(--text)',marginBottom:'0.5rem',fontSize:'0.875rem'}}>{title}</div>}
-      <table style={{width:'100%',borderCollapse:'collapse'}}>
-        <thead><tr>
-          <th style={{...lbl,textAlign:'left',borderBottom:'1px solid var(--border)',paddingBottom:'6px'}} />
-          {cols.map(([name, o]) => <th key={name} style={{...val,fontWeight:700,color:'var(--text)',borderBottom:'1px solid var(--border)',paddingBottom:'6px',minWidth:'70px'}}>{o.first}</th>)}
-        </tr></thead>
-        <tbody>
-          <tr>
-            <td style={lbl}>Regular Hours</td>
-            {cols.map(([name, o]) => <td key={name} style={val}>{(o.hours - o.bhHours).toFixed(1)}h</td>)}
-          </tr>
-          {totBhH > 0 && <tr>
-            <td style={{...lbl,color:'#dc2626'}}>BH Hours</td>
-            {cols.map(([name, o]) => <td key={name} style={{...val,color: o.bhHours > 0 ? '#dc2626' : 'var(--text-3)'}}>{o.bhHours > 0 ? `${o.bhHours.toFixed(1)}h` : '—'}</td>)}
-          </tr>}
-          <tr>
-            <td style={{...lbl,fontWeight:700,color:'var(--text)'}}>Total Hours</td>
-            {cols.map(([name, o]) => <td key={name} style={{...val,fontWeight:700}}>{o.hours.toFixed(1)}h</td>)}
-          </tr>
-          <tr><td colSpan={cols.length + 1} style={{borderTop:'1px solid var(--border)',padding:0,height:'4px'}} /></tr>
-          <tr>
-            <td style={lbl}>Hourly Rate</td>
-            {cols.map(([name, o]) => <td key={name} style={val}>£{avgRate(o).toFixed(2)}</td>)}
-          </tr>
-          <tr>
-            <td style={{...lbl,color:'#f59e0b'}}>Base Pay</td>
-            {cols.map(([name, o]) => <td key={name} style={{...val,color:'#f59e0b',fontWeight:600}}>{f(o.basePay)}</td>)}
-          </tr>
-          {totBhP > 0 && <tr>
-            <td style={{...lbl,color:'#dc2626'}}>BH Premium</td>
-            {cols.map(([name, o]) => <td key={name} style={{...val,color: o.bhPremium > 0 ? '#dc2626' : 'var(--text-3)',fontWeight:600}}>{o.bhPremium > 0 ? f(o.bhPremium) : '—'}</td>)}
-          </tr>}
-          <tr>
-            <td style={{...lbl,fontWeight:700,color:'var(--text)',borderTop:'1px solid var(--border)',paddingTop:'6px'}}>Total Pay</td>
-            {cols.map(([name, o]) => <td key={name} style={{...val,fontWeight:700,color:'#10b981',borderTop:'1px solid var(--border)',paddingTop:'6px'}}>{f(o.basePay + o.bhPremium)}</td>)}
-          </tr>
-        </tbody>
-      </table>
-      {/* Grand totals */}
-      <div style={{borderTop:'2px solid var(--border)',marginTop:'8px',paddingTop:'8px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:'4px 12px',fontSize:'0.6875rem'}}>
-        <div style={{display:'flex',justifyContent:'space-between'}}><span style={{color:'var(--text-3)',fontWeight:600}}>Regular Hours</span><span style={{fontWeight:700}}>{(totH - totBhH).toFixed(1)}h</span></div>
-        <div style={{display:'flex',justifyContent:'space-between'}}><span style={{color:'var(--text-3)',fontWeight:600}}>Base Pay</span><span style={{fontWeight:700,color:'#f59e0b'}}>{f(totPay)}</span></div>
-        {totBhH > 0 && <div style={{display:'flex',justifyContent:'space-between'}}><span style={{color:'#dc2626',fontWeight:600}}>BH Hours</span><span style={{fontWeight:700,color:'#dc2626'}}>{totBhH.toFixed(1)}h</span></div>}
-        {totBhP > 0 && <div style={{display:'flex',justifyContent:'space-between'}}><span style={{color:'#dc2626',fontWeight:600}}>BH Premium</span><span style={{fontWeight:700,color:'#dc2626'}}>{f(totBhP)}</span></div>}
-        <div style={{gridColumn:'1/-1',display:'flex',justifyContent:'space-between',borderTop:'1px solid var(--border)',paddingTop:'6px',marginTop:'4px'}}>
-          <span style={{fontWeight:700,color:'var(--text)',fontSize:'0.75rem'}}>GRAND TOTAL</span>
-          <span style={{fontWeight:700,color:'#10b981',fontSize:'0.75rem'}}>{totH.toFixed(1)}h · {f(totPay + totBhP)}</span>
+      {rows.map(([name, o]) => (
+        <div key={name} style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',padding:'3px 0',gap:'0.5rem'}}>
+          <span style={{fontWeight:600,color:'var(--text)',minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{name}</span>
+          <span style={{whiteSpace:'nowrap',flexShrink:0}}>
+            {(o.hours - o.bhHours).toFixed(0)}h{o.bhHours > 0 && <span style={{color:'#dc2626'}}> + {o.bhHours.toFixed(0)}h BH</span>}
+            <span style={{color:'#f59e0b',fontWeight:700,marginLeft:'0.5rem'}}>{f(o.totalPay)}</span>
+          </span>
         </div>
+      ))}
+      <div style={{borderTop:'1.5px solid var(--border)',marginTop:'6px',paddingTop:'6px',display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
+        <span style={{fontWeight:700,color:'var(--text)',fontSize:'0.8125rem'}}>Total</span>
+        <span style={{fontWeight:700,fontSize:'0.8125rem',whiteSpace:'nowrap'}}>
+          {(totH - totBhH).toFixed(0)}h{totBhH > 0 && <span style={{color:'#dc2626'}}> + {totBhH.toFixed(0)}h BH</span>}
+          <span style={{color:'#10b981',marginLeft:'0.5rem'}}>{f(totPay)}</span>
+        </span>
       </div>
     </div>
   );
