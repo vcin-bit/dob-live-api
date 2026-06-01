@@ -63,10 +63,10 @@ function ukDateStr(date) {
 }
 function ukMidnight(dateStr) {
   // Return a Date representing 00:00 UK time for a given YYYY-MM-DD
-  // Try GMT first (+00:00), check if the UK date matches; if not, it's BST (-1hr)
-  const gmt = new Date(dateStr + 'T00:00:00+00:00');
-  if (ukDateStr(gmt) === dateStr) return gmt;
-  return new Date(dateStr + 'T00:00:00+01:00');
+  // Try BST first (+01:00); if the UK date doesn't match, it's GMT
+  const bst = new Date(dateStr + 'T00:00:00+01:00');
+  if (ukDateStr(bst) === dateStr) return bst;
+  return new Date(dateStr + 'T00:00:00+00:00');
 }
 function calcBhHours(s) {
   if (!s.start_time || !s.end_time) return 0;

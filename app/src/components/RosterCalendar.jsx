@@ -59,9 +59,9 @@ const UK_BANK_HOLIDAYS = new Set([
 ]);
 function ukDateStr(date) { return date.toLocaleDateString('en-CA', { timeZone: 'Europe/London' }); }
 function ukMidnight(dateStr) {
-  const gmt = new Date(dateStr + 'T00:00:00+00:00');
-  if (ukDateStr(gmt) === dateStr) return gmt;
-  return new Date(dateStr + 'T00:00:00+01:00');
+  const bst = new Date(dateStr + 'T00:00:00+01:00');
+  if (ukDateStr(bst) === dateStr) return bst;
+  return new Date(dateStr + 'T00:00:00+00:00');
 }
 function calcBhHours(s) {
   if (!s.start_time || !s.end_time) return 0;
@@ -572,37 +572,68 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
           {/* Weekly summary row */}
           {weekHours > 0 && canSeePay(user?.role) && (() => {
             const byOfficer = {};
+            const bhByDate = {}; // { '2026-05-04': { hours: X, pay: Y } }
             weekShifts.forEach(s => {
               const name = s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unassigned';
-              if (!byOfficer[name]) byOfficer[name] = { hours: 0, basePay: 0, bhPremiumPay: 0 };
+              if (!byOfficer[name]) byOfficer[name] = { hours: 0, basePay: 0, bhDetails: {} };
               const h = shiftHours(s);
               const rate = parseFloat(s.pay_rate) || 0;
-              const bhH = calcBhHours(s);
               byOfficer[name].hours += h;
               byOfficer[name].basePay += h * rate;
-              if (bhH > 0) byOfficer[name].bhPremiumPay += bhH * rate;
+              // Track BH premium per date per officer
+              if (!s.start_time || !s.end_time) return;
+              const start = new Date(s.start_time);
+              const end = new Date(s.end_time);
+              const startDate = ukDateStr(start);
+              const endDate = ukDateStr(new Date(end.getTime() - 1));
+              let d = startDate;
+              while (d <= endDate) {
+                if (UK_BANK_HOLIDAYS.has(d)) {
+                  const dayStart = ukMidnight(d);
+                  const dayEnd = new Date(dayStart.getTime() + 86400000);
+                  const overlapStart = start > dayStart ? start : dayStart;
+                  const overlapEnd = end < dayEnd ? end : dayEnd;
+                  if (overlapEnd > overlapStart) {
+                    const bhH = (overlapEnd - overlapStart) / 3600000;
+                    if (!byOfficer[name].bhDetails[d]) byOfficer[name].bhDetails[d] = { hours: 0, pay: 0 };
+                    byOfficer[name].bhDetails[d].hours += bhH;
+                    byOfficer[name].bhDetails[d].pay += bhH * rate;
+                    if (!bhByDate[d]) bhByDate[d] = { hours: 0, pay: 0 };
+                    bhByDate[d].hours += bhH;
+                    bhByDate[d].pay += bhH * rate;
+                  }
+                }
+                const next = new Date(ukMidnight(d).getTime() + 86400000);
+                d = ukDateStr(next);
+              }
             });
-            const entries = Object.entries(byOfficer).sort((a,b) => (b[1].basePay + b[1].bhPremiumPay) - (a[1].basePay + a[1].bhPremiumPay));
-            const totalHrs = entries.reduce((t, [,d]) => t + d.hours, 0);
-            const totalBasePay = entries.reduce((t, [,d]) => t + d.basePay, 0);
-            const totalBhPremium = entries.reduce((t, [,d]) => t + d.bhPremiumPay, 0);
+            const entries = Object.entries(byOfficer).sort((a,b) => (b[1].basePay + Object.values(b[1].bhDetails).reduce((t,x) => t + x.pay, 0)) - (a[1].basePay + Object.values(a[1].bhDetails).reduce((t,x) => t + x.pay, 0)));
+            const totalHrs = entries.reduce((t, [,o]) => t + o.hours, 0);
+            const totalBasePay = entries.reduce((t, [,o]) => t + o.basePay, 0);
+            const totalBhPremium = Object.values(bhByDate).reduce((t, x) => t + x.pay, 0);
+            const fmtDate = ds => { const dt = ukMidnight(ds); return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'Europe/London' }); };
             return (
               <div style={{background:'var(--surface-2)',padding:'0.5rem 0.75rem',fontSize:'0.75rem',color:'var(--text-2)'}}>
-                {entries.map(([name, d], i) => (
+                {entries.map(([name, o], i) => {
+                  const bhDates = Object.entries(o.bhDetails).sort((a,b) => a[0].localeCompare(b[0]));
+                  return (
                   <div key={name}>
                     {i > 0 && <div style={{borderTop:'1px solid var(--border)',margin:'2px 0'}} />}
                     <div style={{display:'flex',justifyContent:'space-between',padding:'2px 0'}}>
                       <span>{name}</span>
-                      <span>{d.hours.toFixed(1)} hrs {d.basePay > 0 ? <span style={{color:'#f59e0b'}}>· £{d.basePay.toFixed(2)}</span> : ''}</span>
+                      <span>{o.hours.toFixed(1)} hrs {o.basePay > 0 ? <span style={{color:'#f59e0b'}}>· £{o.basePay.toFixed(2)}</span> : ''}</span>
                     </div>
-                    {d.bhPremiumPay > 0 && <div style={{display:'flex',justifyContent:'space-between',padding:'2px 0',color:'#dc2626'}}>
-                      <span style={{fontWeight:600}}>BH Premium</span>
-                      <span>£{d.bhPremiumPay.toFixed(2)}</span>
-                    </div>}
+                    {bhDates.map(([dateStr, bh]) => (
+                      <div key={dateStr} style={{display:'flex',justifyContent:'space-between',padding:'2px 0 2px 0.5rem',color:'#dc2626'}}>
+                        <span style={{fontWeight:600}}>BH Premium ({fmtDate(dateStr)}) · {bh.hours.toFixed(1)}h</span>
+                        <span>£{bh.pay.toFixed(2)}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                  );
+                })}
                 {totalBhPremium > 0 && <div style={{display:'flex',justifyContent:'space-between',borderTop:'1px solid var(--border)',marginTop:'4px',paddingTop:'4px',fontWeight:600,color:'#dc2626'}}>
-                  <span>BH Premium</span>
+                  <span>Total BH Premium</span>
                   <span>£{totalBhPremium.toFixed(2)}</span>
                 </div>}
                 <div style={{display:'flex',justifyContent:'space-between',borderTop:'1px solid var(--border)',marginTop:'4px',paddingTop:'4px',fontWeight:700,color:'var(--text)'}}>
@@ -619,38 +650,68 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
           const monthShifts = days.filter(d => d.getMonth() === anchorMonth && d.getFullYear() === anchorYear).flatMap(d => shiftsForDay(d));
           if (!monthShifts.length) return null;
           const byOfficer = {};
+          const bhByDate = {};
           monthShifts.forEach(s => {
             const name = s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unassigned';
-            if (!byOfficer[name]) byOfficer[name] = { hours: 0, basePay: 0, bhPremiumPay: 0 };
+            if (!byOfficer[name]) byOfficer[name] = { hours: 0, basePay: 0, bhDetails: {} };
             const h = shiftHours(s);
             const rate = parseFloat(s.pay_rate) || 0;
-            const bhH = calcBhHours(s);
             byOfficer[name].hours += h;
             byOfficer[name].basePay += h * rate;
-            if (bhH > 0) byOfficer[name].bhPremiumPay += bhH * rate;
+            if (!s.start_time || !s.end_time) return;
+            const start = new Date(s.start_time);
+            const end = new Date(s.end_time);
+            const startDate = ukDateStr(start);
+            const endDate = ukDateStr(new Date(end.getTime() - 1));
+            let d2 = startDate;
+            while (d2 <= endDate) {
+              if (UK_BANK_HOLIDAYS.has(d2)) {
+                const dayStart = ukMidnight(d2);
+                const dayEnd = new Date(dayStart.getTime() + 86400000);
+                const overlapStart = start > dayStart ? start : dayStart;
+                const overlapEnd = end < dayEnd ? end : dayEnd;
+                if (overlapEnd > overlapStart) {
+                  const bhH = (overlapEnd - overlapStart) / 3600000;
+                  if (!byOfficer[name].bhDetails[d2]) byOfficer[name].bhDetails[d2] = { hours: 0, pay: 0 };
+                  byOfficer[name].bhDetails[d2].hours += bhH;
+                  byOfficer[name].bhDetails[d2].pay += bhH * rate;
+                  if (!bhByDate[d2]) bhByDate[d2] = { hours: 0, pay: 0 };
+                  bhByDate[d2].hours += bhH;
+                  bhByDate[d2].pay += bhH * rate;
+                }
+              }
+              const next = new Date(ukMidnight(d2).getTime() + 86400000);
+              d2 = ukDateStr(next);
+            }
           });
-          const entries = Object.entries(byOfficer).sort((a,b) => (b[1].basePay + b[1].bhPremiumPay) - (a[1].basePay + a[1].bhPremiumPay));
-          const totalHrs = entries.reduce((t, [,d]) => t + d.hours, 0);
-          const totalBasePay = entries.reduce((t, [,d]) => t + d.basePay, 0);
-          const totalBhPremium = entries.reduce((t, [,d]) => t + d.bhPremiumPay, 0);
+          const entries = Object.entries(byOfficer).sort((a,b) => (b[1].basePay + Object.values(b[1].bhDetails).reduce((t,x) => t + x.pay, 0)) - (a[1].basePay + Object.values(a[1].bhDetails).reduce((t,x) => t + x.pay, 0)));
+          const totalHrs = entries.reduce((t, [,o]) => t + o.hours, 0);
+          const totalBasePay = entries.reduce((t, [,o]) => t + o.basePay, 0);
+          const totalBhPremium = Object.values(bhByDate).reduce((t, x) => t + x.pay, 0);
+          const fmtDate = ds => { const dt = ukMidnight(ds); return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'Europe/London' }); };
           return (
             <div style={{background:'var(--surface-2)',borderRadius:'0 0 8px 8px',padding:'0.75rem 1rem',fontSize:'0.8125rem',color:'var(--text-2)',marginTop:'1px'}}>
               <div style={{fontWeight:700,color:'var(--text)',marginBottom:'0.5rem',fontSize:'0.875rem'}}>Monthly Pay Summary</div>
-              {entries.map(([name, d], i) => (
+              {entries.map(([name, o], i) => {
+                const bhDates = Object.entries(o.bhDetails).sort((a,b) => a[0].localeCompare(b[0]));
+                return (
                 <div key={name}>
                   {i > 0 && <div style={{borderTop:'1px solid var(--border)',margin:'4px 0'}} />}
                   <div style={{display:'flex',justifyContent:'space-between',padding:'3px 0'}}>
                     <span>{name}</span>
-                    <span>{d.hours.toFixed(1)} hrs {d.basePay > 0 ? <span style={{color:'#f59e0b'}}>· £{d.basePay.toFixed(2)}</span> : ''}</span>
+                    <span>{o.hours.toFixed(1)} hrs {o.basePay > 0 ? <span style={{color:'#f59e0b'}}>· £{o.basePay.toFixed(2)}</span> : ''}</span>
                   </div>
-                  {d.bhPremiumPay > 0 && <div style={{display:'flex',justifyContent:'space-between',padding:'3px 0',color:'#dc2626',fontWeight:600}}>
-                    <span>BH Premium</span>
-                    <span>£{d.bhPremiumPay.toFixed(2)}</span>
-                  </div>}
+                  {bhDates.map(([dateStr, bh]) => (
+                    <div key={dateStr} style={{display:'flex',justifyContent:'space-between',padding:'3px 0 3px 0.5rem',color:'#dc2626',fontWeight:600}}>
+                      <span>BH Premium ({fmtDate(dateStr)}) · {bh.hours.toFixed(1)}h</span>
+                      <span>£{bh.pay.toFixed(2)}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+                );
+              })}
               {totalBhPremium > 0 && <div style={{display:'flex',justifyContent:'space-between',borderTop:'1px solid var(--border)',marginTop:'6px',paddingTop:'6px',fontWeight:700,color:'#dc2626',fontSize:'0.875rem'}}>
-                <span>BH Premium</span>
+                <span>Total BH Premium</span>
                 <span>£{totalBhPremium.toFixed(2)}</span>
               </div>}
               <div style={{display:'flex',justifyContent:'space-between',borderTop:'1px solid var(--border)',marginTop:'4px',paddingTop:'4px',fontWeight:700,color:'var(--text)',fontSize:'0.875rem'}}>
