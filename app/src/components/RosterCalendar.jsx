@@ -81,6 +81,33 @@ function calcBhHours(s, bhDates) {
   }
   return bhMs / 3600000;
 }
+// Returns array of { date, from, to, hours } for each BH date a shift overlaps
+function calcBhDetail(s, bhSet) {
+  if (!s.start_time || !s.end_time || !bhSet || bhSet.size === 0) return [];
+  const start = new Date(s.start_time);
+  const end = new Date(s.end_time);
+  if (end <= start) return [];
+  const details = [];
+  const startDate = ukDateStr(start);
+  const endDate = ukDateStr(new Date(end.getTime() - 1));
+  let d = startDate;
+  while (d <= endDate) {
+    if (bhSet.has(d)) {
+      const dayStart = ukMidnight(d);
+      const dayEnd = new Date(dayStart.getTime() + 86400000);
+      const overlapStart = start > dayStart ? start : dayStart;
+      const overlapEnd = end < dayEnd ? end : dayEnd;
+      if (overlapEnd > overlapStart) {
+        const fmtT = dt => dt.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', timeZone:'Europe/London' });
+        details.push({ date: d, from: fmtT(overlapStart), to: fmtT(overlapEnd), hours: (overlapEnd - overlapStart) / 3600000 });
+      }
+    }
+    const next = new Date(ukMidnight(d).getTime() + 86400000);
+    d = ukDateStr(next);
+  }
+  return details;
+}
+function fmtBhDate(ds) { return ukMidnight(ds).toLocaleDateString('en-GB', { day:'numeric', month:'short', timeZone:'Europe/London' }); }
 
 function canSeePay(role) { return ['COMPANY','OPS_MANAGER','SUPER_ADMIN','FD'].includes(role); }
 function canSeeCharge(role) { return ['COMPANY','SUPER_ADMIN','FD'].includes(role); }
@@ -568,96 +595,124 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
               );
             })}
           </div>
-          {/* Weekly summary row */}
+          {/* Weekly summary table */}
           {weekHours > 0 && canSeePay(user?.role) && (() => {
             const byOfficer = {};
-            let totalBhPremium = 0;
             weekShifts.forEach(s => {
               const name = s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unassigned';
-              if (!byOfficer[name]) byOfficer[name] = { hours: 0, basePay: 0, bhPremium: 0 };
+              if (!byOfficer[name]) byOfficer[name] = { hours: 0, bhHours: 0, basePay: 0, bhPremium: 0, bhSlots: [] };
               const h = shiftHours(s);
               const rate = parseFloat(s.pay_rate) || 0;
-              const bhH = calcBhHours(s, bhDates);
+              const details = calcBhDetail(s, bhDates);
               byOfficer[name].hours += h;
               byOfficer[name].basePay += h * rate;
-              byOfficer[name].bhPremium += bhH * rate;
-              totalBhPremium += bhH * rate;
+              details.forEach(d => {
+                byOfficer[name].bhHours += d.hours;
+                byOfficer[name].bhPremium += d.hours * rate;
+                byOfficer[name].bhSlots.push(d);
+              });
             });
-            const entries = Object.entries(byOfficer).sort((a,b) => b[1].basePay - a[1].basePay);
-            const totalHrs = entries.reduce((t, [,o]) => t + o.hours, 0);
-            const totalBasePay = entries.reduce((t, [,o]) => t + o.basePay, 0);
+            const rows = Object.entries(byOfficer).sort((a,b) => b[1].basePay - a[1].basePay);
+            const totH = rows.reduce((t,[,o]) => t + o.hours, 0);
+            const totBhH = rows.reduce((t,[,o]) => t + o.bhHours, 0);
+            const totPay = rows.reduce((t,[,o]) => t + o.basePay, 0);
+            const totBhP = rows.reduce((t,[,o]) => t + o.bhPremium, 0);
+            const tS = {padding:'3px 6px',whiteSpace:'nowrap',fontSize:'0.6875rem'};
+            const thS = {...tS,fontWeight:700,color:'var(--text-3)',textTransform:'uppercase',letterSpacing:'0.03em',borderBottom:'1px solid var(--border)'};
             return (
-              <div style={{background:'var(--surface-2)',padding:'0.5rem 0.75rem',fontSize:'0.75rem',color:'var(--text-2)'}}>
-                {entries.map(([name, o], i) => (
-                  <div key={name}>
-                    {i > 0 && <div style={{borderTop:'1px solid var(--border)',margin:'2px 0'}} />}
-                    <div style={{display:'flex',justifyContent:'space-between',padding:'2px 0'}}>
-                      <span>{name}</span>
-                      <span style={{whiteSpace:'nowrap'}}>{o.hours.toFixed(1)} hrs <span style={{color:'#f59e0b'}}>· £{o.basePay.toFixed(2)}</span></span>
-                    </div>
-                    {o.bhPremium > 0 && <div style={{display:'flex',justifyContent:'space-between',padding:'1px 0',color:'#dc2626',fontSize:'0.6875rem'}}>
-                      <span style={{fontWeight:600,paddingLeft:'0.5rem'}}>+ BH premium</span>
-                      <span>£{o.bhPremium.toFixed(2)}</span>
-                    </div>}
-                  </div>
-                ))}
-                {totalBhPremium > 0 && <div style={{display:'flex',justifyContent:'space-between',borderTop:'1px solid var(--border)',marginTop:'4px',paddingTop:'4px',fontWeight:600,color:'#dc2626'}}>
-                  <span>BH Premium</span>
-                  <span>£{totalBhPremium.toFixed(2)}</span>
-                </div>}
-                <div style={{display:'flex',justifyContent:'space-between',borderTop:'1px solid var(--border)',marginTop:'4px',paddingTop:'4px',fontWeight:700,color:'var(--text)'}}>
-                  <span>Total</span>
-                  <span>{totalHrs.toFixed(1)} hrs <span style={{color:'#f59e0b'}}>· £{(totalBasePay + totalBhPremium).toFixed(2)}</span></span>
-                </div>
+              <div style={{background:'var(--surface-2)',padding:'0.375rem',fontSize:'0.75rem',color:'var(--text-2)',overflowX:'auto'}}>
+                <table style={{width:'100%',borderCollapse:'collapse'}}>
+                  <thead><tr>
+                    <th style={{...thS,textAlign:'left'}}>Officer</th>
+                    <th style={{...thS,textAlign:'right'}}>Hours</th>
+                    <th style={{...thS,textAlign:'left'}}>BH Hours</th>
+                    <th style={{...thS,textAlign:'right'}}>Pay</th>
+                    <th style={{...thS,textAlign:'right',color:'#dc2626'}}>BH Prem</th>
+                  </tr></thead>
+                  <tbody>
+                    {rows.map(([name, o]) => (
+                      <tr key={name}>
+                        <td style={{...tS,fontWeight:500}}>{name}</td>
+                        <td style={{...tS,textAlign:'right'}}>{o.hours.toFixed(1)}</td>
+                        <td style={{...tS,color: o.bhHours > 0 ? '#dc2626' : 'var(--text-3)'}}>
+                          {o.bhHours > 0 ? <>{o.bhHours.toFixed(1)}h <span style={{color:'var(--text-3)',fontSize:'0.625rem'}}>{o.bhSlots.map(d => `${fmtBhDate(d.date)} ${d.from}-${d.to}`).join(', ')}</span></> : '—'}
+                        </td>
+                        <td style={{...tS,textAlign:'right',color:'#f59e0b',fontWeight:600}}>£{o.basePay.toFixed(2)}</td>
+                        <td style={{...tS,textAlign:'right',color: o.bhPremium > 0 ? '#dc2626' : 'var(--text-3)',fontWeight:600}}>{o.bhPremium > 0 ? `£${o.bhPremium.toFixed(2)}` : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot><tr style={{borderTop:'1.5px solid var(--border)'}}>
+                    <td style={{...tS,fontWeight:700}}>Total</td>
+                    <td style={{...tS,textAlign:'right',fontWeight:700}}>{totH.toFixed(1)}</td>
+                    <td style={{...tS,fontWeight:700,color: totBhH > 0 ? '#dc2626' : 'var(--text-3)'}}>{totBhH > 0 ? `${totBhH.toFixed(1)}h` : '—'}</td>
+                    <td style={{...tS,textAlign:'right',fontWeight:700,color:'#f59e0b'}}>£{totPay.toFixed(2)}</td>
+                    <td style={{...tS,textAlign:'right',fontWeight:700,color:'#dc2626'}}>{totBhP > 0 ? `£${totBhP.toFixed(2)}` : '—'}</td>
+                  </tr></tfoot>
+                </table>
               </div>
             );
           })()}
           </React.Fragment>);
         })}
-        {/* Monthly summary */}
+        {/* Monthly summary table */}
         {isCompact && canSeePay(user?.role) && (() => {
           const monthShifts = days.filter(d => d.getMonth() === anchorMonth && d.getFullYear() === anchorYear).flatMap(d => shiftsForDay(d));
           if (!monthShifts.length) return null;
           const byOfficer = {};
-          let totalBhPremium = 0;
           monthShifts.forEach(s => {
             const name = s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unassigned';
-            if (!byOfficer[name]) byOfficer[name] = { hours: 0, basePay: 0, bhPremium: 0 };
+            if (!byOfficer[name]) byOfficer[name] = { hours: 0, bhHours: 0, basePay: 0, bhPremium: 0, bhSlots: [] };
             const h = shiftHours(s);
             const rate = parseFloat(s.pay_rate) || 0;
-            const bhH = calcBhHours(s, bhDates);
+            const details = calcBhDetail(s, bhDates);
             byOfficer[name].hours += h;
             byOfficer[name].basePay += h * rate;
-            byOfficer[name].bhPremium += bhH * rate;
-            totalBhPremium += bhH * rate;
+            details.forEach(d => {
+              byOfficer[name].bhHours += d.hours;
+              byOfficer[name].bhPremium += d.hours * rate;
+              byOfficer[name].bhSlots.push(d);
+            });
           });
-          const entries = Object.entries(byOfficer).sort((a,b) => b[1].basePay - a[1].basePay);
-          const totalHrs = entries.reduce((t, [,o]) => t + o.hours, 0);
-          const totalBasePay = entries.reduce((t, [,o]) => t + o.basePay, 0);
+          const rows = Object.entries(byOfficer).sort((a,b) => b[1].basePay - a[1].basePay);
+          const totH = rows.reduce((t,[,o]) => t + o.hours, 0);
+          const totBhH = rows.reduce((t,[,o]) => t + o.bhHours, 0);
+          const totPay = rows.reduce((t,[,o]) => t + o.basePay, 0);
+          const totBhP = rows.reduce((t,[,o]) => t + o.bhPremium, 0);
+          const tS = {padding:'4px 8px',whiteSpace:'nowrap',fontSize:'0.75rem'};
+          const thS = {...tS,fontWeight:700,color:'var(--text-3)',textTransform:'uppercase',letterSpacing:'0.03em',borderBottom:'1px solid var(--border)',fontSize:'0.6875rem'};
           return (
-            <div style={{background:'var(--surface-2)',borderRadius:'0 0 8px 8px',padding:'0.75rem 1rem',fontSize:'0.8125rem',color:'var(--text-2)',marginTop:'1px'}}>
+            <div style={{background:'var(--surface-2)',borderRadius:'0 0 8px 8px',padding:'0.75rem',fontSize:'0.8125rem',color:'var(--text-2)',marginTop:'1px',overflowX:'auto'}}>
               <div style={{fontWeight:700,color:'var(--text)',marginBottom:'0.5rem',fontSize:'0.875rem'}}>Monthly Pay Summary</div>
-              {entries.map(([name, o], i) => (
-                <div key={name}>
-                  {i > 0 && <div style={{borderTop:'1px solid var(--border)',margin:'4px 0'}} />}
-                  <div style={{display:'flex',justifyContent:'space-between',padding:'3px 0'}}>
-                    <span>{name}</span>
-                    <span style={{whiteSpace:'nowrap'}}>{o.hours.toFixed(1)} hrs <span style={{color:'#f59e0b'}}>· £{o.basePay.toFixed(2)}</span></span>
-                  </div>
-                  {o.bhPremium > 0 && <div style={{display:'flex',justifyContent:'space-between',padding:'2px 0',color:'#dc2626',fontSize:'0.75rem'}}>
-                    <span style={{fontWeight:600,paddingLeft:'0.5rem'}}>+ BH premium</span>
-                    <span>£{o.bhPremium.toFixed(2)}</span>
-                  </div>}
-                </div>
-              ))}
-              {totalBhPremium > 0 && <div style={{display:'flex',justifyContent:'space-between',borderTop:'1px solid var(--border)',marginTop:'6px',paddingTop:'6px',fontWeight:700,color:'#dc2626',fontSize:'0.875rem'}}>
-                <span>BH Premium</span>
-                <span>£{totalBhPremium.toFixed(2)}</span>
-              </div>}
-              <div style={{display:'flex',justifyContent:'space-between',borderTop:'1px solid var(--border)',marginTop:'4px',paddingTop:'4px',fontWeight:700,color:'var(--text)',fontSize:'0.875rem'}}>
-                <span>Total pay this month</span>
-                <span>{totalHrs.toFixed(1)} hrs <span style={{color:'#f59e0b'}}>· £{(totalBasePay + totalBhPremium).toFixed(2)}</span></span>
-              </div>
+              <table style={{width:'100%',borderCollapse:'collapse'}}>
+                <thead><tr>
+                  <th style={{...thS,textAlign:'left'}}>Officer</th>
+                  <th style={{...thS,textAlign:'right'}}>Hours</th>
+                  <th style={{...thS,textAlign:'left'}}>BH Hours</th>
+                  <th style={{...thS,textAlign:'right'}}>Pay</th>
+                  <th style={{...thS,textAlign:'right',color:'#dc2626'}}>BH Prem</th>
+                </tr></thead>
+                <tbody>
+                  {rows.map(([name, o]) => (
+                    <tr key={name} style={{borderBottom:'1px solid var(--border)'}}>
+                      <td style={{...tS,fontWeight:500}}>{name}</td>
+                      <td style={{...tS,textAlign:'right'}}>{o.hours.toFixed(1)}</td>
+                      <td style={{...tS,color: o.bhHours > 0 ? '#dc2626' : 'var(--text-3)'}}>
+                        {o.bhHours > 0 ? <>{o.bhHours.toFixed(1)}h <span style={{color:'var(--text-3)',fontSize:'0.625rem'}}>{o.bhSlots.map(d => `${fmtBhDate(d.date)} ${d.from}-${d.to}`).join(', ')}</span></> : '—'}
+                      </td>
+                      <td style={{...tS,textAlign:'right',color:'#f59e0b',fontWeight:600}}>£{o.basePay.toFixed(2)}</td>
+                      <td style={{...tS,textAlign:'right',color: o.bhPremium > 0 ? '#dc2626' : 'var(--text-3)',fontWeight:600}}>{o.bhPremium > 0 ? `£${o.bhPremium.toFixed(2)}` : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot><tr>
+                  <td style={{...tS,fontWeight:700,paddingTop:'6px'}}>Total</td>
+                  <td style={{...tS,textAlign:'right',fontWeight:700,paddingTop:'6px'}}>{totH.toFixed(1)}</td>
+                  <td style={{...tS,fontWeight:700,color: totBhH > 0 ? '#dc2626' : 'var(--text-3)',paddingTop:'6px'}}>{totBhH > 0 ? `${totBhH.toFixed(1)}h` : '—'}</td>
+                  <td style={{...tS,textAlign:'right',fontWeight:700,color:'#f59e0b',paddingTop:'6px'}}>£{totPay.toFixed(2)}</td>
+                  <td style={{...tS,textAlign:'right',fontWeight:700,color:'#dc2626',paddingTop:'6px'}}>{totBhP > 0 ? `£${totBhP.toFixed(2)}` : '—'}</td>
+                </tr></tfoot>
+              </table>
             </div>
           );
         })()}
