@@ -583,7 +583,8 @@ function PaySummary({ shifts, title }) {
   const byOfficer = {};
   shifts.forEach(s => {
     const name = s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unassigned';
-    if (!byOfficer[name]) byOfficer[name] = { hours: 0, bhHours: 0, pay: 0 };
+    if (!byOfficer[name]) byOfficer[name] = { shifts: 0, hours: 0, bhHours: 0, pay: 0 };
+    byOfficer[name].shifts++;
     const h = shiftHours(s);
     const rate = parseFloat(s.pay_rate) || 0;
     const bhH = getBhHours(s);
@@ -608,12 +609,14 @@ function PaySummary({ shifts, title }) {
           {rows.map(([name, o]) => (
             <tr key={name}>
               <td style={{...td,fontWeight:600,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',maxWidth:0}}>{name}</td>
+              <td style={{...td,textAlign:'right',color:'var(--text-3)'}}>{o.shifts}</td>
               <td style={{...td,textAlign:'right'}}>{o.hours.toFixed(0)}h{o.bhHours > 0 && <span style={{color:'#dc2626'}}> + {o.bhHours.toFixed(0)}h BH</span>}</td>
               <td style={{...td,textAlign:'right',fontWeight:700,color:'#f59e0b'}}>{f(o.pay)}</td>
             </tr>
           ))}
           <tr style={{borderTop:'1.5px solid var(--border)'}}>
             <td style={{...td,fontWeight:700,color:'var(--text)',paddingTop:'6px'}}>Total</td>
+            <td style={{...td,textAlign:'right',color:'var(--text-3)',paddingTop:'6px'}}>{shifts.length}</td>
             <td style={{...td,textAlign:'right',fontWeight:700,paddingTop:'6px'}}>{totH.toFixed(0)}h{totBhH > 0 && <span style={{color:'#dc2626'}}> + {totBhH.toFixed(0)}h BH</span>}</td>
             <td style={{...td,textAlign:'right',fontWeight:700,color:'#10b981',paddingTop:'6px'}}>{f(totPay)}</td>
           </tr>
