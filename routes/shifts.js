@@ -30,6 +30,49 @@ router.get('/', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ── Bank Holidays ────────────────────────────────────────────────────────────
+
+// GET /api/shifts/bank-holidays
+router.get('/bank-holidays', authenticate, async (req, res, next) => {
+  try {
+    const { data, error } = await supabase
+      .from('company_bank_holidays')
+      .select('*')
+      .eq('company_id', req.user.company_id)
+      .order('holiday_date', { ascending: true });
+    if (error) throw error;
+    res.json({ data });
+  } catch (err) { next(err); }
+});
+
+// POST /api/shifts/bank-holidays
+router.post('/bank-holidays', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
+  try {
+    const { holiday_date, holiday_name } = req.body;
+    if (!holiday_date || !holiday_name) return res.status(400).json({ error: 'holiday_date and holiday_name required' });
+    const { data, error } = await supabase
+      .from('company_bank_holidays')
+      .insert({ company_id: req.user.company_id, holiday_date, holiday_name })
+      .select()
+      .single();
+    if (error) throw error;
+    res.status(201).json({ data });
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/shifts/bank-holidays/:id
+router.delete('/bank-holidays/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
+  try {
+    const { error } = await supabase
+      .from('company_bank_holidays')
+      .delete()
+      .eq('id', req.params.id)
+      .eq('company_id', req.user.company_id);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
 // GET /api/shifts/:id
 router.get('/:id', authenticate, async (req, res, next) => {
   try {

@@ -145,6 +145,11 @@ export const api = {
       body: JSON.stringify(data),
     }),
     delete: (id) => request(`/api/shifts/${id}`, { method: 'DELETE' }),
+    bankHolidays: {
+      list: () => request('/api/shifts/bank-holidays'),
+      create: (data) => request('/api/shifts/bank-holidays', { method: 'POST', body: JSON.stringify(data) }),
+      delete: (id) => request(`/api/shifts/bank-holidays/${id}`, { method: 'DELETE' }),
+    },
   },
 
   // Logs

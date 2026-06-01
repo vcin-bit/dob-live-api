@@ -45,49 +45,30 @@ function startOfWeek(d) { const r = new Date(d); r.setDate(r.getDate() - ((r.get
 function calcScheduledHours(s) { return s.start_time && s.end_time ? Math.max(0, (new Date(s.end_time) - new Date(s.start_time)) / 3600000) : 0; }
 const fmt = n => `£${n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
 
-// UK bank holidays — midnight-based (BH runs 00:00–23:59 on these dates)
-const UK_BANK_HOLIDAYS = new Set([
-  // 2025
-  '2025-01-01','2025-04-18','2025-04-21','2025-05-05','2025-05-26','2025-08-25','2025-12-25','2025-12-26',
-  // 2026
-  '2026-01-01','2026-04-03','2026-04-06','2026-05-04','2026-05-25','2026-08-31','2026-12-25','2026-12-28',
-  // 2027
-  '2027-01-01','2027-03-26','2027-03-29','2027-05-03','2027-05-31','2027-08-30','2027-12-27','2027-12-28',
-]);
-
-// Calculate how many hours of a shift fall on a UK bank holiday.
-// Splits at midnight UK time. A shift 18:00–06:00 crossing into a BH gets 6h BH.
-function ukDateStr(date) {
-  // Get YYYY-MM-DD in Europe/London timezone
-  return date.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
-}
+// Bank holidays loaded from company_bank_holidays table via API
+function ukDateStr(date) { return date.toLocaleDateString('en-CA', { timeZone: 'Europe/London' }); }
 function ukMidnight(dateStr) {
-  // Return a Date representing 00:00 UK time for a given YYYY-MM-DD
-  // Try BST first (+01:00); if the UK date doesn't match, it's GMT
   const bst = new Date(dateStr + 'T00:00:00+01:00');
   if (ukDateStr(bst) === dateStr) return bst;
   return new Date(dateStr + 'T00:00:00+00:00');
 }
-function calcBhHours(s) {
-  if (!s.start_time || !s.end_time) return 0;
+function calcBhHours(s, bhDates) {
+  if (!s.start_time || !s.end_time || !bhDates || bhDates.size === 0) return 0;
   const start = new Date(s.start_time);
   const end = new Date(s.end_time);
   if (end <= start) return 0;
   let bhMs = 0;
-  // Get the UK calendar dates this shift spans
   const startDate = ukDateStr(start);
-  const endDate = ukDateStr(new Date(end.getTime() - 1)); // -1ms so exact midnight doesn't spill
-  // Walk each UK calendar day
+  const endDate = ukDateStr(new Date(end.getTime() - 1));
   let d = startDate;
   while (d <= endDate) {
-    if (UK_BANK_HOLIDAYS.has(d)) {
+    if (bhDates.has(d)) {
       const dayStart = ukMidnight(d);
       const dayEnd = new Date(dayStart.getTime() + 86400000);
       const overlapStart = start > dayStart ? start : dayStart;
       const overlapEnd = end < dayEnd ? end : dayEnd;
       if (overlapEnd > overlapStart) bhMs += overlapEnd - overlapStart;
     }
-    // Next day
     const next = new Date(ukMidnight(d).getTime() + 86400000);
     d = ukDateStr(next);
   }
@@ -100,6 +81,7 @@ function ProfitLoss({ user }) {
   const [shifts, setShifts] = useState([]);
   const [rates, setRates] = useState([]);
   const [products, setProducts] = useState([]);
+  const [bhDates, setBhDates] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('month');
   const [anchor, setAnchor] = useState(new Date());
@@ -109,6 +91,10 @@ function ProfitLoss({ user }) {
   const [productForm, setProductForm] = useState({ name:'', cost:'', charge:'', frequency:'monthly' });
   const [expandedSite, setExpandedSite] = useState(null);
   const [siteSearch, setSiteSearch] = useState('');
+  const [showBhManager, setShowBhManager] = useState(false);
+  const [bhList, setBhList] = useState([]);
+  const [bhForm, setBhForm] = useState({ holiday_date: '', holiday_name: '' });
+  const [bhSaving, setBhSaving] = useState(false);
 
   function getRange() {
     const d = new Date(anchor); d.setHours(0,0,0,0);
@@ -125,11 +111,15 @@ function ProfitLoss({ user }) {
       api.shifts.list({ from: f.toISOString(), to: t.toISOString(), limit: 1000 }),
       api.rates.list(),
       api.products.list(),
-    ]).then(([sr, shr, rr, pr]) => {
+      api.shifts.bankHolidays.list().catch(() => ({ data: [] })),
+    ]).then(([sr, shr, rr, pr, bhRes]) => {
       setSites(sr.data || []);
       setShifts(shr.data || []);
       setRates(rr.data || []);
       setProducts(pr.data || []);
+      const bh = bhRes.data || [];
+      setBhDates(new Set(bh.map(h => h.holiday_date)));
+      setBhList(bh);
     }).catch(console.error).finally(() => setLoading(false));
   }, [anchor, period]);
 
@@ -218,7 +208,7 @@ function ProfitLoss({ user }) {
       const rate = getPayRate(s);
       const cr = parseFloat(s.charge_rate) || siteChargeRate;
       const h = calcScheduledHours(s);
-      const bhH = calcBhHours(s);
+      const bhH = calcBhHours(s, bhDates);
       byOfficer[name].hours += h;
       byOfficer[name].basePay += h * rate;
       byOfficer[name].baseCharge += h * cr;
@@ -429,6 +419,64 @@ function ProfitLoss({ user }) {
                 No charge rates set. Enter charge rates above to see revenue and margin.
               </div>
             )}
+
+            {/* Bank Holiday Manager */}
+            <div style={{marginTop:'1.5rem'}}>
+              <button onClick={() => setShowBhManager(!showBhManager)}
+                style={{background:'none',border:'none',cursor:'pointer',fontSize:'0.8125rem',fontWeight:600,color:'var(--text-3)',padding:0,display:'flex',alignItems:'center',gap:'0.375rem'}}>
+                <span>{showBhManager ? '▾' : '▸'}</span> Bank Holidays ({bhList.length})
+              </button>
+              {showBhManager && (
+                <div className="card" style={{marginTop:'0.75rem',padding:'1rem'}}>
+                  <div style={{display:'flex',gap:'0.5rem',marginBottom:'1rem',flexWrap:'wrap',alignItems:'flex-end'}}>
+                    <div className="field" style={{margin:0}}>
+                      <label className="label">Date</label>
+                      <input type="date" className="input" style={{width:'160px'}} value={bhForm.holiday_date} onChange={e => setBhForm(p => ({...p, holiday_date: e.target.value}))} />
+                    </div>
+                    <div className="field" style={{margin:0,flex:1,minWidth:'180px'}}>
+                      <label className="label">Name</label>
+                      <input className="input" value={bhForm.holiday_name} onChange={e => setBhForm(p => ({...p, holiday_name: e.target.value}))} placeholder="e.g. Spring Bank Holiday" />
+                    </div>
+                    <button className="btn btn-primary btn-sm" disabled={bhSaving || !bhForm.holiday_date || !bhForm.holiday_name} onClick={async () => {
+                      setBhSaving(true);
+                      try {
+                        await api.shifts.bankHolidays.create(bhForm);
+                        const res = await api.shifts.bankHolidays.list();
+                        const bh = res.data || [];
+                        setBhList(bh);
+                        setBhDates(new Set(bh.map(h => h.holiday_date)));
+                        setBhForm({ holiday_date: '', holiday_name: '' });
+                      } catch (e) { alert(e.message); }
+                      finally { setBhSaving(false); }
+                    }}>{bhSaving ? 'Adding...' : 'Add'}</button>
+                  </div>
+                  {bhList.length === 0 ? (
+                    <div style={{fontSize:'0.8125rem',color:'var(--text-3)',textAlign:'center',padding:'0.75rem'}}>No bank holidays set. Add dates above.</div>
+                  ) : (
+                    <div style={{display:'flex',flexDirection:'column',gap:'2px'}}>
+                      {bhList.map(h => (
+                        <div key={h.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.375rem 0.5rem',background:'var(--surface)',borderRadius:'4px',fontSize:'0.8125rem'}}>
+                          <div>
+                            <span style={{fontWeight:600,marginRight:'0.75rem'}}>{new Date(h.holiday_date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                            <span style={{color:'var(--text-2)'}}>{h.holiday_name}</span>
+                          </div>
+                          <button onClick={async () => {
+                            if (!confirm(`Remove ${h.holiday_name}?`)) return;
+                            try {
+                              await api.shifts.bankHolidays.delete(h.id);
+                              const res = await api.shifts.bankHolidays.list();
+                              const bh = res.data || [];
+                              setBhList(bh);
+                              setBhDates(new Set(bh.map(x => x.holiday_date)));
+                            } catch (e) { alert(e.message); }
+                          }} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-3)',fontSize:'0.75rem',padding:'0.25rem'}}>Remove</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </>
         )}
       </div>

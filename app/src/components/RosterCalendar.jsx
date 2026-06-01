@@ -51,20 +51,16 @@ function shiftHours(s) {
   return Math.max(0, (new Date(s.end_time) - new Date(s.start_time)) / 3600000);
 }
 
-// UK bank holidays — BH premium applies midnight-to-midnight on these dates
-const UK_BANK_HOLIDAYS = new Set([
-  '2025-01-01','2025-04-18','2025-04-21','2025-05-05','2025-05-26','2025-08-25','2025-12-25','2025-12-26',
-  '2026-01-01','2026-04-03','2026-04-06','2026-05-04','2026-05-25','2026-08-31','2026-12-25','2026-12-28',
-  '2027-01-01','2027-03-26','2027-03-29','2027-05-03','2027-05-31','2027-08-30','2027-12-27','2027-12-28',
-]);
+// Bank holidays are loaded from the company_bank_holidays table via API.
+// Passed as a Set of 'YYYY-MM-DD' strings to calcBhHours and rendering.
 function ukDateStr(date) { return date.toLocaleDateString('en-CA', { timeZone: 'Europe/London' }); }
 function ukMidnight(dateStr) {
   const bst = new Date(dateStr + 'T00:00:00+01:00');
   if (ukDateStr(bst) === dateStr) return bst;
   return new Date(dateStr + 'T00:00:00+00:00');
 }
-function calcBhHours(s) {
-  if (!s.start_time || !s.end_time) return 0;
+function calcBhHours(s, bhDates) {
+  if (!s.start_time || !s.end_time || !bhDates || bhDates.size === 0) return 0;
   const start = new Date(s.start_time);
   const end = new Date(s.end_time);
   if (end <= start) return 0;
@@ -73,7 +69,7 @@ function calcBhHours(s) {
   const endDate = ukDateStr(new Date(end.getTime() - 1));
   let d = startDate;
   while (d <= endDate) {
-    if (UK_BANK_HOLIDAYS.has(d)) {
+    if (bhDates.has(d)) {
       const dayStart = ukMidnight(d);
       const dayEnd = new Date(dayStart.getTime() + 86400000);
       const overlapStart = start > dayStart ? start : dayStart;
@@ -108,6 +104,7 @@ export default function RosterCalendar({ siteId, user }) {
   const [siteOfficerIds, setSiteOfficerIds] = useState(null);
   const [sites, setSites] = useState([]);
   const [rates, setRates] = useState([]);
+  const [bhDates, setBhDates] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [editShift, setEditShift] = useState(null);
   const [addDate, setAddDate] = useState(null);
@@ -143,11 +140,13 @@ export default function RosterCalendar({ siteId, user }) {
       const fetchTo = addDays(to, 1);
       const params = { from: fetchFrom.toISOString(), to: fetchTo.toISOString(), limit: 500 };
       if (siteId) params.site_id = siteId;
-      const [shiftsRes, usersRes, sitesRes, ratesRes] = await Promise.all([
+      const [shiftsRes, usersRes, sitesRes, ratesRes, bhRes] = await Promise.all([
         api.shifts.list(params), api.users.list(), api.sites.list(),
         api.rates.list().catch(() => ({ data: [] })),
+        api.shifts.bankHolidays.list().catch(() => ({ data: [] })),
       ]);
       setShifts(shiftsRes.data || []);
+      setBhDates(new Set((bhRes.data || []).map(h => h.holiday_date)));
       const allOfficers = (usersRes.data || []).filter(u => u.role === 'OFFICER')
         .sort((a, b) => (a.last_name || '').localeCompare(b.last_name || '') || (a.first_name || '').localeCompare(b.first_name || ''));
       setOfficers(allOfficers);
@@ -298,7 +297,7 @@ export default function RosterCalendar({ siteId, user }) {
               {shiftsForDay(from).sort((a,b) => new Date(a.start_time) - new Date(b.start_time)).map(s => {
                 const sb = statusBadge(s.status);
                 const sel = selected.has(s.id);
-                const bhH = calcBhHours(s);
+                const bhH = calcBhHours(s, bhDates);
                 const hasBh = bhH > 0;
                 return (
                   <div key={s.id} onClick={() => handleShiftClick(s)}
@@ -326,7 +325,7 @@ export default function RosterCalendar({ siteId, user }) {
       ) : (
         <RotaGrid days={days} view={view} shiftsForDay={shiftsForDay} isToday={isToday} isManager={isManager}
           onShiftClick={handleShiftClick} onAdd={d => setAddDate(d)} siteId={siteId}
-          bulkMode={bulkMode} selected={selected} onSelectDay={selectDay} user={user} anchorMonth={anchor.getMonth()} anchorYear={anchor.getFullYear()} />
+          bulkMode={bulkMode} selected={selected} onSelectDay={selectDay} user={user} anchorMonth={anchor.getMonth()} anchorYear={anchor.getFullYear()} bhDates={bhDates} />
       )}
 
       {/* Bulk action bar */}
@@ -459,7 +458,7 @@ function BulkTimesModal({ count, onApply, onClose, processing }) {
 
 // ── Rota Grid ────────────────────────────────────────────────────────────────
 
-function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, onAdd, siteId, bulkMode, selected, onSelectDay, user, anchorMonth, anchorYear }) {
+function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, onAdd, siteId, bulkMode, selected, onSelectDay, user, anchorMonth, anchorYear, bhDates }) {
   // For month view, build weeks with padding for partial first/last weeks
   let weeks = [];
   if (view === 'month' && days.length > 0) {
@@ -518,7 +517,7 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
                     {dayShifts.map(s => {
                       const col = officerColour(s.officer_id);
                       const sel = selected.has(s.id);
-                      const bhH = calcBhHours(s);
+                      const bhH = calcBhHours(s, bhDates);
                       const hasBh = bhH > 0;
                       return (
                         <div key={s.id} onClick={() => onShiftClick(s)}
@@ -588,7 +587,7 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
               const endDate = ukDateStr(new Date(end.getTime() - 1));
               let d = startDate;
               while (d <= endDate) {
-                if (UK_BANK_HOLIDAYS.has(d)) {
+                if (bhDates.has(d)) {
                   const dayStart = ukMidnight(d);
                   const dayEnd = new Date(dayStart.getTime() + 86400000);
                   const overlapStart = start > dayStart ? start : dayStart;
@@ -665,7 +664,7 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
             const endDate = ukDateStr(new Date(end.getTime() - 1));
             let d2 = startDate;
             while (d2 <= endDate) {
-              if (UK_BANK_HOLIDAYS.has(d2)) {
+              if (bhDates.has(d2)) {
                 const dayStart = ukMidnight(d2);
                 const dayEnd = new Date(dayStart.getTime() + 86400000);
                 const overlapStart = start > dayStart ? start : dayStart;
