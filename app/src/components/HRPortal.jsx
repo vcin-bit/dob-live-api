@@ -1277,7 +1277,7 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
     setShiftsLoading(true); setShiftsError('');
     api.shifts.list({})
       .then(res => {
-        const data = res.data || [];
+        const data = (res.data || []).filter(s => s.officer_id);
         setShifts(data);
         // Default to most recent month with shifts
         if (data.length > 0) {
