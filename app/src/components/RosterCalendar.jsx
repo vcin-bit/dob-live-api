@@ -51,63 +51,11 @@ function shiftHours(s) {
   return Math.max(0, (new Date(s.end_time) - new Date(s.start_time)) / 3600000);
 }
 
-// Bank holidays are loaded from the company_bank_holidays table via API.
-// Passed as a Set of 'YYYY-MM-DD' strings to calcBhHours and rendering.
-function ukDateStr(date) { return date.toLocaleDateString('en-CA', { timeZone: 'Europe/London' }); }
-function ukMidnight(dateStr) {
-  const bst = new Date(dateStr + 'T00:00:00+01:00');
-  if (ukDateStr(bst) === dateStr) return bst;
-  return new Date(dateStr + 'T00:00:00+00:00');
-}
-function calcBhHours(s, bhDates) {
-  if (!s.start_time || !s.end_time || !bhDates || bhDates.size === 0) return 0;
-  const start = new Date(s.start_time);
-  const end = new Date(s.end_time);
-  if (end <= start) return 0;
-  let bhMs = 0;
-  const startDate = ukDateStr(start);
-  const endDate = ukDateStr(new Date(end.getTime() - 1));
-  let d = startDate;
-  while (d <= endDate) {
-    if (bhDates.has(d)) {
-      const dayStart = ukMidnight(d);
-      const dayEnd = new Date(dayStart.getTime() + 86400000);
-      const overlapStart = start > dayStart ? start : dayStart;
-      const overlapEnd = end < dayEnd ? end : dayEnd;
-      if (overlapEnd > overlapStart) bhMs += overlapEnd - overlapStart;
-    }
-    const next = new Date(ukMidnight(d).getTime() + 86400000);
-    d = ukDateStr(next);
-  }
-  return bhMs / 3600000;
-}
-// Returns array of { date, from, to, hours } for each BH date a shift overlaps
-function calcBhDetail(s, bhSet) {
-  if (!s.start_time || !s.end_time || !bhSet || bhSet.size === 0) return [];
-  const start = new Date(s.start_time);
-  const end = new Date(s.end_time);
-  if (end <= start) return [];
-  const details = [];
-  const startDate = ukDateStr(start);
-  const endDate = ukDateStr(new Date(end.getTime() - 1));
-  let d = startDate;
-  while (d <= endDate) {
-    if (bhSet.has(d)) {
-      const dayStart = ukMidnight(d);
-      const dayEnd = new Date(dayStart.getTime() + 86400000);
-      const overlapStart = start > dayStart ? start : dayStart;
-      const overlapEnd = end < dayEnd ? end : dayEnd;
-      if (overlapEnd > overlapStart) {
-        const fmtT = dt => dt.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', timeZone:'Europe/London' });
-        details.push({ date: d, from: fmtT(overlapStart), to: fmtT(overlapEnd), hours: (overlapEnd - overlapStart) / 3600000 });
-      }
-    }
-    const next = new Date(ukMidnight(d).getTime() + 86400000);
-    d = ukDateStr(next);
-  }
-  return details;
-}
-function fmtBhDate(ds) { return ukMidnight(ds).toLocaleDateString('en-GB', { day:'numeric', month:'short', timeZone:'Europe/London' }); }
+// BH hours are stored directly on each shift record (bh_hours, bh_pay_rate, bh_charge_rate).
+// No calendar detection needed — managers specify BH hours when creating/editing shifts.
+function getBhHours(s) { return parseFloat(s.bh_hours) || 0; }
+function getBhPayRate(s) { return parseFloat(s.bh_pay_rate) || parseFloat(s.pay_rate) || 0; }
+function getBhChargeRate(s) { return parseFloat(s.bh_charge_rate) || parseFloat(s.charge_rate) || 0; }
 
 function canSeePay(role) { return ['COMPANY','OPS_MANAGER','SUPER_ADMIN','FD'].includes(role); }
 function canSeeCharge(role) { return ['COMPANY','SUPER_ADMIN','FD'].includes(role); }
@@ -131,7 +79,6 @@ export default function RosterCalendar({ siteId, user }) {
   const [siteOfficerIds, setSiteOfficerIds] = useState(null);
   const [sites, setSites] = useState([]);
   const [rates, setRates] = useState([]);
-  const [bhDates, setBhDates] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [editShift, setEditShift] = useState(null);
   const [addDate, setAddDate] = useState(null);
@@ -167,13 +114,11 @@ export default function RosterCalendar({ siteId, user }) {
       const fetchTo = addDays(to, 1);
       const params = { from: fetchFrom.toISOString(), to: fetchTo.toISOString(), limit: 500 };
       if (siteId) params.site_id = siteId;
-      const [shiftsRes, usersRes, sitesRes, ratesRes, bhRes] = await Promise.all([
+      const [shiftsRes, usersRes, sitesRes, ratesRes] = await Promise.all([
         api.shifts.list(params), api.users.list(), api.sites.list(),
         api.rates.list().catch(() => ({ data: [] })),
-        api.shifts.bankHolidays.list().catch(() => ({ data: [] })),
       ]);
       setShifts(shiftsRes.data || []);
-      setBhDates(new Set((bhRes.data || []).map(h => h.holiday_date)));
       const allOfficers = (usersRes.data || []).filter(u => u.role === 'OFFICER')
         .sort((a, b) => (a.last_name || '').localeCompare(b.last_name || '') || (a.first_name || '').localeCompare(b.first_name || ''));
       setOfficers(allOfficers);
@@ -324,7 +269,7 @@ export default function RosterCalendar({ siteId, user }) {
               {shiftsForDay(from).sort((a,b) => new Date(a.start_time) - new Date(b.start_time)).map(s => {
                 const sb = statusBadge(s.status);
                 const sel = selected.has(s.id);
-                const bhH = calcBhHours(s, bhDates);
+                const bhH = getBhHours(s);
                 const hasBh = bhH > 0;
                 return (
                   <div key={s.id} onClick={() => handleShiftClick(s)}
@@ -352,7 +297,7 @@ export default function RosterCalendar({ siteId, user }) {
       ) : (
         <RotaGrid days={days} view={view} shiftsForDay={shiftsForDay} isToday={isToday} isManager={isManager}
           onShiftClick={handleShiftClick} onAdd={d => setAddDate(d)} siteId={siteId}
-          bulkMode={bulkMode} selected={selected} onSelectDay={selectDay} user={user} anchorMonth={anchor.getMonth()} anchorYear={anchor.getFullYear()} bhDates={bhDates} />
+          bulkMode={bulkMode} selected={selected} onSelectDay={selectDay} user={user} anchorMonth={anchor.getMonth()} anchorYear={anchor.getFullYear()} />
       )}
 
       {/* Bulk action bar */}
@@ -485,7 +430,7 @@ function BulkTimesModal({ count, onApply, onClose, processing }) {
 
 // ── Rota Grid ────────────────────────────────────────────────────────────────
 
-function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, onAdd, siteId, bulkMode, selected, onSelectDay, user, anchorMonth, anchorYear, bhDates }) {
+function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, onAdd, siteId, bulkMode, selected, onSelectDay, user, anchorMonth, anchorYear }) {
   // For month view, build weeks with padding for partial first/last weeks
   let weeks = [];
   if (view === 'month' && days.length > 0) {
@@ -542,7 +487,7 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
                     {dayShifts.map(s => {
                       const col = officerColour(s.officer_id);
                       const sel = selected.has(s.id);
-                      const bhH = calcBhHours(s, bhDates);
+                      const bhH = getBhHours(s);
                       const hasBh = bhH > 0;
                       return (
                         <div key={s.id} onClick={() => onShiftClick(s)}
@@ -594,13 +539,13 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
             })}
           </div>
           {/* Weekly summary */}
-          {weekHours > 0 && canSeePay(user?.role) && <PaySummary shifts={weekShifts} bhDates={bhDates} />}
+          {weekHours > 0 && canSeePay(user?.role) && <PaySummary shifts={weekShifts} />}
           </React.Fragment>);
         })}
         {/* Monthly summary */}
         {isCompact && canSeePay(user?.role) && (() => {
           const monthShifts = days.filter(d => d.getMonth() === anchorMonth && d.getFullYear() === anchorYear).flatMap(d => shiftsForDay(d));
-          return monthShifts.length > 0 ? <PaySummary shifts={monthShifts} bhDates={bhDates} title="Monthly Pay Summary" /> : null;
+          return monthShifts.length > 0 ? <PaySummary shifts={monthShifts} title="Monthly Pay Summary" /> : null;
         })()}
       </div>
       <style>{`@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }`}</style>
@@ -610,7 +555,7 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
 
 // ── Pay Summary (columnar: officers as columns, metrics as rows) ────────────
 
-function PaySummary({ shifts, bhDates, title }) {
+function PaySummary({ shifts, title }) {
   const byOfficer = {};
   shifts.forEach(s => {
     const first = s.officer?.first_name || '?';
@@ -619,14 +564,13 @@ function PaySummary({ shifts, bhDates, title }) {
     if (!byOfficer[key]) byOfficer[key] = { first, hours: 0, bhHours: 0, basePay: 0, bhPremium: 0, rates: [] };
     const h = shiftHours(s);
     const rate = parseFloat(s.pay_rate) || 0;
-    const details = calcBhDetail(s, bhDates);
+    const bhH = getBhHours(s);
+    const bhRate = getBhPayRate(s);
     byOfficer[key].hours += h;
     byOfficer[key].basePay += h * rate;
+    byOfficer[key].bhHours += bhH;
+    byOfficer[key].bhPremium += bhH * bhRate;
     if (rate > 0) byOfficer[key].rates.push(rate);
-    details.forEach(d => {
-      byOfficer[key].bhHours += d.hours;
-      byOfficer[key].bhPremium += d.hours * rate;
-    });
   });
   const cols = Object.entries(byOfficer).sort((a,b) => b[1].basePay - a[1].basePay);
   if (cols.length === 0) return null;
@@ -706,6 +650,7 @@ function ShiftModal({ shift, prefillDate, officers, allOfficers, sites, rates, s
     end_time: shift?.end_time ? fmtTime(shift.end_time) : '07:00', notes: shift?.notes || '',
     shift_type: shift?.shift_type || 'regular',
     pay_rate: shift?.pay_rate || '', charge_rate: shift?.charge_rate || '',
+    bh_hours: shift?.bh_hours || '', bh_pay_rate: shift?.bh_pay_rate || '', bh_charge_rate: shift?.bh_charge_rate || '',
     actual_start: shift?.checked_in_at ? fmtTime(shift.checked_in_at) : '',
     actual_end: shift?.checked_out_at ? fmtTime(shift.checked_out_at) : '',
   });
@@ -740,6 +685,9 @@ function ShiftModal({ shift, prefillDate, officers, allOfficers, sites, rates, s
       const payload = { site_id: form.site_id, officer_id: form.officer_id, start_time: startDt, end_time: adjustedEnd, shift_type: form.shift_type, notes: form.notes?.trim() || null,
         pay_rate: form.pay_rate !== '' ? parseFloat(form.pay_rate) : null,
         charge_rate: form.charge_rate !== '' ? parseFloat(form.charge_rate) : null,
+        bh_hours: form.bh_hours !== '' ? parseFloat(form.bh_hours) : 0,
+        bh_pay_rate: form.bh_pay_rate !== '' ? parseFloat(form.bh_pay_rate) : null,
+        bh_charge_rate: form.bh_charge_rate !== '' ? parseFloat(form.bh_charge_rate) : null,
       };
       if (isExisting && form.actual_start) {
         payload.checked_in_at = localISOString(form.date, form.actual_start);
@@ -767,17 +715,6 @@ function ShiftModal({ shift, prefillDate, officers, allOfficers, sites, rates, s
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
-        <div style={{display:'flex',gap:'0.5rem',marginBottom:'0.75rem'}}>
-          {['regular','bank_holiday'].map(t => (
-            <button key={t} type="button" onClick={() => f('shift_type', t)}
-              style={{flex:1,padding:'0.625rem',border: form.shift_type === t ? (t === 'bank_holiday' ? '2px solid #dc2626' : '2px solid var(--blue)') : '1px solid var(--border)',
-                borderRadius:'8px',background: form.shift_type === t ? (t === 'bank_holiday' ? 'rgba(220,38,38,0.06)' : 'rgba(26,82,168,0.06)') : 'var(--surface)',
-                cursor:'pointer',fontSize:'0.8125rem',fontWeight:form.shift_type === t ? 700 : 500,
-                color: form.shift_type === t ? (t === 'bank_holiday' ? '#dc2626' : 'var(--blue)') : 'var(--text-2)'}}>
-              {t === 'regular' ? 'Regular Shift' : 'Bank Holiday'}
-            </button>
-          ))}
-        </div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
           <div className="field" style={{gridColumn:'1/-1'}}><label className="label">Date</label><input type="date" className="input" value={form.date} onChange={e => f('date', e.target.value)} /></div>
           {!siteId && <div className="field" style={{gridColumn:'1/-1'}}><label className="label">Site</label><select className="input" value={form.site_id} onChange={e => f('site_id', e.target.value)}><option value="">Select site</option>{sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>}
@@ -824,18 +761,45 @@ function ShiftModal({ shift, prefillDate, officers, allOfficers, sites, rates, s
             )}
           </div>
         )}
-        {(form.pay_rate || form.charge_rate) && form.start_time && form.end_time && form.date && (() => {
+        {/* Bank Holiday Hours */}
+        {canSeePay(user?.role) && (
+          <div style={{marginTop:'0.75rem',borderTop:'1px solid var(--border)',paddingTop:'0.75rem'}}>
+            <div style={{fontSize:'0.75rem',fontWeight:700,color:'#dc2626',marginBottom:'0.5rem'}}>Bank Holiday Hours</div>
+            <div style={{display:'grid',gridTemplateColumns: canSeeCharge(user?.role) ? '1fr 1fr 1fr' : '1fr 1fr',gap:'0.75rem'}}>
+              <div className="field">
+                <label className="label">BH Hours</label>
+                <input type="number" step="0.5" min="0" className="input" value={form.bh_hours} onChange={e => f('bh_hours', e.target.value)} placeholder="0" />
+              </div>
+              <div className="field">
+                <label className="label">BH Pay Rate (£/hr)</label>
+                <input type="number" step="0.01" min="0" className="input" value={form.bh_pay_rate || form.pay_rate} onChange={e => f('bh_pay_rate', e.target.value)} placeholder={form.pay_rate || '0.00'} />
+              </div>
+              {canSeeCharge(user?.role) && (
+                <div className="field">
+                  <label className="label">BH Charge Rate</label>
+                  <input type="number" step="0.01" min="0" className="input" value={form.bh_charge_rate || form.charge_rate} onChange={e => f('bh_charge_rate', e.target.value)} placeholder={form.charge_rate || '0.00'} />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        {/* Pay preview */}
+        {form.start_time && form.end_time && form.date && canSeePay(user?.role) && (() => {
           const startDt = new Date(`${form.date}T${form.start_time}:00`);
           let endDt = new Date(`${form.date}T${form.end_time}:00`);
           if (endDt <= startDt) endDt = new Date(`${isoDate(addDays(new Date(form.date), 1))}T${form.end_time}:00`);
           const hrs = Math.max(0, (endDt - startDt) / 3600000);
-          const showPay = canSeePay(user?.role) && form.pay_rate;
-          const showCharge = canSeeCharge(user?.role) && form.charge_rate;
-          return (showPay || showCharge) ? (
+          const payRate = parseFloat(form.pay_rate) || 0;
+          const bhH = parseFloat(form.bh_hours) || 0;
+          const bhPayRate = parseFloat(form.bh_pay_rate) || payRate;
+          const basePay = hrs * payRate;
+          const bhPrem = bhH * bhPayRate;
+          return (basePay > 0 || bhPrem > 0) ? (
             <div style={{padding:'0.5rem 0.75rem',background:'var(--surface-2)',borderRadius:'6px',marginTop:'0.5rem',fontSize:'0.8125rem',color:'var(--text-2)',display:'flex',gap:'1rem',flexWrap:'wrap'}}>
               <span>{hrs.toFixed(1)} hrs</span>
-              {showPay && <span style={{color:'#f59e0b'}}>Pay: <strong>£{(hrs * parseFloat(form.pay_rate)).toFixed(2)}</strong></span>}
-              {showCharge && <span style={{color:'#10b981'}}>Charge: <strong>£{(hrs * parseFloat(form.charge_rate)).toFixed(2)}</strong></span>}
+              <span style={{color:'#f59e0b'}}>Pay: <strong>£{basePay.toFixed(2)}</strong></span>
+              {bhPrem > 0 && <span style={{color:'#dc2626'}}>BH: <strong>+£{bhPrem.toFixed(2)}</strong></span>}
+              {bhPrem > 0 && <span style={{fontWeight:700}}>Total: £{(basePay + bhPrem).toFixed(2)}</span>}
             </div>
           ) : null;
         })()}

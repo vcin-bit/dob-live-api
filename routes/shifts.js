@@ -90,10 +90,10 @@ router.get('/:id', authenticate, async (req, res, next) => {
 // POST /api/shifts
 router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
   try {
-    const { site_id, officer_id, start_time, end_time, pay_rate, charge_rate, notes, shift_type } = req.body;
+    const { site_id, officer_id, start_time, end_time, pay_rate, charge_rate, notes, shift_type, bh_hours, bh_pay_rate, bh_charge_rate } = req.body;
     const { data, error } = await supabase
       .from('shifts')
-      .insert({ company_id: req.user.company_id, site_id, officer_id, start_time, end_time, pay_rate, charge_rate, notes, shift_type: shift_type || 'regular' })
+      .insert({ company_id: req.user.company_id, site_id, officer_id, start_time, end_time, pay_rate, charge_rate, notes, shift_type: shift_type || 'regular', bh_hours: bh_hours || 0, bh_pay_rate: bh_pay_rate || null, bh_charge_rate: bh_charge_rate || null })
       .select()
       .single();
     if (error) throw error;
@@ -104,7 +104,7 @@ router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGE
 // PATCH /api/shifts/:id
 router.patch('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
   try {
-    const allowed = ['site_id', 'officer_id', 'start_time', 'end_time', 'status', 'pay_rate', 'charge_rate', 'notes', 'checked_in_at', 'checked_out_at', 'shift_type'];
+    const allowed = ['site_id', 'officer_id', 'start_time', 'end_time', 'status', 'pay_rate', 'charge_rate', 'notes', 'checked_in_at', 'checked_out_at', 'shift_type', 'bh_hours', 'bh_pay_rate', 'bh_charge_rate'];
     const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
     const { data, error } = await supabase
       .from('shifts')
