@@ -1321,7 +1321,7 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
   const selectedShifts = monthShifts.filter(s => selectedIds.has(s.id));
   const hasDisputes = Object.keys(disputedHours).some(id => disputedHours[id]?.hours && monthShifts.find(s => s.id === id));
   const totalHours = selectedShifts.reduce((sum, s) => sum + getHours(s), 0);
-  const totalAmount = selectedShifts.reduce((sum, s) => sum + (getHours(s) * (s.pay_rate || 0)), 0);
+  const totalAmount = selectedShifts.reduce((sum, s) => sum + (getHours(s) * (parseFloat(s.pay_rate) || 0)), 0);
 
   const [invoiceSending, setInvoiceSending] = useState(false);
   const [invoiceSent, setInvoiceSent] = useState(false);
@@ -1338,8 +1338,8 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
           site: s.site?.name || '—',
           times: `${new Date(s.checked_in_at||s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}–${new Date(s.checked_out_at||s.end_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}`,
           hours: getHours(s).toFixed(2),
-          rate: (s.pay_rate || 0).toFixed(2),
-          amount: (getHours(s) * (s.pay_rate || 0)).toFixed(2),
+          rate: (parseFloat(s.pay_rate) || 0).toFixed(2),
+          amount: (getHours(s) * (parseFloat(s.pay_rate) || 0)).toFixed(2),
         })),
         contractor: {
           name: hr?.employment_status === 'ltd_company' ? (form.company_name || `${dbUser?.first_name} ${dbUser?.last_name}`) : `${dbUser?.first_name} ${dbUser?.last_name}`,
@@ -1461,7 +1461,7 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
             <tbody>
               {selectedShifts.map(s => {
                 const hrs = getHours(s);
-                const rate = s.pay_rate || 0;
+                const rate = parseFloat(s.pay_rate) || 0;
                 return (
                   <tr key={s.id} style={{borderBottom:'1px solid #f1f5f9'}}>
                     <td style={{padding:'0.5rem 0'}}>{new Date(s.start_time).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}</td>
@@ -1567,7 +1567,7 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
               <div style={{display:'flex',flexDirection:'column',gap:'0.5rem',marginBottom:'1rem'}}>
                 {monthShifts.map(s => {
                   const hrs = getHours(s);
-                  const rate = s.pay_rate || 0;
+                  const rate = parseFloat(s.pay_rate) || 0;
                   const bhH = parseFloat(s.bh_hours) || (s.shift_type === 'bank_holiday' ? hrs : 0);
                   const bhRate = parseFloat(s.bh_pay_rate) || rate;
                   const basePay = hrs * rate;
@@ -1697,7 +1697,7 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
                             site: s?.site?.name || '—',
                             times: recordedTimes,
                             hours: `${hrs.toFixed(1)}${d?.hours ? ` → ${d.hours}` : ''}`,
-                            rate: `£${(s.pay_rate||0).toFixed(2)}`,
+                            rate: `£${(parseFloat(s.pay_rate) || 0).toFixed(2)}`,
                             amount: status,
                           };
                         });
@@ -1726,7 +1726,7 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
                 let totalHrs = 0, totalBhH = 0, totalBasePay = 0, totalBhPrem = 0;
                 monthShifts.forEach(s => {
                   const h = getHours(s);
-                  const rate = s.pay_rate || 0;
+                  const rate = parseFloat(s.pay_rate) || 0;
                   const bhH = parseFloat(s.bh_hours) || (s.shift_type === 'bank_holiday' ? h : 0);
                   const bhRate = parseFloat(s.bh_pay_rate) || rate;
                   totalHrs += h;
