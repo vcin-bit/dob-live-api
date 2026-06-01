@@ -1,0 +1,2 @@
+async function m(t,c=1200,i=.7){return new Promise(g=>{const e=new Image,o=URL.createObjectURL(t);e.onload=()=>{const a=document.createElement("canvas");let n=e.width,r=e.height;n>c&&(r=Math.round(r*c/n),n=c),a.width=n,a.height=r,a.getContext("2d").drawImage(e,0,0,n,r),URL.revokeObjectURL(o),a.toBlob(s=>{g(new File([s],t.name.replace(/\.[^.]+$/,".jpg"),{type:"image/jpeg"}))},"image/jpeg",i)},e.onerror=()=>{URL.revokeObjectURL(o),g(t)},e.src=o})}function h(t){return t.type.startsWith("image/")}export{m as c,h as i};
+//# sourceMappingURL=imageUtils-0798941e.js.map
