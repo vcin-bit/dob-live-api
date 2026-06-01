@@ -1568,6 +1568,10 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
                 {monthShifts.map(s => {
                   const hrs = getHours(s);
                   const rate = s.pay_rate || 0;
+                  const bhH = parseFloat(s.bh_hours) || (s.shift_type === 'bank_holiday' ? hrs : 0);
+                  const bhRate = parseFloat(s.bh_pay_rate) || rate;
+                  const basePay = hrs * rate;
+                  const bhPrem = bhH * bhRate;
                   const confirmed = confirmedIds.has(s.id);
                   const disputed = disputedHours[s.id];
                   const hasDispute = disputed?.hours;
@@ -1583,7 +1587,8 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
                           </div>
                           <div style={{textAlign:'right'}}>
                             <div style={{fontSize:'1rem',fontWeight:700,color:'#111827'}}>{hrs.toFixed(1)}h</div>
-                            <div style={{fontSize:'0.6875rem',color:'#6b7280'}}>£{(hrs * rate).toFixed(2)}</div>
+                            <div style={{fontSize:'0.6875rem',color:'#6b7280'}}>£{basePay.toFixed(2)}</div>
+                            {bhPrem > 0 && <div style={{fontSize:'0.6875rem',color:'#dc2626',fontWeight:600}}>+£{bhPrem.toFixed(2)} BH</div>}
                           </div>
                         </div>
                         <div style={{fontSize:'0.8125rem',color:'#374151'}}>
@@ -1718,23 +1723,26 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
               {(() => {
                 const allAgreed = monthShifts.length > 0 && monthShifts.every(s => confirmedIds.has(s.id));
                 const agreedCount = monthShifts.filter(s => confirmedIds.has(s.id)).length;
-                const regularShifts = monthShifts.filter(s => s.shift_type !== 'bank_holiday');
-                const bankHolShifts = monthShifts.filter(s => s.shift_type === 'bank_holiday');
-                const regularHrs = regularShifts.reduce((sum, s) => sum + getHours(s), 0);
-                const bankHolHrs = bankHolShifts.reduce((sum, s) => sum + getHours(s), 0);
-                const totalMonthHrs = regularHrs + bankHolHrs;
+                let totalHrs = 0, totalBhH = 0, totalBasePay = 0, totalBhPrem = 0;
+                monthShifts.forEach(s => {
+                  const h = getHours(s);
+                  const rate = s.pay_rate || 0;
+                  const bhH = parseFloat(s.bh_hours) || (s.shift_type === 'bank_holiday' ? h : 0);
+                  const bhRate = parseFloat(s.bh_pay_rate) || rate;
+                  totalHrs += h;
+                  totalBhH += bhH;
+                  totalBasePay += h * rate;
+                  totalBhPrem += bhH * bhRate;
+                });
+                const totalPay = totalBasePay + totalBhPrem;
                 return (
                   <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:'10px',padding:'1rem'}}>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom: (hasDisputes || (isSelfEmployed && allAgreed)) ? '0.75rem' : 0}}>
                       <div>
                         <div style={{fontSize:'0.6875rem',color:'#6b7280',textTransform:'uppercase',fontWeight:600}}>{formatMonth(selectedMonth)}</div>
-                        <div style={{fontSize:'1rem',fontWeight:700,color:'#111827'}}>{totalMonthHrs.toFixed(1)} hours · {monthShifts.length} shift{monthShifts.length!==1?'s':''}</div>
-                        {bankHolHrs > 0 && (
-                          <>
-                            <div style={{fontSize:'0.75rem',color:'#374151',fontWeight:600}}>{regularHrs.toFixed(1)}h regular · £{(regularShifts.reduce((sum, s) => sum + getHours(s) * (s.pay_rate || 0), 0)).toFixed(2)}</div>
-                            <div style={{fontSize:'0.75rem',color:'#1a52a8',fontWeight:600}}>{bankHolHrs.toFixed(1)}h bank holiday · £{(bankHolShifts.reduce((sum, s) => sum + getHours(s) * (s.pay_rate || 0), 0)).toFixed(2)}</div>
-                          </>
-                        )}
+                        <div style={{fontSize:'1rem',fontWeight:700,color:'#111827'}}>{totalHrs.toFixed(1)} hours · {monthShifts.length} shift{monthShifts.length!==1?'s':''} · £{totalPay.toFixed(2)}</div>
+                        <div style={{fontSize:'0.75rem',color:'#374151',fontWeight:600}}>{totalHrs.toFixed(1)}h × rate = £{totalBasePay.toFixed(2)}</div>
+                        {totalBhPrem > 0 && <div style={{fontSize:'0.75rem',color:'#dc2626',fontWeight:600}}>{totalBhH.toFixed(1)}h BH premium = £{totalBhPrem.toFixed(2)}</div>}
                         <div style={{fontSize:'0.75rem',color: allAgreed ? '#16a34a' : '#9ca3af',fontWeight:600}}>{agreedCount}/{monthShifts.length} agreed</div>
                       </div>
                       {allAgreed && !hasDisputes && (
@@ -1749,7 +1757,7 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
                     {isSelfEmployed && allAgreed && !hasDisputes && (
                       <button onClick={() => { setSelectedIds(new Set(monthShifts.map(s => s.id))); setInvoiceRef(''); setInvoiceSent(false); setShowInvoice(true); }}
                         style={{width:'100%',padding:'0.875rem',background:'#1a52a8',border:'none',borderRadius:'8px',color:'#fff',fontSize:'0.875rem',fontWeight:700,cursor:'pointer',marginTop:'0.5rem'}}>
-                        Generate Invoice ({monthShifts.length} shifts · {totalMonthHrs.toFixed(1)}h)
+                        Generate Invoice ({monthShifts.length} shifts · {totalHrs.toFixed(1)}h · £{totalPay.toFixed(2)})
                       </button>
                     )}
 
