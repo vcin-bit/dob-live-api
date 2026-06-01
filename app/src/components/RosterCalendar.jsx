@@ -51,6 +51,41 @@ function shiftHours(s) {
   return Math.max(0, (new Date(s.end_time) - new Date(s.start_time)) / 3600000);
 }
 
+// UK bank holidays — BH premium applies midnight-to-midnight on these dates
+const UK_BANK_HOLIDAYS = new Set([
+  '2025-01-01','2025-04-18','2025-04-21','2025-05-05','2025-05-26','2025-08-25','2025-12-25','2025-12-26',
+  '2026-01-01','2026-04-03','2026-04-06','2026-05-04','2026-05-25','2026-08-31','2026-12-25','2026-12-28',
+  '2027-01-01','2027-03-26','2027-03-29','2027-05-03','2027-05-31','2027-08-30','2027-12-27','2027-12-28',
+]);
+function ukDateStr(date) { return date.toLocaleDateString('en-CA', { timeZone: 'Europe/London' }); }
+function ukMidnight(dateStr) {
+  const gmt = new Date(dateStr + 'T00:00:00+00:00');
+  if (ukDateStr(gmt) === dateStr) return gmt;
+  return new Date(dateStr + 'T00:00:00+01:00');
+}
+function calcBhHours(s) {
+  if (!s.start_time || !s.end_time) return 0;
+  const start = new Date(s.start_time);
+  const end = new Date(s.end_time);
+  if (end <= start) return 0;
+  let bhMs = 0;
+  const startDate = ukDateStr(start);
+  const endDate = ukDateStr(new Date(end.getTime() - 1));
+  let d = startDate;
+  while (d <= endDate) {
+    if (UK_BANK_HOLIDAYS.has(d)) {
+      const dayStart = ukMidnight(d);
+      const dayEnd = new Date(dayStart.getTime() + 86400000);
+      const overlapStart = start > dayStart ? start : dayStart;
+      const overlapEnd = end < dayEnd ? end : dayEnd;
+      if (overlapEnd > overlapStart) bhMs += overlapEnd - overlapStart;
+    }
+    const next = new Date(ukMidnight(d).getTime() + 86400000);
+    d = ukDateStr(next);
+  }
+  return bhMs / 3600000;
+}
+
 function canSeePay(role) { return ['COMPANY','OPS_MANAGER','SUPER_ADMIN','FD'].includes(role); }
 function canSeeCharge(role) { return ['COMPANY','SUPER_ADMIN','FD'].includes(role); }
 
@@ -263,15 +298,17 @@ export default function RosterCalendar({ siteId, user }) {
               {shiftsForDay(from).sort((a,b) => new Date(a.start_time) - new Date(b.start_time)).map(s => {
                 const sb = statusBadge(s.status);
                 const sel = selected.has(s.id);
+                const bhH = calcBhHours(s);
+                const hasBh = bhH > 0;
                 return (
                   <div key={s.id} onClick={() => handleShiftClick(s)}
                     style={{display:'flex',alignItems:'center',gap:'0.875rem',padding:'0.75rem 1rem',borderRadius:'8px',
-                      background: s.shift_type === 'bank_holiday' ? 'rgba(220,38,38,0.05)' : 'var(--surface)',
-                      border: sel ? '2px solid var(--blue)' : s.shift_type === 'bank_holiday' ? '1px solid rgba(220,38,38,0.3)' : '1px solid var(--border)',
-                      cursor: bulkMode || isManager ? 'pointer' : 'default', borderLeft:`4px solid ${s.shift_type === 'bank_holiday' ? '#dc2626' : officerColour(s.officer_id)}`}}>
+                      background: hasBh ? 'rgba(220,38,38,0.05)' : 'var(--surface)',
+                      border: sel ? '2px solid var(--blue)' : hasBh ? '1px solid rgba(220,38,38,0.3)' : '1px solid var(--border)',
+                      cursor: bulkMode || isManager ? 'pointer' : 'default', borderLeft:`4px solid ${hasBh ? '#dc2626' : officerColour(s.officer_id)}`}}>
                     {bulkMode && <input type="checkbox" checked={sel} readOnly style={{width:'1rem',height:'1rem',accentColor:'var(--blue)',flexShrink:0}} />}
                     <div style={{flex:1}}>
-                      {s.shift_type === 'bank_holiday' && <div style={{fontSize:'0.6875rem',color:'#dc2626',fontWeight:700,marginBottom:'2px'}}>BANK HOLIDAY</div>}
+                      {hasBh && <div style={{fontSize:'0.6875rem',color:'#dc2626',fontWeight:700,marginBottom:'2px'}}>{bhH >= shiftHours(s) ? 'BANK HOLIDAY' : `BANK HOLIDAY (${bhH.toFixed(0)}h of ${shiftHours(s).toFixed(0)}h)`}</div>}
                       <div style={{fontWeight:600,fontSize:'0.9375rem'}}>{s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unassigned'}</div>
                       {!siteId && <div style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>{s.site?.name || '—'}</div>}
                       <div style={{fontSize:'0.8125rem',color:'var(--text-3)',marginTop:'2px'}}>{shiftTimeLabel(s)}</div>
@@ -481,12 +518,14 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
                     {dayShifts.map(s => {
                       const col = officerColour(s.officer_id);
                       const sel = selected.has(s.id);
+                      const bhH = calcBhHours(s);
+                      const hasBh = bhH > 0;
                       return (
                         <div key={s.id} onClick={() => onShiftClick(s)}
                           style={{
                             padding: isCompact ? '3px 4px' : '4px 6px', borderRadius:'5px',
-                            background: s.shift_type === 'bank_holiday' ? 'rgba(220,38,38,0.1)' : col + '20',
-                            border: sel ? '2px solid var(--blue)' : s.shift_type === 'bank_holiday' ? '1px solid rgba(220,38,38,0.4)' : `1px solid ${col}40`,
+                            background: hasBh ? 'rgba(220,38,38,0.1)' : col + '20',
+                            border: sel ? '2px solid var(--blue)' : hasBh ? '1px solid rgba(220,38,38,0.4)' : `1px solid ${col}40`,
                             cursor: bulkMode || isManager ? 'pointer' : 'default',
                             position:'relative',
                           }}>
@@ -494,7 +533,7 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
                             <input type="checkbox" checked={sel} readOnly
                               style={{position:'absolute',top:2,left:2,width:'0.75rem',height:'0.75rem',accentColor:'var(--blue)'}} />
                           )}
-                          {s.shift_type === 'bank_holiday' && <div style={{fontSize: isCompact ? '0.5rem' : '0.5625rem',color:'#dc2626',fontWeight:700,marginLeft:bulkMode?'1rem':'0'}}>BANK HOLIDAY</div>}
+                          {hasBh && <div style={{fontSize: isCompact ? '0.5rem' : '0.5625rem',color:'#dc2626',fontWeight:700,marginLeft:bulkMode?'1rem':'0'}}>{bhH >= shiftHours(s) ? 'BANK HOLIDAY' : `BH ${bhH.toFixed(0)}h`}</div>}
                           <div style={{display:'flex',alignItems:'center',gap:'3px',marginLeft:bulkMode?'1rem':'0'}}>
                             {s.status === 'ACTIVE' && <span style={{width:5,height:5,borderRadius:'50%',background:'#4ade80',flexShrink:0,animation:'pulse 2s infinite'}} />}
                             <span style={{fontWeight:700,fontSize: isCompact ? '0.625rem' : '0.75rem', color:'var(--text)', overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis'}}>
@@ -535,17 +574,18 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
             const byOfficer = {};
             weekShifts.forEach(s => {
               const name = s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unassigned';
-              if (!byOfficer[name]) byOfficer[name] = { hours: 0, pay: 0, bhHours: 0, bhPay: 0 };
+              if (!byOfficer[name]) byOfficer[name] = { hours: 0, basePay: 0, bhPremiumPay: 0 };
               const h = shiftHours(s);
-              const pay = h * (parseFloat(s.pay_rate) || 0);
-              if (s.shift_type === 'bank_holiday') { byOfficer[name].bhHours += h; byOfficer[name].bhPay += pay; }
-              else { byOfficer[name].hours += h; byOfficer[name].pay += pay; }
+              const rate = parseFloat(s.pay_rate) || 0;
+              const bhH = calcBhHours(s);
+              byOfficer[name].hours += h;
+              byOfficer[name].basePay += h * rate;
+              if (bhH > 0) byOfficer[name].bhPremiumPay += bhH * rate;
             });
-            const entries = Object.entries(byOfficer).sort((a,b) => (b[1].pay + b[1].bhPay) - (a[1].pay + a[1].bhPay));
-            const totalBhHrs = entries.reduce((t, [,d]) => t + d.bhHours, 0);
-            const totalBhPay = entries.reduce((t, [,d]) => t + d.bhPay, 0);
-            const totalRegHrs = entries.reduce((t, [,d]) => t + d.hours, 0);
-            const totalRegPay = entries.reduce((t, [,d]) => t + d.pay, 0);
+            const entries = Object.entries(byOfficer).sort((a,b) => (b[1].basePay + b[1].bhPremiumPay) - (a[1].basePay + a[1].bhPremiumPay));
+            const totalHrs = entries.reduce((t, [,d]) => t + d.hours, 0);
+            const totalBasePay = entries.reduce((t, [,d]) => t + d.basePay, 0);
+            const totalBhPremium = entries.reduce((t, [,d]) => t + d.bhPremiumPay, 0);
             return (
               <div style={{background:'var(--surface-2)',padding:'0.5rem 0.75rem',fontSize:'0.75rem',color:'var(--text-2)'}}>
                 {entries.map(([name, d], i) => (
@@ -553,21 +593,21 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
                     {i > 0 && <div style={{borderTop:'1px solid var(--border)',margin:'2px 0'}} />}
                     <div style={{display:'flex',justifyContent:'space-between',padding:'2px 0'}}>
                       <span>{name}</span>
-                      <span>{d.hours.toFixed(1)} hrs {d.pay > 0 ? <span style={{color:'#f59e0b'}}>· £{d.pay.toFixed(2)}</span> : ''}</span>
+                      <span>{d.hours.toFixed(1)} hrs {d.basePay > 0 ? <span style={{color:'#f59e0b'}}>· £{d.basePay.toFixed(2)}</span> : ''}</span>
                     </div>
-                    {d.bhHours > 0 && <div style={{display:'flex',justifyContent:'space-between',padding:'2px 0',color:'#1a52a8'}}>
-                      <span style={{fontWeight:600}}>Bank Holiday</span>
-                      <span>{d.bhHours.toFixed(1)} hrs · £{d.bhPay.toFixed(2)}</span>
+                    {d.bhPremiumPay > 0 && <div style={{display:'flex',justifyContent:'space-between',padding:'2px 0',color:'#dc2626'}}>
+                      <span style={{fontWeight:600}}>BH Premium</span>
+                      <span>£{d.bhPremiumPay.toFixed(2)}</span>
                     </div>}
                   </div>
                 ))}
-                {totalBhHrs > 0 && <div style={{display:'flex',justifyContent:'space-between',borderTop:'1px solid var(--border)',marginTop:'4px',paddingTop:'4px',fontWeight:600,color:'#1a52a8'}}>
-                  <span>Bank Holiday</span>
-                  <span>{totalBhHrs.toFixed(1)} hrs · £{totalBhPay.toFixed(2)}</span>
+                {totalBhPremium > 0 && <div style={{display:'flex',justifyContent:'space-between',borderTop:'1px solid var(--border)',marginTop:'4px',paddingTop:'4px',fontWeight:600,color:'#dc2626'}}>
+                  <span>BH Premium</span>
+                  <span>£{totalBhPremium.toFixed(2)}</span>
                 </div>}
                 <div style={{display:'flex',justifyContent:'space-between',borderTop:'1px solid var(--border)',marginTop:'4px',paddingTop:'4px',fontWeight:700,color:'var(--text)'}}>
                   <span>Total</span>
-                  <span>{(totalRegHrs + totalBhHrs).toFixed(1)} hrs <span style={{color:'#f59e0b'}}>· £{(totalRegPay + totalBhPay).toFixed(2)}</span></span>
+                  <span>{totalHrs.toFixed(1)} hrs <span style={{color:'#f59e0b'}}>· £{(totalBasePay + totalBhPremium).toFixed(2)}</span></span>
                 </div>
               </div>
             );
@@ -581,17 +621,18 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
           const byOfficer = {};
           monthShifts.forEach(s => {
             const name = s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unassigned';
-            if (!byOfficer[name]) byOfficer[name] = { hours: 0, pay: 0, bhHours: 0, bhPay: 0 };
+            if (!byOfficer[name]) byOfficer[name] = { hours: 0, basePay: 0, bhPremiumPay: 0 };
             const h = shiftHours(s);
-            const pay = h * (parseFloat(s.pay_rate) || 0);
-            if (s.shift_type === 'bank_holiday') { byOfficer[name].bhHours += h; byOfficer[name].bhPay += pay; }
-            else { byOfficer[name].hours += h; byOfficer[name].pay += pay; }
+            const rate = parseFloat(s.pay_rate) || 0;
+            const bhH = calcBhHours(s);
+            byOfficer[name].hours += h;
+            byOfficer[name].basePay += h * rate;
+            if (bhH > 0) byOfficer[name].bhPremiumPay += bhH * rate;
           });
-          const entries = Object.entries(byOfficer).sort((a,b) => (b[1].pay + b[1].bhPay) - (a[1].pay + a[1].bhPay));
-          const totalRegHrs = entries.reduce((t, [,d]) => t + d.hours, 0);
-          const totalRegPay = entries.reduce((t, [,d]) => t + d.pay, 0);
-          const totalBhHrs = entries.reduce((t, [,d]) => t + d.bhHours, 0);
-          const totalBhPay = entries.reduce((t, [,d]) => t + d.bhPay, 0);
+          const entries = Object.entries(byOfficer).sort((a,b) => (b[1].basePay + b[1].bhPremiumPay) - (a[1].basePay + a[1].bhPremiumPay));
+          const totalHrs = entries.reduce((t, [,d]) => t + d.hours, 0);
+          const totalBasePay = entries.reduce((t, [,d]) => t + d.basePay, 0);
+          const totalBhPremium = entries.reduce((t, [,d]) => t + d.bhPremiumPay, 0);
           return (
             <div style={{background:'var(--surface-2)',borderRadius:'0 0 8px 8px',padding:'0.75rem 1rem',fontSize:'0.8125rem',color:'var(--text-2)',marginTop:'1px'}}>
               <div style={{fontWeight:700,color:'var(--text)',marginBottom:'0.5rem',fontSize:'0.875rem'}}>Monthly Pay Summary</div>
@@ -600,21 +641,21 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
                   {i > 0 && <div style={{borderTop:'1px solid var(--border)',margin:'4px 0'}} />}
                   <div style={{display:'flex',justifyContent:'space-between',padding:'3px 0'}}>
                     <span>{name}</span>
-                    <span>{d.hours.toFixed(1)} hrs {d.pay > 0 ? <span style={{color:'#f59e0b'}}>· £{d.pay.toFixed(2)}</span> : ''}</span>
+                    <span>{d.hours.toFixed(1)} hrs {d.basePay > 0 ? <span style={{color:'#f59e0b'}}>· £{d.basePay.toFixed(2)}</span> : ''}</span>
                   </div>
-                  {d.bhHours > 0 && <div style={{display:'flex',justifyContent:'space-between',padding:'3px 0',color:'#1a52a8',fontWeight:600}}>
-                    <span>Bank Holiday</span>
-                    <span>{d.bhHours.toFixed(1)} hrs · £{d.bhPay.toFixed(2)}</span>
+                  {d.bhPremiumPay > 0 && <div style={{display:'flex',justifyContent:'space-between',padding:'3px 0',color:'#dc2626',fontWeight:600}}>
+                    <span>BH Premium</span>
+                    <span>£{d.bhPremiumPay.toFixed(2)}</span>
                   </div>}
                 </div>
               ))}
-              {totalBhHrs > 0 && <div style={{display:'flex',justifyContent:'space-between',borderTop:'1px solid var(--border)',marginTop:'6px',paddingTop:'6px',fontWeight:700,color:'#1a52a8',fontSize:'0.875rem'}}>
-                <span>Bank Holiday</span>
-                <span>{totalBhHrs.toFixed(1)} hrs · £{totalBhPay.toFixed(2)}</span>
+              {totalBhPremium > 0 && <div style={{display:'flex',justifyContent:'space-between',borderTop:'1px solid var(--border)',marginTop:'6px',paddingTop:'6px',fontWeight:700,color:'#dc2626',fontSize:'0.875rem'}}>
+                <span>BH Premium</span>
+                <span>£{totalBhPremium.toFixed(2)}</span>
               </div>}
               <div style={{display:'flex',justifyContent:'space-between',borderTop:'1px solid var(--border)',marginTop:'4px',paddingTop:'4px',fontWeight:700,color:'var(--text)',fontSize:'0.875rem'}}>
                 <span>Total pay this month</span>
-                <span>{(totalRegHrs + totalBhHrs).toFixed(1)} hrs <span style={{color:'#f59e0b'}}>· £{(totalRegPay + totalBhPay).toFixed(2)}</span></span>
+                <span>{totalHrs.toFixed(1)} hrs <span style={{color:'#f59e0b'}}>· £{(totalBasePay + totalBhPremium).toFixed(2)}</span></span>
               </div>
             </div>
           );
