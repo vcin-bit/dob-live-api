@@ -283,6 +283,19 @@ export default function RosterCalendar({ siteId, user }) {
                       <div style={{fontWeight:600,fontSize:'0.9375rem'}}>{s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unassigned'}</div>
                       {!siteId && <div style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>{s.site?.name || '—'}</div>}
                       <div style={{fontSize:'0.8125rem',color:'var(--text-3)',marginTop:'2px'}}>{shiftTimeLabel(s)}</div>
+                      {canSeePay(user?.role) && s.pay_rate && (() => {
+                        const h = shiftHours(s);
+                        const rate = parseFloat(s.pay_rate);
+                        const basePay = h * rate;
+                        const bhPrem = bhH * (parseFloat(s.bh_pay_rate) || rate);
+                        return (
+                          <div style={{fontSize:'0.75rem',marginTop:'4px',lineHeight:1.5}}>
+                            <div style={{color:'#f59e0b'}}>{h.toFixed(1)}h × £{rate.toFixed(2)} = £{basePay.toFixed(2)}</div>
+                            {bhPrem > 0 && <div style={{color:'#dc2626'}}>+BH {bhH.toFixed(1)}h × £{(parseFloat(s.bh_pay_rate) || rate).toFixed(2)} = £{bhPrem.toFixed(2)}</div>}
+                            {bhPrem > 0 && <div style={{fontWeight:700,color:'var(--text)'}}>Total: £{(basePay + bhPrem).toFixed(2)}</div>}
+                          </div>
+                        );
+                      })()}
                     </div>
                     <span className={`badge ${sb.cls}`} style={{display:'inline-flex',alignItems:'center',gap:'4px'}}>
                       {sb.pulse && <span style={{width:6,height:6,borderRadius:'50%',background:'#4ade80',animation:'pulse 2s infinite'}} />}
