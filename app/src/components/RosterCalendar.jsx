@@ -515,15 +515,20 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
                           {!isCompact && !siteId && s.site?.name && (
                             <div style={{fontSize:'0.625rem',color:'var(--text-3)',overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',marginLeft:bulkMode?'1rem':'0'}}>{s.site.name}</div>
                           )}
-                          {(!siteId || isCompact) && canSeePay(user?.role) && (
-                            s.pay_rate ? (
-                              <div style={{fontSize: isCompact ? '0.5rem' : '0.5625rem',color:'#f59e0b',marginLeft:bulkMode?'1rem':'0',marginTop:'1px',overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis'}}>
-                                {isCompact ? `£${(shiftHours(s) * parseFloat(s.pay_rate)).toFixed(0)}` : `£${parseFloat(s.pay_rate).toFixed(2)}/hr · £${(shiftHours(s) * parseFloat(s.pay_rate)).toFixed(2)}`}
+                          {canSeePay(user?.role) && s.pay_rate && (() => {
+                            const ml = bulkMode ? '1rem' : '0';
+                            const h = shiftHours(s);
+                            const rate = parseFloat(s.pay_rate);
+                            const basePay = h * rate;
+                            const bhPrem = bhH * (parseFloat(s.bh_pay_rate) || rate);
+                            if (isCompact) return <div style={{fontSize:'0.5rem',color:'#f59e0b',marginLeft:ml}}>{bhPrem > 0 ? `£${(basePay + bhPrem).toFixed(0)}` : `£${basePay.toFixed(0)}`}</div>;
+                            return (
+                              <div style={{fontSize:'0.5625rem',marginLeft:ml,marginTop:'2px',lineHeight:1.4}}>
+                                <div style={{color:'#f59e0b'}}>{h.toFixed(1)}h × £{rate.toFixed(2)} = £{basePay.toFixed(2)}</div>
+                                {bhPrem > 0 && <div style={{color:'#dc2626'}}>+BH {bhH.toFixed(1)}h × £{(parseFloat(s.bh_pay_rate) || rate).toFixed(2)} = £{bhPrem.toFixed(2)}</div>}
                               </div>
-                            ) : (
-                              null
-                            )
-                          )}
+                            );
+                          })()}
                         </div>
                       );
                     })}
@@ -582,24 +587,23 @@ function PaySummary({ shifts, title }) {
       {rows.map(([name, o]) => {
         const avg = o.rates.length ? o.rates.reduce((a,b)=>a+b,0)/o.rates.length : 0;
         return (
-        <div key={name} style={{display:'flex',alignItems:'baseline',padding:'3px 0',gap:'0.375rem'}}>
-          <span style={{fontWeight:600,color:'var(--text)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0}}>{name}</span>
-          {avg > 0 && <span style={{color:'var(--text-3)',fontSize:'0.6875rem',flexShrink:0}}>(£{avg.toFixed(2)})</span>}
-          <span style={{flex:1,borderBottom:'1px dotted var(--border)',margin:'0 2px',minWidth:'8px',alignSelf:'end',marginBottom:'3px'}} />
-          <span style={{whiteSpace:'nowrap',flexShrink:0,textAlign:'right'}}>
+        <div key={name} style={{display:'grid',gridTemplateColumns:'1fr auto auto',gap:'0 0.5rem',alignItems:'baseline',padding:'3px 0'}}>
+          <span style={{fontWeight:600,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+            {name}{avg > 0 && <span style={{color:'var(--text-3)',fontWeight:400,fontSize:'0.6875rem'}}> (£{avg.toFixed(2)})</span>}
+          </span>
+          <span style={{whiteSpace:'nowrap',textAlign:'right'}}>
             {o.hours.toFixed(0)}h{o.bhHours > 0 && <span style={{color:'#dc2626'}}> + {o.bhHours.toFixed(0)}h BH</span>}
           </span>
-          <span style={{whiteSpace:'nowrap',flexShrink:0,fontWeight:700,color:'#f59e0b',textAlign:'right',minWidth:'65px'}}>{f(o.totalPay)}</span>
+          <span style={{whiteSpace:'nowrap',fontWeight:700,color:'#f59e0b',textAlign:'right',minWidth:'60px'}}>{f(o.totalPay)}</span>
         </div>
         );
       })}
-      <div style={{borderTop:'1.5px solid var(--border)',marginTop:'6px',paddingTop:'6px',display:'flex',alignItems:'baseline',gap:'0.375rem'}}>
+      <div style={{borderTop:'1.5px solid var(--border)',marginTop:'6px',paddingTop:'6px',display:'grid',gridTemplateColumns:'1fr auto auto',gap:'0 0.5rem',alignItems:'baseline'}}>
         <span style={{fontWeight:700,color:'var(--text)',fontSize:'0.8125rem'}}>Total</span>
-        <span style={{flex:1,borderBottom:'1px dotted var(--border)',margin:'0 2px',minWidth:'8px',alignSelf:'end',marginBottom:'3px'}} />
-        <span style={{fontWeight:700,fontSize:'0.8125rem',whiteSpace:'nowrap'}}>
+        <span style={{fontWeight:700,fontSize:'0.8125rem',whiteSpace:'nowrap',textAlign:'right'}}>
           {totH.toFixed(0)}h{totBhH > 0 && <span style={{color:'#dc2626'}}> + {totBhH.toFixed(0)}h BH</span>}
         </span>
-        <span style={{fontWeight:700,fontSize:'0.8125rem',color:'#10b981',whiteSpace:'nowrap',minWidth:'65px',textAlign:'right'}}>{f(totPay)}</span>
+        <span style={{fontWeight:700,fontSize:'0.8125rem',color:'#10b981',whiteSpace:'nowrap',textAlign:'right',minWidth:'60px'}}>{f(totPay)}</span>
       </div>
     </div>
   );
