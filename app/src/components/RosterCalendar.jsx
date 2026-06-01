@@ -559,7 +559,7 @@ function PaySummary({ shifts, title }) {
   const byOfficer = {};
   shifts.forEach(s => {
     const name = s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unassigned';
-    if (!byOfficer[name]) byOfficer[name] = { hours: 0, bhHours: 0, totalPay: 0 };
+    if (!byOfficer[name]) byOfficer[name] = { hours: 0, bhHours: 0, totalPay: 0, rates: [] };
     const h = shiftHours(s);
     const rate = parseFloat(s.pay_rate) || 0;
     const bhH = getBhHours(s);
@@ -567,6 +567,7 @@ function PaySummary({ shifts, title }) {
     byOfficer[name].hours += h;
     byOfficer[name].bhHours += bhH;
     byOfficer[name].totalPay += (h * rate) + (bhH * bhRate);
+    if (rate > 0) byOfficer[name].rates.push(rate);
   });
   const rows = Object.entries(byOfficer).sort((a,b) => b[1].totalPay - a[1].totalPay);
   if (!rows.length) return null;
@@ -578,21 +579,27 @@ function PaySummary({ shifts, title }) {
   return (
     <div style={{background:'var(--surface-2)',borderRadius: title ? '0 0 8px 8px' : '0',padding:'0.625rem 0.75rem',marginTop: title ? '1px' : '0',fontSize:'0.75rem',color:'var(--text-2)'}}>
       {title && <div style={{fontWeight:700,color:'var(--text)',marginBottom:'0.5rem',fontSize:'0.875rem'}}>{title}</div>}
-      {rows.map(([name, o]) => (
-        <div key={name} style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',padding:'3px 0',gap:'0.5rem'}}>
-          <span style={{fontWeight:600,color:'var(--text)',minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{name}</span>
-          <span style={{whiteSpace:'nowrap',flexShrink:0}}>
+      {rows.map(([name, o]) => {
+        const avg = o.rates.length ? o.rates.reduce((a,b)=>a+b,0)/o.rates.length : 0;
+        return (
+        <div key={name} style={{display:'flex',alignItems:'baseline',padding:'3px 0',gap:'0.375rem'}}>
+          <span style={{fontWeight:600,color:'var(--text)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0}}>{name}</span>
+          {avg > 0 && <span style={{color:'var(--text-3)',fontSize:'0.6875rem',flexShrink:0}}>(£{avg.toFixed(2)})</span>}
+          <span style={{flex:1,borderBottom:'1px dotted var(--border)',margin:'0 2px',minWidth:'8px',alignSelf:'end',marginBottom:'3px'}} />
+          <span style={{whiteSpace:'nowrap',flexShrink:0,textAlign:'right'}}>
             {(o.hours - o.bhHours).toFixed(0)}h{o.bhHours > 0 && <span style={{color:'#dc2626'}}> + {o.bhHours.toFixed(0)}h BH</span>}
-            <span style={{color:'#f59e0b',fontWeight:700,marginLeft:'0.5rem'}}>{f(o.totalPay)}</span>
           </span>
+          <span style={{whiteSpace:'nowrap',flexShrink:0,fontWeight:700,color:'#f59e0b',textAlign:'right',minWidth:'65px'}}>{f(o.totalPay)}</span>
         </div>
-      ))}
-      <div style={{borderTop:'1.5px solid var(--border)',marginTop:'6px',paddingTop:'6px',display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
+        );
+      })}
+      <div style={{borderTop:'1.5px solid var(--border)',marginTop:'6px',paddingTop:'6px',display:'flex',alignItems:'baseline',gap:'0.375rem'}}>
         <span style={{fontWeight:700,color:'var(--text)',fontSize:'0.8125rem'}}>Total</span>
+        <span style={{flex:1,borderBottom:'1px dotted var(--border)',margin:'0 2px',minWidth:'8px',alignSelf:'end',marginBottom:'3px'}} />
         <span style={{fontWeight:700,fontSize:'0.8125rem',whiteSpace:'nowrap'}}>
           {(totH - totBhH).toFixed(0)}h{totBhH > 0 && <span style={{color:'#dc2626'}}> + {totBhH.toFixed(0)}h BH</span>}
-          <span style={{color:'#10b981',marginLeft:'0.5rem'}}>{f(totPay)}</span>
         </span>
+        <span style={{fontWeight:700,fontSize:'0.8125rem',color:'#10b981',whiteSpace:'nowrap',minWidth:'65px',textAlign:'right'}}>{f(totPay)}</span>
       </div>
     </div>
   );
