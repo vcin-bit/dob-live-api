@@ -42,15 +42,7 @@ function ShiftRoster({ user }) {
 // ── P&L DASHBOARD (FD / COMPANY / SUPER_ADMIN only) ──────────────────────────
 function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
 function startOfWeek(d) { const r = new Date(d); r.setDate(r.getDate() - ((r.getDay() + 6) % 7)); r.setHours(0,0,0,0); return r; }
-function isBankHoliday(s) { return (s.notes || '').includes('[BANK HOLIDAY]'); }
-function calcScheduledHours(s) { const h = s.start_time && s.end_time ? Math.max(0, (new Date(s.end_time) - new Date(s.start_time)) / 3600000) : 0; return isBankHoliday(s) ? h * 2 : h; }
-function calcActualHours(s) {
-  if (!s.checked_in_at) return 0;
-  const end = s.checked_out_at || s.end_time;
-  if (!end) return 0;
-  const h = Math.max(0, (new Date(end) - new Date(s.checked_in_at)) / 3600000);
-  return isBankHoliday(s) ? h * 2 : h;
-}
+function calcScheduledHours(s) { return s.start_time && s.end_time ? Math.max(0, (new Date(s.end_time) - new Date(s.start_time)) / 3600000) : 0; }
 const fmt = n => `£${n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
 
 function ProfitLoss({ user }) {
@@ -158,59 +150,57 @@ function ProfitLoss({ user }) {
     } catch (e) { alert(e.message); }
   }
 
-  // Scheduled = roster hours (from start_time/end_time on all shifts)
-  // Actual = worked hours (from checked_in_at/checked_out_at on COMPLETED/ACTIVE shifts)
-  // Contracted = weekly contracted hours × weeks in period
+  // All calculations use scheduled hours only.
+  // Bank holiday premium is a separate £ cost/charge, not extra hours.
+  // A 12h BH shift: Hours=12, Base Pay=12×rate, BH Premium=12×rate, Total Pay=24×rate.
   const bySite = {};
   shifts.forEach(s => { if (!bySite[s.site_id]) bySite[s.site_id] = []; bySite[s.site_id].push(s); });
 
-  let grandScheduled = 0, grandActualHrs = 0, grandActualPay = 0, grandCharge = 0, grandProductCost = 0, grandProductCharge = 0;
+  let grandHrs = 0, grandBasePay = 0, grandBhPremiumPay = 0, grandBaseCharge = 0, grandBhPremiumCharge = 0, grandProductCost = 0, grandProductCharge = 0;
 
   const siteRows = sites.map(site => {
     const ss = bySite[site.id] || [];
-    const chargeRate = parseFloat(site.charge_rate) || 0;
-    const contractedWeekly = parseFloat(site.contracted_hours_weekly) || 0;
+    const siteChargeRate = parseFloat(site.charge_rate) || 0;
 
     const byOfficer = {};
     ss.forEach(s => {
       const name = s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unassigned';
-      if (!byOfficer[name]) byOfficer[name] = { scheduledHrs: 0, scheduledPay: 0, actualHrs: 0, actualPay: 0, chargeRevenue: 0, avgChargeRate: 0, shiftIds: [] };
+      if (!byOfficer[name]) byOfficer[name] = { hours: 0, basePay: 0, bhPremiumPay: 0, baseCharge: 0, bhPremiumCharge: 0 };
       const rate = getPayRate(s);
-      const shiftChargeRate = parseFloat(s.charge_rate) || chargeRate;
-      const sch = calcScheduledHours(s);
-      byOfficer[name].scheduledHrs += sch;
-      byOfficer[name].scheduledPay += sch * rate;
-      byOfficer[name].chargeRevenue += sch * shiftChargeRate;
-      byOfficer[name].shiftIds.push(s.id);
-      if (s.status === 'COMPLETED' || s.status === 'ACTIVE') {
-        const actual = calcActualHours(s);
-        byOfficer[name].actualHrs += actual;
-        byOfficer[name].actualPay += actual * rate;
+      const cr = parseFloat(s.charge_rate) || siteChargeRate;
+      const h = calcScheduledHours(s);
+      const bh = s.shift_type === 'bank_holiday';
+      byOfficer[name].hours += h;
+      byOfficer[name].basePay += h * rate;
+      byOfficer[name].baseCharge += h * cr;
+      if (bh) {
+        byOfficer[name].bhPremiumPay += h * rate;
+        byOfficer[name].bhPremiumCharge += h * cr;
       }
     });
-    // Calculate avg charge rate per officer
-    Object.values(byOfficer).forEach(o => { o.avgChargeRate = o.scheduledHrs > 0 ? o.chargeRevenue / o.scheduledHrs : 0; });
 
-    const scheduledHrs = Object.values(byOfficer).reduce((t, o) => t + o.scheduledHrs, 0);
-    const actualHrs = Object.values(byOfficer).reduce((t, o) => t + o.actualHrs, 0);
-    const actualPay = Object.values(byOfficer).reduce((t, o) => t + o.actualPay, 0);
-    const chargeRevenue = Object.values(byOfficer).reduce((t, o) => t + o.chargeRevenue, 0);
+    const hours = Object.values(byOfficer).reduce((t, o) => t + o.hours, 0);
+    const basePay = Object.values(byOfficer).reduce((t, o) => t + o.basePay, 0);
+    const bhPremiumPay = Object.values(byOfficer).reduce((t, o) => t + o.bhPremiumPay, 0);
+    const baseCharge = Object.values(byOfficer).reduce((t, o) => t + o.baseCharge, 0);
+    const bhPremiumCharge = Object.values(byOfficer).reduce((t, o) => t + o.bhPremiumCharge, 0);
 
     const siteProducts = products.filter(p => p.site_id === site.id);
     let productCost = 0, productCharge = 0;
     siteProducts.forEach(p => { const m = productMonthly(p, periodDays); productCost += m.cost; productCharge += m.charge; });
 
-    grandScheduled += scheduledHrs;
-    grandActualHrs += actualHrs; grandActualPay += actualPay;
-    grandCharge += chargeRevenue + productCharge;
+    grandHrs += hours;
+    grandBasePay += basePay; grandBhPremiumPay += bhPremiumPay;
+    grandBaseCharge += baseCharge; grandBhPremiumCharge += bhPremiumCharge;
     grandProductCost += productCost; grandProductCharge += productCharge;
-    return { site, byOfficer, scheduledHrs, actualHrs, actualPay, chargeRevenue, chargeRate, contractedWeekly, siteProducts, productCost, productCharge, shiftCount: ss.length };
+    return { site, byOfficer, hours, basePay, bhPremiumPay, baseCharge, bhPremiumCharge, siteProducts, productCost, productCharge, shiftCount: ss.length };
   }).filter(r => r.shiftCount > 0 || products.some(p => p.site_id === r.site.id));
 
-  const grandTotalCost = grandActualPay + grandProductCost;
-  const grandTotalRevenue = grandCharge;
-  const grandMargin = grandTotalRevenue - grandTotalCost;
-  const marginPct = grandTotalRevenue > 0 ? (grandMargin / grandTotalRevenue * 100).toFixed(1) : '0.0';
+  const grandTotalPay = grandBasePay + grandBhPremiumPay;
+  const grandTotalCharge = grandBaseCharge + grandBhPremiumCharge + grandProductCharge;
+  const grandTotalCost = grandTotalPay + grandProductCost;
+  const grandMargin = grandTotalCharge - grandTotalCost;
+  const marginPct = grandTotalCharge > 0 ? (grandMargin / grandTotalCharge * 100).toFixed(1) : '0.0';
 
   if (!isFD) return <div className="page-content"><div className="alert alert-danger">Access restricted to Field Directors</div></div>;
 
@@ -241,30 +231,26 @@ function ProfitLoss({ user }) {
           <>
             {/* Grand Totals — always visible at top */}
             <div className="card" style={{padding:'1rem',borderLeft:'3px solid #10b981',background:'rgba(16,185,129,0.03)'}}>
-              {(() => { const gv = grandActualHrs - grandScheduled; return (
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr 1fr',gap:'1.25rem',fontSize:'0.9375rem'}}>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:'1.25rem',fontSize:'0.9375rem'}}>
                 <div>
-                  <div style={{color:'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem'}}>Set Hours</div>
-                  <div style={{fontWeight:700,fontSize:'1.25rem',color:'#3b82f6'}}>{grandScheduled.toFixed(1)}h</div>
+                  <div style={{color:'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem'}}>Hours</div>
+                  <div style={{fontWeight:700,fontSize:'1.25rem',color:'#3b82f6'}}>{grandHrs.toFixed(1)}h</div>
                 </div>
                 <div>
-                  <div style={{color:'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem'}}>Actual Hours</div>
-                  <div style={{fontWeight:700,fontSize:'1.25rem'}}>{grandActualHrs.toFixed(1)}h</div>
+                  <div style={{color:'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem'}}>Total Pay</div>
+                  <div style={{fontWeight:700,fontSize:'1.25rem',color:'#f59e0b'}}>{fmt(grandTotalPay)}</div>
+                  {grandBhPremiumPay > 0 && <div style={{fontSize:'0.6875rem',color:'#dc2626',fontWeight:600,marginTop:'2px'}}>incl. {fmt(grandBhPremiumPay)} BH premium</div>}
                 </div>
                 <div>
-                  <div style={{color:'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem'}}>Variance</div>
-                  <div style={{fontWeight:700,fontSize:'1.25rem',color: gv === 0 ? 'var(--text-3)' : gv > 0 ? '#3b82f6' : '#ef4444'}}>{grandActualHrs > 0 ? `${gv > 0 ? '+' : ''}${gv.toFixed(1)}h` : '—'}</div>
-                </div>
-                <div>
-                  <div style={{color:'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem'}}>Actual Pay</div>
-                  <div style={{fontWeight:700,fontSize:'1.25rem',color:'#f59e0b'}}>{fmt(grandActualPay)}</div>
+                  <div style={{color:'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem'}}>Revenue</div>
+                  <div style={{fontWeight:700,fontSize:'1.25rem',color:'#10b981'}}>{fmt(grandTotalCharge)}</div>
+                  {grandBhPremiumCharge > 0 && <div style={{fontSize:'0.6875rem',color:'#dc2626',fontWeight:600,marginTop:'2px'}}>incl. {fmt(grandBhPremiumCharge)} BH surcharge</div>}
                 </div>
                 <div>
                   <div style={{color:'var(--text-3)',fontSize:'0.6875rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem'}}>Gross Profit</div>
                   <div style={{fontWeight:700,fontSize:'1.25rem',color: grandMargin >= 0 ? '#10b981' : '#ef4444'}}>{fmt(grandMargin)} <span style={{fontSize:'0.8125rem',fontWeight:600}}>({marginPct}%)</span></div>
                 </div>
               </div>
-              ); })()}
             </div>
 
             {/* Site search */}
@@ -279,8 +265,7 @@ function ProfitLoss({ user }) {
                 <thead>
                   <tr>
                     <th style={{padding:'0.75rem 1rem'}}>Site</th>
-                    <th style={{textAlign:'right',padding:'0.75rem 0.5rem'}}>Set Hrs</th>
-                    <th style={{textAlign:'right',padding:'0.75rem 0.5rem'}}>Actual</th>
+                    <th style={{textAlign:'right',padding:'0.75rem 0.5rem'}}>Hours</th>
                     <th style={{textAlign:'right',padding:'0.75rem 0.5rem'}}>Pay</th>
                     <th style={{textAlign:'right',padding:'0.75rem 0.5rem'}}>Revenue</th>
                     <th style={{textAlign:'right',padding:'0.75rem 0.5rem'}}>Profit</th>
@@ -288,11 +273,12 @@ function ProfitLoss({ user }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {siteRows.filter(r => !siteSearch || r.site.name.toLowerCase().includes(siteSearch.toLowerCase())).map(({ site, byOfficer, scheduledHrs, actualHrs, actualPay, chargeRevenue, chargeRate, contractedWeekly, siteProducts, productCost, productCharge }) => {
-                    const totalRevenue = chargeRevenue + productCharge;
-                    const totalCost = actualPay + productCost;
-                    const profit = totalRevenue - totalCost;
-                    const margin = totalRevenue > 0 ? (profit / totalRevenue * 100).toFixed(1) : '0.0';
+                  {siteRows.filter(r => !siteSearch || r.site.name.toLowerCase().includes(siteSearch.toLowerCase())).map(({ site, byOfficer, hours, basePay, bhPremiumPay, baseCharge, bhPremiumCharge, siteProducts, productCost, productCharge }) => {
+                    const totalPay = basePay + bhPremiumPay;
+                    const totalCharge = baseCharge + bhPremiumCharge + productCharge;
+                    const totalCost = totalPay + productCost;
+                    const profit = totalCharge - totalCost;
+                    const margin = totalCharge > 0 ? (profit / totalCharge * 100).toFixed(1) : '0.0';
                     const isExpanded = expandedSite === site.id;
                     return (
                       <React.Fragment key={site.id}>
@@ -300,31 +286,32 @@ function ProfitLoss({ user }) {
                           <td style={{padding:'0.625rem 1rem',fontWeight:600}}>
                             <span style={{color: isExpanded ? '#8b5cf6' : 'var(--text)',marginRight:'0.375rem'}}>{isExpanded ? '▾' : '▸'}</span>
                             {site.name}
+                            {bhPremiumPay > 0 && <span style={{fontSize:'0.6875rem',color:'#dc2626',fontWeight:700,marginLeft:'0.5rem'}}>BH</span>}
                           </td>
-                          <td style={{textAlign:'right',padding:'0.625rem 0.5rem'}}>{scheduledHrs.toFixed(1)}</td>
-                          <td style={{textAlign:'right',padding:'0.625rem 0.5rem',color: actualHrs > 0 ? 'var(--text)' : 'var(--text-3)'}}>{actualHrs.toFixed(1)}</td>
-                          <td style={{textAlign:'right',padding:'0.625rem 0.5rem',color:'#f59e0b'}}>{fmt(actualPay)}</td>
-                          <td style={{textAlign:'right',padding:'0.625rem 0.5rem',color:'#10b981'}}>{fmt(totalRevenue)}</td>
+                          <td style={{textAlign:'right',padding:'0.625rem 0.5rem'}}>{hours.toFixed(1)}</td>
+                          <td style={{textAlign:'right',padding:'0.625rem 0.5rem',color:'#f59e0b'}}>{fmt(totalPay)}{bhPremiumPay > 0 && <div style={{fontSize:'0.625rem',color:'#dc2626',fontWeight:600}}>+{fmt(bhPremiumPay)} BH</div>}</td>
+                          <td style={{textAlign:'right',padding:'0.625rem 0.5rem',color:'#10b981'}}>{fmt(totalCharge)}{bhPremiumCharge > 0 && <div style={{fontSize:'0.625rem',color:'#dc2626',fontWeight:600}}>+{fmt(bhPremiumCharge)} BH</div>}</td>
                           <td style={{textAlign:'right',padding:'0.625rem 0.5rem',fontWeight:700,color: profit >= 0 ? '#10b981' : '#ef4444'}}>{fmt(profit)}</td>
                           <td style={{textAlign:'right',padding:'0.625rem 1rem',fontWeight:600,color: profit >= 0 ? '#10b981' : '#ef4444'}}>{margin}%</td>
                         </tr>
                         {isExpanded && (
-                          <tr><td colSpan={7} style={{padding:0,background:'rgba(139,92,246,0.02)'}}>
+                          <tr><td colSpan={6} style={{padding:0,background:'rgba(139,92,246,0.02)'}}>
                             <div style={{padding:'1rem 1.5rem',borderTop:'1px solid var(--border)'}}>
                               {/* Officer breakdown */}
                               <table className="table" style={{marginBottom:'0.75rem',fontSize:'0.8125rem'}}>
-                                <thead><tr><th>Officer</th><th style={{textAlign:'right'}}>Set Hrs</th><th style={{textAlign:'right'}}>Actual</th><th style={{textAlign:'right'}}>Pay Rate</th><th style={{textAlign:'right'}}>Charge Rate</th><th style={{textAlign:'right'}}>Profit</th></tr></thead>
+                                <thead><tr><th>Officer</th><th style={{textAlign:'right'}}>Hours</th><th style={{textAlign:'right'}}>Base Pay</th><th style={{textAlign:'right'}}>BH Premium</th><th style={{textAlign:'right'}}>Total Pay</th><th style={{textAlign:'right'}}>Profit</th></tr></thead>
                                 <tbody>
-                                  {Object.entries(byOfficer).sort((a,b) => b[1].scheduledHrs - a[1].scheduledHrs).map(([name, o]) => {
-                                    const avgPayRate = o.actualHrs > 0 ? o.actualPay / o.actualHrs : (o.scheduledHrs > 0 ? o.scheduledPay / o.scheduledHrs : 0);
-                                    const gp = o.chargeRevenue - o.actualPay;
+                                  {Object.entries(byOfficer).sort((a,b) => b[1].hours - a[1].hours).map(([name, o]) => {
+                                    const totalOfficerPay = o.basePay + o.bhPremiumPay;
+                                    const totalOfficerCharge = o.baseCharge + o.bhPremiumCharge;
+                                    const gp = totalOfficerCharge - totalOfficerPay;
                                     return (
                                       <tr key={name}>
                                         <td style={{fontWeight:500}}>{name}</td>
-                                        <td style={{textAlign:'right'}}>{o.scheduledHrs.toFixed(1)}</td>
-                                        <td style={{textAlign:'right'}}>{o.actualHrs.toFixed(1)}</td>
-                                        <td style={{textAlign:'right',color:'#f59e0b'}}>£{avgPayRate.toFixed(2)}</td>
-                                        <td style={{textAlign:'right',color:'#10b981'}}>£{o.avgChargeRate.toFixed(2)}</td>
+                                        <td style={{textAlign:'right'}}>{o.hours.toFixed(1)}</td>
+                                        <td style={{textAlign:'right',color:'#f59e0b'}}>{fmt(o.basePay)}</td>
+                                        <td style={{textAlign:'right',color: o.bhPremiumPay > 0 ? '#dc2626' : 'var(--text-3)',fontWeight: o.bhPremiumPay > 0 ? 600 : 400}}>{o.bhPremiumPay > 0 ? fmt(o.bhPremiumPay) : '—'}</td>
+                                        <td style={{textAlign:'right',fontWeight:600}}>{fmt(totalOfficerPay)}</td>
                                         <td style={{textAlign:'right',fontWeight:700,color: gp >= 0 ? '#10b981' : '#ef4444'}}>{fmt(gp)}</td>
                                       </tr>
                                     );
@@ -388,7 +375,7 @@ function ProfitLoss({ user }) {
 
             {siteRows.length === 0 && <div className="empty-state"><p>No shifts for this period</p></div>}
 
-            {shifts.length > 0 && grandCharge === 0 && (
+            {shifts.length > 0 && grandTotalCharge === 0 && (
               <div className="alert alert-warning" style={{marginTop:'1rem'}}>
                 No charge rates set. Enter charge rates above to see revenue and margin.
               </div>
