@@ -512,8 +512,6 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
         {weeks.map((week, wi) => {
           const weekShifts = week.filter(Boolean).flatMap(d => shiftsForDay(d));
           const weekHours = weekShifts.reduce((t, s) => t + shiftHours(s), 0);
-          const weekPayCost = weekShifts.reduce((t, s) => t + shiftHours(s) * (parseFloat(s.pay_rate) || 0), 0);
-          const weekChargeRev = weekShifts.reduce((t, s) => t + shiftHours(s) * (parseFloat(s.charge_rate) || 0), 0);
           return (<React.Fragment key={wi}>
           <div style={{display:'grid',gridTemplateColumns:'repeat(7, minmax(120px, 1fr))',gap:'1px',background:'var(--border)'}}>
             {week.map((d, di) => {
