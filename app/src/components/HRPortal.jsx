@@ -1275,7 +1275,7 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
   const [shiftsError, setShiftsError] = useState('');
   useEffect(() => {
     setShiftsLoading(true); setShiftsError('');
-    api.shifts.list({ status: 'COMPLETED' })
+    api.shifts.list({})
       .then(res => {
         const data = res.data || [];
         setShifts(data);
