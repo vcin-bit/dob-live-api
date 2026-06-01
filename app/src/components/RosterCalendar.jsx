@@ -595,129 +595,104 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
               );
             })}
           </div>
-          {/* Weekly summary table */}
-          {weekHours > 0 && canSeePay(user?.role) && (() => {
-            const byOfficer = {};
-            weekShifts.forEach(s => {
-              const name = s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unassigned';
-              if (!byOfficer[name]) byOfficer[name] = { hours: 0, bhHours: 0, basePay: 0, bhPremium: 0, bhSlots: [] };
-              const h = shiftHours(s);
-              const rate = parseFloat(s.pay_rate) || 0;
-              const details = calcBhDetail(s, bhDates);
-              byOfficer[name].hours += h;
-              byOfficer[name].basePay += h * rate;
-              details.forEach(d => {
-                byOfficer[name].bhHours += d.hours;
-                byOfficer[name].bhPremium += d.hours * rate;
-                byOfficer[name].bhSlots.push(d);
-              });
-            });
-            const rows = Object.entries(byOfficer).sort((a,b) => b[1].basePay - a[1].basePay);
-            const totH = rows.reduce((t,[,o]) => t + o.hours, 0);
-            const totBhH = rows.reduce((t,[,o]) => t + o.bhHours, 0);
-            const totPay = rows.reduce((t,[,o]) => t + o.basePay, 0);
-            const totBhP = rows.reduce((t,[,o]) => t + o.bhPremium, 0);
-            const tS = {padding:'3px 6px',whiteSpace:'nowrap',fontSize:'0.6875rem'};
-            const thS = {...tS,fontWeight:700,color:'var(--text-3)',textTransform:'uppercase',letterSpacing:'0.03em',borderBottom:'1px solid var(--border)'};
-            return (
-              <div style={{background:'var(--surface-2)',padding:'0.375rem',fontSize:'0.75rem',color:'var(--text-2)',overflowX:'auto'}}>
-                <table style={{width:'100%',borderCollapse:'collapse'}}>
-                  <thead><tr>
-                    <th style={{...thS,textAlign:'left'}}>Officer</th>
-                    <th style={{...thS,textAlign:'right'}}>Hours</th>
-                    <th style={{...thS,textAlign:'left'}}>BH Hours</th>
-                    <th style={{...thS,textAlign:'right'}}>Pay</th>
-                    <th style={{...thS,textAlign:'right',color:'#dc2626'}}>BH Prem</th>
-                  </tr></thead>
-                  <tbody>
-                    {rows.map(([name, o]) => (
-                      <tr key={name}>
-                        <td style={{...tS,fontWeight:500}}>{name}</td>
-                        <td style={{...tS,textAlign:'right'}}>{o.hours.toFixed(1)}</td>
-                        <td style={{...tS,color: o.bhHours > 0 ? '#dc2626' : 'var(--text-3)'}}>
-                          {o.bhHours > 0 ? <>{o.bhHours.toFixed(1)}h <span style={{color:'var(--text-3)',fontSize:'0.625rem'}}>{o.bhSlots.map(d => `${fmtBhDate(d.date)} ${d.from}-${d.to}`).join(', ')}</span></> : '—'}
-                        </td>
-                        <td style={{...tS,textAlign:'right',color:'#f59e0b',fontWeight:600}}>£{o.basePay.toFixed(2)}</td>
-                        <td style={{...tS,textAlign:'right',color: o.bhPremium > 0 ? '#dc2626' : 'var(--text-3)',fontWeight:600}}>{o.bhPremium > 0 ? `£${o.bhPremium.toFixed(2)}` : '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot><tr style={{borderTop:'1.5px solid var(--border)'}}>
-                    <td style={{...tS,fontWeight:700}}>Total</td>
-                    <td style={{...tS,textAlign:'right',fontWeight:700}}>{totH.toFixed(1)}</td>
-                    <td style={{...tS,fontWeight:700,color: totBhH > 0 ? '#dc2626' : 'var(--text-3)'}}>{totBhH > 0 ? `${totBhH.toFixed(1)}h` : '—'}</td>
-                    <td style={{...tS,textAlign:'right',fontWeight:700,color:'#f59e0b'}}>£{totPay.toFixed(2)}</td>
-                    <td style={{...tS,textAlign:'right',fontWeight:700,color:'#dc2626'}}>{totBhP > 0 ? `£${totBhP.toFixed(2)}` : '—'}</td>
-                  </tr></tfoot>
-                </table>
-              </div>
-            );
-          })()}
+          {/* Weekly summary */}
+          {weekHours > 0 && canSeePay(user?.role) && <PaySummary shifts={weekShifts} bhDates={bhDates} />}
           </React.Fragment>);
         })}
-        {/* Monthly summary table */}
+        {/* Monthly summary */}
         {isCompact && canSeePay(user?.role) && (() => {
           const monthShifts = days.filter(d => d.getMonth() === anchorMonth && d.getFullYear() === anchorYear).flatMap(d => shiftsForDay(d));
-          if (!monthShifts.length) return null;
-          const byOfficer = {};
-          monthShifts.forEach(s => {
-            const name = s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unassigned';
-            if (!byOfficer[name]) byOfficer[name] = { hours: 0, bhHours: 0, basePay: 0, bhPremium: 0, bhSlots: [] };
-            const h = shiftHours(s);
-            const rate = parseFloat(s.pay_rate) || 0;
-            const details = calcBhDetail(s, bhDates);
-            byOfficer[name].hours += h;
-            byOfficer[name].basePay += h * rate;
-            details.forEach(d => {
-              byOfficer[name].bhHours += d.hours;
-              byOfficer[name].bhPremium += d.hours * rate;
-              byOfficer[name].bhSlots.push(d);
-            });
-          });
-          const rows = Object.entries(byOfficer).sort((a,b) => b[1].basePay - a[1].basePay);
-          const totH = rows.reduce((t,[,o]) => t + o.hours, 0);
-          const totBhH = rows.reduce((t,[,o]) => t + o.bhHours, 0);
-          const totPay = rows.reduce((t,[,o]) => t + o.basePay, 0);
-          const totBhP = rows.reduce((t,[,o]) => t + o.bhPremium, 0);
-          const tS = {padding:'4px 8px',whiteSpace:'nowrap',fontSize:'0.75rem'};
-          const thS = {...tS,fontWeight:700,color:'var(--text-3)',textTransform:'uppercase',letterSpacing:'0.03em',borderBottom:'1px solid var(--border)',fontSize:'0.6875rem'};
-          return (
-            <div style={{background:'var(--surface-2)',borderRadius:'0 0 8px 8px',padding:'0.75rem',fontSize:'0.8125rem',color:'var(--text-2)',marginTop:'1px',overflowX:'auto'}}>
-              <div style={{fontWeight:700,color:'var(--text)',marginBottom:'0.5rem',fontSize:'0.875rem'}}>Monthly Pay Summary</div>
-              <table style={{width:'100%',borderCollapse:'collapse'}}>
-                <thead><tr>
-                  <th style={{...thS,textAlign:'left'}}>Officer</th>
-                  <th style={{...thS,textAlign:'right'}}>Hours</th>
-                  <th style={{...thS,textAlign:'left'}}>BH Hours</th>
-                  <th style={{...thS,textAlign:'right'}}>Pay</th>
-                  <th style={{...thS,textAlign:'right',color:'#dc2626'}}>BH Prem</th>
-                </tr></thead>
-                <tbody>
-                  {rows.map(([name, o]) => (
-                    <tr key={name} style={{borderBottom:'1px solid var(--border)'}}>
-                      <td style={{...tS,fontWeight:500}}>{name}</td>
-                      <td style={{...tS,textAlign:'right'}}>{o.hours.toFixed(1)}</td>
-                      <td style={{...tS,color: o.bhHours > 0 ? '#dc2626' : 'var(--text-3)'}}>
-                        {o.bhHours > 0 ? <>{o.bhHours.toFixed(1)}h <span style={{color:'var(--text-3)',fontSize:'0.625rem'}}>{o.bhSlots.map(d => `${fmtBhDate(d.date)} ${d.from}-${d.to}`).join(', ')}</span></> : '—'}
-                      </td>
-                      <td style={{...tS,textAlign:'right',color:'#f59e0b',fontWeight:600}}>£{o.basePay.toFixed(2)}</td>
-                      <td style={{...tS,textAlign:'right',color: o.bhPremium > 0 ? '#dc2626' : 'var(--text-3)',fontWeight:600}}>{o.bhPremium > 0 ? `£${o.bhPremium.toFixed(2)}` : '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot><tr>
-                  <td style={{...tS,fontWeight:700,paddingTop:'6px'}}>Total</td>
-                  <td style={{...tS,textAlign:'right',fontWeight:700,paddingTop:'6px'}}>{totH.toFixed(1)}</td>
-                  <td style={{...tS,fontWeight:700,color: totBhH > 0 ? '#dc2626' : 'var(--text-3)',paddingTop:'6px'}}>{totBhH > 0 ? `${totBhH.toFixed(1)}h` : '—'}</td>
-                  <td style={{...tS,textAlign:'right',fontWeight:700,color:'#f59e0b',paddingTop:'6px'}}>£{totPay.toFixed(2)}</td>
-                  <td style={{...tS,textAlign:'right',fontWeight:700,color:'#dc2626',paddingTop:'6px'}}>{totBhP > 0 ? `£${totBhP.toFixed(2)}` : '—'}</td>
-                </tr></tfoot>
-              </table>
-            </div>
-          );
+          return monthShifts.length > 0 ? <PaySummary shifts={monthShifts} bhDates={bhDates} title="Monthly Pay Summary" /> : null;
         })()}
       </div>
       <style>{`@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }`}</style>
+    </div>
+  );
+}
+
+// ── Pay Summary (columnar: officers as columns, metrics as rows) ────────────
+
+function PaySummary({ shifts, bhDates, title }) {
+  const byOfficer = {};
+  shifts.forEach(s => {
+    const first = s.officer?.first_name || '?';
+    const last = s.officer?.last_name || '';
+    const key = `${first} ${last}`.trim();
+    if (!byOfficer[key]) byOfficer[key] = { first, hours: 0, bhHours: 0, basePay: 0, bhPremium: 0, rates: [] };
+    const h = shiftHours(s);
+    const rate = parseFloat(s.pay_rate) || 0;
+    const details = calcBhDetail(s, bhDates);
+    byOfficer[key].hours += h;
+    byOfficer[key].basePay += h * rate;
+    if (rate > 0) byOfficer[key].rates.push(rate);
+    details.forEach(d => {
+      byOfficer[key].bhHours += d.hours;
+      byOfficer[key].bhPremium += d.hours * rate;
+    });
+  });
+  const cols = Object.entries(byOfficer).sort((a,b) => b[1].basePay - a[1].basePay);
+  if (cols.length === 0) return null;
+  const totH = cols.reduce((t,[,o]) => t + o.hours, 0);
+  const totBhH = cols.reduce((t,[,o]) => t + o.bhHours, 0);
+  const totPay = cols.reduce((t,[,o]) => t + o.basePay, 0);
+  const totBhP = cols.reduce((t,[,o]) => t + o.bhPremium, 0);
+  const f = n => `£${n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+  const avgRate = o => { const r = o.rates.filter(Boolean); return r.length ? r.reduce((a,b)=>a+b,0)/r.length : 0; };
+
+  const lbl = {padding:'4px 0',fontSize:'0.6875rem',color:'var(--text-3)',fontWeight:600,whiteSpace:'nowrap'};
+  const val = {padding:'4px 6px',fontSize:'0.75rem',textAlign:'right',whiteSpace:'nowrap',fontWeight:500};
+
+  return (
+    <div style={{background:'var(--surface-2)',borderRadius: title ? '0 0 8px 8px' : '0',padding:'0.5rem 0.625rem',marginTop: title ? '1px' : '0',overflowX:'auto'}}>
+      {title && <div style={{fontWeight:700,color:'var(--text)',marginBottom:'0.5rem',fontSize:'0.875rem'}}>{title}</div>}
+      <table style={{width:'100%',borderCollapse:'collapse'}}>
+        <thead><tr>
+          <th style={{...lbl,textAlign:'left',borderBottom:'1px solid var(--border)',paddingBottom:'6px'}} />
+          {cols.map(([name, o]) => <th key={name} style={{...val,fontWeight:700,color:'var(--text)',borderBottom:'1px solid var(--border)',paddingBottom:'6px',minWidth:'70px'}}>{o.first}</th>)}
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td style={lbl}>Regular Hours</td>
+            {cols.map(([name, o]) => <td key={name} style={val}>{(o.hours - o.bhHours).toFixed(1)}h</td>)}
+          </tr>
+          {totBhH > 0 && <tr>
+            <td style={{...lbl,color:'#dc2626'}}>BH Hours</td>
+            {cols.map(([name, o]) => <td key={name} style={{...val,color: o.bhHours > 0 ? '#dc2626' : 'var(--text-3)'}}>{o.bhHours > 0 ? `${o.bhHours.toFixed(1)}h` : '—'}</td>)}
+          </tr>}
+          <tr>
+            <td style={{...lbl,fontWeight:700,color:'var(--text)'}}>Total Hours</td>
+            {cols.map(([name, o]) => <td key={name} style={{...val,fontWeight:700}}>{o.hours.toFixed(1)}h</td>)}
+          </tr>
+          <tr><td colSpan={cols.length + 1} style={{borderTop:'1px solid var(--border)',padding:0,height:'4px'}} /></tr>
+          <tr>
+            <td style={lbl}>Hourly Rate</td>
+            {cols.map(([name, o]) => <td key={name} style={val}>£{avgRate(o).toFixed(2)}</td>)}
+          </tr>
+          <tr>
+            <td style={{...lbl,color:'#f59e0b'}}>Base Pay</td>
+            {cols.map(([name, o]) => <td key={name} style={{...val,color:'#f59e0b',fontWeight:600}}>{f(o.basePay)}</td>)}
+          </tr>
+          {totBhP > 0 && <tr>
+            <td style={{...lbl,color:'#dc2626'}}>BH Premium</td>
+            {cols.map(([name, o]) => <td key={name} style={{...val,color: o.bhPremium > 0 ? '#dc2626' : 'var(--text-3)',fontWeight:600}}>{o.bhPremium > 0 ? f(o.bhPremium) : '—'}</td>)}
+          </tr>}
+          <tr>
+            <td style={{...lbl,fontWeight:700,color:'var(--text)',borderTop:'1px solid var(--border)',paddingTop:'6px'}}>Total Pay</td>
+            {cols.map(([name, o]) => <td key={name} style={{...val,fontWeight:700,color:'#10b981',borderTop:'1px solid var(--border)',paddingTop:'6px'}}>{f(o.basePay + o.bhPremium)}</td>)}
+          </tr>
+        </tbody>
+      </table>
+      {/* Grand totals */}
+      <div style={{borderTop:'2px solid var(--border)',marginTop:'8px',paddingTop:'8px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:'4px 12px',fontSize:'0.6875rem'}}>
+        <div style={{display:'flex',justifyContent:'space-between'}}><span style={{color:'var(--text-3)',fontWeight:600}}>Regular Hours</span><span style={{fontWeight:700}}>{(totH - totBhH).toFixed(1)}h</span></div>
+        <div style={{display:'flex',justifyContent:'space-between'}}><span style={{color:'var(--text-3)',fontWeight:600}}>Base Pay</span><span style={{fontWeight:700,color:'#f59e0b'}}>{f(totPay)}</span></div>
+        {totBhH > 0 && <div style={{display:'flex',justifyContent:'space-between'}}><span style={{color:'#dc2626',fontWeight:600}}>BH Hours</span><span style={{fontWeight:700,color:'#dc2626'}}>{totBhH.toFixed(1)}h</span></div>}
+        {totBhP > 0 && <div style={{display:'flex',justifyContent:'space-between'}}><span style={{color:'#dc2626',fontWeight:600}}>BH Premium</span><span style={{fontWeight:700,color:'#dc2626'}}>{f(totBhP)}</span></div>}
+        <div style={{gridColumn:'1/-1',display:'flex',justifyContent:'space-between',borderTop:'1px solid var(--border)',paddingTop:'6px',marginTop:'4px'}}>
+          <span style={{fontWeight:700,color:'var(--text)',fontSize:'0.75rem'}}>GRAND TOTAL</span>
+          <span style={{fontWeight:700,color:'#10b981',fontSize:'0.75rem'}}>{totH.toFixed(1)}h · {f(totPay + totBhP)}</span>
+        </div>
+      </div>
     </div>
   );
 }
