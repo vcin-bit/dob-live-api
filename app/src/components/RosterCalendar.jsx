@@ -598,23 +598,27 @@ function PaySummary({ shifts, title }) {
   const totBhH = rows.reduce((t,[,o]) => t + o.bhHours, 0);
   const totPay = rows.reduce((t,[,o]) => t + o.pay, 0);
   const f = n => `£${n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
-  const r = {display:'grid',gridTemplateColumns:'1fr auto auto',gap:'0 0.75rem',alignItems:'baseline',padding:'3px 0.75rem'};
+  const td = {padding:'3px 6px',whiteSpace:'nowrap',fontSize:'0.75rem'};
 
   return (
-    <div style={{background:'var(--surface-2)',borderRadius: title ? '0 0 8px 8px' : '0',padding:'0.5rem 0',marginTop: title ? '1px' : '0',fontSize:'0.75rem',color:'var(--text-2)'}}>
-      {title && <div style={{fontWeight:700,color:'var(--text)',marginBottom:'0.375rem',fontSize:'0.875rem',padding:'0 0.75rem'}}>{title}</div>}
-      {rows.map(([name, o]) => (
-        <div key={name} style={r}>
-          <span style={{textAlign:'right',fontWeight:600,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{name}</span>
-          <span style={{whiteSpace:'nowrap',textAlign:'right'}}>{o.hours.toFixed(0)}h{o.bhHours > 0 && <span style={{color:'#dc2626'}}> + {o.bhHours.toFixed(0)}h BH</span>}</span>
-          <span style={{whiteSpace:'nowrap',textAlign:'right',fontWeight:700,color:'#f59e0b',minWidth:'55px'}}>{f(o.pay)}</span>
-        </div>
-      ))}
-      <div style={{...r,borderTop:'1.5px solid var(--border)',marginTop:'4px',paddingTop:'6px',fontWeight:700,fontSize:'0.8125rem'}}>
-        <span style={{textAlign:'right',color:'var(--text)'}}>Total</span>
-        <span style={{whiteSpace:'nowrap',textAlign:'right'}}>{totH.toFixed(0)}h{totBhH > 0 && <span style={{color:'#dc2626'}}> + {totBhH.toFixed(0)}h BH</span>}</span>
-        <span style={{whiteSpace:'nowrap',textAlign:'right',color:'#10b981',minWidth:'55px'}}>{f(totPay)}</span>
-      </div>
+    <div style={{background:'var(--surface-2)',borderRadius: title ? '0 0 8px 8px' : '0',padding:'0.5rem 0.5rem',marginTop: title ? '1px' : '0',fontSize:'0.75rem',color:'var(--text-2)',overflowX:'auto'}}>
+      {title && <div style={{fontWeight:700,color:'var(--text)',marginBottom:'0.375rem',fontSize:'0.875rem',padding:'0 2px'}}>{title}</div>}
+      <table style={{width:'100%',borderCollapse:'collapse'}}>
+        <tbody>
+          {rows.map(([name, o]) => (
+            <tr key={name}>
+              <td style={{...td,fontWeight:600,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',maxWidth:0}}>{name}</td>
+              <td style={{...td,textAlign:'right'}}>{o.hours.toFixed(0)}h{o.bhHours > 0 && <span style={{color:'#dc2626'}}> + {o.bhHours.toFixed(0)}h BH</span>}</td>
+              <td style={{...td,textAlign:'right',fontWeight:700,color:'#f59e0b'}}>{f(o.pay)}</td>
+            </tr>
+          ))}
+          <tr style={{borderTop:'1.5px solid var(--border)'}}>
+            <td style={{...td,fontWeight:700,color:'var(--text)',paddingTop:'6px'}}>Total</td>
+            <td style={{...td,textAlign:'right',fontWeight:700,paddingTop:'6px'}}>{totH.toFixed(0)}h{totBhH > 0 && <span style={{color:'#dc2626'}}> + {totBhH.toFixed(0)}h BH</span>}</td>
+            <td style={{...td,textAlign:'right',fontWeight:700,color:'#10b981',paddingTop:'6px'}}>{f(totPay)}</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   );
 }
