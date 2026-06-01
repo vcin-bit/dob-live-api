@@ -619,26 +619,26 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
                   return (
                   <div key={name}>
                     {i > 0 && <div style={{borderTop:'1px solid var(--border)',margin:'2px 0'}} />}
-                    <div style={{display:'flex',justifyContent:'space-between',padding:'2px 0'}}>
-                      <span>{name}</span>
-                      <span>{o.hours.toFixed(1)} hrs {o.basePay > 0 ? <span style={{color:'#f59e0b'}}>· £{o.basePay.toFixed(2)}</span> : ''}</span>
+                    <div style={{display:'flex',alignItems:'baseline',padding:'2px 0',gap:'0.5rem'}}>
+                      <span style={{flex:1,textAlign:'right'}}>{name}</span>
+                      <span style={{whiteSpace:'nowrap'}}>{o.hours.toFixed(1)} hrs {o.basePay > 0 ? <span style={{color:'#f59e0b'}}>· £{o.basePay.toFixed(2)}</span> : ''}</span>
                     </div>
                     {bhDates.map(([dateStr, bh]) => (
-                      <div key={dateStr} style={{display:'flex',justifyContent:'space-between',padding:'2px 0 2px 0.5rem',color:'#dc2626'}}>
-                        <span style={{fontWeight:600}}>BH Premium ({fmtDate(dateStr)}) · {bh.hours.toFixed(1)}h</span>
-                        <span>£{bh.pay.toFixed(2)}</span>
+                      <div key={dateStr} style={{display:'flex',alignItems:'baseline',padding:'2px 0',gap:'0.5rem',color:'#dc2626'}}>
+                        <span style={{flex:1,textAlign:'right',fontWeight:600}}>BH Premium ({fmtDate(dateStr)}) · {bh.hours.toFixed(1)}h</span>
+                        <span style={{whiteSpace:'nowrap'}}>£{bh.pay.toFixed(2)}</span>
                       </div>
                     ))}
                   </div>
                   );
                 })}
-                {totalBhPremium > 0 && <div style={{display:'flex',justifyContent:'space-between',borderTop:'1px solid var(--border)',marginTop:'4px',paddingTop:'4px',fontWeight:600,color:'#dc2626'}}>
-                  <span>Total BH Premium</span>
-                  <span>£{totalBhPremium.toFixed(2)}</span>
+                {totalBhPremium > 0 && <div style={{display:'flex',alignItems:'baseline',borderTop:'1px solid var(--border)',marginTop:'4px',paddingTop:'4px',fontWeight:600,color:'#dc2626',gap:'0.5rem'}}>
+                  <span style={{flex:1,textAlign:'right'}}>Total BH Premium</span>
+                  <span style={{whiteSpace:'nowrap'}}>£{totalBhPremium.toFixed(2)}</span>
                 </div>}
-                <div style={{display:'flex',justifyContent:'space-between',borderTop:'1px solid var(--border)',marginTop:'4px',paddingTop:'4px',fontWeight:700,color:'var(--text)'}}>
-                  <span>Total</span>
-                  <span>{totalHrs.toFixed(1)} hrs <span style={{color:'#f59e0b'}}>· £{(totalBasePay + totalBhPremium).toFixed(2)}</span></span>
+                <div style={{display:'flex',alignItems:'baseline',borderTop:'1px solid var(--border)',marginTop:'4px',paddingTop:'4px',fontWeight:700,color:'var(--text)',gap:'0.5rem'}}>
+                  <span style={{flex:1,textAlign:'right'}}>Total</span>
+                  <span style={{whiteSpace:'nowrap'}}>{totalHrs.toFixed(1)} hrs <span style={{color:'#f59e0b'}}>· £{(totalBasePay + totalBhPremium).toFixed(2)}</span></span>
                 </div>
               </div>
             );
@@ -697,26 +697,26 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
                 return (
                 <div key={name}>
                   {i > 0 && <div style={{borderTop:'1px solid var(--border)',margin:'4px 0'}} />}
-                  <div style={{display:'flex',justifyContent:'space-between',padding:'3px 0'}}>
-                    <span>{name}</span>
-                    <span>{o.hours.toFixed(1)} hrs {o.basePay > 0 ? <span style={{color:'#f59e0b'}}>· £{o.basePay.toFixed(2)}</span> : ''}</span>
+                  <div style={{display:'flex',alignItems:'baseline',padding:'3px 0',gap:'0.5rem'}}>
+                    <span style={{flex:1,textAlign:'right'}}>{name}</span>
+                    <span style={{whiteSpace:'nowrap'}}>{o.hours.toFixed(1)} hrs {o.basePay > 0 ? <span style={{color:'#f59e0b'}}>· £{o.basePay.toFixed(2)}</span> : ''}</span>
                   </div>
                   {bhDates.map(([dateStr, bh]) => (
-                    <div key={dateStr} style={{display:'flex',justifyContent:'space-between',padding:'3px 0 3px 0.5rem',color:'#dc2626',fontWeight:600}}>
-                      <span>BH Premium ({fmtDate(dateStr)}) · {bh.hours.toFixed(1)}h</span>
-                      <span>£{bh.pay.toFixed(2)}</span>
+                    <div key={dateStr} style={{display:'flex',alignItems:'baseline',padding:'3px 0',gap:'0.5rem',color:'#dc2626',fontWeight:600}}>
+                      <span style={{flex:1,textAlign:'right'}}>BH Premium ({fmtDate(dateStr)}) · {bh.hours.toFixed(1)}h</span>
+                      <span style={{whiteSpace:'nowrap'}}>£{bh.pay.toFixed(2)}</span>
                     </div>
                   ))}
                 </div>
                 );
               })}
-              {totalBhPremium > 0 && <div style={{display:'flex',justifyContent:'space-between',borderTop:'1px solid var(--border)',marginTop:'6px',paddingTop:'6px',fontWeight:700,color:'#dc2626',fontSize:'0.875rem'}}>
-                <span>Total BH Premium</span>
-                <span>£{totalBhPremium.toFixed(2)}</span>
+              {totalBhPremium > 0 && <div style={{display:'flex',alignItems:'baseline',borderTop:'1px solid var(--border)',marginTop:'6px',paddingTop:'6px',fontWeight:700,color:'#dc2626',fontSize:'0.875rem',gap:'0.5rem'}}>
+                <span style={{flex:1,textAlign:'right'}}>Total BH Premium</span>
+                <span style={{whiteSpace:'nowrap'}}>£{totalBhPremium.toFixed(2)}</span>
               </div>}
-              <div style={{display:'flex',justifyContent:'space-between',borderTop:'1px solid var(--border)',marginTop:'4px',paddingTop:'4px',fontWeight:700,color:'var(--text)',fontSize:'0.875rem'}}>
-                <span>Total pay this month</span>
-                <span>{totalHrs.toFixed(1)} hrs <span style={{color:'#f59e0b'}}>· £{(totalBasePay + totalBhPremium).toFixed(2)}</span></span>
+              <div style={{display:'flex',alignItems:'baseline',borderTop:'1px solid var(--border)',marginTop:'4px',paddingTop:'4px',fontWeight:700,color:'var(--text)',fontSize:'0.875rem',gap:'0.5rem'}}>
+                <span style={{flex:1,textAlign:'right'}}>Total pay this month</span>
+                <span style={{whiteSpace:'nowrap'}}>{totalHrs.toFixed(1)} hrs <span style={{color:'#f59e0b'}}>· £{(totalBasePay + totalBhPremium).toFixed(2)}</span></span>
               </div>
             </div>
           );
