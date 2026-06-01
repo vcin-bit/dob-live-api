@@ -587,7 +587,7 @@ function PaySummary({ shifts, title }) {
           {avg > 0 && <span style={{color:'var(--text-3)',fontSize:'0.6875rem',flexShrink:0}}>(£{avg.toFixed(2)})</span>}
           <span style={{flex:1,borderBottom:'1px dotted var(--border)',margin:'0 2px',minWidth:'8px',alignSelf:'end',marginBottom:'3px'}} />
           <span style={{whiteSpace:'nowrap',flexShrink:0,textAlign:'right'}}>
-            {(o.hours - o.bhHours).toFixed(0)}h{o.bhHours > 0 && <span style={{color:'#dc2626'}}> + {o.bhHours.toFixed(0)}h BH</span>}
+            {o.hours.toFixed(0)}h{o.bhHours > 0 && <span style={{color:'#dc2626'}}> + {o.bhHours.toFixed(0)}h BH</span>}
           </span>
           <span style={{whiteSpace:'nowrap',flexShrink:0,fontWeight:700,color:'#f59e0b',textAlign:'right',minWidth:'65px'}}>{f(o.totalPay)}</span>
         </div>
@@ -597,7 +597,7 @@ function PaySummary({ shifts, title }) {
         <span style={{fontWeight:700,color:'var(--text)',fontSize:'0.8125rem'}}>Total</span>
         <span style={{flex:1,borderBottom:'1px dotted var(--border)',margin:'0 2px',minWidth:'8px',alignSelf:'end',marginBottom:'3px'}} />
         <span style={{fontWeight:700,fontSize:'0.8125rem',whiteSpace:'nowrap'}}>
-          {(totH - totBhH).toFixed(0)}h{totBhH > 0 && <span style={{color:'#dc2626'}}> + {totBhH.toFixed(0)}h BH</span>}
+          {totH.toFixed(0)}h{totBhH > 0 && <span style={{color:'#dc2626'}}> + {totBhH.toFixed(0)}h BH</span>}
         </span>
         <span style={{fontWeight:700,fontSize:'0.8125rem',color:'#10b981',whiteSpace:'nowrap',minWidth:'65px',textAlign:'right'}}>{f(totPay)}</span>
       </div>
