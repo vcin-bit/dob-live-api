@@ -45,6 +45,55 @@ function startOfWeek(d) { const r = new Date(d); r.setDate(r.getDate() - ((r.get
 function calcScheduledHours(s) { return s.start_time && s.end_time ? Math.max(0, (new Date(s.end_time) - new Date(s.start_time)) / 3600000) : 0; }
 const fmt = n => `£${n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
 
+// UK bank holidays — midnight-based (BH runs 00:00–23:59 on these dates)
+const UK_BANK_HOLIDAYS = new Set([
+  // 2025
+  '2025-01-01','2025-04-18','2025-04-21','2025-05-05','2025-05-26','2025-08-25','2025-12-25','2025-12-26',
+  // 2026
+  '2026-01-01','2026-04-03','2026-04-06','2026-05-04','2026-05-25','2026-08-31','2026-12-25','2026-12-28',
+  // 2027
+  '2027-01-01','2027-03-26','2027-03-29','2027-05-03','2027-05-31','2027-08-30','2027-12-27','2027-12-28',
+]);
+
+// Calculate how many hours of a shift fall on a UK bank holiday.
+// Splits at midnight UK time. A shift 18:00–06:00 crossing into a BH gets 6h BH.
+function ukDateStr(date) {
+  // Get YYYY-MM-DD in Europe/London timezone
+  return date.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+}
+function ukMidnight(dateStr) {
+  // Return a Date representing 00:00 UK time for a given YYYY-MM-DD
+  // Try GMT first (+00:00), check if the UK date matches; if not, it's BST (-1hr)
+  const gmt = new Date(dateStr + 'T00:00:00+00:00');
+  if (ukDateStr(gmt) === dateStr) return gmt;
+  return new Date(dateStr + 'T00:00:00+01:00');
+}
+function calcBhHours(s) {
+  if (!s.start_time || !s.end_time) return 0;
+  const start = new Date(s.start_time);
+  const end = new Date(s.end_time);
+  if (end <= start) return 0;
+  let bhMs = 0;
+  // Get the UK calendar dates this shift spans
+  const startDate = ukDateStr(start);
+  const endDate = ukDateStr(new Date(end.getTime() - 1)); // -1ms so exact midnight doesn't spill
+  // Walk each UK calendar day
+  let d = startDate;
+  while (d <= endDate) {
+    if (UK_BANK_HOLIDAYS.has(d)) {
+      const dayStart = ukMidnight(d);
+      const dayEnd = new Date(dayStart.getTime() + 86400000);
+      const overlapStart = start > dayStart ? start : dayStart;
+      const overlapEnd = end < dayEnd ? end : dayEnd;
+      if (overlapEnd > overlapStart) bhMs += overlapEnd - overlapStart;
+    }
+    // Next day
+    const next = new Date(ukMidnight(d).getTime() + 86400000);
+    d = ukDateStr(next);
+  }
+  return bhMs / 3600000;
+}
+
 function ProfitLoss({ user }) {
   const isFD = ['FD','COMPANY','SUPER_ADMIN'].includes(user?.role);
   const [sites, setSites] = useState([]);
@@ -151,8 +200,8 @@ function ProfitLoss({ user }) {
   }
 
   // All calculations use scheduled hours only.
-  // Bank holiday premium is a separate £ cost/charge, not extra hours.
-  // A 12h BH shift: Hours=12, Base Pay=12×rate, BH Premium=12×rate, Total Pay=24×rate.
+  // Bank holiday premium is a separate £ cost — not extra hours.
+  // Overnight shifts are split at midnight: only hours falling on a BH date get premium.
   const bySite = {};
   shifts.forEach(s => { if (!bySite[s.site_id]) bySite[s.site_id] = []; bySite[s.site_id].push(s); });
 
@@ -169,13 +218,13 @@ function ProfitLoss({ user }) {
       const rate = getPayRate(s);
       const cr = parseFloat(s.charge_rate) || siteChargeRate;
       const h = calcScheduledHours(s);
-      const bh = s.shift_type === 'bank_holiday';
+      const bhH = calcBhHours(s);
       byOfficer[name].hours += h;
       byOfficer[name].basePay += h * rate;
       byOfficer[name].baseCharge += h * cr;
-      if (bh) {
-        byOfficer[name].bhPremiumPay += h * rate;
-        byOfficer[name].bhPremiumCharge += h * cr;
+      if (bhH > 0) {
+        byOfficer[name].bhPremiumPay += bhH * rate;
+        byOfficer[name].bhPremiumCharge += bhH * cr;
       }
     });
 
