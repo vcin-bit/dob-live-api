@@ -246,7 +246,7 @@ router.post('/invoice', authenticate, async (req, res, next) => {
 
       // Line items
       for (const s of shifts) {
-        if (y > 720) { doc.addPage(); y = 40; }
+        if (y > 700) { doc.addPage(); y = 40; }
         doc.fontSize(8).font('Helvetica').fillColor('#111827');
         doc.text(s.date, cols[0], y, { lineBreak: false });
         doc.text(s.site, cols[1], y, { width: 115, lineBreak: false });
@@ -256,13 +256,22 @@ router.post('/invoice', authenticate, async (req, res, next) => {
         doc.font('Helvetica-Bold').fillColor('#111827');
         doc.text(`£${s.amount}`, cols[5], y, { width: 65, align: 'right', lineBreak: false });
         y += 16;
+        if (s.bh_hours) {
+          doc.fontSize(7).font('Helvetica-Bold').fillColor('#dc2626');
+          doc.text('Bank Holiday Premium', cols[1], y, { lineBreak: false });
+          doc.text(s.bh_hours, cols[3], y, { width: 60, align: 'right', lineBreak: false });
+          doc.text(`£${s.rate}`, cols[4], y, { width: 50, align: 'right', lineBreak: false });
+          doc.text(`£${s.bh_amount}`, cols[5], y, { width: 65, align: 'right', lineBreak: false });
+          y += 14;
+        }
         doc.rect(M, y - 2, CW, 0.25).fill('#f1f5f9');
       }
 
       // Totals
       y += 8; doc.rect(M, y, CW, 1.5).fill('#0b1a3e'); y += 10;
+      const hoursLabel = totals.bh_hours ? `Total Hours: ${totals.hours} + ${totals.bh_hours} BH` : `Total Hours: ${totals.hours}`;
       doc.fontSize(9).font('Helvetica').fillColor('#6b7280')
-        .text(`Total Hours: ${totals.hours}`, M, y);
+        .text(hoursLabel, M, y);
       doc.font('Helvetica-Bold').fillColor('#0b1a3e')
         .text(`Subtotal: £${totals.subtotal}`, M + CW - 150, y, { width: 150, align: 'right' });
       y += 16;

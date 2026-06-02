@@ -1373,6 +1373,7 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
         },
         totals: {
           hours: totalHours.toFixed(2),
+          bh_hours: totalBhHours > 0 ? totalBhHours.toFixed(2) : null,
           subtotal: totalAmount.toFixed(2),
           vat: (hr?.employment_status === 'ltd_company' && form.company_vat_number) ? (totalAmount * 0.2).toFixed(2) : null,
           total: (hr?.employment_status === 'ltd_company' && form.company_vat_number) ? (totalAmount * 1.2).toFixed(2) : totalAmount.toFixed(2),
