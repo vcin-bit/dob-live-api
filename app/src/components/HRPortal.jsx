@@ -1321,7 +1321,14 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
   const selectedShifts = monthShifts.filter(s => selectedIds.has(s.id));
   const hasDisputes = Object.keys(disputedHours).some(id => disputedHours[id]?.hours && monthShifts.find(s => s.id === id));
   const totalHours = selectedShifts.reduce((sum, s) => sum + getHours(s), 0);
-  const totalAmount = selectedShifts.reduce((sum, s) => sum + (getHours(s) * (parseFloat(s.pay_rate) || 0)), 0);
+  const totalBhHours = selectedShifts.reduce((sum, s) => { const bh = parseFloat(s.bh_hours) || (s.shift_type === 'bank_holiday' ? getHours(s) : 0); return sum + bh; }, 0);
+  const totalAmount = selectedShifts.reduce((sum, s) => {
+    const h = getHours(s);
+    const rate = parseFloat(s.pay_rate) || 0;
+    const bhH = parseFloat(s.bh_hours) || (s.shift_type === 'bank_holiday' ? h : 0);
+    const bhRate = parseFloat(s.bh_pay_rate) || rate;
+    return sum + (h * rate) + (bhH * bhRate);
+  }, 0);
 
   const [invoiceSending, setInvoiceSending] = useState(false);
   const [invoiceSent, setInvoiceSent] = useState(false);
@@ -1333,14 +1340,22 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
       const invoiceData = {
         invoiceRef: ref,
         month: formatMonth(selectedMonth),
-        shifts: selectedShifts.map(s => ({
-          date: new Date(s.start_time).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}),
-          site: s.site?.name || '—',
-          times: `${new Date(s.checked_in_at||s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}–${new Date(s.checked_out_at||s.end_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}`,
-          hours: getHours(s).toFixed(2),
-          rate: (parseFloat(s.pay_rate) || 0).toFixed(2),
-          amount: (getHours(s) * (parseFloat(s.pay_rate) || 0)).toFixed(2),
-        })),
+        shifts: selectedShifts.map(s => {
+          const h = getHours(s);
+          const rate = parseFloat(s.pay_rate) || 0;
+          const bhH = parseFloat(s.bh_hours) || (s.shift_type === 'bank_holiday' ? h : 0);
+          const bhRate = parseFloat(s.bh_pay_rate) || rate;
+          return {
+            date: new Date(s.start_time).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}),
+            site: s.site?.name || '—',
+            times: `${new Date(s.checked_in_at||s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}–${new Date(s.checked_out_at||s.end_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}`,
+            hours: h.toFixed(2),
+            rate: rate.toFixed(2),
+            amount: ((h * rate) + (bhH * bhRate)).toFixed(2),
+            bh_hours: bhH > 0 ? bhH.toFixed(2) : null,
+            bh_amount: bhH > 0 ? (bhH * bhRate).toFixed(2) : null,
+          };
+        }),
         contractor: {
           name: hr?.employment_status === 'ltd_company' ? (form.company_name || `${dbUser?.first_name} ${dbUser?.last_name}`) : `${dbUser?.first_name} ${dbUser?.last_name}`,
           address: hr?.employment_status === 'ltd_company' ? form.company_address : [hr?.address_line_1, hr?.city, hr?.postcode].filter(Boolean).join(', '),
@@ -1462,15 +1477,28 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
               {selectedShifts.map(s => {
                 const hrs = getHours(s);
                 const rate = parseFloat(s.pay_rate) || 0;
+                const bhH = parseFloat(s.bh_hours) || (s.shift_type === 'bank_holiday' ? hrs : 0);
+                const bhRate = parseFloat(s.bh_pay_rate) || rate;
                 return (
-                  <tr key={s.id} style={{borderBottom:'1px solid #f1f5f9'}}>
-                    <td style={{padding:'0.5rem 0'}}>{new Date(s.start_time).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}</td>
-                    <td style={{padding:'0.5rem 0'}}>{s.site?.name || '—'}</td>
-                    <td style={{padding:'0.5rem 0',textAlign:'center',fontSize:'0.8125rem'}}>{new Date(s.checked_in_at||s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}–{new Date(s.checked_out_at||s.end_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}</td>
-                    <td style={{padding:'0.5rem 0',textAlign:'right'}}>{hrs.toFixed(2)}</td>
-                    <td style={{padding:'0.5rem 0',textAlign:'right'}}>£{rate.toFixed(2)}</td>
-                    <td style={{padding:'0.5rem 0',textAlign:'right',fontWeight:600}}>£{(hrs * rate).toFixed(2)}</td>
-                  </tr>
+                  <React.Fragment key={s.id}>
+                    <tr style={{borderBottom: bhH > 0 ? 'none' : '1px solid #f1f5f9'}}>
+                      <td style={{padding:'0.5rem 0'}}>{new Date(s.start_time).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}</td>
+                      <td style={{padding:'0.5rem 0'}}>{s.site?.name || '—'}</td>
+                      <td style={{padding:'0.5rem 0',textAlign:'center',fontSize:'0.8125rem'}}>{new Date(s.checked_in_at||s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}–{new Date(s.checked_out_at||s.end_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}</td>
+                      <td style={{padding:'0.5rem 0',textAlign:'right'}}>{hrs.toFixed(2)}</td>
+                      <td style={{padding:'0.5rem 0',textAlign:'right'}}>£{rate.toFixed(2)}</td>
+                      <td style={{padding:'0.5rem 0',textAlign:'right',fontWeight:600}}>£{(hrs * rate).toFixed(2)}</td>
+                    </tr>
+                    {bhH > 0 && (
+                      <tr style={{borderBottom:'1px solid #f1f5f9',color:'#dc2626'}}>
+                        <td style={{padding:'0.25rem 0',fontSize:'0.75rem'}}></td>
+                        <td colSpan={2} style={{padding:'0.25rem 0',fontSize:'0.75rem',fontWeight:600}}>Bank Holiday Premium</td>
+                        <td style={{padding:'0.25rem 0',textAlign:'right',fontSize:'0.75rem'}}>{bhH.toFixed(2)}</td>
+                        <td style={{padding:'0.25rem 0',textAlign:'right',fontSize:'0.75rem'}}>£{bhRate.toFixed(2)}</td>
+                        <td style={{padding:'0.25rem 0',textAlign:'right',fontWeight:600,fontSize:'0.75rem'}}>£{(bhH * bhRate).toFixed(2)}</td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 );
               })}
             </tbody>
@@ -1479,7 +1507,7 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
           {/* Totals */}
           <div style={{borderTop:'2px solid #0b1a3e',paddingTop:'0.75rem',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <div>
-              <div style={{fontSize:'0.8125rem',color:'#6b7280'}}>Total Hours: {totalHours.toFixed(2)}</div>
+              <div style={{fontSize:'0.8125rem',color:'#6b7280'}}>Total Hours: {totalHours.toFixed(2)}{totalBhHours > 0 && ` + ${totalBhHours.toFixed(2)} BH`}</div>
             </div>
             <div style={{textAlign:'right'}}>
               <div style={{fontSize:'0.75rem',color:'#6b7280'}}>Subtotal</div>
