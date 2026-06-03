@@ -83,7 +83,7 @@ function OfficerPoliciesScreen({ user }) {
       : (
         <div style={{display:'flex',flexDirection:'column',gap:'0.875rem'}}>
           {/* Controlled docs requiring acknowledgement */}
-          {controlledDocs.filter(d => d.storage_path).map(d => (
+          {controlledDocs.map(d => (
             <div key={d.id} className="officer-card" style={{borderLeft: d._acked ? '3px solid #16a34a' : '3px solid #f59e0b'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
                 <div>
@@ -93,7 +93,7 @@ function OfficerPoliciesScreen({ user }) {
                 <span style={{padding:'2px 6px',borderRadius:'3px',fontSize:'0.625rem',fontWeight:700,background:'rgba(16,185,129,0.15)',color:'#4ade80'}}>Approved</span>
               </div>
               <div style={{display:'flex',gap:'0.5rem',marginTop:'0.625rem'}}>
-                <button onClick={() => viewControlledDoc(d.id)} style={{flex:1,padding:'0.5rem',background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:'6px',color:'#fff',fontSize:'0.8125rem',fontWeight:600,cursor:'pointer'}}>View Document</button>
+                {d.storage_path && <button onClick={() => viewControlledDoc(d.id)} style={{flex:1,padding:'0.5rem',background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:'6px',color:'#fff',fontSize:'0.8125rem',fontWeight:600,cursor:'pointer'}}>View Document</button>}
                 {!d._acked && (
                   <button onClick={() => acknowledge(d.id)} style={{flex:1,padding:'0.5rem',background:'rgba(16,185,129,0.15)',border:'1px solid rgba(16,185,129,0.3)',borderRadius:'6px',color:'#4ade80',fontSize:'0.8125rem',fontWeight:600,cursor:'pointer'}}>I Have Read This</button>
                 )}
