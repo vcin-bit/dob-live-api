@@ -164,6 +164,10 @@ function AssessmentDetail({ assessment, user, onBack, onUpdated }) {
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
   const [addingRisk, setAddingRisk] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ title: '', scope: '', methodology: '' });
+  const [editSaving, setEditSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   async function loadDetail() {
     setLoading(true);
@@ -198,6 +202,29 @@ function AssessmentDetail({ assessment, user, onBack, onUpdated }) {
     } catch (e) { alert(e.message); }
   }
 
+  function startEdit() {
+    setEditForm({ title: detail.title, scope: detail.scope || '', methodology: detail.methodology || '' });
+    setEditing(true);
+  }
+
+  async function saveEdit() {
+    setEditSaving(true);
+    try {
+      await api.riskAssessments.update(assessment.id, editForm);
+      setEditing(false);
+      onUpdated();
+      loadDetail();
+    } catch (e) { alert(e.message); }
+    finally { setEditSaving(false); }
+  }
+
+  async function deleteAssessment() {
+    try {
+      await api.riskAssessments.delete(assessment.id);
+      onBack();
+    } catch (e) { alert('Delete failed: ' + e.message); }
+  }
+
   // Calculate overall risk from individual risks
   function overallLevel() {
     if (!detail?.risks?.length) return null;
@@ -220,8 +247,36 @@ function AssessmentDetail({ assessment, user, onBack, onUpdated }) {
           <div style={{fontWeight:700,fontSize:'1.125rem',color:'var(--text)'}}>{detail.title}</div>
           <div style={{fontSize:'0.75rem',color:'var(--text-3)'}}>{detail.reference_number} · {TYPE_LABEL[detail.assessment_type]} · {detail.site?.name}</div>
         </div>
+        <button className="btn btn-ghost btn-sm" onClick={startEdit}>Edit</button>
         <span style={{padding:'4px 10px',borderRadius:'4px',fontSize:'0.75rem',fontWeight:600,background:sb.bg,color:sb.color}}>{sb.label}</span>
       </div>
+
+      {/* Edit form */}
+      {editing && (
+        <div className="card" style={{padding:'1rem',marginBottom:'1rem',border:'2px solid var(--blue)'}}>
+          <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
+            <div className="field"><label className="label">Title</label><input className="input" value={editForm.title} onChange={e => setEditForm(p=>({...p,title:e.target.value}))} /></div>
+            <div className="field"><label className="label">Scope</label><textarea className="input" rows={3} value={editForm.scope} onChange={e => setEditForm(p=>({...p,scope:e.target.value}))} /></div>
+            <div className="field"><label className="label">Methodology</label><textarea className="input" rows={2} value={editForm.methodology} onChange={e => setEditForm(p=>({...p,methodology:e.target.value}))} placeholder="Optional — describe the assessment methodology" /></div>
+          </div>
+          <div style={{display:'flex',justifyContent:'space-between',marginTop:'0.75rem'}}>
+            <div>
+              {!confirmDelete ? (
+                <button className="btn btn-sm" style={{color:'#dc2626',background:'rgba(220,38,38,0.08)',border:'1px solid rgba(220,38,38,0.2)'}} onClick={() => setConfirmDelete(true)}>Delete Assessment</button>
+              ) : (
+                <div style={{display:'flex',gap:'0.375rem',alignItems:'center'}}>
+                  <button className="btn btn-sm" style={{background:'#dc2626',color:'#fff',border:'none'}} onClick={deleteAssessment}>Confirm Delete</button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => setConfirmDelete(false)}>Cancel</button>
+                </div>
+              )}
+            </div>
+            <div style={{display:'flex',gap:'0.5rem'}}>
+              <button className="btn btn-secondary btn-sm" onClick={() => { setEditing(false); setConfirmDelete(false); }}>Cancel</button>
+              <button className="btn btn-primary btn-sm" onClick={saveEdit} disabled={editSaving}>{editSaving ? 'Saving...' : 'Save Changes'}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Info cards */}
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))',gap:'0.75rem',marginBottom:'1rem'}}>

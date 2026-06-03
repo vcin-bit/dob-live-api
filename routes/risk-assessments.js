@@ -109,6 +109,17 @@ router.patch('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MA
   } catch (err) { next(err); }
 });
 
+// DELETE /api/risk-assessments/:id
+router.delete('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'FD'), async (req, res, next) => {
+  try {
+    // Delete risks first (child records)
+    await supabase.from('risks').delete().eq('risk_assessment_id', req.params.id);
+    const { error } = await supabase.from('risk_assessments').delete().eq('id', req.params.id).eq('company_id', req.user.company_id);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
 // POST /api/risk-assessments/:id/risks — add a risk to an assessment
 router.post('/:id/risks', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
   try {
