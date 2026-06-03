@@ -399,6 +399,18 @@ export const api = {
     getPins: () => request('/api/escalation/pins'),
     setPins: (data) => request('/api/escalation/pins', { method: 'PATCH', body: JSON.stringify(data) }),
   },
+
+  // Risk Assessments
+  riskAssessments: {
+    list: (params = {}) => request(`/api/risk-assessments?${new URLSearchParams(params)}`),
+    get: (id) => request(`/api/risk-assessments/${id}`),
+    create: (data) => request('/api/risk-assessments', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id, data) => request(`/api/risk-assessments/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    categories: (type) => request(`/api/risk-assessments/categories${type ? `?type=${type}` : ''}`),
+    addRisk: (id, data) => request(`/api/risk-assessments/${id}/risks`, { method: 'POST', body: JSON.stringify(data) }),
+    deleteRisk: (id, riskId) => request(`/api/risk-assessments/${id}/risks/${riskId}`, { method: 'DELETE' }),
+    pdfUrl: (id) => `${API_BASE}/api/risk-assessments/${id}/pdf`,
+  },
 };
 
 export { ApiError };

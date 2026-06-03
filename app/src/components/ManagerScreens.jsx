@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation, useParams, Routes, Route, Navigate } fr
 import { useAuth } from '@clerk/clerk-react';
 import { api, ApiError } from '../lib/api';
 import SitePlaybook from './SitePlaybook';
+import RiskAssessmentList from './RiskAssessmentList';
 import RosterCalendar from './RosterCalendar';
 import { PortalSettingsModal } from './Portal';
 import { LOG_TYPES, LOG_TYPE_CONFIG, formatDateTime, getRelativeTime } from '../lib/constants';
@@ -1862,7 +1863,7 @@ function SiteDetail({ user }) {
       </div>
       {/* Tab bar */}
       <div style={{display:'flex',gap:0,borderBottom:'1px solid var(--border)',padding:'0 1.5rem',background:'var(--surface)'}}>
-        {[{key:'info',label:'Site Info'},{key:'logs',label:'Recent Logs'},{key:'roster',label:'Roster'},{key:'officers',label:'Officers'},{key:'visitors',label:'Visitors'},{key:'documents',label:'Inspections'},{key:'codes',label:'Codes'},{key:'playbook',label:'Virtual Supervisor'}].map(t => (
+        {[{key:'info',label:'Site Info'},{key:'logs',label:'Recent Logs'},{key:'roster',label:'Roster'},{key:'officers',label:'Officers'},{key:'visitors',label:'Visitors'},{key:'documents',label:'Inspections'},{key:'risks',label:'Risk Assessments'},{key:'codes',label:'Codes'},{key:'playbook',label:'Virtual Supervisor'}].map(t => (
           <button key={t.key} onClick={() => setActiveTab(t.key)}
             style={{padding:'0.75rem 1rem',background:'none',border:'none',borderBottom:`2px solid ${activeTab===t.key?'var(--blue)':'transparent'}`,color:activeTab===t.key?'var(--blue)':'var(--text-2)',fontSize:'0.875rem',fontWeight:600,cursor:'pointer',marginBottom:'-1px',whiteSpace:'nowrap'}}>
             {t.label}
@@ -1871,6 +1872,7 @@ function SiteDetail({ user }) {
       </div>
       <div className="page-content">
         {activeTab === 'playbook' && <SitePlaybook siteId={id} />}
+        {activeTab === 'risks' && <RiskAssessmentList siteId={id} siteName={site.name} user={user} />}
         {activeTab === 'logs' && (
           <div className="card">
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.875rem'}}>

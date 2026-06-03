@@ -78,6 +78,7 @@ app.use('/api/inspections',  require('./routes/inspections'));
 app.use('/api/updates',      require('./routes/updates'));
 app.use('/api/personnel',    require('./routes/personnel'));
 app.use('/api/site-checks',  require('./routes/site-checks'));
+app.use('/api/risk-assessments', require('./routes/risk-assessments'));
 app.use('/api/compliance',   require('./routes/compliance'));
 
 // ── 404 handler ──────────────────────────────────────────────
