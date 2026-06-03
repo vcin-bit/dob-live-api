@@ -749,13 +749,14 @@ function PoliciesScreen({ user }) {
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-  const canEdit = ['COMPANY','SUPER_ADMIN'].includes(user.role);
+  const canEdit = ['COMPANY','SUPER_ADMIN','FD'].includes(user.role);
+  const fileRef = React.useRef(null);
 
-  useEffect(() => {
-    api.policies.get().then(r => { setSections(r.data?.sections || []); setLoading(false); });
-  }, []);
+  function load() { api.policies.get().then(r => { setSections(r.data?.sections || []); setLoading(false); }); }
+  useEffect(() => { load(); }, []);
 
   function addSection() { setSections(s => [...s, { title:'', content:'' }]); }
   function updateSection(i, field, val) { setSections(s => s.map((sec,j) => j===i ? {...sec,[field]:val} : sec)); }
@@ -769,31 +770,75 @@ function PoliciesScreen({ user }) {
     } catch(e){ setError(e.message); } finally { setSaving(false); }
   }
 
+  async function handleUpload(e) {
+    const file = e.target.files?.[0]; e.target.value = '';
+    if (!file) return;
+    setUploading(true); setError(null);
+    try {
+      await api.policies.upload(file, file.name.replace(/\.[^.]+$/, ''));
+      load();
+      setSuccess(true); setTimeout(()=>setSuccess(false), 2000);
+    } catch(e) { setError(e.message); }
+    finally { setUploading(false); }
+  }
+
+  async function viewDoc(index) {
+    try {
+      const res = await api.policies.downloadUrl(index);
+      if (res?.url) window.open(res.url, '_blank');
+      else alert('Could not load document');
+    } catch { alert('Could not load document'); }
+  }
+
+  function formatSize(bytes) {
+    if (!bytes) return '';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024*1024) return (bytes/1024).toFixed(0) + ' KB';
+    return (bytes/1024/1024).toFixed(1) + ' MB';
+  }
+
   return (
     <div>
       <div className="topbar">
         <div className="topbar-title">Company Policies</div>
         {canEdit && (
-          <div style={{display:'flex',gap:'0.5rem'}}>
-            <button className="btn btn-ghost btn-sm" onClick={addSection}>+ Add Section</button>
-            <button className="btn btn-primary btn-sm" onClick={save} disabled={saving}>{saving?'Saving...':'Save Policies'}</button>
+          <div style={{display:'flex',gap:'0.5rem',alignItems:'center'}}>
+            <input type="file" ref={fileRef} onChange={handleUpload} accept=".pdf,.doc,.docx" style={{display:'none'}} />
+            <button className="btn btn-ghost btn-sm" onClick={() => fileRef.current?.click()} disabled={uploading}>{uploading ? 'Uploading...' : 'Upload PDF'}</button>
+            <button className="btn btn-ghost btn-sm" onClick={addSection}>+ Text Section</button>
+            <button className="btn btn-primary btn-sm" onClick={save} disabled={saving}>{saving?'Saving...':'Save'}</button>
           </div>
         )}
       </div>
       <div className="page-content">
-        {success && <div className="alert alert-success" style={{marginBottom:'1rem'}}>Policies saved</div>}
+        {success && <div className="alert alert-success" style={{marginBottom:'1rem'}}>Saved</div>}
         {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
         {loading ? <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>
         : sections.length===0 ? (
           <div className="empty-state">
-            <p>No policy sections yet</p>
-            {canEdit && <button className="btn btn-primary" style={{marginTop:'1rem'}} onClick={addSection}>Add First Section</button>}
+            <p>No policies yet</p>
+            {canEdit && <div style={{display:'flex',gap:'0.5rem',marginTop:'1rem'}}>
+              <button className="btn btn-primary" onClick={() => fileRef.current?.click()}>Upload PDF</button>
+              <button className="btn btn-secondary" onClick={addSection}>Add Text Section</button>
+            </div>}
           </div>
         ) : (
-          <div style={{display:'flex',flexDirection:'column',gap:'1rem'}}>
+          <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
             {sections.map((sec,i) => (
-              <div key={i} className="card">
-                {canEdit ? (
+              <div key={i} className="card" style={{padding:sec.type==='document' ? '0.875rem' : undefined}}>
+                {sec.type === 'document' ? (
+                  <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
+                    <div style={{width:'40px',height:'40px',background:'rgba(220,38,38,0.08)',borderRadius:'8px',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+                    </div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{sec.title || sec.file_name}</div>
+                      <div style={{fontSize:'0.75rem',color:'var(--text-3)'}}>{sec.file_name} · {formatSize(sec.file_size)}{sec.uploaded_at ? ` · ${new Date(sec.uploaded_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}` : ''}</div>
+                    </div>
+                    <button className="btn btn-secondary btn-sm" onClick={() => viewDoc(i)}>View</button>
+                    {canEdit && <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={()=>removeSection(i)}>Remove</button>}
+                  </div>
+                ) : canEdit ? (
                   <>
                     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.5rem'}}>
                       <input className="input" value={sec.title} onChange={e=>updateSection(i,'title',e.target.value)} placeholder="Section title" style={{fontWeight:600,fontSize:'1rem'}} />

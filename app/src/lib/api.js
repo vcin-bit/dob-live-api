@@ -278,6 +278,16 @@ export const api = {
   policies: {
     get: () => request('/api/policies'),
     update: (sections) => request('/api/policies', { method: 'PUT', body: JSON.stringify({ sections }) }),
+    upload: async (file, title) => {
+      const form = new FormData();
+      form.append('file', file);
+      if (title) form.append('title', title);
+      const token = await (window.__clerkGetToken ? window.__clerkGetToken() : window.Clerk?.session?.getToken?.());
+      const res = await fetch(`${API_BASE}/api/policies/upload`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || 'Upload failed'); }
+      return res.json();
+    },
+    downloadUrl: (index) => request(`/api/policies/download/${index}`),
   },
   folders: {
     list: (params = {}) => request(`/api/folders?${new URLSearchParams(params)}`),
