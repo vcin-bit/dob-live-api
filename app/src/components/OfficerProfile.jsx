@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useUser, useClerk } from '@clerk/clerk-react';
 import { api } from '../lib/api';
 
@@ -59,6 +60,15 @@ export default function OfficerProfile({ user }) {
       <div style={{marginBottom:'1.25rem'}}>
         <div style={{fontSize:'11px',fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.1em'}}>My Profile</div>
       </div>
+
+      {/* Quick links */}
+      <Link to="/policies" style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.875rem 1rem',background:'rgba(59,130,246,0.08)',border:'1px solid rgba(59,130,246,0.2)',borderRadius:'10px',marginBottom:'1rem',textDecoration:'none',color:'#fff'}}>
+        <div>
+          <div style={{fontWeight:700,fontSize:'0.9375rem'}}>Policies & Documents</div>
+          <div style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.5)',marginTop:'2px'}}>View company policies and acknowledge documents</div>
+        </div>
+        <span style={{color:'rgba(255,255,255,0.3)',fontSize:'1.25rem'}}>→</span>
+      </Link>
 
       {error && <div style={{background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:'8px',padding:'10px',fontSize:'13px',color:'#ef4444',marginBottom:'12px'}}>{error}</div>}
       {success && <div style={{background:'rgba(74,222,128,0.1)',border:'1px solid rgba(74,222,128,0.25)',borderRadius:'8px',padding:'10px',fontSize:'13px',color:'#4ade80',marginBottom:'12px'}}>{success}</div>}
