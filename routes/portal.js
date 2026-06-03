@@ -201,6 +201,23 @@ router.get('/documents', portalAuth, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// GET /api/portal/controlled-documents — Approved Client-audience docs
+router.get('/controlled-documents', portalAuth, async (req, res, next) => {
+  try {
+    const { company_id } = req.portalSession;
+    const { data, error } = await supabase
+      .from('controlled_documents')
+      .select('id, doc_number, revision, title, category, issue_date, file_name')
+      .eq('company_id', company_id)
+      .eq('is_current', true)
+      .eq('status', 'Approved')
+      .eq('audience', 'Client')
+      .order('doc_number');
+    if (error) throw error;
+    res.json({ data });
+  } catch (err) { next(err); }
+});
+
 // ── Manager: enable portal + set PIN ──────────────────────────────────────
 router.put('/settings/:site_id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
   try {

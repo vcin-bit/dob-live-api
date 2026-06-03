@@ -8,6 +8,7 @@ import { ProfitLoss, ShiftRoster } from './RosterPnL';
 import { DocumentsScreen, PatrolRoutesScreen, ShiftPatternsScreen, RatesScreen, AlertsScreen, PoliciesScreen, SiteInstructionsScreen, MessagesScreen } from './ManagerFeatures';
 import { PortalSettingsModal } from './Portal';
 import { ContractsScreen } from './ContractsScreen';
+import DocumentControl from './DocumentControl';
 import { ManagerUpdatesPanel } from './CompanyUpdates';
 import { PersonnelFilesScreen } from './PersonnelFiles';
 import ComplianceDashboard from './ComplianceDashboard';
@@ -51,6 +52,7 @@ function ManagerApp({ user }) {
           <Route path="/rates"      element={<RatesScreen user={user} />} />
           <Route path="/alerts"     element={<AlertsScreen user={user} />} />
           <Route path="/policies"   element={<PoliciesScreen user={user} />} />
+          <Route path="/document-control" element={<DocumentControl user={user} />} />
           <Route path="/instructions" element={<SiteInstructionsScreen user={user} />} />
           <Route path="/messages"     element={<MessagesScreen user={user} />} />
           <Route path="/contracts"   element={<ContractsScreen user={user} />} />
@@ -215,6 +217,7 @@ function ManagerSidebar({ user, open, onClose }) {
       items: [
         { to: '/compliance', icon: ChartBarIcon, label: 'Dashboard' },
         { to: '/policies',   icon: DocumentTextIcon, label: 'Policies' },
+        { to: '/document-control', icon: ClipboardDocumentListIcon, label: 'Document Control' },
       ]
     },
   ];

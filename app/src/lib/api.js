@@ -410,6 +410,28 @@ export const api = {
     setPins: (data) => request('/api/escalation/pins', { method: 'PATCH', body: JSON.stringify(data) }),
   },
 
+  // Controlled Documents (QMS)
+  controlledDocs: {
+    list: (params = {}) => request(`/api/controlled-documents?${new URLSearchParams(params)}`),
+    get: (id) => request(`/api/controlled-documents/${id}`),
+    create: (data) => request('/api/controlled-documents', { method: 'POST', body: JSON.stringify(data) }),
+    upload: async (id, file) => {
+      const form = new FormData();
+      form.append('file', file);
+      const token = await (window.__clerkGetToken ? window.__clerkGetToken() : window.Clerk?.session?.getToken?.());
+      const res = await fetch(`${API_BASE}/api/controlled-documents/${id}/upload`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || 'Upload failed'); }
+      return res.json();
+    },
+    revise: (id) => request(`/api/controlled-documents/${id}/revise`, { method: 'POST' }),
+    setStatus: (id, status) => request(`/api/controlled-documents/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+    download: (id) => request(`/api/controlled-documents/${id}/download`),
+    acknowledge: (id) => request(`/api/controlled-documents/${id}/acknowledge`, { method: 'POST' }),
+    acknowledgements: (id) => request(`/api/controlled-documents/${id}/acknowledgements`),
+    alerts: (params = {}) => request(`/api/controlled-documents/alerts?${new URLSearchParams(params)}`),
+    registerExport: () => `${API_BASE}/api/controlled-documents/register-export`,
+  },
+
   // Risk Assessments
   riskAssessments: {
     list: (params = {}) => request(`/api/risk-assessments?${new URLSearchParams(params)}`),
