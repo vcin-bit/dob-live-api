@@ -102,6 +102,7 @@ function DocDetail({ docId, user, onBack }) {
   const [ackData, setAckData] = useState(null);
   const fileRef = useRef(null);
   const [uploading, setUploading] = useState(false);
+  const [approveForm, setApproveForm] = useState(null);
 
   async function loadDoc() {
     setLoading(true);
@@ -190,15 +191,38 @@ function DocDetail({ docId, user, onBack }) {
 
         {/* Status actions */}
         {canEdit && (
-          <div className="card" style={{marginBottom:'1rem',display:'flex',gap:'0.5rem',flexWrap:'wrap',alignItems:'center'}}>
-            <span style={{fontSize:'0.75rem',fontWeight:600,color:'var(--text-3)',marginRight:'0.5rem'}}>Change Status:</span>
-            {doc.status === 'Planned' && <button className="btn btn-sm" style={{background:'#dbeafe',border:'1px solid #93c5fd',color:'#1e40af'}} onClick={() => changeStatus('In Progress')}>Start Progress</button>}
-            {(doc.status === 'Planned' || doc.status === 'In Progress') && canApprove && doc.storage_path && (
-              <button className="btn btn-primary btn-sm" onClick={() => changeStatus('Approved')}>Approve</button>
-            )}
-            {doc.status === 'Approved' && canApprove && <button className="btn btn-sm" style={{background:'#fef3c7',border:'1px solid #f59e0b',color:'#92400e'}} onClick={revise}>New Revision</button>}
-            {doc.status !== 'Archived' && doc.status !== 'Superseded' && canApprove && (
-              <button className="btn btn-ghost btn-sm" style={{color:'var(--text-3)'}} onClick={() => changeStatus('Archived')}>Archive</button>
+          <div className="card" style={{marginBottom:'1rem'}}>
+            <div style={{display:'flex',gap:'0.5rem',flexWrap:'wrap',alignItems:'center'}}>
+              <span style={{fontSize:'0.75rem',fontWeight:600,color:'var(--text-3)',marginRight:'0.5rem'}}>Change Status:</span>
+              {doc.status === 'Planned' && <button className="btn btn-sm" style={{background:'#dbeafe',border:'1px solid #93c5fd',color:'#1e40af'}} onClick={() => changeStatus('In Progress')}>Start Progress</button>}
+              {(doc.status === 'Planned' || doc.status === 'In Progress') && canApprove && doc.storage_path && !approveForm && (
+                <button className="btn btn-primary btn-sm" onClick={() => {
+                  const today = new Date().toISOString().split('T')[0];
+                  const review = new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0];
+                  setApproveForm({ issue_date: doc.issue_date || today, review_date: doc.review_date || review });
+                }}>Approve</button>
+              )}
+              {doc.status === 'Approved' && canApprove && <button className="btn btn-sm" style={{background:'#fef3c7',border:'1px solid #f59e0b',color:'#92400e'}} onClick={revise}>New Revision</button>}
+              {doc.status !== 'Archived' && doc.status !== 'Superseded' && canApprove && (
+                <button className="btn btn-ghost btn-sm" style={{color:'var(--text-3)'}} onClick={() => changeStatus('Archived')}>Archive</button>
+              )}
+            </div>
+            {approveForm && (
+              <div style={{marginTop:'0.75rem',borderTop:'1px solid var(--border)',paddingTop:'0.75rem',display:'flex',gap:'0.75rem',alignItems:'flex-end',flexWrap:'wrap'}}>
+                <div className="field" style={{margin:0}}>
+                  <label className="label">Issue Date</label>
+                  <input type="date" className="input" style={{width:'155px'}} value={approveForm.issue_date} onChange={e => setApproveForm(p => ({...p, issue_date: e.target.value}))} />
+                </div>
+                <div className="field" style={{margin:0}}>
+                  <label className="label">Review Date</label>
+                  <input type="date" className="input" style={{width:'155px'}} value={approveForm.review_date} onChange={e => setApproveForm(p => ({...p, review_date: e.target.value}))} />
+                </div>
+                <button className="btn btn-primary btn-sm" onClick={async () => {
+                  try { await api.controlledDocs.setStatus(docId, 'Approved', approveForm); setApproveForm(null); loadDoc(); }
+                  catch (e) { alert(e.message); }
+                }}>Confirm Approval</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => setApproveForm(null)}>Cancel</button>
+              </div>
             )}
           </div>
         )}

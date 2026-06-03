@@ -173,17 +173,24 @@ router.patch('/:id/status', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 
     const { status } = req.body;
     if (!STATUSES.includes(status)) return res.status(400).json({ error: `Invalid status. Must be: ${STATUSES.join(', ')}` });
 
-    const { data: old } = await supabase.from('controlled_documents').select('status').eq('id', req.params.id).eq('company_id', req.user.company_id).single();
+    const { data: old } = await supabase.from('controlled_documents').select('status, issue_date, review_date').eq('id', req.params.id).eq('company_id', req.user.company_id).single();
     if (!old) return res.status(404).json({ error: 'Document not found' });
 
+    const today = new Date().toISOString().split('T')[0];
     const updates = { status, updated_at: new Date().toISOString() };
-    if (status === 'Approved') { updates.approved_date = new Date().toISOString().split('T')[0]; updates.approver_id = req.user.id; }
-    if (status === 'Superseded') { updates.superseded_date = new Date().toISOString().split('T')[0]; updates.is_current = false; }
+    if (status === 'Approved') {
+      updates.approved_date = today;
+      updates.approver_id = req.user.id;
+      updates.issue_date = req.body.issue_date || old.issue_date || today;
+      updates.review_date = req.body.review_date || old.review_date || new Date(new Date(updates.issue_date).getTime() + 365 * 86400000).toISOString().split('T')[0];
+    }
+    if (status === 'Superseded') { updates.superseded_date = today; updates.is_current = false; }
     if (status === 'Archived') { updates.is_current = false; }
 
     const { data, error } = await supabase.from('controlled_documents').update(updates).eq('id', req.params.id).select().single();
     if (error) throw error;
-    await auditLog(req.params.id, 'StatusChanged', req.user.id, old.status, status);
+    const auditDetail = status === 'Approved' ? `${status} — Issue: ${updates.issue_date}, Review: ${updates.review_date}` : status;
+    await auditLog(req.params.id, 'StatusChanged', req.user.id, old.status, auditDetail);
     res.json({ data });
   } catch (err) { next(err); }
 });

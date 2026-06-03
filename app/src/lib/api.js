@@ -424,7 +424,7 @@ export const api = {
       return res.json();
     },
     revise: (id) => request(`/api/controlled-documents/${id}/revise`, { method: 'POST' }),
-    setStatus: (id, status) => request(`/api/controlled-documents/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+    setStatus: (id, status, extras = {}) => request(`/api/controlled-documents/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status, ...extras }) }),
     download: (id) => request(`/api/controlled-documents/${id}/download`),
     acknowledge: (id) => request(`/api/controlled-documents/${id}/acknowledge`, { method: 'POST' }),
     acknowledgements: (id) => request(`/api/controlled-documents/${id}/acknowledgements`),
