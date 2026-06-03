@@ -49,6 +49,7 @@ function OfficerPoliciesScreen({ user }) {
   const [sections, setSections] = useState([]);
   const [controlledDocs, setControlledDocs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [viewed, setViewed] = useState(new Set());
 
   useEffect(() => {
     Promise.all([
@@ -67,8 +68,10 @@ function OfficerPoliciesScreen({ user }) {
   }
 
   async function viewControlledDoc(id) {
-    try { const res = await api.controlledDocs.download(id); if (res?.url) window.open(res.url, '_blank'); }
-    catch { alert('Could not load document'); }
+    try {
+      const res = await api.controlledDocs.download(id);
+      if (res?.url) { window.open(res.url, '_blank'); setViewed(prev => new Set(prev).add(id)); }
+    } catch { alert('Could not load document'); }
   }
 
   async function acknowledge(id) {
@@ -93,9 +96,12 @@ function OfficerPoliciesScreen({ user }) {
                 <span style={{padding:'2px 6px',borderRadius:'3px',fontSize:'0.625rem',fontWeight:700,background:'rgba(16,185,129,0.15)',color:'#4ade80'}}>Approved</span>
               </div>
               <div style={{display:'flex',gap:'0.5rem',marginTop:'0.625rem'}}>
-                {d.storage_path && <button onClick={() => viewControlledDoc(d.id)} style={{flex:1,padding:'0.5rem',background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:'6px',color:'#fff',fontSize:'0.8125rem',fontWeight:600,cursor:'pointer'}}>View Document</button>}
-                {!d._acked && (
+                {d.storage_path && <button onClick={() => viewControlledDoc(d.id)} style={{flex:1,padding:'0.5rem',background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:'6px',color:'#fff',fontSize:'0.8125rem',fontWeight:600,cursor:'pointer'}}>{viewed.has(d.id) ? 'View Again' : 'View Document'}</button>}
+                {!d._acked && viewed.has(d.id) && (
                   <button onClick={() => acknowledge(d.id)} style={{flex:1,padding:'0.5rem',background:'rgba(16,185,129,0.15)',border:'1px solid rgba(16,185,129,0.3)',borderRadius:'6px',color:'#4ade80',fontSize:'0.8125rem',fontWeight:600,cursor:'pointer'}}>I Have Read This</button>
+                )}
+                {!d._acked && !viewed.has(d.id) && (
+                  <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',color:'rgba(255,255,255,0.3)',fontSize:'0.75rem'}}>Read document first</div>
                 )}
                 {d._acked && <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',color:'#4ade80',fontSize:'0.8125rem',fontWeight:600}}>Acknowledged</div>}
               </div>
