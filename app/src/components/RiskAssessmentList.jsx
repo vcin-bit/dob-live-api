@@ -70,11 +70,18 @@ function AddRiskForm({ assessmentId, assessmentType, categories, onAdded, onCanc
 
   async function save() {
     if (!form.hazard_description) { setError('Hazard description is required'); return; }
-    setSaving(true);
+    setSaving(true); setError(null);
     try {
-      await api.riskAssessments.addRisk(assessmentId, form);
-      onAdded();
-    } catch (e) { setError(e.message); }
+      const res = await api.riskAssessments.addRisk(assessmentId, form);
+      if (res?.data) {
+        onAdded();
+      } else {
+        setError('Risk may have been saved. Please close and reopen the assessment to check.');
+      }
+    } catch (e) {
+      console.error('[RiskAssessment] Add risk failed:', e);
+      setError(e.message || 'Failed to save risk. Please try again.');
+    }
     finally { setSaving(false); }
   }
 
@@ -308,7 +315,16 @@ function AssessmentDetail({ assessment, user, onBack, onUpdated }) {
 
       {/* Actions */}
       <div style={{display:'flex',gap:'0.5rem',flexWrap:'wrap'}}>
-        <a href={api.riskAssessments.pdfUrl(assessment.id)} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm">Download PDF</a>
+        <button className="btn btn-secondary btn-sm" onClick={async () => {
+                          try {
+                            const token = await (window.__clerkGetToken ? window.__clerkGetToken() : window.Clerk?.session?.getToken?.());
+                            const res = await fetch(api.riskAssessments.pdfUrl(assessment.id), { headers: { Authorization: `Bearer ${token}` } });
+                            if (!res.ok) throw new Error('PDF download failed');
+                            const blob = await res.blob();
+                            const url = URL.createObjectURL(blob);
+                            window.open(url, '_blank');
+                          } catch (e) { alert('Could not download PDF: ' + e.message); }
+                        }}>Download PDF</button>
         {detail.status === 'draft' && detail.risks?.length > 0 && (
           <button className="btn btn-sm" style={{background:'#fef3c7',border:'1px solid #f59e0b',color:'#92400e'}} onClick={() => updateStatus('under_review')}>Submit for Review</button>
         )}
@@ -392,7 +408,7 @@ export default function RiskAssessmentList({ siteId, siteName, user }) {
         </div>
       )}
 
-      {showCreate && <CreateModal siteId={siteId} siteName={siteName} onClose={() => setShowCreate(false)} onCreated={(a) => { setShowCreate(false); load(); setViewing(a); }} />}
+      {showCreate && <CreateModal siteId={siteId} siteName={siteName} onClose={() => setShowCreate(false)} onCreated={(a) => { setShowCreate(false); load(); if (a?.id) setViewing(a); }} />}
     </div>
   );
 }
@@ -411,11 +427,19 @@ function CreateModal({ siteId, siteName, onClose, onCreated }) {
 
   async function save() {
     if (!form.title || !form.scope) { setError('Title and scope are required'); return; }
-    setSaving(true);
+    setSaving(true); setError(null);
     try {
       const res = await api.riskAssessments.create({ site_id: siteId, ...form });
-      onCreated(res.data);
-    } catch (e) { setError(e.message); }
+      if (res?.data) {
+        onCreated(res.data);
+      } else {
+        setError('Assessment created but no data returned. Please refresh and check the list.');
+        onCreated(null);
+      }
+    } catch (e) {
+      console.error('[RiskAssessment] Create failed:', e);
+      setError(e.message || 'Failed to save. Please try again.');
+    }
     finally { setSaving(false); }
   }
 

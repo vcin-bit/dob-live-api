@@ -81,7 +81,11 @@ router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGE
       })
       .select()
       .single();
-    if (error) throw error;
+    if (error) {
+      console.error('[RiskAssessment] Create failed:', error.message, error.details, error.hint);
+      throw error;
+    }
+    console.log('[RiskAssessment] Created:', data.id, data.reference_number);
     res.status(201).json({ data });
   } catch (err) { next(err); }
 });
@@ -139,7 +143,10 @@ router.post('/:id/risks', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'O
       })
       .select('*, category:risk_categories(id, name)')
       .single();
-    if (error) throw error;
+    if (error) {
+      console.error('[Risk] Insert failed:', error.message, error.details, error.hint);
+      throw error;
+    }
     res.status(201).json({ data });
   } catch (err) { next(err); }
 });
