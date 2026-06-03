@@ -58,9 +58,10 @@ router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGE
     const { site_id, assessment_type, title, scope, description, methodology, assessment_date, review_date } = req.body;
     if (!site_id || !title || !scope) return res.status(400).json({ error: 'site_id, title, and scope required' });
 
-    // Generate reference number
-    const { count } = await supabase.from('risk_assessments').select('*', { count: 'exact', head: true }).eq('company_id', req.user.company_id);
-    const refNum = `RA-${String((count || 0) + 1).padStart(4, '0')}`;
+    // Generate reference number from highest existing
+    const { data: latest } = await supabase.from('risk_assessments').select('reference_number').eq('company_id', req.user.company_id).order('created_at', { ascending: false }).limit(1);
+    const lastNum = latest?.[0]?.reference_number ? parseInt(latest[0].reference_number.replace('RA-', ''), 10) || 0 : 0;
+    const refNum = `RA-${String(lastNum + 1).padStart(4, '0')}`;
 
     const { data, error } = await supabase
       .from('risk_assessments')
