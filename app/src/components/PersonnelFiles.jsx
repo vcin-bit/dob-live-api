@@ -160,6 +160,7 @@ function PersonnelFile({ userId, officers, onBack, currentUser }) {
     { key: 'addresses', label: 'Addresses' },
     { key: 'vetting', label: 'BS7858' },
     { key: 'documents', label: 'Documents' },
+    { key: 'training', label: 'Training' },
     { key: 'notes', label: 'Notes' },
   ];
 
@@ -669,6 +670,9 @@ function PersonnelFile({ userId, officers, onBack, currentUser }) {
           </>
         )}
 
+        {/* ── TRAINING & COMPLIANCE ─────────────────────────── */}
+        {tab === 'training' && <TrainingComplianceTab userId={userId} />}
+
         {/* ── NOTES ────────────────────────────────────────────── */}
         {tab === 'notes' && (
           <>
@@ -694,6 +698,93 @@ function PersonnelFile({ userId, officers, onBack, currentUser }) {
             )}
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ── Training & Compliance Tab ──────────────────────────────────────────────
+function TrainingComplianceTab({ userId }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.controlledDocs.officerCompliance(userId)
+      .then(res => setData(res))
+      .catch(e => console.error('Compliance load failed:', e))
+      .finally(() => setLoading(false));
+  }, [userId]);
+
+  if (loading) return <div style={{display:'flex',justifyContent:'center',padding:'2rem'}}><div className="spinner" /></div>;
+
+  const acked = data?.acknowledged || [];
+  const outstanding = data?.outstanding || [];
+  const summary = data?.summary || { total: 0, acknowledged: 0, outstanding: 0 };
+
+  return (
+    <div>
+      <div style={{fontWeight:700,fontSize:'1rem',marginBottom:'1rem'}}>Training & Compliance</div>
+
+      {/* Summary */}
+      <div style={{display:'flex',gap:'0.75rem',marginBottom:'1.25rem'}}>
+        <div style={{flex:1,padding:'0.75rem',background:'var(--surface)',borderRadius:'8px',border:'1px solid var(--border)',textAlign:'center'}}>
+          <div style={{fontSize:'1.5rem',fontWeight:800,color:'var(--text)'}}>{summary.total}</div>
+          <div style={{fontSize:'0.6875rem',color:'var(--text-3)',fontWeight:600,textTransform:'uppercase'}}>Total Docs</div>
+        </div>
+        <div style={{flex:1,padding:'0.75rem',background:'rgba(16,185,129,0.05)',borderRadius:'8px',border:'1px solid rgba(16,185,129,0.2)',textAlign:'center'}}>
+          <div style={{fontSize:'1.5rem',fontWeight:800,color:'#16a34a'}}>{summary.acknowledged}</div>
+          <div style={{fontSize:'0.6875rem',color:'#16a34a',fontWeight:600,textTransform:'uppercase'}}>Acknowledged</div>
+        </div>
+        <div style={{flex:1,padding:'0.75rem',background: summary.outstanding > 0 ? 'rgba(239,68,68,0.05)' : 'var(--surface)',borderRadius:'8px',border: summary.outstanding > 0 ? '1px solid rgba(239,68,68,0.2)' : '1px solid var(--border)',textAlign:'center'}}>
+          <div style={{fontSize:'1.5rem',fontWeight:800,color: summary.outstanding > 0 ? '#ef4444' : 'var(--text)'}}>{summary.outstanding}</div>
+          <div style={{fontSize:'0.6875rem',color: summary.outstanding > 0 ? '#ef4444' : 'var(--text-3)',fontWeight:600,textTransform:'uppercase'}}>Outstanding</div>
+        </div>
+      </div>
+
+      {/* Outstanding */}
+      {outstanding.length > 0 && (
+        <div style={{marginBottom:'1.25rem'}}>
+          <div style={{fontSize:'0.6875rem',fontWeight:700,color:'#ef4444',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.5rem'}}>Outstanding ({outstanding.length})</div>
+          <div style={{display:'flex',flexDirection:'column',gap:'0.375rem'}}>
+            {outstanding.map(d => (
+              <div key={d.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.5rem 0.75rem',background:'rgba(239,68,68,0.04)',border:'1px solid rgba(239,68,68,0.15)',borderRadius:'6px',fontSize:'0.8125rem'}}>
+                <div>
+                  <span style={{fontWeight:600,color:'var(--blue)',marginRight:'0.5rem',fontSize:'0.75rem'}}>{d.doc_number}</span>
+                  <span>{d.title}</span>
+                </div>
+                <span style={{fontSize:'0.6875rem',color:'#ef4444',fontWeight:600,whiteSpace:'nowrap'}}>Rev {d.revision}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Acknowledged */}
+      {acked.length > 0 && (
+        <div style={{marginBottom:'1.25rem'}}>
+          <div style={{fontSize:'0.6875rem',fontWeight:700,color:'#16a34a',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.5rem'}}>Acknowledged ({acked.length})</div>
+          <div style={{display:'flex',flexDirection:'column',gap:'0.375rem'}}>
+            {acked.map(d => (
+              <div key={d.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.5rem 0.75rem',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'6px',fontSize:'0.8125rem'}}>
+                <div>
+                  <span style={{fontWeight:600,color:'var(--blue)',marginRight:'0.5rem',fontSize:'0.75rem'}}>{d.doc_number}</span>
+                  <span>{d.title}</span>
+                </div>
+                <span style={{fontSize:'0.6875rem',color:'#16a34a',fontWeight:600,whiteSpace:'nowrap'}}>{new Date(d.acknowledged_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {summary.total === 0 && (
+        <div style={{textAlign:'center',padding:'1.5rem',color:'var(--text-3)',fontSize:'0.875rem'}}>No controlled documents require acknowledgement.</div>
+      )}
+
+      {/* Site Training placeholder */}
+      <div style={{marginTop:'1rem',padding:'1rem',background:'var(--surface)',borderRadius:'8px',border:'1px dashed var(--border)'}}>
+        <div style={{fontWeight:700,color:'var(--text)',marginBottom:'0.25rem'}}>Site Training</div>
+        <div style={{fontSize:'0.8125rem',color:'var(--text-3)'}}>Coming soon — site-specific training records, competence assessments, and deployment readiness will appear here.</div>
       </div>
     </div>
   );

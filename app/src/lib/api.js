@@ -428,6 +428,7 @@ export const api = {
     download: (id) => request(`/api/controlled-documents/${id}/download`),
     acknowledge: (id) => request(`/api/controlled-documents/${id}/acknowledge`, { method: 'POST' }),
     acknowledgements: (id) => request(`/api/controlled-documents/${id}/acknowledgements`),
+    officerCompliance: (userId) => request(`/api/controlled-documents/officer/${userId}/compliance`),
     alerts: (params = {}) => request(`/api/controlled-documents/alerts?${new URLSearchParams(params)}`),
     registerExport: () => `${API_BASE}/api/controlled-documents/register-export`,
   },

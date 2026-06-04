@@ -84,6 +84,46 @@ router.get('/training-feed', authenticate, requireRole('SUPER_ADMIN', 'COMPANY',
   } catch (err) { next(err); }
 });
 
+// GET /api/controlled-documents/officer/:userId/compliance — per-officer acked + outstanding
+router.get('/officer/:userId/compliance', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
+  try {
+    // All current Approved Officer-audience docs for this company
+    const { data: docs } = await supabase
+      .from('controlled_documents')
+      .select('id, doc_number, revision, title, category')
+      .eq('company_id', req.user.company_id)
+      .eq('is_current', true)
+      .eq('status', 'Approved')
+      .eq('audience', 'Officer')
+      .order('doc_number');
+
+    // This officer's acknowledgements
+    const { data: acks } = await supabase
+      .from('controlled_document_acknowledgements')
+      .select('document_id, doc_number, revision, acknowledged_at')
+      .eq('user_id', req.params.userId);
+
+    const ackMap = {};
+    (acks || []).forEach(a => { ackMap[a.document_id] = a; });
+
+    const acknowledged = [];
+    const outstanding = [];
+    (docs || []).forEach(d => {
+      if (ackMap[d.id]) {
+        acknowledged.push({ ...d, acknowledged_at: ackMap[d.id].acknowledged_at });
+      } else {
+        outstanding.push(d);
+      }
+    });
+
+    res.json({
+      acknowledged,
+      outstanding,
+      summary: { total: (docs || []).length, acknowledged: acknowledged.length, outstanding: outstanding.length },
+    });
+  } catch (err) { next(err); }
+});
+
 // GET /api/controlled-documents/:id — single doc with audit + acks
 router.get('/:id', authenticate, async (req, res, next) => {
   try {
