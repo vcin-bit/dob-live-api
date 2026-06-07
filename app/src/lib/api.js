@@ -411,6 +411,14 @@ export const api = {
     setPins: (data) => request('/api/escalation/pins', { method: 'PATCH', body: JSON.stringify(data) }),
   },
 
+  // ID Cards
+  idCards: {
+    list: (userId) => request(`/api/id-cards/${userId}`),
+    issue: (data) => request('/api/id-cards', { method: 'POST', body: JSON.stringify(data) }),
+    updateStatus: (id, status, reason) => request(`/api/id-cards/${id}`, { method: 'PATCH', body: JSON.stringify({ status, revocation_reason: reason }) }),
+    pdfUrl: (id) => `${API_BASE}/api/id-cards/${id}/pdf`,
+  },
+
   // Controlled Documents (QMS)
   controlledDocs: {
     list: (params = {}) => request(`/api/controlled-documents?${new URLSearchParams(params)}`),

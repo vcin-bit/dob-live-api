@@ -161,6 +161,7 @@ function PersonnelFile({ userId, officers, onBack, currentUser }) {
     { key: 'vetting', label: 'BS7858' },
     { key: 'documents', label: 'Documents' },
     { key: 'training', label: 'Training' },
+    { key: 'idcard', label: 'ID Card' },
     { key: 'notes', label: 'Notes' },
   ];
 
@@ -673,6 +674,9 @@ function PersonnelFile({ userId, officers, onBack, currentUser }) {
         {/* ── TRAINING & COMPLIANCE ─────────────────────────── */}
         {tab === 'training' && <TrainingComplianceTab userId={userId} />}
 
+        {/* ── ID CARD ──────────────────────────────────────────── */}
+        {tab === 'idcard' && <IDCardTab userId={userId} user={currentUser} />}
+
         {/* ── NOTES ────────────────────────────────────────────── */}
         {tab === 'notes' && (
           <>
@@ -786,6 +790,144 @@ function TrainingComplianceTab({ userId }) {
         <div style={{fontWeight:700,color:'var(--text)',marginBottom:'0.25rem'}}>Site Training</div>
         <div style={{fontSize:'0.8125rem',color:'var(--text-3)'}}>Coming soon — site-specific training records, competence assessments, and deployment readiness will appear here.</div>
       </div>
+    </div>
+  );
+}
+
+// ── ID Card Tab ────────────────────────────────────────────────────────────
+function IDCardTab({ userId, user }) {
+  const [cards, setCards] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [issuing, setIssuing] = useState(false);
+  const [issueForm, setIssueForm] = useState({ expiry_date: '', notes: '' });
+  const [issueSaving, setIssueSaving] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    try { const res = await api.idCards.list(userId); setCards(res.data || []); }
+    catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, [userId]);
+
+  const current = cards.find(c => c.status === 'active');
+  const history = cards.filter(c => c.status !== 'active');
+
+  function daysUntilExpiry(d) { return Math.ceil((new Date(d) - new Date()) / 86400000); }
+
+  async function issueCard() {
+    if (!issueForm.expiry_date) return;
+    setIssueSaving(true);
+    try {
+      await api.idCards.issue({ user_id: userId, expiry_date: issueForm.expiry_date, notes: issueForm.notes || null });
+      setIssuing(false); setIssueForm({ expiry_date: '', notes: '' }); load();
+    } catch (e) { alert(e.message); }
+    finally { setIssueSaving(false); }
+  }
+
+  async function changeStatus(id, status, reason) {
+    try { await api.idCards.updateStatus(id, status, reason); load(); }
+    catch (e) { alert(e.message); }
+  }
+
+  async function downloadPdf(id) {
+    try {
+      const token = await (window.__clerkGetToken ? window.__clerkGetToken() : window.Clerk?.session?.getToken?.());
+      const res = await fetch(api.idCards.pdfUrl(id), { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error('Download failed');
+      const blob = await res.blob();
+      window.open(URL.createObjectURL(blob), '_blank');
+    } catch (e) { alert(e.message); }
+  }
+
+  if (loading) return <div style={{display:'flex',justifyContent:'center',padding:'2rem'}}><div className="spinner" /></div>;
+
+  const STATUS_CHIP = {
+    active: { bg: '#dcfce7', color: '#166534', label: 'Active' },
+    lost: { bg: '#fee2e2', color: '#991b1b', label: 'Lost/Stolen' },
+    returned: { bg: '#f3f4f6', color: '#374151', label: 'Returned' },
+    revoked: { bg: '#fee2e2', color: '#991b1b', label: 'Revoked' },
+    expired: { bg: '#fef3c7', color: '#92400e', label: 'Expired' },
+  };
+
+  return (
+    <div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1rem'}}>
+        <div style={{fontWeight:700,fontSize:'1rem'}}>ID Card</div>
+        {!current && !issuing && <button className="btn btn-primary btn-sm" onClick={() => { setIssuing(true); setIssueForm({ expiry_date: new Date(Date.now() + 730 * 86400000).toISOString().split('T')[0], notes: '' }); }}>Issue New Card</button>}
+      </div>
+
+      {/* Issue form */}
+      {issuing && (
+        <div className="card" style={{marginBottom:'1rem',border:'2px solid var(--blue)',padding:'1rem'}}>
+          <div style={{fontWeight:600,marginBottom:'0.75rem'}}>Issue New ID Card</div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
+            <div className="field"><label className="label">Expiry Date</label><input type="date" className="input" value={issueForm.expiry_date} onChange={e => setIssueForm(p=>({...p,expiry_date:e.target.value}))} /></div>
+            <div className="field"><label className="label">Notes</label><input className="input" value={issueForm.notes} onChange={e => setIssueForm(p=>({...p,notes:e.target.value}))} placeholder="Optional" /></div>
+          </div>
+          <div style={{display:'flex',gap:'0.5rem',marginTop:'0.75rem'}}>
+            <button className="btn btn-primary btn-sm" onClick={issueCard} disabled={issueSaving}>{issueSaving ? 'Issuing...' : 'Issue Card'}</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => setIssuing(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Current card */}
+      {current ? (
+        <div className="card" style={{marginBottom:'1rem',borderLeft:'4px solid #16a34a'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'0.75rem'}}>
+            <div>
+              <div style={{fontSize:'0.625rem',fontWeight:700,color:'var(--text-3)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Current Card</div>
+              <div style={{fontSize:'1.25rem',fontWeight:800,color:'var(--blue)',marginTop:'0.25rem'}}>{current.card_number}</div>
+            </div>
+            <span style={{padding:'3px 8px',borderRadius:'4px',fontSize:'0.6875rem',fontWeight:600,...STATUS_CHIP.active}}>{STATUS_CHIP.active.label}</span>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'0.75rem',fontSize:'0.8125rem',marginBottom:'0.75rem'}}>
+            <div><span style={{color:'var(--text-3)',fontWeight:600}}>Issued:</span> {new Date(current.issue_date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</div>
+            <div>
+              <span style={{color:'var(--text-3)',fontWeight:600}}>Expires:</span>{' '}
+              <span style={{color: daysUntilExpiry(current.expiry_date) <= 30 ? '#ef4444' : 'var(--text)', fontWeight: daysUntilExpiry(current.expiry_date) <= 30 ? 700 : 400}}>
+                {new Date(current.expiry_date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}
+              </span>
+              {daysUntilExpiry(current.expiry_date) <= 30 && daysUntilExpiry(current.expiry_date) > 0 && (
+                <span style={{fontSize:'0.6875rem',color:'#ef4444',fontWeight:700,marginLeft:'0.375rem'}}>({daysUntilExpiry(current.expiry_date)} days!)</span>
+              )}
+              {daysUntilExpiry(current.expiry_date) <= 0 && <span style={{fontSize:'0.6875rem',color:'#991b1b',fontWeight:700,marginLeft:'0.375rem'}}>EXPIRED</span>}
+            </div>
+            <div><span style={{color:'var(--text-3)',fontWeight:600}}>Issued by:</span> {current.issued_by_user ? `${current.issued_by_user.first_name} ${current.issued_by_user.last_name}` : '—'}</div>
+          </div>
+          {current.notes && <div style={{fontSize:'0.75rem',color:'var(--text-2)',marginBottom:'0.75rem'}}>Notes: {current.notes}</div>}
+          <div style={{display:'flex',gap:'0.5rem',flexWrap:'wrap'}}>
+            <button className="btn btn-secondary btn-sm" onClick={() => downloadPdf(current.id)}>Download Card PDF</button>
+            <button className="btn btn-sm" style={{background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.2)',color:'#dc2626'}} onClick={() => { if (confirm('Report this card as lost or stolen?')) changeStatus(current.id, 'lost', 'Reported lost/stolen'); }}>Report Lost</button>
+            <button className="btn btn-sm" style={{background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.2)',color:'#dc2626'}} onClick={() => { if (confirm('Revoke this card?')) changeStatus(current.id, 'revoked', 'Revoked by manager'); }}>Revoke</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => { if (confirm('Mark as returned?')) changeStatus(current.id, 'returned'); }}>Mark Returned</button>
+          </div>
+        </div>
+      ) : !issuing && (
+        <div className="card" style={{textAlign:'center',padding:'2rem',color:'var(--text-3)',marginBottom:'1rem'}}>
+          No active ID card. Click "Issue New Card" to create one.
+        </div>
+      )}
+
+      {/* History */}
+      {history.length > 0 && (
+        <div>
+          <div style={{fontSize:'0.6875rem',fontWeight:700,color:'var(--text-3)',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.5rem'}}>Card History ({history.length})</div>
+          {history.map(c => {
+            const sc = STATUS_CHIP[c.status] || STATUS_CHIP.returned;
+            return (
+              <div key={c.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.5rem 0.75rem',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'6px',marginBottom:'0.375rem',fontSize:'0.8125rem'}}>
+                <div>
+                  <span style={{fontWeight:600,marginRight:'0.5rem'}}>{c.card_number}</span>
+                  <span style={{color:'var(--text-3)'}}>{new Date(c.issue_date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})} → {new Date(c.expiry_date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</span>
+                </div>
+                <span style={{padding:'2px 6px',borderRadius:'3px',fontSize:'0.625rem',fontWeight:600,...sc}}>{sc.label}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
