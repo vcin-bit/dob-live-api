@@ -16,7 +16,7 @@ const APP_URL = process.env.APP_URL || 'https://app.doblive.co.uk';
 // POST /api/invite
 router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
   try {
-    const { email, first_name, last_name, role, sia_licence_number, sia_licence_type, sia_expiry_date, phone } = req.body;
+    const { email, first_name, last_name, role, sia_licence_number, sia_licence_type, sia_expiry_date, phone, employee_number } = req.body;
 
     if (!email || !first_name) {
       return res.status(400).json({ error: 'Email and first name are required' });
@@ -49,6 +49,7 @@ router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGE
         sia_licence_number: sia_licence_number || null,
         sia_licence_type:   sia_licence_type   || null,
         sia_expiry_date: sia_expiry_date || null,
+        employee_number: employee_number || null,
         active: true,
       })
       .select()

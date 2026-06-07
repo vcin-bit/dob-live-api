@@ -42,6 +42,15 @@ router.patch('/me', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// POST /api/users/generate-employee-number — allocate next number via RPC
+router.post('/generate-employee-number', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
+  try {
+    const { data, error } = await supabase.rpc('allocate_employee_number', { p_company_id: req.user.company_id });
+    if (error) throw error;
+    res.json({ employee_number: data });
+  } catch (err) { next(err); }
+});
+
 // GET /api/users/:id
 router.get('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
   try {
@@ -59,7 +68,7 @@ router.get('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANA
 // POST /api/users — create officer/manager (company admin only)
 router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'FD'), async (req, res, next) => {
   try {
-    const { clerk_id, role, first_name, last_name, email, phone, sia_licence_number, sia_expiry_date } = req.body;
+    const { clerk_id, role, first_name, last_name, email, phone, sia_licence_number, sia_expiry_date, employee_number } = req.body;
     const { data, error } = await supabase
       .from('users')
       .insert({
@@ -71,7 +80,8 @@ router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'FD'), asyn
         email,
         phone,
         sia_licence_number,
-        sia_expiry_date
+        sia_expiry_date,
+        employee_number: employee_number || null
       })
       .select()
       .single();
@@ -83,7 +93,7 @@ router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'FD'), asyn
 // PATCH /api/users/:id
 router.patch('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
   try {
-    const allowed = ['first_name', 'last_name', 'phone', 'sia_licence_number', 'sia_licence_type', 'sia_expiry_date', 'sia_licence_type_2', 'sia_licence_number_2', 'sia_expiry_date_2', 'bs7858_clearance_date', 'bs7858_expiry_date', 'active', 'role', 'is_route_planner', 'permissions'];
+    const allowed = ['first_name', 'last_name', 'phone', 'sia_licence_number', 'sia_licence_type', 'sia_expiry_date', 'sia_licence_type_2', 'sia_licence_number_2', 'sia_expiry_date_2', 'bs7858_clearance_date', 'bs7858_expiry_date', 'active', 'role', 'is_route_planner', 'permissions', 'employee_number'];
     const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
     const { data, error } = await supabase
       .from('users')

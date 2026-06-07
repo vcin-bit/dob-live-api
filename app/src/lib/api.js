@@ -78,6 +78,7 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+    generateEmployeeNumber: () => request('/api/users/generate-employee-number', { method: 'POST' }),
   },
 
   // Companies

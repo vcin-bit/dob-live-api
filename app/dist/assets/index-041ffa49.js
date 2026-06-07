@@ -1,0 +1,2 @@
+import{r,_ as t}from"./main-1dc1fde8.js";import"./index-dae0dfa6.js";import"./imageUtils-0798941e.js";import"./HRPortal-4f89060a.js";const m=r("App",{web:()=>t(()=>import("./web-f844a1af.js"),["assets/web-f844a1af.js","assets/main-1dc1fde8.js","assets/index-dae0dfa6.js","assets/index-4ff26acb.css","assets/imageUtils-0798941e.js","assets/HRPortal-4f89060a.js"]).then(p=>new p.AppWeb)});export{m as App};
+//# sourceMappingURL=index-041ffa49.js.map

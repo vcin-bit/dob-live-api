@@ -2394,11 +2394,13 @@ function UserFormModal({ user, onClose, onSaved }) {
     sia_expiry_date_2:    user?.sia_expiry_date_2 ? user.sia_expiry_date_2.split('T')[0] : '',
     bs7858_clearance_date: user?.bs7858_clearance_date ? user.bs7858_clearance_date.split('T')[0] : '',
     bs7858_expiry_date:    user?.bs7858_expiry_date ? user.bs7858_expiry_date.split('T')[0] : '',
+    employee_number: user?.employee_number || '',
     is_route_planner:  user?.is_route_planner || false,
     permissions: user?.permissions || [],
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [generating, setGenerating] = useState(false);
 
   const PERMISSION_SECTIONS = [
     { key: 'operations', label: 'Operations', desc: 'Officers on duty, alerts, occurrence books, sites, reports' },
@@ -2429,6 +2431,7 @@ function UserFormModal({ user, onClose, onSaved }) {
         sia_licence_type_2: form.sia_licence_type_2 || null, sia_licence_number_2: form.sia_licence_number_2 || null,
         sia_expiry_date_2: form.sia_expiry_date_2 || null,
         bs7858_clearance_date: form.bs7858_clearance_date || null, bs7858_expiry_date: form.bs7858_expiry_date || null,
+        employee_number: form.employee_number || null,
         permissions: form.role === 'OFFICER' ? [] : form.permissions,
       };
       if (user) { await api.users.update(user.id, payload); onSaved(); }
@@ -2453,6 +2456,21 @@ function UserFormModal({ user, onClose, onSaved }) {
           <div className="field" style={{gridColumn:'1/-1'}}><label className="label">Email</label><input type="email" className="input" value={form.email} onChange={e=>f('email',e.target.value)} disabled={!!user} />{!user && <div style={{fontSize:'0.75rem',color:'var(--text-2)',marginTop:'0.25rem'}}>An invitation email will be sent to this address</div>}</div>
           <div className="field"><label className="label">Phone</label><input className="input" value={form.phone} onChange={e=>f('phone',e.target.value)} /></div>
           <div className="field"><label className="label">Role</label><select className="input" value={form.role} onChange={e=>f('role',e.target.value)}><option value="OFFICER">Officer</option><option value="OPS_MANAGER">Ops Manager</option><option value="FD">Field Director</option><option value="COMPANY">Admin</option><option value="SUPER_ADMIN">Super Admin</option></select></div>
+          <div className="field" style={{gridColumn:'1/-1'}}>
+            <label className="label">Employee Number</label>
+            <div style={{display:'flex',gap:'0.5rem'}}>
+              <input className="input" style={{flex:1}} value={form.employee_number} onChange={e=>f('employee_number',e.target.value)} placeholder="e.g. RS-0001 or legacy number" />
+              <button type="button" className="btn btn-secondary btn-sm" disabled={generating} onClick={async () => {
+                setGenerating(true);
+                try {
+                  const res = await api.users.generateEmployeeNumber();
+                  if (res?.employee_number) f('employee_number', res.employee_number);
+                  else throw new Error('No number returned');
+                } catch (e) { setError('Could not generate number: ' + e.message); }
+                finally { setGenerating(false); }
+              }}>{generating ? '...' : 'Auto-generate'}</button>
+            </div>
+          </div>
 
           {form.role !== 'OFFICER' && (
             <div className="field" style={{gridColumn:'1/-1',borderTop:'1px solid var(--border)',paddingTop:'0.75rem',marginTop:'0.25rem'}}>
