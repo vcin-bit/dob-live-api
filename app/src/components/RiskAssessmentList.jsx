@@ -72,15 +72,23 @@ function AddRiskForm({ assessmentId, assessmentType, categories, onAdded, onCanc
     if (!form.hazard_description) { setError('Hazard description is required'); return; }
     setSaving(true); setError(null);
     try {
-      const res = await api.riskAssessments.addRisk(assessmentId, form);
+      let res;
+      try {
+        res = await api.riskAssessments.addRisk(assessmentId, form);
+      } catch (firstErr) {
+        console.warn('[Risk] First attempt failed, retrying...', firstErr.message);
+        setError('Server waking up... retrying...');
+        await new Promise(r => setTimeout(r, 3000));
+        res = await api.riskAssessments.addRisk(assessmentId, form);
+      }
       if (res?.data) {
         onAdded();
       } else {
         setError('Risk may have been saved. Please close and reopen the assessment to check.');
       }
     } catch (e) {
-      console.error('[RiskAssessment] Add risk failed:', e);
-      setError(e.message || 'Failed to save risk. Please try again.');
+      console.error('[Risk] Add failed after retry:', e);
+      setError(`Save failed: ${e.message || 'Network error'}. Check your internet connection and try again.`);
     }
     finally { setSaving(false); }
   }
@@ -484,7 +492,16 @@ function CreateModal({ siteId, siteName, onClose, onCreated }) {
     if (!form.title || !form.scope) { setError('Title and scope are required'); return; }
     setSaving(true); setError(null);
     try {
-      const res = await api.riskAssessments.create({ site_id: siteId, ...form });
+      let res;
+      try {
+        res = await api.riskAssessments.create({ site_id: siteId, ...form });
+      } catch (firstErr) {
+        // Retry once — Render cold start can cause first request to fail
+        console.warn('[RiskAssessment] First attempt failed, retrying...', firstErr.message);
+        setError('Server waking up... retrying...');
+        await new Promise(r => setTimeout(r, 3000));
+        res = await api.riskAssessments.create({ site_id: siteId, ...form });
+      }
       if (res?.data) {
         onCreated(res.data);
       } else {
@@ -492,8 +509,8 @@ function CreateModal({ siteId, siteName, onClose, onCreated }) {
         onCreated(null);
       }
     } catch (e) {
-      console.error('[RiskAssessment] Create failed:', e);
-      setError(e.message || 'Failed to save. Please try again.');
+      console.error('[RiskAssessment] Create failed after retry:', e);
+      setError(`Save failed: ${e.message || 'Network error'}. Check your internet connection and try again.`);
     }
     finally { setSaving(false); }
   }
