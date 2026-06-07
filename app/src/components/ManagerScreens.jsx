@@ -2161,7 +2161,7 @@ function TeamManagement({ user }) {
             <tbody>
               {filtered.map(o => (
                 <tr key={o.id}>
-                  <td style={{fontWeight:500}}>{o.first_name} {o.last_name}<div style={{fontSize:'0.75rem',color:'var(--text-3)'}}>{o.email}</div></td>
+                  <td style={{fontWeight:500}}>{o.first_name} {o.last_name}{o.employee_number && <span style={{color:'var(--text-3)',fontWeight:400,fontSize:'0.75rem',marginLeft:'0.375rem'}}>({o.employee_number})</span>}<div style={{fontSize:'0.75rem',color:'var(--text-3)'}}>{o.email}</div></td>
                   <td style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>{o.phone||'—'}</td>
                   <td><span className={`badge ${roleBadge[o.role]||'badge-neutral'}`}>{roleLabels[o.role]||o.role}</span></td>
                   <td style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>{o.sia_licence_type||'—'}</td>

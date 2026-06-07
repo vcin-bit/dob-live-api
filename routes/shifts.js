@@ -9,7 +9,7 @@ router.get('/', authenticate, async (req, res, next) => {
 
     let query = supabase
       .from('shifts')
-      .select(`*, officer:users(id, first_name, last_name), site:sites(id, name)`)
+      .select(`*, officer:users(id, first_name, last_name, employee_number), site:sites(id, name)`)
       .eq('company_id', req.user.company_id)
       .order('start_time', { ascending: false });
 
@@ -78,7 +78,7 @@ router.get('/:id', authenticate, async (req, res, next) => {
   try {
     const { data, error } = await supabase
       .from('shifts')
-      .select(`*, officer:users(id, first_name, last_name), site:sites(id, name)`)
+      .select(`*, officer:users(id, first_name, last_name, employee_number), site:sites(id, name)`)
       .eq('id', req.params.id)
       .eq('company_id', req.user.company_id)
       .single();
@@ -296,7 +296,7 @@ router.get('/previous', authenticate, async (req, res, next) => {
     if (!site_id) return res.status(400).json({ error: 'site_id required' });
     const { data, error } = await supabase
       .from('shifts')
-      .select('*, officer:users(id, first_name, last_name), site:sites(id, name)')
+      .select('*, officer:users(id, first_name, last_name, employee_number), site:sites(id, name)')
       .eq('company_id', req.user.company_id)
       .eq('site_id', site_id)
       .eq('status', 'COMPLETED')

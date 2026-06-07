@@ -582,7 +582,7 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
 function PaySummary({ shifts, title }) {
   const byOfficer = {};
   shifts.forEach(s => {
-    const name = s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unassigned';
+    const name = s.officer ? `${s.officer.first_name} ${s.officer.last_name}${s.officer.employee_number ? ` (${s.officer.employee_number})` : ''}` : 'Unassigned';
     if (!byOfficer[name]) byOfficer[name] = { shifts: 0, hours: 0, bhHours: 0, pay: 0 };
     byOfficer[name].shifts++;
     const h = shiftHours(s);

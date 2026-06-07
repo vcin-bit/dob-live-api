@@ -227,7 +227,7 @@ function PersonnelFile({ userId, officers, onBack, currentUser }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--text-2)', cursor: 'pointer', fontSize: '0.875rem' }}>← Back</button>
           <div>
-            <div className="topbar-title">{officer.first_name} {officer.last_name}</div>
+            <div className="topbar-title">{officer.first_name} {officer.last_name}{officer.employee_number && <span style={{color:'var(--text-3)',fontWeight:400,fontSize:'0.875rem',marginLeft:'0.5rem'}}>({officer.employee_number})</span>}</div>
             <div className="topbar-sub">{officer.email} · {officer.role}</div>
           </div>
         </div>

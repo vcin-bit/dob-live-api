@@ -207,9 +207,11 @@ router.post('/invoice', authenticate, async (req, res, next) => {
 
       // From (right side)
       const fromX = W - M - 200;
+      const officerName = contractor.name || `${officer.first_name} ${officer.last_name}`;
       doc.fontSize(11).font('Helvetica-Bold').fillColor('#0b1a3e')
-        .text(contractor.name || `${officer.first_name} ${officer.last_name}`, fromX, 20, { width: 200, align: 'right' });
+        .text(officerName, fromX, 20, { width: 200, align: 'right' });
       let fy = 36;
+      if (officer.employee_number) { doc.fontSize(8).font('Helvetica').fillColor('#6b7280').text(officer.employee_number, fromX, fy, { width: 200, align: 'right' }); fy += 12; }
       doc.fontSize(8).font('Helvetica').fillColor('#6b7280');
       if (contractor.address) { doc.text(contractor.address, fromX, fy, { width: 200, align: 'right' }); fy += 12; }
       if (contractor.company_reg) { doc.text(`Company No: ${contractor.company_reg}`, fromX, fy, { width: 200, align: 'right' }); fy += 12; }
