@@ -15,7 +15,7 @@ router.get('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER
   try {
     const { data, error } = await supabase
       .from('users')
-      .select('id, clerk_id, role, first_name, last_name, email, phone, sia_licence_number, sia_licence_type, sia_expiry_date, sia_licence_type_2, sia_licence_number_2, sia_expiry_date_2, bs7858_clearance_date, bs7858_expiry_date, active, is_route_planner, permissions, created_at')
+      .select('id, clerk_id, role, first_name, last_name, email, phone, sia_licence_number, sia_licence_type, sia_expiry_date, sia_licence_type_2, sia_licence_number_2, sia_expiry_date_2, bs7858_clearance_date, bs7858_expiry_date, active, is_route_planner, permissions, employee_number, created_at')
       .eq('company_id', req.user.company_id)
       .order('last_name');
     if (error) throw error;
