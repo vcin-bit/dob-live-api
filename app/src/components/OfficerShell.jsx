@@ -37,6 +37,8 @@ function OfficerApp({ user }) {
   const [siteChecks, setSiteChecks] = useState([]);
   const [checksCompleted, setChecksCompleted] = useState(false);
   const [checkStates, setCheckStates] = useState({});
+  const [loadError, setLoadError] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   async function loadHandover() {
     if (!selectedSite) return;
@@ -138,13 +140,14 @@ function OfficerApp({ user }) {
         }
       } catch (err) {
         console.error('Failed to fetch officer data:', err);
+        setLoadError(true);
       } finally {
         setLoading(false);
       }
     }
 
     fetchOfficerData();
-  }, [user]);
+  }, [user, loadAttempt]);
 
   // Load last patrol time for PlaybookAlerts (only from current shift)
   useEffect(() => {
@@ -181,6 +184,27 @@ function OfficerApp({ user }) {
             <span style={{color:'#1a52a8'}}>DOB</span><span style={{color:'#fff'}}> Live</span>
           </div>
           <div className="spinner" style={{borderTopColor:'#1a52a8',borderColor:'rgba(255,255,255,0.1)',width:'2rem',height:'2rem',margin:'0 auto'}}/>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#0f1623',padding:'1.5rem'}}>
+        <div style={{textAlign:'center',maxWidth:'380px'}}>
+          <div style={{fontSize:'1.5rem',fontWeight:800,marginBottom:'1.5rem'}}>
+            <span style={{color:'#1a52a8'}}>DOB</span><span style={{color:'#fff'}}> Live</span>
+          </div>
+          <div style={{background:'#1a2235',borderRadius:'12px',padding:'1.5rem'}}>
+            <div style={{fontSize:'1rem',fontWeight:700,color:'#fff',marginBottom:'0.5rem'}}>Connection problem</div>
+            <p style={{color:'rgba(255,255,255,0.5)',fontSize:'0.875rem',marginBottom:'1.5rem'}}>
+              Could not load your shift data. Check your signal and try again.
+            </p>
+            <button onClick={() => { setLoadError(false); setLoading(true); setLoadAttempt(a => a+1); }} style={{width:'100%',padding:'0.75rem',background:'#1a52a8',color:'#fff',border:'none',borderRadius:'8px',fontWeight:600,cursor:'pointer',fontSize:'0.9375rem'}}>
+              Retry
+            </button>
+          </div>
         </div>
       </div>
     );

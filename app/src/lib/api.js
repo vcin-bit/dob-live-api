@@ -10,8 +10,20 @@ class ApiError extends Error {
   }
 }
 
+// Helper: race a promise against a timeout
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s`)), ms)),
+  ]);
+}
+
 // Helper to make authenticated requests
 async function request(endpoint, options = {}) {
+  const controller = new AbortController();
+  const timeoutMs = options.timeout || 15000;
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
   try {
     const url = `${API_BASE}${endpoint}`;
     const config = {
@@ -20,15 +32,19 @@ async function request(endpoint, options = {}) {
         ...options.headers,
       },
       ...options,
+      signal: controller.signal,
     };
+    delete config.timeout;
 
-    // Add Clerk session token
+    // Add Clerk session token (with 5s timeout to prevent hangs)
     if (typeof window !== 'undefined' && window.__clerkGetToken) {
-      const token = await window.__clerkGetToken();
-      if (token) config.headers.Authorization = `Bearer ${token}`;
+      try {
+        const token = await withTimeout(window.__clerkGetToken(), 5000, 'Auth token');
+        if (token) config.headers.Authorization = `Bearer ${token}`;
+      } catch (e) { console.warn('Token fetch failed, continuing without auth:', e.message); }
     } else if (typeof window !== 'undefined') {
       try {
-        const token = await window.Clerk?.session?.getToken?.();
+        const token = await withTimeout(window.Clerk?.session?.getToken?.() || Promise.resolve(null), 5000, 'Auth token');
         if (token) config.headers.Authorization = `Bearer ${token}`;
       } catch {}
     }
@@ -54,7 +70,10 @@ async function request(endpoint, options = {}) {
     return data;
   } catch (err) {
     if (err instanceof ApiError) throw err;
+    if (err.name === 'AbortError') throw new ApiError('Request timed out — check your connection', 0);
     throw new ApiError(err.message, 0, err);
+  } finally {
+    clearTimeout(timer);
   }
 }
 

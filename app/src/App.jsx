@@ -435,16 +435,19 @@ function AuthenticatedApp() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [attempt, setAttempt] = useState(0);
+  const [slow, setSlow] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
+    const slowTimer = setTimeout(() => { if (!cancelled) setSlow(true); }, 8000);
 
     async function fetchUser() {
       setLoading(true);
       setError(null);
+      setSlow(false);
 
-      // Try up to 6 times over ~30 seconds to handle Render cold starts
+      // Try up to 3 times with 15s timeout per request to handle Render cold starts
       for (let i = 0; i < 3; i++) {
         try {
           const res = await api.users.me();
@@ -466,7 +469,7 @@ function AuthenticatedApp() {
     }
 
     fetchUser();
-    return () => { cancelled = true; };
+    return () => { cancelled = true; clearTimeout(slowTimer); };
   }, [user, attempt]);
 
   if (loading) return (
@@ -476,7 +479,12 @@ function AuthenticatedApp() {
           <span style={{color:'#1a52a8'}}>DOB</span><span style={{color:'#fff'}}> Live</span>
         </div>
         <div className="spinner" style={{borderTopColor:'#1a52a8',borderColor:'rgba(255,255,255,0.1)',width:'2rem',height:'2rem',margin:'0 auto 1rem'}}/>
-        <p style={{color:'rgba(255,255,255,0.4)',fontSize:'0.875rem'}}>Loading...</p>
+        <p style={{color:'rgba(255,255,255,0.4)',fontSize:'0.875rem'}}>{slow ? 'Taking longer than usual…' : 'Loading...'}</p>
+        {slow && (
+          <button onClick={() => setAttempt(a => a+1)} style={{marginTop:'1rem',padding:'0.625rem 1.25rem',background:'#1a52a8',color:'#fff',border:'none',borderRadius:'8px',fontWeight:600,cursor:'pointer',fontSize:'0.875rem'}}>
+            Retry Now
+          </button>
+        )}
       </div>
     </div>
   );
