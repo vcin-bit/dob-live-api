@@ -413,6 +413,8 @@ export const api = {
 
   // ID Cards
   idCards: {
+    summary: () => request('/api/id-cards/summary'),
+    company: () => request('/api/id-cards/company'),
     list: (userId) => request(`/api/id-cards/${userId}`),
     issue: (data) => request('/api/id-cards', { method: 'POST', body: JSON.stringify(data) }),
     updateStatus: (id, status, reason) => request(`/api/id-cards/${id}`, { method: 'PATCH', body: JSON.stringify({ status, revocation_reason: reason }) }),

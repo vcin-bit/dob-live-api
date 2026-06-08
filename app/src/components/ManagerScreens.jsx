@@ -2149,6 +2149,8 @@ function TeamManagement({ user }) {
           </div>
         )}
 
+        <IDCardsSummaryCard />
+
         {loading ? (
           <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>
         ) : filtered.length === 0 ? (
@@ -3180,6 +3182,89 @@ function InfoField({ label, value, span }) {
     <div style={span ? {gridColumn:'1/-1'} : {}}>
       <div style={{fontSize:'0.75rem',color:'var(--text-2)',fontWeight:500,marginBottom:'0.25rem'}}>{label}</div>
       <div style={{fontSize:'0.875rem',color:value ? 'var(--text)' : 'var(--text-3)'}}>{value || 'Not set'}</div>
+    </div>
+  );
+}
+
+// ── ID Cards Summary Card ──────────────────────────────────────────────────
+function IDCardsSummaryCard() {
+  const [summary, setSummary] = useState(null);
+  const [cards, setCards] = useState(null);
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    api.idCards.summary().then(setSummary).catch(() => {});
+  }, []);
+
+  async function expand() {
+    if (expanded) { setExpanded(false); return; }
+    setExpanded(true);
+    if (!cards) {
+      try { const res = await api.idCards.company(); setCards(res.data || []); }
+      catch { setCards([]); }
+    }
+  }
+
+  if (!summary) return null;
+
+  const STATUS_DOT = { active: '#16a34a', lost: '#f59e0b', revoked: '#ef4444', returned: '#9ca3af', expired: '#991b1b' };
+
+  return (
+    <div className="card" style={{marginBottom:'1rem',padding:'0.875rem 1rem',cursor:'pointer'}} onClick={expand}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <div style={{display:'flex',alignItems:'center',gap:'1rem'}}>
+          <div style={{fontSize:'0.8125rem',fontWeight:700,color:'var(--text)'}}>ID Cards</div>
+          <div style={{display:'flex',gap:'0.75rem',fontSize:'0.75rem'}}>
+            <span style={{color:'#16a34a',fontWeight:600}}>{summary.active} Active</span>
+            {summary.expiring_soon > 0 && <span style={{color:'#ef4444',fontWeight:700}}>{summary.expiring_soon} Expiring Soon</span>}
+            {summary.expired > 0 && <span style={{color:'#991b1b',fontWeight:700}}>{summary.expired} Expired</span>}
+            {summary.lost > 0 && <span style={{color:'#f59e0b',fontWeight:600}}>{summary.lost} Lost</span>}
+            {summary.revoked > 0 && <span style={{color:'#ef4444',fontWeight:600}}>{summary.revoked} Revoked</span>}
+          </div>
+        </div>
+        <span style={{color:'var(--text-3)',fontSize:'0.75rem'}}>{expanded ? '▾' : '▸'}</span>
+      </div>
+      {expanded && cards && (
+        <div style={{marginTop:'0.75rem',borderTop:'1px solid var(--border)',paddingTop:'0.75rem'}} onClick={e => e.stopPropagation()}>
+          <table style={{width:'100%',borderCollapse:'collapse',fontSize:'0.8125rem'}}>
+            <thead>
+              <tr style={{borderBottom:'1px solid var(--border)'}}>
+                <th style={{textAlign:'left',padding:'0.375rem 0.5rem',fontWeight:600,color:'var(--text-3)',fontSize:'0.6875rem'}}>Officer</th>
+                <th style={{textAlign:'left',padding:'0.375rem 0.5rem',fontWeight:600,color:'var(--text-3)',fontSize:'0.6875rem'}}>Card #</th>
+                <th style={{textAlign:'center',padding:'0.375rem 0.5rem',fontWeight:600,color:'var(--text-3)',fontSize:'0.6875rem'}}>Status</th>
+                <th style={{textAlign:'right',padding:'0.375rem 0.5rem',fontWeight:600,color:'var(--text-3)',fontSize:'0.6875rem'}}>Expiry</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cards.map(c => {
+                const daysLeft = Math.ceil((new Date(c.expiry_date) - new Date()) / 86400000);
+                const isExpiring = daysLeft <= 30 && daysLeft > 0;
+                const isExpired = daysLeft <= 0;
+                return (
+                  <tr key={c.id} style={{borderBottom:'1px solid var(--border)'}}>
+                    <td style={{padding:'0.375rem 0.5rem',fontWeight:500}}>
+                      {c.officer?.first_name} {c.officer?.last_name}
+                      {c.officer?.employee_number && <span style={{color:'var(--text-3)',fontSize:'0.6875rem',marginLeft:'0.25rem'}}>({c.officer.employee_number})</span>}
+                    </td>
+                    <td style={{padding:'0.375rem 0.5rem',color:'var(--blue)',fontWeight:600}}>{c.card_number}</td>
+                    <td style={{padding:'0.375rem 0.5rem',textAlign:'center'}}>
+                      <span style={{display:'inline-flex',alignItems:'center',gap:'4px'}}>
+                        <span style={{width:6,height:6,borderRadius:'50%',background:STATUS_DOT[c.status] || '#9ca3af'}} />
+                        <span style={{fontSize:'0.6875rem',fontWeight:600,textTransform:'capitalize'}}>{c.status}</span>
+                      </span>
+                    </td>
+                    <td style={{padding:'0.375rem 0.5rem',textAlign:'right',color: isExpired ? '#991b1b' : isExpiring ? '#ef4444' : 'var(--text-2)', fontWeight: isExpiring || isExpired ? 700 : 400}}>
+                      {new Date(c.expiry_date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'})}
+                      {isExpiring && <span style={{fontSize:'0.625rem',marginLeft:'0.25rem'}}>({daysLeft}d)</span>}
+                      {isExpired && <span style={{fontSize:'0.625rem',marginLeft:'0.25rem'}}>EXPIRED</span>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

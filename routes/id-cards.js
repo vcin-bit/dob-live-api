@@ -2,6 +2,42 @@ const router = require('express').Router();
 const supabase = require('../lib/supabase');
 const { authenticate, requireRole } = require('../middleware/auth');
 
+// GET /api/id-cards/summary — company-wide card status counts
+router.get('/summary', authenticate, async (req, res, next) => {
+  try {
+    const { data, error } = await supabase
+      .from('officer_id_cards')
+      .select('id, status, expiry_date')
+      .eq('company_id', req.user.company_id);
+    if (error) throw error;
+    const now = new Date().toISOString().split('T')[0];
+    const soon = new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
+    const active = (data || []).filter(c => c.status === 'active');
+    res.json({
+      total: (data || []).length,
+      active: active.length,
+      expiring_soon: active.filter(c => c.expiry_date <= soon && c.expiry_date > now).length,
+      expired: active.filter(c => c.expiry_date <= now).length,
+      lost: (data || []).filter(c => c.status === 'lost').length,
+      revoked: (data || []).filter(c => c.status === 'revoked').length,
+      returned: (data || []).filter(c => c.status === 'returned').length,
+    });
+  } catch (err) { next(err); }
+});
+
+// GET /api/id-cards/company — all cards with officer details
+router.get('/company', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
+  try {
+    const { data, error } = await supabase
+      .from('officer_id_cards')
+      .select('*, officer:users!officer_id_cards_user_id_fkey(first_name, last_name, employee_number)')
+      .eq('company_id', req.user.company_id)
+      .order('expiry_date', { ascending: true });
+    if (error) throw error;
+    res.json({ data });
+  } catch (err) { next(err); }
+});
+
 // GET /api/id-cards/:userId — get cards for an officer
 router.get('/:userId', authenticate, async (req, res, next) => {
   try {
