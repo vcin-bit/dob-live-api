@@ -11,13 +11,41 @@ import {
 } from '@heroicons/react/24/outline';
 
 function OfficerInstructionsScreen({ user, site }) {
-  const [data, setData] = useState(null);
+  const [ai, setAI] = useState(null);
+  const [fallback, setFallback] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [declaring, setDeclaring] = useState(false);
+  const [declared, setDeclared] = useState(false);
+  const [declaredAt, setDeclaredAt] = useState(null);
 
   useEffect(() => {
     if (!site?.id) { setLoading(false); return; }
-    api.instructions.get(site.id).then(r => { setData(r.data); setLoading(false); });
+    // Try new AI system first, fall back to old instructions
+    Promise.all([
+      api.siteAI.published(site.id).catch(() => ({ data: null })),
+      api.instructions.get(site.id).catch(() => ({ data: null })),
+    ]).then(([aiRes, oldRes]) => {
+      if (aiRes.data) {
+        setAI(aiRes.data);
+        setDeclared(!!aiRes.data.declared);
+        setDeclaredAt(aiRes.data.declared_at);
+      } else {
+        setFallback(oldRes.data);
+      }
+      setLoading(false);
+    });
   }, [site?.id]);
+
+  async function handleDeclare() {
+    if (!confirm('I confirm that I have read, understood and will comply with these Assignment Instructions.')) return;
+    try {
+      setDeclaring(true);
+      await api.siteAI.declare(site.id);
+      setDeclared(true);
+      setDeclaredAt(new Date().toISOString());
+    } catch (e) { alert(e.message); }
+    finally { setDeclaring(false); }
+  }
 
   if (!site) return (
     <div style={{padding:'1.25rem',paddingBottom:'5rem'}}>
@@ -25,12 +53,66 @@ function OfficerInstructionsScreen({ user, site }) {
     </div>
   );
 
+  if (loading) return <div style={{padding:'1rem',display:'flex',justifyContent:'center',paddingTop:'3rem'}}><div className="spinner" style={{borderTopColor:'#fff',borderColor:'rgba(255,255,255,0.15)'}} /></div>;
+
+  // New AI system
+  if (ai) {
+    return (
+      <div style={{padding:'1rem',paddingBottom:'5rem'}}>
+        <h2 style={{fontWeight:700,marginBottom:'0.25rem',fontSize:'1.125rem',color:'#fff'}}>{site.name}</h2>
+        <div style={{display:'flex',alignItems:'center',gap:'0.5rem',marginBottom:'1rem'}}>
+          <span style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.06em',fontWeight:600}}>Assignment Instructions</span>
+          <span style={{fontSize:'0.625rem',padding:'2px 6px',borderRadius:'3px',background:'rgba(26,82,168,0.2)',color:'#60a5fa',fontWeight:700}}>Rev {ai.revision}</span>
+        </div>
+
+        {/* Declaration status */}
+        {declared ? (
+          <div className="officer-card" style={{borderLeft:'3px solid #16a34a',marginBottom:'0.875rem'}}>
+            <div style={{display:'flex',alignItems:'center',gap:'0.5rem'}}>
+              <span style={{color:'#4ade80',fontWeight:700,fontSize:'0.875rem'}}>✓ Declared</span>
+              <span style={{fontSize:'0.6875rem',color:'rgba(255,255,255,0.35)'}}>
+                {declaredAt ? new Date(declaredAt).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) : ''}
+              </span>
+            </div>
+            <div style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.4)',marginTop:'0.25rem'}}>
+              You have confirmed you have read, understood and will comply with Revision {ai.revision}.
+            </div>
+          </div>
+        ) : (
+          <div className="officer-card" style={{borderLeft:'3px solid #f59e0b',marginBottom:'0.875rem'}}>
+            <div style={{fontWeight:600,color:'#fbbf24',fontSize:'0.875rem',marginBottom:'0.375rem'}}>Declaration Required</div>
+            <div style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.5)',marginBottom:'0.75rem',lineHeight:1.5}}>
+              Read all sections below, then confirm you understand and will comply with these Assignment Instructions.
+            </div>
+            <button onClick={handleDeclare} disabled={declaring}
+              style={{width:'100%',padding:'0.75rem',background:'rgba(16,185,129,0.15)',border:'1.5px solid rgba(16,185,129,0.4)',borderRadius:'8px',color:'#4ade80',fontSize:'0.875rem',fontWeight:700,cursor:'pointer'}}>
+              {declaring ? 'Submitting…' : 'I have read, understood and will comply'}
+            </button>
+          </div>
+        )}
+
+        {/* Sections */}
+        <div style={{display:'flex',flexDirection:'column',gap:'0.875rem'}}>
+          {(ai.sections || []).map((sec, i) => (
+            <div key={i} className="officer-card">
+              <div style={{fontWeight:600,marginBottom:'0.375rem',color:'#fff'}}>
+                <span style={{color:'#60a5fa',marginRight:'0.375rem'}}>{i + 1}.</span>{sec.title}
+              </div>
+              <div style={{fontSize:'0.875rem',color:'rgba(255,255,255,0.6)',whiteSpace:'pre-line',lineHeight:1.6}}>{sec.content}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Fallback to old site_instructions
+  const data = fallback;
   return (
     <div style={{padding:'1rem',paddingBottom:'5rem'}}>
       <h2 style={{fontWeight:700,marginBottom:'1rem',fontSize:'1.125rem',color:'#fff'}}>{site.name}</h2>
       <p style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.06em',fontWeight:600,marginBottom:'0.875rem'}}>Site Instructions</p>
-      {loading ? <div style={{display:'flex',justifyContent:'center',padding:'2rem'}}><div className="spinner" style={{borderTopColor:'#fff',borderColor:'rgba(255,255,255,0.15)'}} /></div>
-      : !data || data.sections?.length===0 ? <div style={{textAlign:'center',padding:'2rem',color:'rgba(255,255,255,0.3)',fontSize:'0.875rem'}}>No instructions for this site</div>
+      {!data || data.sections?.length===0 ? <div style={{textAlign:'center',padding:'2rem',color:'rgba(255,255,255,0.3)',fontSize:'0.875rem'}}>No instructions for this site</div>
       : (
         <div style={{display:'flex',flexDirection:'column',gap:'0.875rem'}}>
           {data.sections.map((sec, i) => (

@@ -81,6 +81,7 @@ app.use('/api/site-checks',  require('./routes/site-checks'));
 app.use('/api/risk-assessments', require('./routes/risk-assessments'));
 app.use('/api/controlled-documents', require('./routes/controlled-documents'));
 app.use('/api/id-cards', require('./routes/id-cards'));
+app.use('/api/site-ai',  require('./routes/site-ai'));
 app.use('/api/compliance',   require('./routes/compliance'));
 
 // ── 404 handler ──────────────────────────────────────────────

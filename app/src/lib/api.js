@@ -440,6 +440,20 @@ export const api = {
     pdfUrl: (id) => `${API_BASE}/api/id-cards/${id}/pdf`,
   },
 
+  // Site Assignment Instructions
+  siteAI: {
+    get: (siteId) => request(`/api/site-ai/${siteId}`),
+    published: (siteId) => request(`/api/site-ai/${siteId}/published`),
+    save: (siteId, data) => request(`/api/site-ai/${siteId}`, { method: 'PUT', body: JSON.stringify(data) }),
+    publish: (siteId) => request(`/api/site-ai/${siteId}/publish`, { method: 'POST' }),
+    revisions: (siteId) => request(`/api/site-ai/${siteId}/revisions`),
+    revision: (siteId, rev) => request(`/api/site-ai/${siteId}/revisions/${rev}`),
+    declare: (siteId) => request(`/api/site-ai/${siteId}/declare`, { method: 'POST' }),
+    declarations: (siteId) => request(`/api/site-ai/${siteId}/declarations`),
+    officerCompliance: (userId) => request(`/api/site-ai/officer/${userId}/compliance`),
+    pdf: (siteId, revision) => request(`/api/site-ai/${siteId}/pdf`, { method: 'POST', body: JSON.stringify({ revision }), timeout: 30000 }),
+  },
+
   // Controlled Documents (QMS)
   controlledDocs: {
     list: (params = {}) => request(`/api/controlled-documents?${new URLSearchParams(params)}`),

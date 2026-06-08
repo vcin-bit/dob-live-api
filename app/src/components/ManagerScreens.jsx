@@ -1863,7 +1863,7 @@ function SiteDetail({ user }) {
       </div>
       {/* Tab bar */}
       <div style={{display:'flex',gap:0,borderBottom:'1px solid var(--border)',padding:'0 1.5rem',background:'var(--surface)'}}>
-        {[{key:'info',label:'Site Info'},{key:'logs',label:'Recent Logs'},{key:'roster',label:'Roster'},{key:'officers',label:'Officers'},{key:'visitors',label:'Visitors'},{key:'documents',label:'Inspections'},{key:'risks',label:'Risk Assessments'},{key:'codes',label:'Codes'},{key:'playbook',label:'Virtual Supervisor'}].map(t => (
+        {[{key:'info',label:'Site Info'},{key:'ai',label:'Assignment Instructions'},{key:'logs',label:'Recent Logs'},{key:'roster',label:'Roster'},{key:'officers',label:'Officers'},{key:'visitors',label:'Visitors'},{key:'documents',label:'Inspections'},{key:'risks',label:'Risk Assessments'},{key:'codes',label:'Codes'},{key:'playbook',label:'Virtual Supervisor'}].map(t => (
           <button key={t.key} onClick={() => setActiveTab(t.key)}
             style={{padding:'0.75rem 1rem',background:'none',border:'none',borderBottom:`2px solid ${activeTab===t.key?'var(--blue)':'transparent'}`,color:activeTab===t.key?'var(--blue)':'var(--text-2)',fontSize:'0.875rem',fontWeight:600,cursor:'pointer',marginBottom:'-1px',whiteSpace:'nowrap'}}>
             {t.label}
@@ -1871,6 +1871,7 @@ function SiteDetail({ user }) {
         ))}
       </div>
       <div className="page-content">
+        {activeTab === 'ai' && <SiteAIEditor siteId={id} siteName={site.name} />}
         {activeTab === 'playbook' && <SitePlaybook siteId={id} />}
         {activeTab === 'risks' && <RiskAssessmentList siteId={id} siteName={site.name} user={user} />}
         {activeTab === 'logs' && (
@@ -3540,6 +3541,281 @@ function PatrolHistoryScreen({ user }) {
       )}
 
       {selected && <PatrolSessionModal session={selected} onClose={() => setSelected(null)} />}
+    </div>
+  );
+}
+
+// ── Site Assignment Instructions Editor ───────────────────────────────────────
+function SiteAIEditor({ siteId, siteName }) {
+  const [ai, setAI] = useState(null);
+  const [sections, setSections] = useState([]);
+  const [title, setTitle] = useState('Assignment Instructions');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [success, setSuccess] = useState(null);
+  const [error, setError] = useState(null);
+  const [revisions, setRevisions] = useState([]);
+  const [showRevisions, setShowRevisions] = useState(false);
+  const [viewingRev, setViewingRev] = useState(null);
+  const [declarations, setDeclarations] = useState(null);
+  const [showDeclarations, setShowDeclarations] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      api.siteAI.get(siteId),
+      api.siteAI.revisions(siteId),
+    ]).then(([aiRes, revRes]) => {
+      const d = aiRes.data;
+      if (d) {
+        setAI(d);
+        setTitle(d.title || 'Assignment Instructions');
+        setSections(d.sections || []);
+      }
+      setRevisions(revRes.data || []);
+    }).catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [siteId]);
+
+  function addSection() {
+    setSections(s => [...s, { title: '', content: '' }]);
+  }
+  function updateSection(i, field, val) {
+    setSections(s => s.map((sec, j) => j === i ? { ...sec, [field]: val } : sec));
+  }
+  function removeSection(i) {
+    setSections(s => s.filter((_, j) => j !== i));
+  }
+  function moveSection(i, dir) {
+    setSections(s => {
+      const arr = [...s];
+      const target = i + dir;
+      if (target < 0 || target >= arr.length) return arr;
+      [arr[i], arr[target]] = [arr[target], arr[i]];
+      return arr;
+    });
+  }
+
+  async function save() {
+    try {
+      setSaving(true); setError(null);
+      const res = await api.siteAI.save(siteId, { title, sections });
+      setAI(res.data);
+      setSuccess('Draft saved');
+      setTimeout(() => setSuccess(null), 2000);
+    } catch (e) { setError(e.message); }
+    finally { setSaving(false); }
+  }
+
+  async function publish() {
+    if (!confirm(`Publish Revision ${(ai?.revision || 0) + 1}? Officers will need to re-declare.`)) return;
+    try {
+      setPublishing(true); setError(null);
+      // Save first to ensure latest content is persisted
+      await api.siteAI.save(siteId, { title, sections });
+      const res = await api.siteAI.publish(siteId);
+      setAI(res.data);
+      setSuccess(`Published as Revision ${res.revision}`);
+      // Refresh revisions
+      const revRes = await api.siteAI.revisions(siteId);
+      setRevisions(revRes.data || []);
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (e) { setError(e.message); }
+    finally { setPublishing(false); }
+  }
+
+  async function viewRevision(rev) {
+    try {
+      const res = await api.siteAI.revision(siteId, rev);
+      setViewingRev(res.data);
+    } catch (e) { setError(e.message); }
+  }
+
+  async function loadDeclarations() {
+    setShowDeclarations(!showDeclarations);
+    if (!showDeclarations) {
+      try {
+        const res = await api.siteAI.declarations(siteId);
+        setDeclarations(res);
+      } catch (e) { setError(e.message); }
+    }
+  }
+
+  async function downloadPdf(revision) {
+    try {
+      setPdfLoading(true);
+      const res = await api.siteAI.pdf(siteId, revision);
+      const blob = new Blob([Uint8Array.from(atob(res.pdf), c => c.charCodeAt(0))], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = res.filename; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) { setError(e.message); }
+    finally { setPdfLoading(false); }
+  }
+
+  if (loading) return <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>;
+
+  return (
+    <div>
+      {/* Header bar */}
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'1rem',flexWrap:'wrap',gap:'0.5rem'}}>
+        <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
+          <div style={{fontWeight:700,fontSize:'1rem'}}>Assignment Instructions</div>
+          {ai?.revision > 0 && (
+            <span className="badge badge-info" style={{fontSize:'0.6875rem'}}>Rev {ai.revision} — {ai.status === 'published' ? 'Published' : 'Draft'}</span>
+          )}
+          {ai?.revision === 0 && <span className="badge badge-neutral" style={{fontSize:'0.6875rem'}}>New — Unpublished</span>}
+        </div>
+        <div style={{display:'flex',gap:'0.5rem',alignItems:'center'}}>
+          {ai?.revision > 0 && (
+            <>
+              <button className="btn btn-ghost btn-sm" onClick={loadDeclarations}>
+                {showDeclarations ? 'Hide' : 'Declarations'}
+              </button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setShowRevisions(!showRevisions)}>
+                {showRevisions ? 'Hide History' : `History (${revisions.length})`}
+              </button>
+              <button className="btn btn-ghost btn-sm" onClick={() => downloadPdf(ai.revision)} disabled={pdfLoading}>
+                {pdfLoading ? 'Generating…' : 'Download PDF'}
+              </button>
+            </>
+          )}
+          <button className="btn btn-ghost btn-sm" onClick={addSection}>+ Section</button>
+          <button className="btn btn-primary btn-sm" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save Draft'}</button>
+          <button className="btn btn-sm" style={{background:'#16a34a',color:'#fff',border:'none',fontWeight:600}} onClick={publish} disabled={publishing}>
+            {publishing ? 'Publishing…' : `Publish Rev ${(ai?.revision || 0) + 1}`}
+          </button>
+        </div>
+      </div>
+
+      {success && <div className="alert alert-success" style={{marginBottom:'1rem'}}>{success}</div>}
+      {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
+
+      {/* Declarations panel */}
+      {showDeclarations && declarations && (
+        <div className="card" style={{marginBottom:'1rem',padding:'1rem'}}>
+          <div style={{fontWeight:700,fontSize:'0.875rem',marginBottom:'0.75rem'}}>
+            Declarations — Revision {declarations.revision}
+          </div>
+          {(declarations.data || []).length === 0 ? (
+            <div style={{fontSize:'0.8125rem',color:'var(--text-3)'}}>No officers assigned to this site.</div>
+          ) : (
+            <table style={{width:'100%',borderCollapse:'collapse',fontSize:'0.8125rem'}}>
+              <thead>
+                <tr style={{borderBottom:'1px solid var(--border)'}}>
+                  <th style={{textAlign:'left',padding:'0.375rem 0.5rem',fontWeight:600,color:'var(--text-3)',fontSize:'0.6875rem'}}>Officer</th>
+                  <th style={{textAlign:'center',padding:'0.375rem 0.5rem',fontWeight:600,color:'var(--text-3)',fontSize:'0.6875rem'}}>Status</th>
+                  <th style={{textAlign:'right',padding:'0.375rem 0.5rem',fontWeight:600,color:'var(--text-3)',fontSize:'0.6875rem'}}>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(declarations.data || []).map(o => (
+                  <tr key={o.id} style={{borderBottom:'1px solid var(--border)'}}>
+                    <td style={{padding:'0.375rem 0.5rem',fontWeight:500}}>{o.first_name} {o.last_name}</td>
+                    <td style={{padding:'0.375rem 0.5rem',textAlign:'center'}}>
+                      {o.declared
+                        ? <span style={{color:'#16a34a',fontWeight:600}}>✓ Declared</span>
+                        : <span style={{color:'#ef4444',fontWeight:600}}>Outstanding</span>}
+                    </td>
+                    <td style={{padding:'0.375rem 0.5rem',textAlign:'right',color:'var(--text-3)',fontSize:'0.75rem'}}>
+                      {o.declared_at ? new Date(o.declared_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      {/* Revision history panel */}
+      {showRevisions && (
+        <div className="card" style={{marginBottom:'1rem',padding:'1rem'}}>
+          <div style={{fontWeight:700,fontSize:'0.875rem',marginBottom:'0.75rem'}}>Revision History</div>
+          {revisions.length === 0 ? (
+            <div style={{fontSize:'0.8125rem',color:'var(--text-3)'}}>No published revisions yet.</div>
+          ) : (
+            <div style={{display:'flex',flexDirection:'column',gap:'0.375rem'}}>
+              {revisions.map(r => (
+                <div key={r.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.5rem 0.75rem',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'6px',fontSize:'0.8125rem'}}>
+                  <div>
+                    <span style={{fontWeight:700,color:'var(--blue)',marginRight:'0.5rem'}}>Rev {r.revision}</span>
+                    <span>{r.title}</span>
+                    <span style={{color:'var(--text-3)',fontSize:'0.6875rem',marginLeft:'0.5rem'}}>
+                      by {r.publisher?.first_name} {r.publisher?.last_name}
+                    </span>
+                  </div>
+                  <div style={{display:'flex',gap:'0.5rem',alignItems:'center'}}>
+                    <span style={{fontSize:'0.6875rem',color:'var(--text-3)'}}>
+                      {new Date(r.published_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })}
+                    </span>
+                    <button className="btn btn-ghost btn-sm" style={{fontSize:'0.6875rem'}} onClick={() => viewRevision(r.revision)}>View</button>
+                    <button className="btn btn-ghost btn-sm" style={{fontSize:'0.6875rem'}} onClick={() => downloadPdf(r.revision)}>PDF</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Viewing old revision */}
+      {viewingRev && (
+        <div className="card" style={{marginBottom:'1rem',padding:'1rem',border:'2px solid var(--blue)'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.75rem'}}>
+            <div style={{fontWeight:700,fontSize:'0.875rem',color:'var(--blue)'}}>
+              Viewing Revision {viewingRev.revision} — {viewingRev.title}
+            </div>
+            <button className="btn btn-ghost btn-sm" onClick={() => setViewingRev(null)}>Close</button>
+          </div>
+          <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginBottom:'1rem'}}>
+            Published {new Date(viewingRev.published_at).toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' })}
+          </div>
+          {(viewingRev.sections || []).map((sec, i) => (
+            <div key={i} style={{marginBottom:'1rem'}}>
+              <div style={{fontWeight:700,fontSize:'0.875rem',color:'var(--text)',marginBottom:'0.25rem'}}>{i + 1}. {sec.title}</div>
+              <div style={{fontSize:'0.8125rem',color:'var(--text-2)',whiteSpace:'pre-line',lineHeight:1.6}}>{sec.content}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Title */}
+      <div className="card" style={{marginBottom:'0.75rem',padding:'0.875rem 1rem'}}>
+        <label style={{fontSize:'0.6875rem',fontWeight:700,color:'var(--text-3)',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.25rem',display:'block'}}>Document Title</label>
+        <input className="input" value={title} onChange={e => setTitle(e.target.value)} placeholder="Assignment Instructions" style={{fontWeight:600,fontSize:'1rem'}} />
+      </div>
+
+      {/* Sections editor */}
+      {sections.length === 0 ? (
+        <div className="empty-state">
+          <p>No sections yet. Add the first section to start building the Assignment Instructions for {siteName}.</p>
+          <button className="btn btn-primary" style={{marginTop:'1rem'}} onClick={addSection}>Add First Section</button>
+        </div>
+      ) : (
+        <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
+          {sections.map((sec, i) => (
+            <div key={i} className="card" style={{padding:'1rem'}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.5rem'}}>
+                <div style={{display:'flex',alignItems:'center',gap:'0.5rem'}}>
+                  <span style={{fontSize:'0.75rem',fontWeight:800,color:'var(--blue)',minWidth:'1.5rem'}}>{i + 1}.</span>
+                  <input className="input" value={sec.title} onChange={e => updateSection(i, 'title', e.target.value)}
+                    placeholder="Section title (e.g. Site Threats, Emergency Procedures)" style={{fontWeight:600,flex:1}} />
+                </div>
+                <div style={{display:'flex',gap:'0.25rem',marginLeft:'0.5rem'}}>
+                  <button className="btn btn-ghost btn-sm" style={{fontSize:'0.6875rem',padding:'0.25rem 0.5rem'}} onClick={() => moveSection(i, -1)} disabled={i === 0}>↑</button>
+                  <button className="btn btn-ghost btn-sm" style={{fontSize:'0.6875rem',padding:'0.25rem 0.5rem'}} onClick={() => moveSection(i, 1)} disabled={i === sections.length - 1}>↓</button>
+                  <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)',fontSize:'0.6875rem'}} onClick={() => removeSection(i)}>Remove</button>
+                </div>
+              </div>
+              <textarea className="input" rows={8} value={sec.content} onChange={e => updateSection(i, 'content', e.target.value)}
+                placeholder="Section content — plain text. Use line breaks for structure." style={{fontSize:'0.8125rem',lineHeight:1.6}} />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
