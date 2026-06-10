@@ -215,7 +215,7 @@ function ManagerSidebar({ user, open, onClose }) {
       ]
     },
     {
-      label: 'Supply Chain', section: 'supply_chain', color: '#6366f1',
+      label: 'Supply Chain', color: '#6366f1',
       items: [
         { to: '/subcontractors', icon: BuildingOfficeIcon, label: 'Subcontractor Register' },
       ]
