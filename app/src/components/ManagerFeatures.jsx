@@ -862,88 +862,6 @@ function PoliciesScreen({ user }) {
 }
 
 
-// ── SITE INSTRUCTIONS (MANAGER) ───────────────────────────────────────────────
-function SiteInstructionsScreen({ user }) {
-  const [sites, setSites] = useState([]);
-  const [selectedSite, setSelectedSite] = useState('');
-  const [sections, setSections] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(false);
-
-  useEffect(() => { api.sites.list().then(r => setSites(r.data||[])); }, []);
-
-  useEffect(() => {
-    if (!selectedSite) { setSections([]); return; }
-    setLoading(true);
-    api.instructions.get(selectedSite).then(r => {
-      setSections(r.data?.sections || []);
-      setLoading(false);
-    });
-  }, [selectedSite]);
-
-  function addSection() { setSections(s => [...s, { title:'', content:'' }]); }
-  function update(i, field, val) { setSections(s => s.map((sec,j) => j===i ? {...sec,[field]:val} : sec)); }
-  function remove(i) { setSections(s => s.filter((_,j) => j!==i)); }
-
-  async function save() {
-    if (!selectedSite) return;
-    try {
-      setSaving(true); setError(null);
-      await api.instructions.update(selectedSite, sections);
-      setSuccess(true); setTimeout(()=>setSuccess(false), 2000);
-    } catch(e){ setError(e.message); } finally { setSaving(false); }
-  }
-
-  return (
-    <div>
-      <div className="topbar">
-        <div className="topbar-title">Site Instructions</div>
-        <div style={{display:'flex',gap:'0.75rem',alignItems:'center'}}>
-          <select className="input" style={{width:'200px'}} value={selectedSite} onChange={e => setSelectedSite(e.target.value)}>
-            <option value="">Select site...</option>
-            {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-          {selectedSite && (
-            <>
-              <button className="btn btn-ghost btn-sm" onClick={addSection}>+ Section</button>
-              <button className="btn btn-primary btn-sm" onClick={save} disabled={saving}>{saving?'Saving...':'Save'}</button>
-            </>
-          )}
-        </div>
-      </div>
-      <div className="page-content">
-        {success && <div className="alert alert-success" style={{marginBottom:'1rem'}}>Instructions saved</div>}
-        {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
-        {!selectedSite ? (
-          <div className="empty-state"><p>Select a site to edit its instructions</p></div>
-        ) : loading ? (
-          <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>
-        ) : (
-          <div style={{display:'flex',flexDirection:'column',gap:'1rem'}}>
-            {sections.length === 0 && (
-              <div className="empty-state">
-                <p>No instructions yet</p>
-                <button className="btn btn-primary" style={{marginTop:'1rem'}} onClick={addSection}>Add First Section</button>
-              </div>
-            )}
-            {sections.map((sec,i) => (
-              <div key={i} className="card">
-                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.5rem'}}>
-                  <input className="input" value={sec.title} onChange={e=>update(i,'title',e.target.value)} placeholder="Section title" style={{fontWeight:600}} />
-                  <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)',marginLeft:'0.5rem'}} onClick={()=>remove(i)}>Remove</button>
-                </div>
-                <textarea className="input" rows={5} value={sec.content} onChange={e=>update(i,'content',e.target.value)} placeholder="Instructions content..." />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ── MESSAGES ──────────────────────────────────────────────────────────────────
 function MessagesScreen({ user }) {
   const [messages, setMessages] = useState([]);
@@ -1045,5 +963,5 @@ export { ShiftPatternsScreen };
 export { RatesScreen };
 export { AlertsScreen };
 export { PoliciesScreen };
-export { SiteInstructionsScreen };
+
 export { MessagesScreen };

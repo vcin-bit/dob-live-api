@@ -12,7 +12,6 @@ import {
 
 function OfficerInstructionsScreen({ user, site }) {
   const [ai, setAI] = useState(null);
-  const [fallback, setFallback] = useState(null);
   const [loading, setLoading] = useState(true);
   const [declaring, setDeclaring] = useState(false);
   const [declared, setDeclared] = useState(false);
@@ -20,20 +19,15 @@ function OfficerInstructionsScreen({ user, site }) {
 
   useEffect(() => {
     if (!site?.id) { setLoading(false); return; }
-    // Try new AI system first, fall back to old instructions
-    Promise.all([
-      api.siteAI.published(site.id).catch(() => ({ data: null })),
-      api.instructions.get(site.id).catch(() => ({ data: null })),
-    ]).then(([aiRes, oldRes]) => {
-      if (aiRes.data) {
-        setAI(aiRes.data);
-        setDeclared(!!aiRes.data.declared);
-        setDeclaredAt(aiRes.data.declared_at);
-      } else {
-        setFallback(oldRes.data);
-      }
-      setLoading(false);
-    });
+    api.siteAI.published(site.id).catch(() => ({ data: null }))
+      .then(res => {
+        if (res.data) {
+          setAI(res.data);
+          setDeclared(!!res.data.declared);
+          setDeclaredAt(res.data.declared_at);
+        }
+        setLoading(false);
+      });
   }, [site?.id]);
 
   async function handleDeclare() {
@@ -106,23 +100,11 @@ function OfficerInstructionsScreen({ user, site }) {
     );
   }
 
-  // Fallback to old site_instructions
-  const data = fallback;
+  // No assignment instructions for this site
   return (
     <div style={{padding:'1rem',paddingBottom:'5rem'}}>
       <h2 style={{fontWeight:700,marginBottom:'1rem',fontSize:'1.125rem',color:'#fff'}}>{site.name}</h2>
-      <p style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.06em',fontWeight:600,marginBottom:'0.875rem'}}>Site Instructions</p>
-      {!data || data.sections?.length===0 ? <div style={{textAlign:'center',padding:'2rem',color:'rgba(255,255,255,0.3)',fontSize:'0.875rem'}}>No instructions for this site</div>
-      : (
-        <div style={{display:'flex',flexDirection:'column',gap:'0.875rem'}}>
-          {data.sections.map((sec, i) => (
-            <div key={i} className="officer-card">
-              <div style={{fontWeight:600,marginBottom:'0.375rem',color:'#fff'}}>{sec.title}</div>
-              <div style={{fontSize:'0.875rem',color:'rgba(255,255,255,0.6)',whiteSpace:'pre-line',lineHeight:1.6}}>{sec.content}</div>
-            </div>
-          ))}
-        </div>
-      )}
+      <div style={{textAlign:'center',padding:'2rem',color:'rgba(255,255,255,0.3)',fontSize:'0.875rem'}}>No assignment instructions for this site</div>
     </div>
   );
 }

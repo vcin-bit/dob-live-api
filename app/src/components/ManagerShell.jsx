@@ -5,7 +5,7 @@ import { api, ApiError } from '../lib/api';
 import { LOG_TYPES, LOG_TYPE_CONFIG, formatDateTime, getRelativeTime } from '../lib/constants';
 import { ManagerDashboard, SiteManagement, LogReview, TaskAssignment, SiteDetail, TeamManagement, Reporting, OnDutyScreen, PatrolHistoryScreen } from './ManagerScreens';
 import { ProfitLoss, ShiftRoster } from './RosterPnL';
-import { DocumentsScreen, PatrolRoutesScreen, ShiftPatternsScreen, RatesScreen, AlertsScreen, PoliciesScreen, SiteInstructionsScreen, MessagesScreen } from './ManagerFeatures';
+import { DocumentsScreen, PatrolRoutesScreen, ShiftPatternsScreen, RatesScreen, AlertsScreen, PoliciesScreen, MessagesScreen } from './ManagerFeatures';
 import { PortalSettingsModal } from './Portal';
 import { ContractsScreen } from './ContractsScreen';
 import DocumentControl from './DocumentControl';
@@ -53,7 +53,7 @@ function ManagerApp({ user }) {
           <Route path="/alerts"     element={<AlertsScreen user={user} />} />
           <Route path="/policies"   element={<PoliciesScreen user={user} />} />
           <Route path="/document-control" element={<DocumentControl user={user} />} />
-          <Route path="/instructions" element={<SiteInstructionsScreen user={user} />} />
+
           <Route path="/messages"     element={<MessagesScreen user={user} />} />
           <Route path="/contracts"   element={<ContractsScreen user={user} />} />
           <Route path="/updates"     element={<div className="page-content"><ManagerUpdatesPanel /></div>} />
@@ -199,7 +199,7 @@ function ManagerSidebar({ user, open, onClose }) {
       label: 'Site Config', section: 'site_config', color: '#8b5cf6',
       items: [
         { to: '/docs',         icon: DocumentTextIcon, label: 'Documents' },
-        { to: '/instructions', icon: DocumentTextIcon, label: 'Assignment Instructions' },
+
         { to: '/site-checks',  icon: ClipboardDocumentListIcon, label: 'Start-of-Shift Checks' },
         { to: '/patrols',      icon: MapPinIcon,       label: 'Patrol Routes' },
         { to: '/patrol-history', icon: ClockIcon,       label: 'Patrol History' },
