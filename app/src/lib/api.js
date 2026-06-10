@@ -407,7 +407,31 @@ export const api = {
     assignmentInstructions: (token) => request('/api/portal/assignment-instructions', { headers: { Authorization: `Bearer ${token}` } }),
     approveAI: (token, data) => request('/api/portal/assignment-instructions/approve', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(data) }),
     codes: (token) => request('/api/portal/codes', { headers: { Authorization: `Bearer ${token}` } }),
+    subcontractorDocs: (token) => request('/api/portal/subcontractor-documents', { headers: { Authorization: `Bearer ${token}` } }),
+    subcontractorDocSigned: (token, id) => request(`/api/portal/subcontractor-documents/${id}/signed`, { headers: { Authorization: `Bearer ${token}` } }),
     saveSettings: (siteId, data) => request(`/api/portal/settings/${siteId}`, { method: 'PUT', body: JSON.stringify(data) }),
+  },
+  subcontractors: {
+    list: () => request('/api/subcontractors'),
+    get: (id) => request(`/api/subcontractors/${id}`),
+    create: (data) => request('/api/subcontractors', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id, data) => request(`/api/subcontractors/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    delete: (id) => request(`/api/subcontractors/${id}`, { method: 'DELETE' }),
+    setSites: (id, site_ids) => request(`/api/subcontractors/${id}/sites`, { method: 'PUT', body: JSON.stringify({ site_ids }) }),
+    uploadDoc: async (id, file, site_id, doc_type, share_to_portal) => {
+      const form = new FormData();
+      form.append('file', file);
+      form.append('site_id', site_id);
+      if (doc_type) form.append('doc_type', doc_type);
+      if (share_to_portal) form.append('share_to_portal', 'true');
+      const token = await window.__clerkGetToken?.();
+      const res = await fetch(`${API_BASE}/api/subcontractors/${id}/documents`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || 'Upload failed'); }
+      return res.json();
+    },
+    updateDoc: (id, docId, data) => request(`/api/subcontractors/${id}/documents/${docId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    deleteDoc: (id, docId) => request(`/api/subcontractors/${id}/documents/${docId}`, { method: 'DELETE' }),
+    docSigned: (id, docId) => request(`/api/subcontractors/${id}/documents/${docId}/signed`),
   },
   visitors: {
     list: (params = {}) => request(`/api/visitors?${new URLSearchParams(params)}`),

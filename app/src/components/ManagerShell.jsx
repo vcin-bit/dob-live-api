@@ -13,6 +13,7 @@ import { ManagerUpdatesPanel } from './CompanyUpdates';
 import { PersonnelFilesScreen } from './PersonnelFiles';
 import ComplianceDashboard from './ComplianceDashboard';
 import ComplianceCriterionDetail from './ComplianceCriterionDetail';
+import SubcontractorRegister from './SubcontractorRegister';
 import {
   HomeIcon, ClipboardDocumentListIcon, MapPinIcon, ClockIcon,
   UserGroupIcon, Cog6ToothIcon, PlusIcon, ArrowRightOnRectangleIcon,
@@ -61,6 +62,7 @@ function ManagerApp({ user }) {
           <Route path="/compliance" element={<ComplianceDashboard user={user} />} />
           <Route path="/compliance/criteria/:criterionId" element={<ComplianceCriterionDetail user={user} />} />
           <Route path="/site-checks" element={<SiteChecksScreen />} />
+          <Route path="/subcontractors" element={<SubcontractorRegister user={user} />} />
           <Route path="/portal-settings" element={<PortalManagement user={user} />} />
           <Route path="*"          element={<Navigate to="/dashboard" replace />} />
         </Routes>
@@ -210,6 +212,12 @@ function ManagerSidebar({ user, open, onClose }) {
       items: [
         { to: '/pnl', icon: ChartBarIcon, label: 'P&L Dashboard' },
         { to: '/contracts', icon: DocumentTextIcon, label: 'Contracts' },
+      ]
+    },
+    {
+      label: 'Supply Chain', section: 'supply_chain', color: '#6366f1',
+      items: [
+        { to: '/subcontractors', icon: BuildingOfficeIcon, label: 'Subcontractor Register' },
       ]
     },
     {

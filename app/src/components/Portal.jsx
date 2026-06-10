@@ -150,7 +150,7 @@ function PortalDashboard({ session, onLogout }) {
 
       {/* Tabs */}
       <div style={{background:'#fff',borderBottom:'1px solid #e2e8f0',display:'flex',padding:'0 1.25rem',overflowX:'auto'}}>
-        {[['dashboard','Dashboard'],['tasks','Tasks'],['incidents','Occurrences'],['ai','Assignment Instructions'],['risks','Risk Assessments'],['codes','Site Codes'],['docs','Documents']].map(([val,label]) => (
+        {[['dashboard','Dashboard'],['tasks','Tasks'],['incidents','Occurrences'],['ai','Assignment Instructions'],['risks','Risk Assessments'],['codes','Site Codes'],['vendor-docs','Supplier Docs'],['docs','Documents']].map(([val,label]) => (
           <button key={val} onClick={() => setTab(val)} style={{padding:'0.75rem 1rem',fontSize:'0.875rem',fontWeight:500,border:'none',borderBottom:`2px solid ${tab===val?'#1a52a8':'transparent'}`,color:tab===val?'#1a52a8':'#64748b',background:'none',cursor:'pointer',marginBottom:'-1px'}}>
             {label}
             {val==='tasks' && openAlerts.length > 0 && <span style={{marginLeft:'0.375rem',background:'#1a52a8',color:'#fff',borderRadius:'999px',fontSize:'0.6875rem',padding:'0 5px',fontWeight:700}}>{openAlerts.length}</span>}
@@ -429,6 +429,8 @@ function PortalDashboard({ session, onLogout }) {
           <PortalRiskAssessments token={token} />
         ) : tab === 'codes' ? (
           <PortalSiteCodes token={token} />
+        ) : tab === 'vendor-docs' ? (
+          <PortalSubcontractorDocs token={token} />
         ) : tab === 'docs' ? (
           <div>
             <div className="section-title" style={{marginBottom:'1rem'}}>Documents</div>
@@ -494,6 +496,53 @@ function PortalDashboard({ session, onLogout }) {
           }}
         />
       )}
+    </div>
+  );
+}
+
+function PortalSubcontractorDocs({ token }) {
+  const [docs, setDocs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.portal.subcontractorDocs(token)
+      .then(r => setDocs(r.data || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [token]);
+
+  async function viewDoc(docId) {
+    try {
+      const res = await api.portal.subcontractorDocSigned(token, docId);
+      if (res.data?.url) window.open(res.data.url, '_blank');
+    } catch { alert('Could not open document'); }
+  }
+
+  if (loading) return <div style={{display:'flex',justifyContent:'center',padding:'4rem'}}><div className="spinner" /></div>;
+  if (docs.length === 0) return <div className="empty-state"><p>No supplier documents shared for this site</p></div>;
+
+  return (
+    <div>
+      <div className="section-title" style={{marginBottom:'1rem'}}>Supplier Documents</div>
+      <div style={{display:'flex',flexDirection:'column',gap:'0.625rem'}}>
+        {docs.map(d => (
+          <div key={d.id} className="card" style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+            <div style={{flex:1}}>
+              <div style={{fontWeight:600,fontSize:'0.9375rem'}}>{d.name}</div>
+              <div style={{fontSize:'0.8125rem',color:'#6b7280',marginTop:'0.125rem'}}>
+                {d.subcontractor?.company_name && <span style={{fontWeight:500}}>{d.subcontractor.company_name}</span>}
+                {d.subcontractor?.service_type && <span style={{marginLeft:'0.5rem',fontSize:'0.75rem',padding:'1px 6px',borderRadius:'3px',background:'rgba(99,102,241,0.1)',color:'#6366f1',fontWeight:600}}>{d.subcontractor.service_type}</span>}
+                {d.doc_type && <span style={{marginLeft:'0.5rem'}}>· {d.doc_type}</span>}
+              </div>
+              <div style={{fontSize:'0.75rem',color:'#9ca3af',marginTop:'0.25rem'}}>
+                {new Date(d.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}
+                {d.file_size && <span style={{marginLeft:'0.5rem'}}>{(d.file_size/1024).toFixed(0)} KB</span>}
+              </div>
+            </div>
+            <button onClick={() => viewDoc(d.id)} className="btn btn-secondary btn-sm">View</button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

@@ -362,4 +362,40 @@ router.get('/codes', portalAuth, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ── GET /api/portal/subcontractor-documents — shared docs for this site ──────
+router.get('/subcontractor-documents', portalAuth, async (req, res, next) => {
+  try {
+    const { site_id, company_id } = req.portalSession;
+    const { data, error } = await supabase
+      .from('subcontractor_documents')
+      .select('id, name, original_name, doc_type, mime_type, file_size, created_at, subcontractor:subcontractors!subcontractor_documents_subcontractor_id_fkey(company_name, service_type)')
+      .eq('site_id', site_id)
+      .eq('company_id', company_id)
+      .eq('share_to_portal', true)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    res.json({ data: data || [] });
+  } catch (err) { next(err); }
+});
+
+// ── GET /api/portal/subcontractor-documents/:id/signed — signed URL for portal doc ──
+router.get('/subcontractor-documents/:id/signed', portalAuth, async (req, res, next) => {
+  try {
+    const { site_id, company_id } = req.portalSession;
+    const { data: doc } = await supabase
+      .from('subcontractor_documents')
+      .select('storage_path')
+      .eq('id', req.params.id)
+      .eq('site_id', site_id)
+      .eq('company_id', company_id)
+      .eq('share_to_portal', true)
+      .single();
+    if (!doc?.storage_path) return res.status(404).json({ error: 'Not found' });
+    if (doc.storage_path.startsWith('http')) return res.json({ data: { url: doc.storage_path } });
+    const { data: s, error } = await supabase.storage.from('documents').createSignedUrl(doc.storage_path, 300);
+    if (error || !s?.signedUrl) return res.status(404).json({ error: 'File not found' });
+    res.json({ data: { url: s.signedUrl } });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;
