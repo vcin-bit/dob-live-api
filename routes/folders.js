@@ -58,6 +58,10 @@ router.get('/documents/:id/signed', authenticate, async (req, res, next) => {
   try {
     const { data: doc, error } = await supabase.from('site_documents').select('storage_path').eq('id', req.params.id).eq('company_id', req.user.company_id).single();
     if (error || !doc?.storage_path) return res.status(404).json({ error: 'Document not found' });
+    // External URL or data URI — return directly (legacy migration artefacts)
+    if (doc.storage_path.startsWith('http://') || doc.storage_path.startsWith('https://') || doc.storage_path.startsWith('data:')) {
+      return res.json({ data: { url: doc.storage_path } });
+    }
     // Try each bucket until we find the file
     let signed;
     for (const bucket of ['documents', 'hr-documents', 'patrol-media']) {
