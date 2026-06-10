@@ -3667,6 +3667,16 @@ function SiteAIEditor({ siteId, siteName }) {
             <span className="badge badge-info" style={{fontSize:'0.6875rem'}}>Rev {ai.revision} — {ai.status === 'published' ? 'Published' : 'Draft'}</span>
           )}
           {ai?.revision === 0 && <span className="badge badge-neutral" style={{fontSize:'0.6875rem'}}>New — Unpublished</span>}
+          {ai?.revision > 0 && ai?.client_approved && (
+            <span style={{fontSize:'0.6875rem',padding:'2px 8px',borderRadius:'999px',fontWeight:600,background:'rgba(16,185,129,0.1)',color:'#059669',border:'1px solid rgba(16,185,129,0.3)'}}>
+              Client: {ai.client_approved_by} — {new Date(ai.client_approved_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}
+            </span>
+          )}
+          {ai?.revision > 0 && ai?.status === 'published' && !ai?.client_approved && (
+            <span style={{fontSize:'0.6875rem',padding:'2px 8px',borderRadius:'999px',fontWeight:600,background:'rgba(245,158,11,0.1)',color:'#d97706',border:'1px solid rgba(245,158,11,0.3)'}}>
+              Client approval pending
+            </span>
+          )}
         </div>
         <div style={{display:'flex',gap:'0.5rem',alignItems:'center'}}>
           {ai?.revision > 0 && (

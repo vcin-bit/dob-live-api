@@ -149,8 +149,8 @@ function PortalDashboard({ session, onLogout }) {
       </div>
 
       {/* Tabs */}
-      <div style={{background:'#fff',borderBottom:'1px solid #e2e8f0',display:'flex',padding:'0 1.25rem'}}>
-        {[['dashboard','Dashboard'],['tasks','Tasks'],['incidents','Occurrences'],['docs','Documents']].map(([val,label]) => (
+      <div style={{background:'#fff',borderBottom:'1px solid #e2e8f0',display:'flex',padding:'0 1.25rem',overflowX:'auto'}}>
+        {[['dashboard','Dashboard'],['tasks','Tasks'],['incidents','Occurrences'],['ai','Assignment Instructions'],['risks','Risk Assessments'],['codes','Site Codes'],['docs','Documents']].map(([val,label]) => (
           <button key={val} onClick={() => setTab(val)} style={{padding:'0.75rem 1rem',fontSize:'0.875rem',fontWeight:500,border:'none',borderBottom:`2px solid ${tab===val?'#1a52a8':'transparent'}`,color:tab===val?'#1a52a8':'#64748b',background:'none',cursor:'pointer',marginBottom:'-1px'}}>
             {label}
             {val==='tasks' && openAlerts.length > 0 && <span style={{marginLeft:'0.375rem',background:'#1a52a8',color:'#fff',borderRadius:'999px',fontSize:'0.6875rem',padding:'0 5px',fontWeight:700}}>{openAlerts.length}</span>}
@@ -423,6 +423,12 @@ function PortalDashboard({ session, onLogout }) {
               );
             })()}
           </div>
+        ) : tab === 'ai' ? (
+          <PortalAssignmentInstructions token={token} site={site} />
+        ) : tab === 'risks' ? (
+          <PortalRiskAssessments token={token} />
+        ) : tab === 'codes' ? (
+          <PortalSiteCodes token={token} />
         ) : tab === 'docs' ? (
           <div>
             <div className="section-title" style={{marginBottom:'1rem'}}>Documents</div>
@@ -488,6 +494,250 @@ function PortalDashboard({ session, onLogout }) {
           }}
         />
       )}
+    </div>
+  );
+}
+
+function PortalAssignmentInstructions({ token, site }) {
+  const [ai, setAI] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [approving, setApproving] = useState(false);
+  const [showApprove, setShowApprove] = useState(false);
+  const [approverName, setApproverName] = useState('');
+  const [approverEmail, setApproverEmail] = useState('');
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    api.portal.assignmentInstructions(token)
+      .then(r => { setAI(r.data); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [token]);
+
+  async function approve() {
+    if (!approverName.trim()) { setError('Please enter your name'); return; }
+    try {
+      setApproving(true); setError(null);
+      await api.portal.approveAI(token, { name: approverName.trim(), email: approverEmail.trim() || null });
+      setAI(prev => ({ ...prev, client_approved: true, client_approved_by: approverName.trim(), client_approved_at: new Date().toISOString() }));
+      setShowApprove(false);
+    } catch (e) { setError(e.message); }
+    finally { setApproving(false); }
+  }
+
+  if (loading) return <div style={{display:'flex',justifyContent:'center',padding:'4rem'}}><div className="spinner" /></div>;
+  if (!ai) return <div className="empty-state"><p>No published assignment instructions for this site</p></div>;
+
+  return (
+    <div>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'1rem',flexWrap:'wrap',gap:'0.5rem'}}>
+        <div>
+          <div className="section-title" style={{margin:0}}>{ai.title}</div>
+          <div style={{fontSize:'0.75rem',color:'#6b7280',marginTop:'0.25rem'}}>
+            Revision {ai.revision} — Published {ai.published_at ? new Date(ai.published_at).toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' }) : ''}
+          </div>
+        </div>
+        <span style={{fontSize:'0.6875rem',padding:'4px 10px',borderRadius:'999px',fontWeight:700,
+          background: ai.client_approved ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)',
+          color: ai.client_approved ? '#059669' : '#d97706',
+          border: `1px solid ${ai.client_approved ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'}`}}>
+          {ai.client_approved ? `Approved by ${ai.client_approved_by}` : 'Pending client approval'}
+        </span>
+      </div>
+
+      {/* Approval banner */}
+      {!ai.client_approved && !showApprove && (
+        <div className="card" style={{marginBottom:'1rem',borderLeft:'3px solid #f59e0b',padding:'1rem'}}>
+          <div style={{fontWeight:600,marginBottom:'0.375rem'}}>Client Approval Required</div>
+          <div style={{fontSize:'0.875rem',color:'#6b7280',marginBottom:'0.75rem'}}>
+            Please review all sections below. Once satisfied, approve to confirm these Assignment Instructions are acceptable.
+          </div>
+          <button className="btn btn-primary btn-sm" onClick={() => setShowApprove(true)}>Approve Assignment Instructions</button>
+        </div>
+      )}
+
+      {/* Approval form */}
+      {showApprove && (
+        <div className="card" style={{marginBottom:'1rem',borderLeft:'3px solid #1a52a8',padding:'1rem'}}>
+          <div style={{fontWeight:600,marginBottom:'0.75rem'}}>Confirm Approval</div>
+          {error && <div className="alert alert-danger" style={{marginBottom:'0.75rem'}}>{error}</div>}
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem',marginBottom:'0.75rem'}}>
+            <div className="field" style={{margin:0}}>
+              <label className="label">Your Name *</label>
+              <input className="input" value={approverName} onChange={e => setApproverName(e.target.value)} placeholder="e.g. Julie Sanders" />
+            </div>
+            <div className="field" style={{margin:0}}>
+              <label className="label">Email (optional)</label>
+              <input className="input" type="email" value={approverEmail} onChange={e => setApproverEmail(e.target.value)} placeholder="e.g. julie@harrislamb.com" />
+            </div>
+          </div>
+          <div style={{fontSize:'0.8125rem',color:'#6b7280',marginBottom:'0.75rem'}}>
+            By approving, you confirm that you have reviewed Revision {ai.revision} of the Assignment Instructions for {site.name} and find them acceptable.
+          </div>
+          <div style={{display:'flex',gap:'0.5rem'}}>
+            <button className="btn btn-primary btn-sm" onClick={approve} disabled={approving}>{approving ? 'Approving...' : 'Confirm Approval'}</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => setShowApprove(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Approved banner */}
+      {ai.client_approved && (
+        <div className="card" style={{marginBottom:'1rem',borderLeft:'3px solid #10b981',padding:'1rem',background:'rgba(16,185,129,0.03)'}}>
+          <div style={{display:'flex',alignItems:'center',gap:'0.5rem'}}>
+            <span style={{color:'#059669',fontWeight:700}}>Approved</span>
+            <span style={{fontSize:'0.8125rem',color:'#6b7280'}}>
+              by {ai.client_approved_by} on {new Date(ai.client_approved_at).toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' })}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Sections */}
+      <div style={{display:'flex',flexDirection:'column',gap:'0.875rem'}}>
+        {(ai.sections || []).map((sec, i) => (
+          <div key={i} className="card">
+            <div style={{fontWeight:600,marginBottom:'0.375rem'}}>
+              <span style={{color:'#1a52a8',marginRight:'0.375rem'}}>{i + 1}.</span>{sec.title}
+            </div>
+            <div style={{fontSize:'0.875rem',color:'#374151',whiteSpace:'pre-line',lineHeight:1.6}}>{sec.content}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Linked policies */}
+      {ai.linked_policies && ai.linked_policies.length > 0 && (
+        <div style={{marginTop:'1rem'}}>
+          <div style={{fontSize:'0.6875rem',fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.5rem'}}>Linked Policies</div>
+          <div style={{display:'flex',flexWrap:'wrap',gap:'0.375rem'}}>
+            {ai.linked_policies.map((p, i) => (
+              <span key={i} style={{fontSize:'0.75rem',padding:'2px 8px',borderRadius:'4px',background:'#f1f5f9',border:'1px solid #e2e8f0',color:'#475569',fontWeight:500}}>{p}</span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PortalRiskAssessments({ token }) {
+  const [ras, setRAs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState(null);
+
+  useEffect(() => {
+    api.portal.riskAssessments(token)
+      .then(r => setRAs(r.data || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [token]);
+
+  if (loading) return <div style={{display:'flex',justifyContent:'center',padding:'4rem'}}><div className="spinner" /></div>;
+  if (ras.length === 0) return <div className="empty-state"><p>No risk assessments available for this site</p></div>;
+
+  const levelColor = l => {
+    if (!l) return '#6b7280';
+    const lc = l.toLowerCase();
+    if (lc === 'very high' || lc === 'critical') return '#dc2626';
+    if (lc === 'high') return '#ea580c';
+    if (lc === 'medium') return '#d97706';
+    if (lc === 'low') return '#16a34a';
+    return '#6b7280';
+  };
+
+  return (
+    <div>
+      <div className="section-title" style={{marginBottom:'1rem'}}>Risk Assessments</div>
+      <div style={{display:'flex',flexDirection:'column',gap:'0.875rem'}}>
+        {ras.map(ra => (
+          <div key={ra.id} className="card">
+            <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',cursor:'pointer'}} onClick={() => setExpanded(expanded === ra.id ? null : ra.id)}>
+              <div style={{flex:1}}>
+                <div style={{display:'flex',alignItems:'center',gap:'0.5rem',marginBottom:'0.25rem'}}>
+                  <span style={{fontWeight:700,color:'#1a52a8',fontSize:'0.8125rem'}}>{ra.reference_number}</span>
+                  <span style={{fontSize:'0.6875rem',padding:'2px 6px',borderRadius:'3px',fontWeight:700,color:levelColor(ra.overall_risk_level),background:`${levelColor(ra.overall_risk_level)}10`,border:`1px solid ${levelColor(ra.overall_risk_level)}30`}}>
+                    {ra.overall_risk_level || 'Unrated'}
+                  </span>
+                </div>
+                <div style={{fontWeight:600,fontSize:'0.9375rem'}}>{ra.title}</div>
+                {ra.scope && <div style={{fontSize:'0.8125rem',color:'#6b7280',marginTop:'0.25rem'}}>{ra.scope}</div>}
+                <div style={{fontSize:'0.75rem',color:'#9ca3af',marginTop:'0.25rem'}}>
+                  Assessed: {ra.assessment_date ? new Date(ra.assessment_date).toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'}) : '—'}
+                  {ra.review_date && <span> · Review: {new Date(ra.review_date).toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'})}</span>}
+                </div>
+              </div>
+              <span style={{fontSize:'0.75rem',color:'#9ca3af',marginLeft:'0.5rem'}}>{expanded === ra.id ? '▲' : '▼'}</span>
+            </div>
+
+            {expanded === ra.id && ra.risks && ra.risks.length > 0 && (
+              <div style={{marginTop:'1rem',borderTop:'1px solid #e2e8f0',paddingTop:'0.875rem'}}>
+                <div style={{fontSize:'0.6875rem',fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'0.75rem'}}>
+                  Hazards & Controls ({ra.risks.length})
+                </div>
+                <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
+                  {ra.risks.map(risk => (
+                    <div key={risk.id} style={{padding:'0.75rem',background:'#f8fafc',borderRadius:'6px',border:'1px solid #f1f5f9'}}>
+                      <div style={{display:'flex',alignItems:'center',gap:'0.5rem',marginBottom:'0.375rem'}}>
+                        {risk.risk_category?.name && <span style={{fontSize:'0.6875rem',fontWeight:600,color:'#475569',background:'#e2e8f0',padding:'1px 6px',borderRadius:'3px'}}>{risk.risk_category.name}</span>}
+                        <span style={{fontSize:'0.6875rem',fontWeight:700,color:levelColor(risk.risk_level)}}>{risk.risk_level || ''}</span>
+                        {risk.residual_level && <span style={{fontSize:'0.6875rem',color:'#6b7280'}}>→ {risk.residual_level}</span>}
+                      </div>
+                      <div style={{fontWeight:600,fontSize:'0.875rem',marginBottom:'0.25rem'}}>{risk.hazard_description}</div>
+                      {risk.who_at_risk && <div style={{fontSize:'0.8125rem',color:'#6b7280'}}><strong>Who:</strong> {risk.who_at_risk}</div>}
+                      {risk.potential_consequences && <div style={{fontSize:'0.8125rem',color:'#6b7280'}}><strong>Consequences:</strong> {risk.potential_consequences}</div>}
+                      {risk.existing_controls && <div style={{fontSize:'0.8125rem',color:'#374151',marginTop:'0.25rem'}}><strong>Controls:</strong> {risk.existing_controls}</div>}
+                      {risk.additional_controls && <div style={{fontSize:'0.8125rem',color:'#374151'}}><strong>Additional:</strong> {risk.additional_controls}</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PortalSiteCodes({ token }) {
+  const [codes, setCodes] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.portal.codes(token)
+      .then(r => setCodes(r.data || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [token]);
+
+  if (loading) return <div style={{display:'flex',justifyContent:'center',padding:'4rem'}}><div className="spinner" /></div>;
+  if (codes.length === 0) return <div className="empty-state"><p>No site codes configured</p></div>;
+
+  return (
+    <div>
+      <div className="section-title" style={{marginBottom:'1rem'}}>Site Codes</div>
+      <div className="card">
+        <table style={{width:'100%',borderCollapse:'collapse',fontSize:'0.875rem'}}>
+          <thead>
+            <tr style={{borderBottom:'2px solid #e2e8f0'}}>
+              <th style={{textAlign:'left',padding:'0.5rem 0.75rem',fontWeight:600,color:'#6b7280',fontSize:'0.75rem',textTransform:'uppercase',letterSpacing:'0.05em'}}>Label</th>
+              <th style={{textAlign:'left',padding:'0.5rem 0.75rem',fontWeight:600,color:'#6b7280',fontSize:'0.75rem',textTransform:'uppercase',letterSpacing:'0.05em'}}>Code</th>
+              <th style={{textAlign:'left',padding:'0.5rem 0.75rem',fontWeight:600,color:'#6b7280',fontSize:'0.75rem',textTransform:'uppercase',letterSpacing:'0.05em'}}>Type</th>
+              <th style={{textAlign:'left',padding:'0.5rem 0.75rem',fontWeight:600,color:'#6b7280',fontSize:'0.75rem',textTransform:'uppercase',letterSpacing:'0.05em'}}>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {codes.map(c => (
+              <tr key={c.id} style={{borderBottom:'1px solid #f1f5f9'}}>
+                <td style={{padding:'0.625rem 0.75rem',fontWeight:600}}>{c.label}</td>
+                <td style={{padding:'0.625rem 0.75rem',fontFamily:'monospace',fontSize:'0.9375rem',fontWeight:700,color:'#1a52a8',letterSpacing:'0.1em'}}>{c.code}</td>
+                <td style={{padding:'0.625rem 0.75rem',color:'#6b7280'}}>{c.code_type || '—'}</td>
+                <td style={{padding:'0.625rem 0.75rem',color:'#6b7280',fontSize:'0.8125rem'}}>{c.notes || '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

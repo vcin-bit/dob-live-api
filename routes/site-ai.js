@@ -60,7 +60,7 @@ router.get('/officer/:userId/compliance', authenticate, requireRole('SUPER_ADMIN
 
 // ── Site-scoped routes ──────────────────────────────────────────────────────
 
-// GET /api/site-ai/:siteId — get current AI for a site
+// GET /api/site-ai/:siteId — get current AI for a site (includes client approval status)
 router.get('/:siteId', authenticate, async (req, res, next) => {
   try {
     const { data, error } = await supabase
@@ -70,7 +70,17 @@ router.get('/:siteId', authenticate, async (req, res, next) => {
       .eq('company_id', req.user.company_id)
       .maybeSingle();
     if (error) throw error;
-    res.json({ data: data || null });
+    if (!data) return res.json({ data: null });
+
+    // Attach client approval status for current revision
+    const { data: approval } = await supabase
+      .from('site_ai_client_approvals')
+      .select('approved_by_name, approved_by_email, approved_at')
+      .eq('ai_id', data.id)
+      .eq('revision', data.revision)
+      .maybeSingle();
+
+    res.json({ data: { ...data, client_approved: !!approval, client_approved_by: approval?.approved_by_name || null, client_approved_at: approval?.approved_at || null } });
   } catch (err) { next(err); }
 });
 

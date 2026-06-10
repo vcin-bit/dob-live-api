@@ -403,6 +403,10 @@ export const api = {
     updateAlert: (token, id, data) => request(`/api/portal/alerts/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(data) }),
     deleteAlert: (token, id) => request(`/api/portal/alerts/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }),
     documents: (token) => request('/api/portal/documents', { headers: { Authorization: `Bearer ${token}` } }),
+    riskAssessments: (token) => request('/api/portal/risk-assessments', { headers: { Authorization: `Bearer ${token}` } }),
+    assignmentInstructions: (token) => request('/api/portal/assignment-instructions', { headers: { Authorization: `Bearer ${token}` } }),
+    approveAI: (token, data) => request('/api/portal/assignment-instructions/approve', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(data) }),
+    codes: (token) => request('/api/portal/codes', { headers: { Authorization: `Bearer ${token}` } }),
     saveSettings: (siteId, data) => request(`/api/portal/settings/${siteId}`, { method: 'PUT', body: JSON.stringify(data) }),
   },
   visitors: {

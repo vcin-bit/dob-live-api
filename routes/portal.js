@@ -245,4 +245,121 @@ router.get('/sites', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ── GET /api/portal/risk-assessments — read-only RAs for this site ─────────
+router.get('/risk-assessments', portalAuth, async (req, res, next) => {
+  try {
+    const { site_id, company_id } = req.portalSession;
+    const { data: ras, error } = await supabase
+      .from('risk_assessments')
+      .select('id, reference_number, title, assessment_type, scope, description, methodology, assessment_date, review_date, status, overall_risk_level, residual_risk_level, approved_date')
+      .eq('company_id', company_id)
+      .eq('site_id', site_id)
+      .order('assessment_date', { ascending: false });
+    if (error) throw error;
+
+    // Attach risks for each RA
+    const raIds = (ras || []).map(r => r.id);
+    let risks = [];
+    if (raIds.length > 0) {
+      const { data: riskData } = await supabase
+        .from('risks')
+        .select('id, risk_assessment_id, hazard_description, who_at_risk, potential_consequences, existing_controls, likelihood_score, severity_score, risk_level, additional_controls, residual_likelihood, residual_severity, residual_level, risk_category:risk_categories(name)')
+        .in('risk_assessment_id', raIds)
+        .order('created_at');
+      risks = riskData || [];
+    }
+
+    const result = (ras || []).map(ra => ({
+      ...ra,
+      risks: risks.filter(r => r.risk_assessment_id === ra.id),
+    }));
+
+    res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
+// ── GET /api/portal/assignment-instructions — published AI + client approval ──
+router.get('/assignment-instructions', portalAuth, async (req, res, next) => {
+  try {
+    const { site_id, company_id } = req.portalSession;
+    const { data: ai } = await supabase
+      .from('site_assignment_instructions')
+      .select('id, title, sections, linked_policies, revision, status, published_at')
+      .eq('site_id', site_id)
+      .eq('company_id', company_id)
+      .eq('status', 'published')
+      .maybeSingle();
+    if (!ai) return res.json({ data: null });
+
+    // Client approval for current revision
+    const { data: approval } = await supabase
+      .from('site_ai_client_approvals')
+      .select('approved_by_name, approved_by_email, approved_at')
+      .eq('ai_id', ai.id)
+      .eq('revision', ai.revision)
+      .maybeSingle();
+
+    res.json({
+      data: {
+        ...ai,
+        client_approved: !!approval,
+        client_approved_by: approval?.approved_by_name || null,
+        client_approved_at: approval?.approved_at || null,
+      }
+    });
+  } catch (err) { next(err); }
+});
+
+// ── POST /api/portal/assignment-instructions/approve — client approves AI ─────
+router.post('/assignment-instructions/approve', portalAuth, async (req, res, next) => {
+  try {
+    const { site_id, company_id } = req.portalSession;
+    const { name, email } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ error: 'Approver name is required' });
+
+    const { data: ai } = await supabase
+      .from('site_assignment_instructions')
+      .select('id, revision')
+      .eq('site_id', site_id)
+      .eq('company_id', company_id)
+      .eq('status', 'published')
+      .maybeSingle();
+    if (!ai) return res.status(404).json({ error: 'No published assignment instructions for this site' });
+
+    const { data, error } = await supabase
+      .from('site_ai_client_approvals')
+      .insert({
+        ai_id: ai.id,
+        site_id,
+        revision: ai.revision,
+        approved_by_name: name.trim(),
+        approved_by_email: email || null,
+        ip_address: req.headers['x-forwarded-for'] || req.ip,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === '23505') return res.json({ data: { already: true } });
+      throw error;
+    }
+    res.json({ data });
+  } catch (err) { next(err); }
+});
+
+// ── GET /api/portal/codes — read-only site codes ─────────────────────────────
+router.get('/codes', portalAuth, async (req, res, next) => {
+  try {
+    const { site_id, company_id } = req.portalSession;
+    const { data, error } = await supabase
+      .from('site_codes')
+      .select('id, label, code, code_type, notes')
+      .eq('site_id', site_id)
+      .eq('company_id', company_id)
+      .order('label');
+    if (error) throw error;
+    res.json({ data: data || [] });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;
