@@ -1,21 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 
-const BS7858_ITEMS = [
-  { key: 'application_form', label: 'Step 1: Application Form', desc: 'Signed application/consent form authorising screening checks', evidence: 'Signed application form' },
-  { key: 'identity_verified', label: 'Step 2: Identity Verification', desc: 'Confirmed via passport, driving licence, or birth certificate. Must verify full legal name, DOB, and photo ID', evidence: 'Copy of passport/driving licence/birth certificate' },
-  { key: 'right_to_work', label: 'Step 3: Right to Work', desc: 'Verified UK/EU citizen, settled status, or valid work visa. Check via GOV.UK share code if applicable', evidence: 'Passport, share code result, or visa copy' },
-  { key: 'address_history_3yr', label: 'Step 4: Address History (3 Years)', desc: 'Full 3-year address history with no unexplained gaps. Verified via utility bills, council tax, or bank statements', evidence: 'Utility bills or council tax statements per address' },
-  { key: 'employment_history_5yr', label: 'Step 5: Employment History (5 Years)', desc: 'Complete 5-year employment history with no gaps exceeding 31 days. All periods accounted for including unemployment, education, travel', evidence: 'Employment references, P45/P60, payslips' },
-  { key: 'references_verified', label: 'Step 6: References', desc: 'Written references obtained from all employers in the 5-year history. Each reference must confirm dates, role, and reason for leaving', evidence: 'Signed reference letters or completed reference forms' },
-  { key: 'criminal_record_check', label: 'Step 7: Criminal Record Check (DBS)', desc: 'Enhanced DBS certificate obtained. Must be less than 3 years old or registered on DBS Update Service', evidence: 'DBS certificate or Update Service check result' },
-  { key: 'financial_check', label: 'Step 8: Financial Probity Check', desc: 'Credit check and bankruptcy/IVA/CCJ search completed. Identifies financial vulnerability that could pose a security risk', evidence: 'Credit check report (Experian/Equifax/TransUnion)' },
-  { key: 'sia_licence', label: 'Step 9: SIA Licence Verification', desc: 'Valid SIA licence confirmed on the SIA public register. Licence type, number, and expiry verified', evidence: 'SIA register screenshot or licence copy (front + back)' },
-  { key: 'interview_assessment', label: 'Step 10: Interview & Assessment', desc: 'Face-to-face or video screening interview conducted. Assessed character, suitability, and any discrepancies in application', evidence: 'Interview notes signed by screener' },
-  { key: 'gdpr_consent', label: 'Data Protection Consent', desc: 'Written consent for data processing, storage, and sharing with third parties for vetting purposes under UK GDPR', evidence: 'Signed GDPR consent form' },
-  { key: 'self_employment_declaration', label: 'Employment Declaration', desc: 'Employment status confirmed (PAYE/self-employed/Ltd). Terms of engagement accepted', evidence: 'Signed declaration' },
-];
-
 const VETTING_STATUSES = ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETE', 'EXPIRED'];
 const STATUS_COLORS = { NOT_STARTED: '#9ca3af', IN_PROGRESS: '#f59e0b', COMPLETE: '#16a34a', EXPIRED: '#dc2626' };
 
@@ -102,12 +87,7 @@ function PersonnelFile({ userId, officers, onBack, currentUser }) {
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}><div className="spinner" /></div>;
   if (!data) return <div className="page-content">Failed to load personnel file.</div>;
 
-  const { user: officer, hr, employment_history, address_history, vetting, notes, identity_documents } = data;
-  const vettingMap = {};
-  vetting.forEach(v => { vettingMap[v.item_key] = v; });
-  const vettingComplete = BS7858_ITEMS.filter(i => vettingMap[i.key]?.verified).length;
-  const vettingTotal = BS7858_ITEMS.length;
-  const vettingPct = Math.round((vettingComplete / vettingTotal) * 100);
+  const { user: officer, hr, employment_history, address_history, notes } = data;
   const vettingStatus = hr?.vetting_status || 'NOT_STARTED';
 
   function startEdit() {
@@ -158,17 +138,11 @@ function PersonnelFile({ userId, officers, onBack, currentUser }) {
     { key: 'details', label: 'Details' },
     { key: 'employment', label: 'Employment' },
     { key: 'addresses', label: 'Addresses' },
-    { key: 'vetting', label: 'BS7858' },
     { key: 'documents', label: 'Documents' },
     { key: 'training', label: 'Training' },
     { key: 'idcard', label: 'ID Card' },
     { key: 'notes', label: 'Notes' },
   ];
-
-  async function toggleVetting(itemKey, currentlyVerified) {
-    await api.personnel.setVetting(userId, { item_key: itemKey, verified: !currentlyVerified });
-    load();
-  }
 
   async function addNote() {
     if (!noteText.trim()) return;
@@ -246,7 +220,6 @@ function PersonnelFile({ userId, officers, onBack, currentUser }) {
           <button key={t.key} onClick={() => setTab(t.key)}
             style={{ padding: '0.75rem 1rem', background: 'none', border: 'none', borderBottom: tab === t.key ? '2px solid var(--blue)' : '2px solid transparent', color: tab === t.key ? 'var(--blue)' : 'var(--text-3)', fontSize: '0.8125rem', fontWeight: tab === t.key ? 700 : 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>
             {t.label}
-            {t.key === 'vetting' && <span style={{ marginLeft: '0.375rem', fontSize: '0.6875rem', color: vettingPct === 100 ? '#16a34a' : 'var(--text-3)' }}>({vettingPct}%)</span>}
           </button>
         ))}
       </div>
@@ -255,23 +228,10 @@ function PersonnelFile({ userId, officers, onBack, currentUser }) {
         {/* ── OVERVIEW ──────────────────────────────────────────── */}
         {tab === 'overview' && (
           <>
-            {/* Vetting progress */}
-            <div className="card" style={{ marginBottom: '1rem', padding: '1rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                <span style={{ fontWeight: 700 }}>BS7858 Vetting</span>
-                <span style={{ fontWeight: 700, color: vettingPct === 100 ? '#16a34a' : 'var(--blue)' }}>{vettingPct}%</span>
-              </div>
-              <div style={{ height: '6px', background: 'var(--surface-2)', borderRadius: '3px', overflow: 'hidden', marginBottom: '0.75rem' }}>
-                <div style={{ height: '100%', background: vettingPct === 100 ? '#16a34a' : 'var(--blue)', width: `${vettingPct}%`, borderRadius: '3px' }} />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.375rem' }}>
-                {BS7858_ITEMS.map(item => (
-                  <div key={item.key} style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.8125rem', color: vettingMap[item.key]?.verified ? '#16a34a' : 'var(--text-3)' }}>
-                    <span>{vettingMap[item.key]?.verified ? '✓' : '○'}</span>
-                    <span>{item.label}</span>
-                  </div>
-                ))}
-              </div>
+            {/* Vetting status */}
+            <div className="card" style={{ marginBottom: '1rem', padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontWeight: 700 }}>BS7858 Vetting</span>
+              <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: STATUS_COLORS[vettingStatus] }}>{vettingStatus.replace(/_/g, ' ')}</span>
             </div>
 
             {/* Key info */}
@@ -469,7 +429,7 @@ function PersonnelFile({ userId, officers, onBack, currentUser }) {
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <div style={{ fontWeight: 700 }}>5-Year Employment History</div>
-              <button className="btn btn-primary btn-sm" onClick={() => setEmpForm({ employer_name: '', job_title: '', start_date: '', end_date: '', is_current: false, reason_for_leaving: '', reference_name: '', reference_email: '', reference_phone: '' })}>+ Add</button>
+              <button className="btn btn-primary btn-sm" onClick={() => setEmpForm({ employer_name: '', job_title: '', start_date: '', end_date: '', is_current: false, reason_for_leaving: '' })}>+ Add</button>
             </div>
 
             {getEmploymentGaps().length > 0 && (
@@ -489,14 +449,8 @@ function PersonnelFile({ userId, officers, onBack, currentUser }) {
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginTop: '0.25rem' }}>{fmtDate(e.start_date)} — {e.is_current ? 'Present' : fmtDate(e.end_date)}</div>
                         {e.reason_for_leaving && <div style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>Reason: {e.reason_for_leaving}</div>}
                       </div>
-                      <div style={{ display: 'flex', gap: '0.375rem', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.6875rem', padding: '0.125rem 0.5rem', borderRadius: '4px', fontWeight: 600, background: e.reference_status === 'VERIFIED' ? '#dcfce7' : e.reference_status === 'REQUESTED' ? '#fef3c7' : '#f3f4f6', color: e.reference_status === 'VERIFIED' ? '#16a34a' : e.reference_status === 'REQUESTED' ? '#d97706' : '#9ca3af' }}>
-                          Ref: {e.reference_status || 'NOT_REQUESTED'}
-                        </span>
-                        <button onClick={() => api.personnel.deleteEmployment(userId, e.id).then(load)} style={{ background: 'none', border: 'none', color: '#dc2626', fontSize: '0.75rem', cursor: 'pointer' }}>Del</button>
-                      </div>
+                      <button onClick={() => api.personnel.deleteEmployment(userId, e.id).then(load)} style={{ background: 'none', border: 'none', color: '#dc2626', fontSize: '0.75rem', cursor: 'pointer' }}>Del</button>
                     </div>
-                    {e.reference_name && <div style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginTop: '0.25rem' }}>Ref: {e.reference_name} · {e.reference_email || e.reference_phone || '—'}</div>}
                   </div>
                 ))}
               </div>
@@ -515,14 +469,6 @@ function PersonnelFile({ userId, officers, onBack, currentUser }) {
                     </div>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem' }}><input type="checkbox" checked={empForm.is_current} onChange={e => setEmpForm(f => ({ ...f, is_current: e.target.checked }))} /> Currently employed here</label>
                     <div className="field"><label className="label">Reason for Leaving</label><input className="input" value={empForm.reason_for_leaving} onChange={e => setEmpForm(f => ({ ...f, reason_for_leaving: e.target.value }))} /></div>
-                    <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
-                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Reference Contact</div>
-                      <div className="field"><label className="label">Name</label><input className="input" value={empForm.reference_name} onChange={e => setEmpForm(f => ({ ...f, reference_name: e.target.value }))} /></div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                        <div className="field"><label className="label">Email</label><input className="input" value={empForm.reference_email} onChange={e => setEmpForm(f => ({ ...f, reference_email: e.target.value }))} /></div>
-                        <div className="field"><label className="label">Phone</label><input className="input" value={empForm.reference_phone} onChange={e => setEmpForm(f => ({ ...f, reference_phone: e.target.value }))} /></div>
-                      </div>
-                    </div>
                   </div>
                   <div className="modal-footer">
                     <button className="btn btn-secondary" onClick={() => setEmpForm(null)}>Cancel</button>
@@ -615,41 +561,6 @@ function PersonnelFile({ userId, officers, onBack, currentUser }) {
           </>
         )}
 
-        {/* ── BS7858 VETTING ───────────────────────────────────── */}
-        {tab === 'vetting' && (
-          <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <div style={{ fontWeight: 700 }}>BS7858 Vetting Checklist</div>
-              <div style={{ fontSize: '0.875rem', fontWeight: 700, color: vettingPct === 100 ? '#16a34a' : 'var(--blue)' }}>{vettingComplete}/{vettingTotal} ({vettingPct}%)</div>
-            </div>
-            <div style={{ height: '6px', background: 'var(--surface-2)', borderRadius: '3px', overflow: 'hidden', marginBottom: '1rem' }}>
-              <div style={{ height: '100%', background: vettingPct === 100 ? '#16a34a' : 'var(--blue)', width: `${vettingPct}%`, borderRadius: '3px', transition: 'width 0.3s' }} />
-            </div>
-
-            <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '0.75rem', marginBottom: '1rem', fontSize: '0.75rem', color: '#1e40af', lineHeight: 1.5 }}>
-              <strong>BS7858:2019</strong> — Screening of individuals working in a secure environment. All items must be verified and evidenced before an officer can be deployed. Tick each item once the evidence has been obtained and checked.
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {BS7858_ITEMS.map(item => {
-                const v = vettingMap[item.key];
-                return (
-                  <div key={item.key} className="card" style={{ padding: '0.875rem', display: 'flex', alignItems: 'flex-start', gap: '0.75rem', borderLeft: v?.verified ? '3px solid #16a34a' : '3px solid #d1d5db' }}>
-                    <input type="checkbox" checked={!!v?.verified} onChange={() => toggleVetting(item.key, v?.verified)}
-                      style={{ width: '20px', height: '20px', accentColor: 'var(--blue)', cursor: 'pointer', marginTop: '2px', flexShrink: 0 }} />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, color: v?.verified ? '#16a34a' : 'var(--text)' }}>{item.label}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-2)', marginTop: '0.125rem' }}>{item.desc}</div>
-                      <div style={{ fontSize: '0.6875rem', color: 'var(--text-3)', marginTop: '0.25rem', fontStyle: 'italic' }}>Evidence required: {item.evidence}</div>
-                      {v?.verified && v?.verifier && <div style={{ fontSize: '0.6875rem', color: '#16a34a', marginTop: '0.25rem', fontWeight: 600 }}>✓ Verified by {v.verifier.first_name} {v.verifier.last_name} — {fmtDate(v.verified_at)}</div>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </>
-        )}
-
         {/* ── DOCUMENTS ────────────────────────────────────────── */}
         {tab === 'documents' && (
           <>
@@ -658,7 +569,6 @@ function PersonnelFile({ userId, officers, onBack, currentUser }) {
               {[
                 { key: 'sia_front', label: 'SIA Licence (Front)', path: hr?.sia_front_path },
                 { key: 'sia_back', label: 'SIA Licence (Back)', path: hr?.sia_back_path },
-                { key: 'dbs_certificate', label: 'DBS Certificate', path: hr?.dbs_certificate_path },
               ].map(doc => (
                 <div key={doc.key} className="card" style={{ padding: '1rem', textAlign: 'center' }}>
                   <div style={{ fontSize: '1.5rem', marginBottom: '0.375rem' }}>{doc.path ? '✓' : '—'}</div>
