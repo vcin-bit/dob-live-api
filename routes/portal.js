@@ -1,10 +1,12 @@
 /**
  * Client Portal routes — separate auth from Clerk, PIN-based per site
  */
+const crypto  = require('crypto');
 const router  = require('express').Router();
 const jwt     = require('jsonwebtoken');
 const supabase = require('../lib/supabase');
 const { authenticate, requireRole } = require('../middleware/auth');
+const { expandBookingDays } = require('../lib/expectedVisits');
 
 const JWT_SECRET = process.env.JWT_SECRET || process.env.CLERK_SECRET_KEY;
 
@@ -395,6 +397,42 @@ router.get('/subcontractor-documents/:id/signed', portalAuth, async (req, res, n
     const { data: s, error } = await supabase.storage.from('documents').createSignedUrl(doc.storage_path, 300);
     if (error || !s?.signedUrl) return res.status(404).json({ error: 'File not found' });
     res.json({ data: { url: s.signedUrl } });
+  } catch (err) { next(err); }
+});
+
+// ── POST /api/portal/expected-visitors — client books expected visitor(s) ────
+router.post('/expected-visitors', portalAuth, async (req, res, next) => {
+  try {
+    const { site_id, company_id } = req.portalSession;
+    const { visitor_name, company_name, who_visiting, expected_from, expected_to, expected_time, personnel_count, vehicle_reg, notes } = req.body;
+    if (!visitor_name || !expected_from || !expected_to) return res.status(400).json({ error: 'visitor_name, expected_from and expected_to are required' });
+
+    const result = expandBookingDays(expected_from, expected_to);
+    if (result.error) return res.status(400).json({ error: result.error, message: result.message });
+
+    const booking_group_id = crypto.randomUUID();
+    const rows = result.days.map(day => ({
+      company_id,
+      site_id,
+      visitor_name,
+      company_name: company_name || null,
+      who_visiting: who_visiting || null,
+      vehicle_reg: vehicle_reg || null,
+      personnel_count: parseInt(personnel_count) || 1,
+      visit_type: 'contractor',
+      notes: notes || null,
+      expected_date: day,
+      expected_time: expected_time || null,
+      booking_group_id,
+      status: 'expected',
+      time_in: null,
+      created_by_source: 'portal',
+      created_by: null,
+    }));
+
+    const { data, error } = await supabase.from('visitors').insert(rows).select();
+    if (error) throw error;
+    res.status(201).json({ data: { booking_group_id, days: result.days.length } });
   } catch (err) { next(err); }
 });
 
