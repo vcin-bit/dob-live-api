@@ -436,4 +436,60 @@ router.post('/expected-visitors', portalAuth, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ── GET /api/portal/expected-visitors — list expected visitors for this site ──
+router.get('/expected-visitors', portalAuth, async (req, res, next) => {
+  try {
+    const { site_id, company_id } = req.portalSession;
+    const { data, error } = await supabase
+      .from('visitors')
+      .select('id, visitor_name, company_name, who_visiting, vehicle_reg, personnel_count, expected_date, expected_time, booking_group_id, status, notes, time_in')
+      .eq('company_id', company_id)
+      .eq('site_id', site_id)
+      .not('expected_date', 'is', null)
+      .order('expected_date', { ascending: false })
+      .order('expected_time', { ascending: true, nullsFirst: false });
+    if (error) throw error;
+    res.json({ data });
+  } catch (err) { next(err); }
+});
+
+// ── PATCH /api/portal/expected-visitors/booking/:groupId — client edits expected visit ──
+router.patch('/expected-visitors/booking/:groupId', portalAuth, async (req, res, next) => {
+  try {
+    const { site_id, company_id } = req.portalSession;
+    const allowed = ['visitor_name', 'company_name', 'who_visiting', 'expected_time', 'personnel_count', 'vehicle_reg', 'notes'];
+    const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
+    if (Object.keys(updates).length === 0) return res.status(400).json({ error: 'No valid fields to update' });
+
+    const { data, error } = await supabase
+      .from('visitors')
+      .update(updates)
+      .eq('booking_group_id', req.params.groupId)
+      .eq('company_id', company_id)
+      .eq('site_id', site_id)
+      .eq('status', 'expected')
+      .select('id');
+    if (error) throw error;
+    res.json({ data: { updated: (data || []).length } });
+  } catch (err) { next(err); }
+});
+
+// ── DELETE /api/portal/expected-visitors/booking/:groupId — client cancels future expected visits ──
+router.delete('/expected-visitors/booking/:groupId', portalAuth, async (req, res, next) => {
+  try {
+    const { site_id, company_id } = req.portalSession;
+    const { data, error } = await supabase
+      .from('visitors')
+      .update({ status: 'cancelled' })
+      .eq('booking_group_id', req.params.groupId)
+      .eq('company_id', company_id)
+      .eq('site_id', site_id)
+      .eq('status', 'expected')
+      .gte('expected_date', new Date().toISOString().slice(0, 10))
+      .select('id');
+    if (error) throw error;
+    res.json({ data: { cancelled: (data || []).length } });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;
