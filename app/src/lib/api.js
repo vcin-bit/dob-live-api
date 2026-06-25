@@ -438,6 +438,10 @@ export const api = {
     create: (data) => request('/api/visitors', { method: 'POST', body: JSON.stringify(data) }),
     update: (id, data) => request(`/api/visitors/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   },
+  expectedVisitors: {
+    list: (params = {}) => request(`/api/visitors/expected?${new URLSearchParams(params)}`),
+    arrive: (id, data) => request(`/api/visitors/${id}/arrive`, { method: 'POST', body: JSON.stringify(data) }),
+  },
   products: {
     list: (params = {}) => request(`/api/products?${new URLSearchParams(params)}`),
     create: (data) => request('/api/products', { method: 'POST', body: JSON.stringify(data) }),
