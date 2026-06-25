@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation, useParams, Routes, Route, Navigate } fr
 import { useAuth } from '@clerk/clerk-react';
 import { api, ApiError } from '../lib/api';
 import { LOG_TYPES, LOG_TYPE_CONFIG, formatDateTime, getRelativeTime } from '../lib/constants';
-import { ManagerDashboard, SiteManagement, LogReview, TaskAssignment, SiteDetail, TeamManagement, Reporting, OnDutyScreen, PatrolHistoryScreen, ExpectedVisitorsScreen } from './ManagerScreens';
+import { ManagerDashboard, SiteManagement, LogReview, TaskAssignment, SiteDetail, TeamManagement, Reporting, OnDutyScreen, PatrolHistoryScreen, ExpectedVisitorsScreen, TenantDirectoryScreen } from './ManagerScreens';
 import { ProfitLoss, ShiftRoster } from './RosterPnL';
 import { DocumentsScreen, PatrolRoutesScreen, ShiftPatternsScreen, RatesScreen, AlertsScreen, PoliciesScreen, MessagesScreen } from './ManagerFeatures';
 import { PortalSettingsModal } from './Portal';
@@ -45,6 +45,7 @@ function ManagerApp({ user }) {
           <Route path="/assignments" element={<TaskAssignment user={user} />} />
           <Route path="/reports"   element={<Reporting user={user} />} />
           <Route path="/expected-visitors" element={<ExpectedVisitorsScreen user={user} />} />
+          <Route path="/tenants" element={<TenantDirectoryScreen user={user} />} />
           <Route path="/roster"    element={<ShiftRoster user={user} />} />
           <Route path="/pnl"       element={<ProfitLoss user={user} />} />
           <Route path="/docs"       element={<DocumentsScreen user={user} />} />
@@ -174,6 +175,7 @@ function ManagerSidebar({ user, open, onClose }) {
         { to: '/logs',      icon: ClipboardDocumentListIcon, label: 'Daily Occurrence Books' },
         { to: '/sites',     icon: BuildingOfficeIcon,        label: 'Sites' },
         { to: '/expected-visitors', icon: UserGroupIcon,      label: 'Expected Visitors' },
+        { to: '/tenants',   icon: BuildingOfficeIcon,        label: 'Tenant Directory' },
         { to: '/reports',   icon: ChartBarIcon,              label: 'Reports' },
       ]
     },

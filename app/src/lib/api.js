@@ -449,6 +449,16 @@ export const api = {
     updateGroup: (groupId, data) => request(`/api/visitors/booking/${groupId}`, { method: 'PATCH', body: JSON.stringify(data) }),
     cancelGroup: (groupId) => request(`/api/visitors/booking/${groupId}`, { method: 'DELETE' }),
   },
+  tenants: {
+    list: (params = {}) => request(`/api/tenants?${new URLSearchParams(params)}`),
+    get: (id) => request(`/api/tenants/${id}`),
+    create: (data) => request('/api/tenants', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id, data) => request(`/api/tenants/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    delete: (id) => request(`/api/tenants/${id}`, { method: 'DELETE' }),
+    addContact: (id, data) => request(`/api/tenants/${id}/contacts`, { method: 'POST', body: JSON.stringify(data) }),
+    updateContact: (contactId, data) => request(`/api/tenants/contacts/${contactId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    deleteContact: (contactId) => request(`/api/tenants/contacts/${contactId}`, { method: 'DELETE' }),
+  },
   products: {
     list: (params = {}) => request(`/api/products?${new URLSearchParams(params)}`),
     create: (data) => request('/api/products', { method: 'POST', body: JSON.stringify(data) }),

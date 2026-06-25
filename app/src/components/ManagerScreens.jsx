@@ -4145,3 +4145,333 @@ function ExpectedVisitorEditModal({ booking, onClose, onSaved }) {
 }
 
 export { ExpectedVisitorsScreen };
+
+function TenantDirectoryScreen({ user }) {
+  const [tenants, setTenants] = useState([]);
+  const [sites, setSites] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [siteFilter, setSiteFilter] = useState('');
+  const [unitFilter, setUnitFilter] = useState('');
+  const [showCreate, setShowCreate] = useState(false);
+  const [editTenant, setEditTenant] = useState(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+
+  async function load() {
+    try {
+      const [sitesRes, tenantsRes] = await Promise.all([api.sites.list(), api.tenants.list()]);
+      setSites(sitesRes.data || []);
+      setTenants(tenantsRes.data || []);
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
+
+  async function deleteTenant(id) {
+    try { await api.tenants.delete(id); setDeleteConfirmId(null); load(); }
+    catch (e) { alert(e.message); }
+  }
+
+  let filtered = tenants;
+  if (siteFilter) filtered = filtered.filter(t => t.site_id === siteFilter);
+  if (unitFilter) filtered = filtered.filter(t => t.unit_ref === unitFilter);
+  if (search) {
+    const q = search.toLowerCase();
+    filtered = filtered.filter(t =>
+      (t.unit_ref || '').toLowerCase().includes(q) ||
+      (t.tenant_name || '').toLowerCase().includes(q) ||
+      (t.contacts || []).some(c =>
+        (c.name || '').toLowerCase().includes(q) ||
+        (c.phone || '').toLowerCase().includes(q) ||
+        (c.email || '').toLowerCase().includes(q)
+      )
+    );
+  }
+
+  const unitOptions = [...new Set(
+    tenants.filter(t => !siteFilter || t.site_id === siteFilter).map(t => t.unit_ref).filter(Boolean)
+  )].sort();
+
+  const siteMap = {};
+  sites.forEach(s => { siteMap[s.id] = s.name; });
+
+  return (
+    <div>
+      <div className="topbar">
+        <div className="topbar-title">Tenant Directory</div>
+        <button className="btn btn-primary btn-sm" onClick={() => setShowCreate(true)}>
+          <PlusIcon style={{width:'0.875rem',height:'0.875rem'}} /> Add Tenant
+        </button>
+      </div>
+      <div className="page-content">
+        <div style={{display:'flex',alignItems:'center',gap:'0.5rem',marginBottom:'1rem',flexWrap:'wrap'}}>
+          <input className="input" style={{width:'220px'}} placeholder="Search name, unit, contact..." value={search} onChange={e => setSearch(e.target.value)} />
+          <select className="input" style={{width:'180px'}} value={siteFilter} onChange={e => { setSiteFilter(e.target.value); setUnitFilter(''); }}>
+            <option value="">All Sites</option>
+            {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+          {unitOptions.length > 0 && (
+            <select className="input" style={{width:'140px'}} value={unitFilter} onChange={e => setUnitFilter(e.target.value)}>
+              <option value="">All Units</option>
+              {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
+            </select>
+          )}
+          <span style={{fontSize:'0.8125rem',color:'var(--text-3)'}}>{filtered.length} tenant{filtered.length!==1?'s':''}</span>
+        </div>
+        {loading ? (
+          <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>
+        ) : filtered.length === 0 ? (
+          <div className="empty-state"><p>No tenants found</p></div>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr><th>Unit</th><th>Tenant</th><th>Site</th><th>Status</th><th>Contacts</th><th></th></tr>
+            </thead>
+            <tbody>
+              {filtered.map(t => {
+                const contacts = (t.contacts || []).sort((a, b) => (a.position || 99) - (b.position || 99));
+                return (
+                  <tr key={t.id}>
+                    <td style={{fontFamily:'monospace',fontSize:'0.8125rem',fontWeight:600}}>{t.unit_ref || '—'}</td>
+                    <td style={{fontWeight:500}}>{t.tenant_name}</td>
+                    <td style={{color:'var(--text-2)',fontSize:'0.8125rem'}}>{siteMap[t.site_id] || '—'}</td>
+                    <td><span className={`badge ${t.status==='active'?'badge-success':t.status==='vacant'?'badge-warning':'badge-neutral'}`}>{t.status || 'active'}</span></td>
+                    <td style={{fontSize:'0.75rem',color:'var(--text-2)',maxWidth:'300px'}}>
+                      {contacts.length === 0 ? <span style={{color:'var(--text-3)'}}>No contacts</span> : contacts.map((c, i) => (
+                        <span key={c.id}>{i > 0 && ' · '}{c.position}. {c.name || '—'}{c.phone ? ` ${c.phone}` : ''}</span>
+                      ))}
+                    </td>
+                    <td style={{textAlign:'right',display:'flex',gap:'0.375rem',justifyContent:'flex-end'}}>
+                      <button className="btn btn-ghost btn-sm" onClick={() => setEditTenant(t)}>Edit</button>
+                      {deleteConfirmId === t.id ? (
+                        <>
+                          <button className="btn btn-sm" style={{background:'var(--danger)',color:'#fff',border:'none'}} onClick={() => deleteTenant(t.id)}>Yes</button>
+                          <button className="btn btn-ghost btn-sm" onClick={() => setDeleteConfirmId(null)}>No</button>
+                        </>
+                      ) : (
+                        <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={() => setDeleteConfirmId(t.id)}>Delete</button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+      {showCreate && <TenantFormModal sites={sites} onClose={() => setShowCreate(false)} onSaved={(newTenant) => { setShowCreate(false); if (newTenant) setEditTenant(newTenant); else load(); }} />}
+      {editTenant && <TenantEditModal tenant={editTenant} sites={sites} onClose={() => setEditTenant(null)} onSaved={() => { setEditTenant(null); load(); }} />}
+    </div>
+  );
+}
+
+function TenantFormModal({ sites, onClose, onSaved }) {
+  const [form, setForm] = useState({ site_id: '', unit_ref: '', tenant_name: '', status: 'active', comments: '' });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function save() {
+    if (!form.site_id) { setError('Please select a site'); return; }
+    if (!form.tenant_name.trim()) { setError('Tenant name is required'); return; }
+    setSaving(true);
+    try {
+      const res = await api.tenants.create({
+        site_id: form.site_id,
+        unit_ref: form.unit_ref.trim() || null,
+        tenant_name: form.tenant_name.trim(),
+        status: form.status,
+        comments: form.comments.trim() || null,
+      });
+      onSaved(res.data);
+    } catch (err) { setError(err.message); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-title">Add Tenant</div>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+        {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
+        <div className="field">
+          <label className="label">Site</label>
+          <select className="input" value={form.site_id} onChange={e => setForm(f=>({...f,site_id:e.target.value}))}>
+            <option value="">Select site...</option>
+            {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
+          <div className="field">
+            <label className="label">Unit Ref</label>
+            <input className="input" value={form.unit_ref} onChange={e => setForm(f=>({...f,unit_ref:e.target.value}))} placeholder="e.g. Unit 12, G.03" />
+          </div>
+          <div className="field">
+            <label className="label">Status</label>
+            <select className="input" value={form.status} onChange={e => setForm(f=>({...f,status:e.target.value}))}>
+              <option value="active">Active</option>
+              <option value="vacant">Vacant</option>
+              <option value="void">Void</option>
+            </select>
+          </div>
+        </div>
+        <div className="field">
+          <label className="label">Tenant Name</label>
+          <input className="input" value={form.tenant_name} onChange={e => setForm(f=>({...f,tenant_name:e.target.value}))} placeholder="Company or person name" />
+        </div>
+        <div className="field">
+          <label className="label">Comments</label>
+          <textarea className="input" rows={2} value={form.comments} onChange={e => setForm(f=>({...f,comments:e.target.value}))} placeholder="Optional notes" />
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? 'Saving...' : 'Add Tenant'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TenantEditModal({ tenant, sites, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    unit_ref: tenant.unit_ref || '', tenant_name: tenant.tenant_name || '',
+    status: tenant.status || 'active', comments: tenant.comments || '',
+  });
+  const [contacts, setContacts] = useState((tenant.contacts || []).sort((a, b) => (a.position || 99) - (b.position || 99)));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+  const [contactSaving, setContactSaving] = useState(null);
+
+  async function saveTenant() {
+    if (!form.tenant_name.trim()) { setError('Tenant name is required'); return; }
+    setSaving(true);
+    try {
+      await api.tenants.update(tenant.id, {
+        unit_ref: form.unit_ref.trim() || null,
+        tenant_name: form.tenant_name.trim(),
+        status: form.status,
+        comments: form.comments.trim() || null,
+      });
+      onSaved();
+    } catch (err) { setError(err.message); }
+    finally { setSaving(false); }
+  }
+
+  async function addContact() {
+    setContactSaving('new');
+    try {
+      const res = await api.tenants.addContact(tenant.id, { position: contacts.length + 1, name: '', phone: '', email: '' });
+      setContacts(prev => [...prev, res.data].sort((a, b) => (a.position || 99) - (b.position || 99)));
+    } catch (err) { setError(err.message); }
+    finally { setContactSaving(null); }
+  }
+
+  async function saveContact(c) {
+    setContactSaving(c.id);
+    try {
+      await api.tenants.updateContact(c.id, { position: c.position, name: c.name, phone: c.phone, email: c.email, label: c.label, notes: c.notes });
+    } catch (err) { setError(err.message); }
+    finally { setContactSaving(null); }
+  }
+
+  async function deleteContact(contactId) {
+    try {
+      await api.tenants.deleteContact(contactId);
+      setContacts(prev => prev.filter(c => c.id !== contactId));
+    } catch (err) { setError(err.message); }
+  }
+
+  function updateContactField(contactId, field, value) {
+    setContacts(prev => prev.map(c => c.id === contactId ? { ...c, [field]: value } : c));
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{maxWidth:'600px'}} onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-title">Edit Tenant — {tenant.tenant_name}</div>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+        {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
+          <div className="field">
+            <label className="label">Unit Ref</label>
+            <input className="input" value={form.unit_ref} onChange={e => setForm(f=>({...f,unit_ref:e.target.value}))} />
+          </div>
+          <div className="field">
+            <label className="label">Status</label>
+            <select className="input" value={form.status} onChange={e => setForm(f=>({...f,status:e.target.value}))}>
+              <option value="active">Active</option>
+              <option value="vacant">Vacant</option>
+              <option value="void">Void</option>
+            </select>
+          </div>
+        </div>
+        <div className="field">
+          <label className="label">Tenant Name</label>
+          <input className="input" value={form.tenant_name} onChange={e => setForm(f=>({...f,tenant_name:e.target.value}))} />
+        </div>
+        <div className="field">
+          <label className="label">Comments</label>
+          <textarea className="input" rows={2} value={form.comments} onChange={e => setForm(f=>({...f,comments:e.target.value}))} />
+        </div>
+        <div style={{display:'flex',justifyContent:'flex-end',marginBottom:'1rem'}}>
+          <button className="btn btn-primary btn-sm" onClick={saveTenant} disabled={saving}>{saving ? 'Saving...' : 'Save Tenant'}</button>
+        </div>
+
+        {/* Contacts */}
+        <div style={{borderTop:'1px solid var(--border)',paddingTop:'1rem'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.75rem'}}>
+            <div className="section-title" style={{margin:0,fontSize:'0.875rem'}}>Escalation Contacts</div>
+            <button className="btn btn-ghost btn-sm" onClick={addContact} disabled={contactSaving === 'new'}>{contactSaving === 'new' ? 'Adding...' : '+ Add Contact'}</button>
+          </div>
+          {contacts.length === 0 ? (
+            <div style={{fontSize:'0.8125rem',color:'var(--text-3)',padding:'0.5rem 0'}}>No contacts yet. Add an escalation contact above.</div>
+          ) : (
+            <div style={{display:'flex',flexDirection:'column',gap:'0.625rem'}}>
+              {contacts.map(c => (
+                <div key={c.id} style={{padding:'0.75rem',background:'var(--surface-2)',borderRadius:'var(--radius)',border:'1px solid var(--border)'}}>
+                  <div style={{display:'grid',gridTemplateColumns:'60px 1fr 1fr',gap:'0.5rem',marginBottom:'0.5rem'}}>
+                    <div className="field" style={{marginBottom:0}}>
+                      <label className="label" style={{fontSize:'0.625rem'}}>Pos</label>
+                      <input className="input" type="number" min="1" value={c.position || ''} onChange={e => updateContactField(c.id, 'position', parseInt(e.target.value) || 1)} style={{fontSize:'0.8125rem'}} />
+                    </div>
+                    <div className="field" style={{marginBottom:0}}>
+                      <label className="label" style={{fontSize:'0.625rem'}}>Name</label>
+                      <input className="input" value={c.name || ''} onChange={e => updateContactField(c.id, 'name', e.target.value)} style={{fontSize:'0.8125rem'}} />
+                    </div>
+                    <div className="field" style={{marginBottom:0}}>
+                      <label className="label" style={{fontSize:'0.625rem'}}>Phone</label>
+                      <input className="input" value={c.phone || ''} onChange={e => updateContactField(c.id, 'phone', e.target.value)} style={{fontSize:'0.8125rem'}} />
+                    </div>
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'0.5rem'}}>
+                    <div className="field" style={{marginBottom:0}}>
+                      <label className="label" style={{fontSize:'0.625rem'}}>Email</label>
+                      <input className="input" value={c.email || ''} onChange={e => updateContactField(c.id, 'email', e.target.value)} style={{fontSize:'0.8125rem'}} />
+                    </div>
+                    <div className="field" style={{marginBottom:0}}>
+                      <label className="label" style={{fontSize:'0.625rem'}}>Label</label>
+                      <input className="input" value={c.label || ''} onChange={e => updateContactField(c.id, 'label', e.target.value)} placeholder="e.g. Out of hours" style={{fontSize:'0.8125rem'}} />
+                    </div>
+                    <div style={{display:'flex',alignItems:'flex-end',gap:'0.375rem'}}>
+                      <button className="btn btn-ghost btn-sm" onClick={() => saveContact(c)} disabled={contactSaving === c.id}>{contactSaving === c.id ? '...' : 'Save'}</button>
+                      <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={() => deleteContact(c.id)}>Del</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="modal-footer" style={{marginTop:'1rem'}}>
+          <button className="btn btn-secondary" onClick={onClose}>Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export { TenantDirectoryScreen };
