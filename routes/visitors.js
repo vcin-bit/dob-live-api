@@ -140,22 +140,33 @@ router.post('/expected', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OP
 // GET /api/visitors/expected — list expected visitors
 router.get('/expected', authenticate, async (req, res, next) => {
   try {
-    const { site_id, date, booking_group_id } = req.query;
+    const { site_id, date, booking_group_id, from, to, upcoming } = req.query;
     let query = supabase
       .from('visitors')
       .select('*, site:sites(name)')
       .eq('company_id', req.user.company_id)
       .eq('status', 'expected');
 
+    let isRange = false;
     if (booking_group_id) {
       query = query.eq('booking_group_id', booking_group_id);
+    } else if (from || to || upcoming === 'true') {
+      isRange = true;
+      const rangeFrom = from || (upcoming === 'true' ? new Date().toISOString().slice(0, 10) : null);
+      if (rangeFrom) query = query.gte('expected_date', rangeFrom);
+      if (to) query = query.lte('expected_date', to);
+      if (site_id) query = query.eq('site_id', site_id);
     } else {
       const targetDate = date || new Date().toISOString().slice(0, 10);
       query = query.eq('expected_date', targetDate);
       if (site_id) query = query.eq('site_id', site_id);
     }
 
-    query = query.order('expected_time', { ascending: true, nullsFirst: false }).order('visitor_name', { ascending: true });
+    if (isRange) {
+      query = query.order('expected_date', { ascending: true }).order('expected_time', { ascending: true, nullsFirst: false }).order('visitor_name', { ascending: true });
+    } else {
+      query = query.order('expected_time', { ascending: true, nullsFirst: false }).order('visitor_name', { ascending: true });
+    }
 
     const { data, error } = await query;
     if (error) throw error;
