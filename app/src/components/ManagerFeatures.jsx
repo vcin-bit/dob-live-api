@@ -154,28 +154,29 @@ function DocumentUploadButton({ siteId, folderId, onUploaded }) {
     if (!file) return;
     setUploading(true);
     try {
-      // Upload to Supabase storage via signed URL approach
-      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://bxesqjzkuredqzvepomn.supabase.co';
-      const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-      const path = `${siteId}/${folderId || 'root'}/${Date.now()}-${file.name}`;
-      
-      // Upload via Supabase storage REST API
-      const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/documents/${path}`, {
+      const token = await window.__clerkGetToken?.() || '';
+      const API = import.meta.env.VITE_API_URL || 'https://dob-live-api.onrender.com';
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('site_id', siteId);
+      if (folderId) fd.append('folder_id', folderId);
+      const uploadRes = await fetch(`${API}/api/folders/documents/upload`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': file.type, 'x-upsert': 'false' },
-        body: file,
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
       });
-      if (!uploadRes.ok) throw new Error('Upload failed');
-      
-      // Register in database
+      if (!uploadRes.ok) { const txt = await uploadRes.text(); throw new Error(txt || 'Upload failed'); }
+      const result = await uploadRes.json();
+
+      // Register metadata in database
       await api.folders.documents.create({
         site_id: siteId,
         folder_id: folderId || null,
-        name: file.name,
-        original_name: file.name,
-        mime_type: file.type,
-        file_size: file.size,
-        storage_path: path,
+        name: result.name,
+        original_name: result.name,
+        mime_type: result.mime_type,
+        file_size: result.file_size,
+        storage_path: result.path,
       });
       onUploaded();
     } catch (err) {

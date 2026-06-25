@@ -1,6 +1,8 @@
 const router = require('express').Router();
 const supabase = require('../lib/supabase');
 const { authenticate, requireRole } = require('../middleware/auth');
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
 // Folders
 router.get('/', authenticate, async (req, res, next) => {
@@ -50,6 +52,23 @@ router.post('/documents', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'O
     const { data, error } = await supabase.from('site_documents').insert({ company_id: req.user.company_id, site_id, folder_id, name, original_name, mime_type, file_size, storage_path, uploaded_by: req.user.id }).select().single();
     if (error) throw error;
     res.status(201).json({ data });
+  } catch (err) { next(err); }
+});
+
+// POST /api/folders/documents/upload — upload file to storage via server
+router.post('/documents/upload', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), upload.single('file'), async (req, res, next) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    const site_id = req.body.site_id;
+    const folder_id = req.body.folder_id || 'root';
+    const safeName = req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `${site_id}/${folder_id}/${Date.now()}-${safeName}`;
+    const { error } = await supabase.storage.from('documents').upload(path, req.file.buffer, {
+      contentType: req.file.mimetype,
+      upsert: false,
+    });
+    if (error) throw error;
+    res.json({ path, name: req.file.originalname, mime_type: req.file.mimetype, file_size: req.file.size });
   } catch (err) { next(err); }
 });
 
