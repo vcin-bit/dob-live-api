@@ -441,6 +441,9 @@ export const api = {
   expectedVisitors: {
     list: (params = {}) => request(`/api/visitors/expected?${new URLSearchParams(params)}`),
     arrive: (id, data) => request(`/api/visitors/${id}/arrive`, { method: 'POST', body: JSON.stringify(data) }),
+    create: (data) => request('/api/visitors/expected', { method: 'POST', body: JSON.stringify(data) }),
+    updateGroup: (groupId, data) => request(`/api/visitors/booking/${groupId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    cancelGroup: (groupId) => request(`/api/visitors/booking/${groupId}`, { method: 'DELETE' }),
   },
   products: {
     list: (params = {}) => request(`/api/products?${new URLSearchParams(params)}`),

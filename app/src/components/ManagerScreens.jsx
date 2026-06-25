@@ -3832,3 +3832,316 @@ function SiteAIEditor({ siteId, siteName }) {
 
 export { PatrolHistoryScreen };
 export { PatrolSessionModal };
+
+function ExpectedVisitorsScreen({ user }) {
+  const [bookings, setBookings] = useState([]);
+  const [sites, setSites] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [siteFilter, setSiteFilter] = useState('');
+  const [showCreate, setShowCreate] = useState(false);
+  const [editBooking, setEditBooking] = useState(null);
+  const [cancelConfirm, setCancelConfirm] = useState(null);
+  const [cancelling, setCancelling] = useState(false);
+
+  async function load() {
+    try {
+      const [sitesRes, expectedRes] = await Promise.all([
+        api.sites.list(),
+        api.expectedVisitors.list({ upcoming: 'true' }),
+      ]);
+      setSites(sitesRes.data || []);
+      const rows = expectedRes.data || [];
+      const groups = {};
+      rows.forEach(r => {
+        const gid = r.booking_group_id;
+        if (!gid) return;
+        if (!groups[gid]) {
+          groups[gid] = {
+            booking_group_id: gid, visitor_name: r.visitor_name, company_name: r.company_name,
+            who_visiting: r.who_visiting, site_id: r.site_id, site_name: r.site?.name || '—',
+            personnel_count: r.personnel_count, vehicle_reg: r.vehicle_reg,
+            expected_time: r.expected_time, notes: r.notes, dates: [],
+          };
+        }
+        groups[gid].dates.push(r.expected_date);
+      });
+      const grouped = Object.values(groups).map(g => {
+        g.dates.sort();
+        g.date_from = g.dates[0];
+        g.date_to = g.dates[g.dates.length - 1];
+        g.day_count = g.dates.length;
+        return g;
+      });
+      grouped.sort((a, b) => a.date_from.localeCompare(b.date_from));
+      setBookings(grouped);
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
+
+  async function cancelBooking(groupId) {
+    setCancelling(true);
+    try {
+      await api.expectedVisitors.cancelGroup(groupId);
+      setCancelConfirm(null);
+      load();
+    } catch (err) { alert(err.message); }
+    finally { setCancelling(false); }
+  }
+
+  const filtered = siteFilter ? bookings.filter(b => b.site_id === siteFilter) : bookings;
+  const fmtDate = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : '—';
+
+  return (
+    <div>
+      <div className="topbar">
+        <div className="topbar-title">Expected Visitors</div>
+        <button className="btn btn-primary btn-sm" onClick={() => setShowCreate(true)}>
+          <PlusIcon style={{width:'0.875rem',height:'0.875rem'}} /> Add Expected Visit
+        </button>
+      </div>
+      <div className="page-content">
+        <div style={{display:'flex',alignItems:'center',gap:'0.5rem',marginBottom:'1rem',flexWrap:'wrap'}}>
+          <select className="input" style={{width:'180px'}} value={siteFilter} onChange={e => setSiteFilter(e.target.value)}>
+            <option value="">All Sites</option>
+            {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+          <span style={{fontSize:'0.8125rem',color:'var(--text-3)'}}>{filtered.length} booking{filtered.length!==1?'s':''}</span>
+        </div>
+        {loading ? (
+          <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>
+        ) : filtered.length === 0 ? (
+          <div className="empty-state"><p>No upcoming expected visitors</p></div>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr><th>Visitor / Company</th><th>Purpose</th><th>Site</th><th>Dates</th><th>ETA</th><th>Personnel</th><th></th></tr>
+            </thead>
+            <tbody>
+              {filtered.map(b => (
+                <tr key={b.booking_group_id}>
+                  <td>
+                    <div style={{fontWeight:500}}>{b.visitor_name}</div>
+                    {b.company_name && <div style={{fontSize:'0.75rem',color:'var(--text-2)'}}>{b.company_name}</div>}
+                  </td>
+                  <td style={{color:'var(--text-2)',fontSize:'0.8125rem'}}>{b.who_visiting || '—'}</td>
+                  <td style={{color:'var(--text-2)',fontSize:'0.8125rem'}}>{b.site_name}</td>
+                  <td style={{fontSize:'0.8125rem',whiteSpace:'nowrap'}}>
+                    {b.date_from === b.date_to ? fmtDate(b.date_from) : `${fmtDate(b.date_from)} – ${fmtDate(b.date_to)}`}
+                    {b.day_count > 1 && <span style={{fontSize:'0.6875rem',color:'var(--text-3)',marginLeft:'0.375rem'}}>({b.day_count}d)</span>}
+                  </td>
+                  <td style={{color:'var(--text-2)',fontSize:'0.8125rem'}}>{b.expected_time ? b.expected_time.slice(0,5) : '—'}</td>
+                  <td style={{color:'var(--text-2)',fontSize:'0.8125rem'}}>{b.personnel_count || 1}</td>
+                  <td style={{textAlign:'right',display:'flex',gap:'0.375rem',justifyContent:'flex-end'}}>
+                    <button className="btn btn-ghost btn-sm" onClick={() => setEditBooking(b)}>Edit</button>
+                    <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={() => setCancelConfirm(b)}>Cancel</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+      {showCreate && <ExpectedVisitorCreateModal sites={sites} onClose={() => setShowCreate(false)} onSaved={() => { setShowCreate(false); load(); }} />}
+      {editBooking && <ExpectedVisitorEditModal booking={editBooking} onClose={() => setEditBooking(null)} onSaved={() => { setEditBooking(null); load(); }} />}
+      {cancelConfirm && (
+        <div className="modal-overlay" onClick={() => setCancelConfirm(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title">Cancel Expected Visit</div>
+              <button className="modal-close" onClick={() => setCancelConfirm(null)}>×</button>
+            </div>
+            <p style={{fontSize:'0.875rem',color:'var(--text-2)',margin:'0 0 1rem'}}>
+              Cancel this expected visit? Future days will be removed; any already-arrived days are kept.
+            </p>
+            <div style={{fontWeight:500,marginBottom:'1rem'}}>{cancelConfirm.visitor_name} — {cancelConfirm.site_name}</div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setCancelConfirm(null)}>Keep</button>
+              <button className="btn btn-primary" style={{background:'var(--danger)',borderColor:'var(--danger)'}} onClick={() => cancelBooking(cancelConfirm.booking_group_id)} disabled={cancelling}>
+                {cancelling ? 'Cancelling...' : 'Cancel Visit'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ExpectedVisitorCreateModal({ sites, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    visitor_name: '', company_name: '', who_visiting: '', site_id: '',
+    expected_from: '', expected_to: '', expected_time: '',
+    personnel_count: '1', vehicle_reg: '', notes: '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function save() {
+    if (!form.site_id) { setError('Please select a site'); return; }
+    if (!form.visitor_name.trim()) { setError('Visitor name is required'); return; }
+    if (!form.expected_from || !form.expected_to) { setError('Start and end dates are required'); return; }
+    setSaving(true);
+    try {
+      await api.expectedVisitors.create({
+        site_id: form.site_id,
+        visitor_name: form.visitor_name.trim(),
+        company_name: form.company_name.trim() || null,
+        who_visiting: form.who_visiting.trim() || null,
+        expected_from: form.expected_from,
+        expected_to: form.expected_to,
+        expected_time: form.expected_time || null,
+        personnel_count: parseInt(form.personnel_count) || 1,
+        vehicle_reg: form.vehicle_reg.trim() || null,
+        notes: form.notes.trim() || null,
+      });
+      onSaved();
+    } catch (err) { setError(err.message || err.error || 'Failed to create'); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-title">Add Expected Visit</div>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+        {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
+        <div className="field">
+          <label className="label">Site</label>
+          <select className="input" value={form.site_id} onChange={e => setForm(f=>({...f,site_id:e.target.value}))}>
+            <option value="">Select site...</option>
+            {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </div>
+        <div className="field">
+          <label className="label">Visitor / Company Name</label>
+          <input className="input" value={form.visitor_name} onChange={e => setForm(f=>({...f,visitor_name:e.target.value}))} placeholder="e.g. Severn Trent, BT Engineer" />
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
+          <div className="field">
+            <label className="label">Company</label>
+            <input className="input" value={form.company_name} onChange={e => setForm(f=>({...f,company_name:e.target.value}))} placeholder="Company name (optional)" />
+          </div>
+          <div className="field">
+            <label className="label">Purpose</label>
+            <input className="input" value={form.who_visiting} onChange={e => setForm(f=>({...f,who_visiting:e.target.value}))} placeholder="e.g. Meter reading, Lift repair" />
+          </div>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'0.75rem'}}>
+          <div className="field">
+            <label className="label">From</label>
+            <input type="date" className="input" value={form.expected_from} onChange={e => setForm(f=>({...f,expected_from:e.target.value}))} />
+          </div>
+          <div className="field">
+            <label className="label">To</label>
+            <input type="date" className="input" value={form.expected_to} onChange={e => setForm(f=>({...f,expected_to:e.target.value}))} />
+          </div>
+          <div className="field">
+            <label className="label">ETA (optional)</label>
+            <input type="time" className="input" value={form.expected_time} onChange={e => setForm(f=>({...f,expected_time:e.target.value}))} />
+          </div>
+        </div>
+        <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginBottom:'0.75rem'}}>A multi-day range creates one entry per day for the officer's daily expected list.</div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
+          <div className="field">
+            <label className="label">Personnel</label>
+            <input type="number" className="input" min="1" value={form.personnel_count} onChange={e => setForm(f=>({...f,personnel_count:e.target.value}))} />
+          </div>
+          <div className="field">
+            <label className="label">Vehicle Reg</label>
+            <input className="input" value={form.vehicle_reg} onChange={e => setForm(f=>({...f,vehicle_reg:e.target.value}))} placeholder="Optional" />
+          </div>
+        </div>
+        <div className="field">
+          <label className="label">Notes</label>
+          <textarea className="input" rows={2} value={form.notes} onChange={e => setForm(f=>({...f,notes:e.target.value}))} placeholder="Optional notes for the officer" />
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? 'Saving...' : 'Add Expected Visit'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ExpectedVisitorEditModal({ booking, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    visitor_name: booking.visitor_name || '', company_name: booking.company_name || '',
+    who_visiting: booking.who_visiting || '', expected_time: booking.expected_time ? booking.expected_time.slice(0,5) : '',
+    personnel_count: String(booking.personnel_count || 1), vehicle_reg: booking.vehicle_reg || '', notes: booking.notes || '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function save() {
+    if (!form.visitor_name.trim()) { setError('Visitor name is required'); return; }
+    setSaving(true);
+    try {
+      await api.expectedVisitors.updateGroup(booking.booking_group_id, {
+        visitor_name: form.visitor_name.trim(),
+        company_name: form.company_name.trim() || null,
+        who_visiting: form.who_visiting.trim() || null,
+        expected_time: form.expected_time || null,
+        personnel_count: parseInt(form.personnel_count) || 1,
+        vehicle_reg: form.vehicle_reg.trim() || null,
+        notes: form.notes.trim() || null,
+      });
+      onSaved();
+    } catch (err) { setError(err.message || 'Failed to update'); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-title">Edit Expected Visit</div>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+        {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
+        <div className="field">
+          <label className="label">Visitor / Company Name</label>
+          <input className="input" value={form.visitor_name} onChange={e => setForm(f=>({...f,visitor_name:e.target.value}))} />
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
+          <div className="field">
+            <label className="label">Company</label>
+            <input className="input" value={form.company_name} onChange={e => setForm(f=>({...f,company_name:e.target.value}))} />
+          </div>
+          <div className="field">
+            <label className="label">Purpose</label>
+            <input className="input" value={form.who_visiting} onChange={e => setForm(f=>({...f,who_visiting:e.target.value}))} />
+          </div>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'0.75rem'}}>
+          <div className="field">
+            <label className="label">ETA</label>
+            <input type="time" className="input" value={form.expected_time} onChange={e => setForm(f=>({...f,expected_time:e.target.value}))} />
+          </div>
+          <div className="field">
+            <label className="label">Personnel</label>
+            <input type="number" className="input" min="1" value={form.personnel_count} onChange={e => setForm(f=>({...f,personnel_count:e.target.value}))} />
+          </div>
+          <div className="field">
+            <label className="label">Vehicle Reg</label>
+            <input className="input" value={form.vehicle_reg} onChange={e => setForm(f=>({...f,vehicle_reg:e.target.value}))} />
+          </div>
+        </div>
+        <div className="field">
+          <label className="label">Notes</label>
+          <textarea className="input" rows={2} value={form.notes} onChange={e => setForm(f=>({...f,notes:e.target.value}))} />
+        </div>
+        <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginBottom:'0.75rem'}}>Date range cannot be changed. To adjust dates, cancel and re-create the booking.</div>
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export { ExpectedVisitorsScreen };
