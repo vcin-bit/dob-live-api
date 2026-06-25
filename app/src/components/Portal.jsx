@@ -150,7 +150,7 @@ function PortalDashboard({ session, onLogout }) {
 
       {/* Tabs */}
       <div style={{background:'#fff',borderBottom:'1px solid #e2e8f0',display:'flex',padding:'0 1.25rem',overflowX:'auto'}}>
-        {[['dashboard','Dashboard'],['tasks','Tasks'],['incidents','Occurrences'],['ai','Assignment Instructions'],['risks','Risk Assessments'],['codes','Site Codes'],['vendor-docs','Supplier Docs'],['docs','Documents']].map(([val,label]) => (
+        {[['dashboard','Dashboard'],['tasks','Tasks'],['expected','Expected Visitors'],['incidents','Occurrences'],['ai','Assignment Instructions'],['risks','Risk Assessments'],['codes','Site Codes'],['vendor-docs','Supplier Docs'],['docs','Documents']].map(([val,label]) => (
           <button key={val} onClick={() => setTab(val)} style={{padding:'0.75rem 1rem',fontSize:'0.875rem',fontWeight:500,border:'none',borderBottom:`2px solid ${tab===val?'#1a52a8':'transparent'}`,color:tab===val?'#1a52a8':'#64748b',background:'none',cursor:'pointer',marginBottom:'-1px'}}>
             {label}
             {val==='tasks' && openAlerts.length > 0 && <span style={{marginLeft:'0.375rem',background:'#1a52a8',color:'#fff',borderRadius:'999px',fontSize:'0.6875rem',padding:'0 5px',fontWeight:700}}>{openAlerts.length}</span>}
@@ -471,6 +471,8 @@ function PortalDashboard({ session, onLogout }) {
               </>
             )}
           </div>
+        ) : tab === 'expected' ? (
+          <PortalExpectedVisitors token={token} />
         ) : null}
       </div>
 
@@ -850,6 +852,99 @@ function PortalEditTaskModal({ token, task, onClose, onSaved }) {
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
           <button className="btn btn-primary" onClick={save} disabled={saving}>{saving?'Saving...':'Save Changes'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── PORTAL EXPECTED VISITORS ──────────────────────────────────────────────
+function PortalExpectedVisitors({ token }) {
+  const [showForm, setShowForm] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  return (
+    <div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.75rem'}}>
+        <div className="section-title">Expected Visitors</div>
+        <button className="btn btn-primary btn-sm" onClick={() => { setShowForm(true); setSuccess(false); }}>+ Register Expected Visit</button>
+      </div>
+      <div style={{fontSize:'0.875rem',color:'var(--text-2)',marginBottom:'1rem'}}>
+        Register a contractor or visitor expected on site so officers know to expect them.
+      </div>
+      {success && (
+        <div className="card" style={{borderLeft:'3px solid #10b981',marginBottom:'1rem'}}>
+          <div style={{display:'flex',alignItems:'center',gap:'0.5rem'}}>
+            <span style={{color:'#10b981',fontWeight:700,fontSize:'1.125rem'}}>✓</span>
+            <div>
+              <div style={{fontWeight:600,fontSize:'0.9375rem'}}>Expected visit registered</div>
+              <div style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>The security team will see this on their expected visitors list.</div>
+            </div>
+          </div>
+        </div>
+      )}
+      {!success && !showForm && (
+        <div className="empty-state"><p>Use the button above to register an expected visitor or contractor.</p></div>
+      )}
+      {showForm && (
+        <PortalExpectedVisitorModal
+          token={token}
+          onClose={() => setShowForm(false)}
+          onSaved={() => { setShowForm(false); setSuccess(true); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function PortalExpectedVisitorModal({ token, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    visitor_name: '', who_visiting: '', expected_from: '', expected_to: '',
+    expected_time: '', personnel_count: '1', vehicle_reg: '', notes: '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function send() {
+    if (!form.visitor_name.trim()) { setError('Visitor / company name is required'); return; }
+    if (!form.expected_from || !form.expected_to) { setError('Start and end dates are required'); return; }
+    try {
+      setSaving(true);
+      await api.portal.expectedVisitors(token, {
+        visitor_name: form.visitor_name.trim(),
+        who_visiting: form.who_visiting.trim() || null,
+        expected_from: form.expected_from,
+        expected_to: form.expected_to,
+        expected_time: form.expected_time || null,
+        personnel_count: parseInt(form.personnel_count) || 1,
+        vehicle_reg: form.vehicle_reg.trim() || null,
+        notes: form.notes.trim() || null,
+      });
+      onSaved();
+    } catch (e) { setError(e.message); } finally { setSaving(false); }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header"><div className="modal-title">Register Expected Visit</div><button className="modal-close" onClick={onClose}>x</button></div>
+        {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
+        <div className="field"><label className="label">Visitor / company name</label><input className="input" value={form.visitor_name} onChange={e => setForm(f=>({...f,visitor_name:e.target.value}))} placeholder="e.g. Severn Trent, BT Engineer" /></div>
+        <div className="field"><label className="label">Purpose of visit (optional)</label><input className="input" value={form.who_visiting} onChange={e => setForm(f=>({...f,who_visiting:e.target.value}))} placeholder="e.g. Meter reading, Lift repair" /></div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'0.75rem'}}>
+          <div className="field"><label className="label">From</label><input type="date" className="input" value={form.expected_from} onChange={e => setForm(f=>({...f,expected_from:e.target.value}))} /></div>
+          <div className="field"><label className="label">To</label><input type="date" className="input" value={form.expected_to} onChange={e => setForm(f=>({...f,expected_to:e.target.value}))} /></div>
+          <div className="field"><label className="label">ETA (optional)</label><input type="time" className="input" value={form.expected_time} onChange={e => setForm(f=>({...f,expected_time:e.target.value}))} /></div>
+        </div>
+        <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginBottom:'0.75rem'}}>A multi-day range creates one entry per day for the officer's daily expected list.</div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
+          <div className="field"><label className="label">Personnel</label><input type="number" className="input" min="1" value={form.personnel_count} onChange={e => setForm(f=>({...f,personnel_count:e.target.value}))} /></div>
+          <div className="field"><label className="label">Vehicle Reg (optional)</label><input className="input" value={form.vehicle_reg} onChange={e => setForm(f=>({...f,vehicle_reg:e.target.value}))} placeholder="e.g. AB12 CDE" /></div>
+        </div>
+        <div className="field"><label className="label">Notes (optional)</label><textarea className="input" rows={2} value={form.notes} onChange={e => setForm(f=>({...f,notes:e.target.value}))} placeholder="Any additional information for the security team" /></div>
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={send} disabled={saving}>{saving ? 'Sending...' : 'Register Visit'}</button>
         </div>
       </div>
     </div>

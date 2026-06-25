@@ -410,6 +410,7 @@ export const api = {
     subcontractorDocs: (token) => request('/api/portal/subcontractor-documents', { headers: { Authorization: `Bearer ${token}` } }),
     subcontractorDocSigned: (token, id) => request(`/api/portal/subcontractor-documents/${id}/signed`, { headers: { Authorization: `Bearer ${token}` } }),
     saveSettings: (siteId, data) => request(`/api/portal/settings/${siteId}`, { method: 'PUT', body: JSON.stringify(data) }),
+    expectedVisitors: (token, data) => request('/api/portal/expected-visitors', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(data) }),
   },
   subcontractors: {
     list: () => request('/api/subcontractors'),
