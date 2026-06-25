@@ -861,37 +861,157 @@ function PortalEditTaskModal({ token, task, onClose, onSaved }) {
 // ── PORTAL EXPECTED VISITORS ──────────────────────────────────────────────
 function PortalExpectedVisitors({ token }) {
   const [showForm, setShowForm] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [editBooking, setEditBooking] = useState(null);
+  const [cancelConfirm, setCancelConfirm] = useState(null);
+  const [cancelling, setCancelling] = useState(false);
+
+  async function load() {
+    try {
+      const res = await api.portal.listExpectedVisitors(token);
+      const rows = res.data || [];
+      const groups = {};
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+      rows.forEach(r => {
+        const gid = r.booking_group_id;
+        if (!gid) return;
+        if (!groups[gid]) {
+          groups[gid] = {
+            booking_group_id: gid, visitor_name: r.visitor_name, company_name: r.company_name,
+            who_visiting: r.who_visiting, vehicle_reg: r.vehicle_reg,
+            personnel_count: r.personnel_count, expected_time: r.expected_time, notes: r.notes, days: [],
+          };
+        }
+        groups[gid].days.push({ date: r.expected_date, status: r.status });
+      });
+      const grouped = Object.values(groups).map(g => {
+        g.days.sort((a, b) => a.date.localeCompare(b.date));
+        g.date_from = g.days[0].date;
+        g.date_to = g.days[g.days.length - 1].date;
+        g.day_count = g.days.length;
+        const allCancelled = g.days.every(d => d.status === 'cancelled');
+        const hasExpectedFuture = g.days.some(d => d.status === 'expected' && d.date >= today);
+        const hasOnSite = g.days.some(d => d.status === 'on_site');
+        const hasArrived = g.days.some(d => d.status === 'on_site' || d.status === 'signed_out');
+        if (allCancelled) g.rolled_status = 'Cancelled';
+        else if (hasExpectedFuture) g.rolled_status = hasArrived ? 'Upcoming (partly arrived)' : 'Upcoming';
+        else if (hasOnSite) g.rolled_status = 'On site';
+        else g.rolled_status = 'Completed';
+        return g;
+      });
+      grouped.sort((a, b) => b.date_from.localeCompare(a.date_from));
+      setBookings(grouped);
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
+
+  async function cancelBooking(groupId) {
+    setCancelling(true);
+    try {
+      await api.portal.cancelExpectedVisitorGroup(token, groupId);
+      setCancelConfirm(null);
+      load();
+    } catch (err) { alert(err.message); }
+    finally { setCancelling(false); }
+  }
+
+  const upcoming = bookings.filter(b => b.rolled_status.startsWith('Upcoming') || b.rolled_status === 'On site');
+  const past = bookings.filter(b => b.rolled_status === 'Completed' || b.rolled_status === 'Cancelled');
+  const fmtDate = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : '—';
+  const statusBadge = (s) => {
+    const colors = { 'Upcoming': { bg: 'rgba(26,82,168,0.1)', c: '#1a52a8' }, 'Upcoming (partly arrived)': { bg: 'rgba(26,82,168,0.1)', c: '#1a52a8' }, 'On site': { bg: 'rgba(16,185,129,0.1)', c: '#10b981' }, 'Completed': { bg: '#f1f5f9', c: '#64748b' }, 'Cancelled': { bg: '#fef2f2', c: '#9ca3af' } };
+    const col = colors[s] || colors['Completed'];
+    return <span style={{fontSize:'0.6875rem',fontWeight:600,padding:'0.125rem 0.5rem',borderRadius:'999px',background:col.bg,color:col.c,whiteSpace:'nowrap'}}>{s}</span>;
+  };
+
+  function BookingCard({ b, actions }) {
+    return (
+      <div className="card" style={{marginBottom:'0.625rem',borderLeft: b.rolled_status === 'Cancelled' ? '3px solid #e2e8f0' : b.rolled_status.startsWith('Upcoming') ? '3px solid #1a52a8' : b.rolled_status === 'On site' ? '3px solid #10b981' : '3px solid #e2e8f0'}}>
+        <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:'0.75rem'}}>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:600,fontSize:'0.9375rem'}}>{b.visitor_name}</div>
+            {b.company_name && <div style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>{b.company_name}</div>}
+            {b.who_visiting && <div style={{fontSize:'0.8125rem',color:'var(--text-2)',marginTop:'0.125rem'}}>Purpose: {b.who_visiting}</div>}
+            <div style={{display:'flex',gap:'0.75rem',marginTop:'0.375rem',fontSize:'0.8125rem',color:'var(--text-3)',flexWrap:'wrap'}}>
+              <span>{b.date_from === b.date_to ? fmtDate(b.date_from) : `${fmtDate(b.date_from)} – ${fmtDate(b.date_to)}`}{b.day_count > 1 ? ` (${b.day_count}d)` : ''}</span>
+              {b.expected_time && <span>ETA: {b.expected_time.slice(0,5)}</span>}
+              {b.personnel_count > 1 && <span>{b.personnel_count} persons</span>}
+              {b.vehicle_reg && <span>Reg: {b.vehicle_reg}</span>}
+            </div>
+          </div>
+          {statusBadge(b.rolled_status)}
+        </div>
+        {actions && (
+          <div style={{display:'flex',gap:'0.5rem',marginTop:'0.75rem',paddingTop:'0.75rem',borderTop:'1px solid var(--border)'}}>
+            <button onClick={() => setEditBooking(b)} style={{fontSize:'0.75rem',color:'#1a52a8',background:'none',border:'1px solid #dbeafe',borderRadius:'6px',padding:'0.25rem 0.625rem',cursor:'pointer',fontWeight:600}}>Edit</button>
+            <button onClick={() => setCancelConfirm(b)} style={{fontSize:'0.75rem',color:'#dc2626',background:'none',border:'1px solid #fecaca',borderRadius:'6px',padding:'0.25rem 0.625rem',cursor:'pointer',fontWeight:600}}>Cancel</button>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.75rem'}}>
         <div className="section-title">Expected Visitors</div>
-        <button className="btn btn-primary btn-sm" onClick={() => { setShowForm(true); setSuccess(false); }}>+ Register Expected Visit</button>
+        <button className="btn btn-primary btn-sm" onClick={() => setShowForm(true)}>+ Register Expected Visit</button>
       </div>
       <div style={{fontSize:'0.875rem',color:'var(--text-2)',marginBottom:'1rem'}}>
         Register a contractor or visitor expected on site so officers know to expect them.
       </div>
-      {success && (
-        <div className="card" style={{borderLeft:'3px solid #10b981',marginBottom:'1rem'}}>
-          <div style={{display:'flex',alignItems:'center',gap:'0.5rem'}}>
-            <span style={{color:'#10b981',fontWeight:700,fontSize:'1.125rem'}}>✓</span>
-            <div>
-              <div style={{fontWeight:600,fontSize:'0.9375rem'}}>Expected visit registered</div>
-              <div style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>The security team will see this on their expected visitors list.</div>
+
+      {loading ? (
+        <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>
+      ) : (
+        <>
+          {upcoming.length > 0 && (
+            <div style={{marginBottom:'1.5rem'}}>
+              <div style={{fontSize:'0.6875rem',fontWeight:600,color:'var(--text-3)',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:'0.5rem'}}>Upcoming</div>
+              {upcoming.map(b => <BookingCard key={b.booking_group_id} b={b} actions />)}
             </div>
-          </div>
-        </div>
+          )}
+          {past.length > 0 && (
+            <div style={{marginBottom:'1.5rem'}}>
+              <div style={{fontSize:'0.6875rem',fontWeight:600,color:'var(--text-3)',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:'0.5rem'}}>Past</div>
+              {past.map(b => <BookingCard key={b.booking_group_id} b={b} />)}
+            </div>
+          )}
+          {bookings.length === 0 && (
+            <div className="empty-state"><p>No expected visitors registered yet. Use the button above to register one.</p></div>
+          )}
+        </>
       )}
-      {!success && !showForm && (
-        <div className="empty-state"><p>Use the button above to register an expected visitor or contractor.</p></div>
-      )}
+
       {showForm && (
         <PortalExpectedVisitorModal
           token={token}
           onClose={() => setShowForm(false)}
-          onSaved={() => { setShowForm(false); setSuccess(true); }}
+          onSaved={() => { setShowForm(false); load(); }}
         />
+      )}
+      {editBooking && (
+        <PortalExpectedVisitorEditModal
+          token={token}
+          booking={editBooking}
+          onClose={() => setEditBooking(null)}
+          onSaved={() => { setEditBooking(null); load(); }}
+        />
+      )}
+      {cancelConfirm && (
+        <div className="modal-overlay" onClick={() => setCancelConfirm(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header"><div className="modal-title">Cancel Expected Visit</div><button className="modal-close" onClick={() => setCancelConfirm(null)}>x</button></div>
+            <p style={{fontSize:'0.875rem',color:'var(--text-2)',margin:'0 0 1rem'}}>Cancel this expected visit? Future days will be removed; any already-arrived days are kept.</p>
+            <div style={{fontWeight:500,marginBottom:'1rem'}}>{cancelConfirm.visitor_name}</div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setCancelConfirm(null)}>Keep</button>
+              <button className="btn btn-primary" style={{background:'#dc2626',borderColor:'#dc2626'}} onClick={() => cancelBooking(cancelConfirm.booking_group_id)} disabled={cancelling}>{cancelling ? 'Cancelling...' : 'Cancel Visit'}</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -945,6 +1065,58 @@ function PortalExpectedVisitorModal({ token, onClose, onSaved }) {
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
           <button className="btn btn-primary" onClick={send} disabled={saving}>{saving ? 'Sending...' : 'Register Visit'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PortalExpectedVisitorEditModal({ token, booking, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    visitor_name: booking.visitor_name || '', company_name: booking.company_name || '',
+    who_visiting: booking.who_visiting || '', expected_time: booking.expected_time ? booking.expected_time.slice(0,5) : '',
+    personnel_count: String(booking.personnel_count || 1), vehicle_reg: booking.vehicle_reg || '', notes: booking.notes || '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function save() {
+    if (!form.visitor_name.trim()) { setError('Visitor name is required'); return; }
+    try {
+      setSaving(true);
+      await api.portal.updateExpectedVisitorGroup(token, booking.booking_group_id, {
+        visitor_name: form.visitor_name.trim(),
+        company_name: form.company_name.trim() || null,
+        who_visiting: form.who_visiting.trim() || null,
+        expected_time: form.expected_time || null,
+        personnel_count: parseInt(form.personnel_count) || 1,
+        vehicle_reg: form.vehicle_reg.trim() || null,
+        notes: form.notes.trim() || null,
+      });
+      onSaved();
+    } catch (e) { setError(e.message); } finally { setSaving(false); }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header"><div className="modal-title">Edit Expected Visit</div><button className="modal-close" onClick={onClose}>x</button></div>
+        {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
+        <div className="field"><label className="label">Visitor / company name</label><input className="input" value={form.visitor_name} onChange={e => setForm(f=>({...f,visitor_name:e.target.value}))} /></div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
+          <div className="field"><label className="label">Company</label><input className="input" value={form.company_name} onChange={e => setForm(f=>({...f,company_name:e.target.value}))} /></div>
+          <div className="field"><label className="label">Purpose</label><input className="input" value={form.who_visiting} onChange={e => setForm(f=>({...f,who_visiting:e.target.value}))} /></div>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'0.75rem'}}>
+          <div className="field"><label className="label">ETA</label><input type="time" className="input" value={form.expected_time} onChange={e => setForm(f=>({...f,expected_time:e.target.value}))} /></div>
+          <div className="field"><label className="label">Personnel</label><input type="number" className="input" min="1" value={form.personnel_count} onChange={e => setForm(f=>({...f,personnel_count:e.target.value}))} /></div>
+          <div className="field"><label className="label">Vehicle Reg</label><input className="input" value={form.vehicle_reg} onChange={e => setForm(f=>({...f,vehicle_reg:e.target.value}))} /></div>
+        </div>
+        <div className="field"><label className="label">Notes</label><textarea className="input" rows={2} value={form.notes} onChange={e => setForm(f=>({...f,notes:e.target.value}))} /></div>
+        <div style={{fontSize:'0.75rem',color:'var(--text-3)',marginBottom:'0.75rem'}}>Date range cannot be changed. To adjust dates, cancel and re-create the booking.</div>
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</button>
         </div>
       </div>
     </div>
