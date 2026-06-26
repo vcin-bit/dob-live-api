@@ -539,4 +539,120 @@ router.delete('/distribution/:id', portalAuth, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ── GET /api/portal/tenants — list tenants for this site ──
+router.get('/tenants', portalAuth, async (req, res, next) => {
+  try {
+    const { site_id, company_id } = req.portalSession;
+    const { search } = req.query;
+    let query = supabase
+      .from('site_tenants')
+      .select('*, contacts:tenant_contacts(*)')
+      .eq('company_id', company_id)
+      .eq('site_id', site_id)
+      .order('unit_ref', { ascending: true, nullsFirst: false })
+      .order('tenant_name', { ascending: true });
+
+    if (search) query = query.or(`unit_ref.ilike.%${search}%,tenant_name.ilike.%${search}%`);
+
+    const { data, error } = await query;
+    if (error) throw error;
+    res.json({ data });
+  } catch (err) { next(err); }
+});
+
+// ── PATCH /api/portal/tenants/:id — client edits tenant ──
+router.patch('/tenants/:id', portalAuth, async (req, res, next) => {
+  try {
+    const { site_id, company_id } = req.portalSession;
+    const allowed = ['unit_ref', 'tenant_name', 'comments', 'status'];
+    const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
+    const { data, error } = await supabase
+      .from('site_tenants')
+      .update(updates)
+      .eq('id', req.params.id)
+      .eq('company_id', company_id)
+      .eq('site_id', site_id)
+      .select()
+      .single();
+    if (error) throw error;
+    res.json({ data });
+  } catch (err) { next(err); }
+});
+
+// ── POST /api/portal/tenants/:id/contacts — client adds contact to tenant ──
+router.post('/tenants/:id/contacts', portalAuth, async (req, res, next) => {
+  try {
+    const { site_id, company_id } = req.portalSession;
+    const { data: tenant, error: tErr } = await supabase
+      .from('site_tenants')
+      .select('id')
+      .eq('id', req.params.id)
+      .eq('company_id', company_id)
+      .eq('site_id', site_id)
+      .single();
+    if (tErr || !tenant) return res.status(404).json({ error: 'Tenant not found' });
+
+    const { position, name, phone, email, label, notes } = req.body;
+    const { data, error } = await supabase
+      .from('tenant_contacts')
+      .insert({
+        tenant_id: req.params.id,
+        position: parseInt(position) || 1,
+        name: name || null,
+        phone: phone || null,
+        email: email || null,
+        label: label || null,
+        notes: notes || null,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    res.status(201).json({ data });
+  } catch (err) { next(err); }
+});
+
+// ── PATCH /api/portal/tenants/contacts/:contactId — client edits contact ──
+router.patch('/tenants/contacts/:contactId', portalAuth, async (req, res, next) => {
+  try {
+    const { site_id, company_id } = req.portalSession;
+    const { data: contact, error: cErr } = await supabase
+      .from('tenant_contacts')
+      .select('id, tenant:site_tenants!tenant_contacts_tenant_id_fkey(company_id, site_id)')
+      .eq('id', req.params.contactId)
+      .single();
+    if (cErr || !contact || contact.tenant?.company_id !== company_id || contact.tenant?.site_id !== site_id) return res.status(404).json({ error: 'Contact not found' });
+
+    const allowed = ['position', 'name', 'phone', 'email', 'label', 'notes'];
+    const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
+    const { data, error } = await supabase
+      .from('tenant_contacts')
+      .update(updates)
+      .eq('id', req.params.contactId)
+      .select()
+      .single();
+    if (error) throw error;
+    res.json({ data });
+  } catch (err) { next(err); }
+});
+
+// ── DELETE /api/portal/tenants/contacts/:contactId — client deletes contact ──
+router.delete('/tenants/contacts/:contactId', portalAuth, async (req, res, next) => {
+  try {
+    const { site_id, company_id } = req.portalSession;
+    const { data: contact, error: cErr } = await supabase
+      .from('tenant_contacts')
+      .select('id, tenant:site_tenants!tenant_contacts_tenant_id_fkey(company_id, site_id)')
+      .eq('id', req.params.contactId)
+      .single();
+    if (cErr || !contact || contact.tenant?.company_id !== company_id || contact.tenant?.site_id !== site_id) return res.status(404).json({ error: 'Contact not found' });
+
+    const { error } = await supabase
+      .from('tenant_contacts')
+      .delete()
+      .eq('id', req.params.contactId);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;
