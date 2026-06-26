@@ -492,4 +492,51 @@ router.delete('/expected-visitors/booking/:groupId', portalAuth, async (req, res
   } catch (err) { next(err); }
 });
 
+// ── GET /api/portal/distribution — list recipients for this site ──
+router.get('/distribution', portalAuth, async (req, res, next) => {
+  try {
+    const { site_id, company_id } = req.portalSession;
+    const { data, error } = await supabase
+      .from('distribution_recipients')
+      .select('*')
+      .eq('company_id', company_id)
+      .eq('site_id', site_id)
+      .order('name', { ascending: true, nullsFirst: false })
+      .order('email', { ascending: true });
+    if (error) throw error;
+    res.json({ data });
+  } catch (err) { next(err); }
+});
+
+// ── POST /api/portal/distribution — client adds recipient ──
+router.post('/distribution', portalAuth, async (req, res, next) => {
+  try {
+    const { site_id, company_id } = req.portalSession;
+    const { email, name, unit_ref } = req.body;
+    if (!email) return res.status(400).json({ error: 'email is required' });
+    const { data, error } = await supabase
+      .from('distribution_recipients')
+      .insert({ company_id, site_id, email, name: name || null, unit_ref: unit_ref || null, active: true })
+      .select()
+      .single();
+    if (error) throw error;
+    res.status(201).json({ data });
+  } catch (err) { next(err); }
+});
+
+// ── DELETE /api/portal/distribution/:id — client removes recipient ──
+router.delete('/distribution/:id', portalAuth, async (req, res, next) => {
+  try {
+    const { site_id, company_id } = req.portalSession;
+    const { error } = await supabase
+      .from('distribution_recipients')
+      .delete()
+      .eq('id', req.params.id)
+      .eq('company_id', company_id)
+      .eq('site_id', site_id);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;

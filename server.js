@@ -85,6 +85,7 @@ app.use('/api/site-ai',  require('./routes/site-ai'));
 app.use('/api/subcontractors', require('./routes/subcontractors'));
 app.use('/api/compliance',   require('./routes/compliance'));
 app.use('/api/tenants',      require('./routes/tenants'));
+app.use('/api/distribution', require('./routes/distribution'));
 
 // ── 404 handler ──────────────────────────────────────────────
 app.use((req, res) => {
