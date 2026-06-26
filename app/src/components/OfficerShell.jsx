@@ -12,6 +12,7 @@ import PlaybookAlerts from './PlaybookAlerts';
 import PatrolScreen, { PatrolHistoryOfficerScreen } from './PatrolScreen';
 import { HandoverScreen } from './HandoverScreen';
 import OfficerVisitorsScreen from './OfficerVisitors';
+import OfficerTenantsScreen from './OfficerTenants';
 import {
   HomeIcon, ClipboardDocumentListIcon, MapPinIcon, ClockIcon,
   UserGroupIcon, Cog6ToothIcon, PlusIcon, ArrowRightOnRectangleIcon,
@@ -425,6 +426,7 @@ function OfficerApp({ user }) {
         <Route path="/patrol-history" element={<PatrolHistoryOfficerScreen user={user} site={selectedSite} />} />
         <Route path="/handover" element={<HandoverScreen user={user} site={selectedSite} shift={activeShift} onShiftEnded={() => { setActiveShift(null); }} />} />
         <Route path="/visitors" element={<OfficerVisitorsScreen site={selectedSite} />} />
+        <Route path="/contacts" element={<OfficerTenantsScreen site={selectedSite} />} />
           <Route path="/profile" element={<OfficerProfile user={user} />} />
         <Route path="/my-hours" element={<OfficerHR user={user} />} />
         <Route path="/policies" element={<OfficerPoliciesScreen user={user} />} />
@@ -866,6 +868,17 @@ function OfficerDashboard({ user, site, shift, onStartShift, onEndShift, onPatro
         {onSiteVisitors.length > 0 && <span style={{background:'#f59e0b',color:'#fff',fontSize:'0.75rem',fontWeight:700,padding:'0.125rem 0.5rem',borderRadius:'8px'}}>{onSiteVisitors.length}</span>}
       </Link>
 
+      {/* Site Contacts */}
+      <Link to="/contacts" style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.875rem',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'10px',textDecoration:'none',marginBottom:'0.625rem'}}>
+        <div style={{display:'flex',alignItems:'center',gap:'0.5rem'}}>
+          <span style={{fontSize:'1.25rem'}}>📇</span>
+          <div>
+            <div style={{fontSize:'0.875rem',fontWeight:600,color:'rgba(255,255,255,0.5)'}}>Site Contacts</div>
+            <div style={{fontSize:'0.6875rem',color:'rgba(255,255,255,0.35)'}}>Tenant & emergency contacts</div>
+          </div>
+        </div>
+        <span style={{color:'rgba(255,255,255,0.2)',fontSize:'1rem'}}>›</span>
+      </Link>
 
       {/* Today's scheduled tasks */}
       {scheduledTasks.length > 0 && (
