@@ -417,6 +417,11 @@ export const api = {
     listDistribution: (token) => request('/api/portal/distribution', { headers: { Authorization: `Bearer ${token}` } }),
     addDistribution: (token, data) => request('/api/portal/distribution', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(data) }),
     removeDistribution: (token, id) => request(`/api/portal/distribution/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }),
+    listTenants: (token, params = {}) => request(`/api/portal/tenants?${new URLSearchParams(params)}`, { headers: { Authorization: `Bearer ${token}` } }),
+    updateTenant: (token, id, data) => request(`/api/portal/tenants/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(data) }),
+    addTenantContact: (token, id, data) => request(`/api/portal/tenants/${id}/contacts`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(data) }),
+    updateTenantContact: (token, contactId, data) => request(`/api/portal/tenants/contacts/${contactId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(data) }),
+    deleteTenantContact: (token, contactId) => request(`/api/portal/tenants/contacts/${contactId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }),
   },
   subcontractors: {
     list: () => request('/api/subcontractors'),
