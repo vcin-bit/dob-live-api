@@ -150,7 +150,7 @@ function PortalDashboard({ session, onLogout }) {
 
       {/* Tabs */}
       <div style={{background:'#fff',borderBottom:'1px solid #e2e8f0',display:'flex',padding:'0 1.25rem',overflowX:'auto'}}>
-        {[['dashboard','Dashboard'],['tasks','Tasks'],['expected','Expected Visitors'],['incidents','Occurrences'],['ai','Assignment Instructions'],['risks','Risk Assessments'],['codes','Site Codes'],['vendor-docs','Supplier Docs'],['docs','Documents']].map(([val,label]) => (
+        {[['dashboard','Dashboard'],['tasks','Tasks'],['expected','Expected Visitors'],['distribution','Distribution List'],['incidents','Occurrences'],['ai','Assignment Instructions'],['risks','Risk Assessments'],['codes','Site Codes'],['vendor-docs','Supplier Docs'],['docs','Documents']].map(([val,label]) => (
           <button key={val} onClick={() => setTab(val)} style={{padding:'0.75rem 1rem',fontSize:'0.875rem',fontWeight:500,border:'none',borderBottom:`2px solid ${tab===val?'#1a52a8':'transparent'}`,color:tab===val?'#1a52a8':'#64748b',background:'none',cursor:'pointer',marginBottom:'-1px'}}>
             {label}
             {val==='tasks' && openAlerts.length > 0 && <span style={{marginLeft:'0.375rem',background:'#1a52a8',color:'#fff',borderRadius:'999px',fontSize:'0.6875rem',padding:'0 5px',fontWeight:700}}>{openAlerts.length}</span>}
@@ -473,6 +473,8 @@ function PortalDashboard({ session, onLogout }) {
           </div>
         ) : tab === 'expected' ? (
           <PortalExpectedVisitors token={token} />
+        ) : tab === 'distribution' ? (
+          <PortalDistributionList token={token} />
         ) : null}
       </div>
 
@@ -1117,6 +1119,117 @@ function PortalExpectedVisitorEditModal({ token, booking, onClose, onSaved }) {
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
           <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── PORTAL DISTRIBUTION LIST ─────────────────────────────────────────────
+function PortalDistributionList({ token }) {
+  const [recipients, setRecipients] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [removeConfirm, setRemoveConfirm] = useState(null);
+  const [removing, setRemoving] = useState(false);
+
+  async function load() {
+    try {
+      const res = await api.portal.listDistribution(token);
+      setRecipients(res.data || []);
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
+
+  async function remove(id) {
+    setRemoving(true);
+    try {
+      await api.portal.removeDistribution(token, id);
+      setRemoveConfirm(null);
+      load();
+    } catch (err) { alert(err.message); }
+    finally { setRemoving(false); }
+  }
+
+  return (
+    <div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.75rem'}}>
+        <div className="section-title">Distribution List</div>
+        <button className="btn btn-primary btn-sm" onClick={() => setShowAdd(true)}>+ Add Recipient</button>
+      </div>
+      <div style={{fontSize:'0.875rem',color:'var(--text-2)',marginBottom:'1rem'}}>
+        Recipients on this site's distribution list for PIN codes, comms and report updates.
+      </div>
+
+      {loading ? (
+        <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>
+      ) : recipients.length === 0 ? (
+        <div className="empty-state"><p>No recipients on the distribution list yet. Use the button above to add one.</p></div>
+      ) : (
+        <div style={{display:'flex',flexDirection:'column',gap:'0.625rem'}}>
+          {recipients.map(r => (
+            <div key={r.id} className="card" style={{borderLeft:'3px solid #1a52a8'}}>
+              <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:'0.75rem'}}>
+                <div style={{flex:1}}>
+                  {r.name && <div style={{fontWeight:600,fontSize:'0.9375rem'}}>{r.name}</div>}
+                  <div style={{fontSize:'0.875rem',marginTop:r.name?'0.125rem':0}}><a href={`mailto:${r.email}`} style={{color:'#1a52a8',textDecoration:'none'}}>{r.email}</a></div>
+                  {r.unit_ref && <div style={{fontSize:'0.8125rem',color:'var(--text-3)',marginTop:'0.125rem'}}>{r.unit_ref}</div>}
+                </div>
+                {removeConfirm === r.id ? (
+                  <div style={{display:'flex',gap:'0.375rem'}}>
+                    <button onClick={() => remove(r.id)} disabled={removing} style={{fontSize:'0.75rem',color:'#fff',background:'#dc2626',border:'none',borderRadius:'6px',padding:'0.25rem 0.625rem',cursor:'pointer',fontWeight:600}}>{removing ? '...' : 'Yes'}</button>
+                    <button onClick={() => setRemoveConfirm(null)} style={{fontSize:'0.75rem',color:'#6b7280',background:'none',border:'1px solid #d1d5db',borderRadius:'6px',padding:'0.25rem 0.625rem',cursor:'pointer',fontWeight:600}}>No</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setRemoveConfirm(r.id)} style={{fontSize:'0.75rem',color:'#dc2626',background:'none',border:'1px solid #fecaca',borderRadius:'6px',padding:'0.25rem 0.625rem',cursor:'pointer',fontWeight:600}}>Remove</button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showAdd && (
+        <PortalAddDistributionModal
+          token={token}
+          onClose={() => setShowAdd(false)}
+          onSaved={() => { setShowAdd(false); load(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function PortalAddDistributionModal({ token, onClose, onSaved }) {
+  const [form, setForm] = useState({ name: '', email: '', unit_ref: '' });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function send() {
+    if (!form.email.trim()) { setError('Email is required'); return; }
+    try {
+      setSaving(true);
+      await api.portal.addDistribution(token, {
+        name: form.name.trim() || null,
+        email: form.email.trim(),
+        unit_ref: form.unit_ref.trim() || null,
+      });
+      onSaved();
+    } catch (e) { setError(e.message); } finally { setSaving(false); }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header"><div className="modal-title">Add Recipient</div><button className="modal-close" onClick={onClose}>x</button></div>
+        {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
+        <div className="field"><label className="label">Name (optional)</label><input className="input" value={form.name} onChange={e => setForm(f=>({...f,name:e.target.value}))} placeholder="Recipient name" /></div>
+        <div className="field"><label className="label">Email</label><input type="email" className="input" value={form.email} onChange={e => setForm(f=>({...f,email:e.target.value}))} placeholder="email@example.com" /></div>
+        <div className="field"><label className="label">Unit Ref (optional)</label><input className="input" value={form.unit_ref} onChange={e => setForm(f=>({...f,unit_ref:e.target.value}))} placeholder="e.g. Unit 12" /></div>
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={send} disabled={saving}>{saving ? 'Sending...' : 'Add Recipient'}</button>
         </div>
       </div>
     </div>

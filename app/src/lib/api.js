@@ -414,6 +414,9 @@ export const api = {
     listExpectedVisitors: (token) => request('/api/portal/expected-visitors', { headers: { Authorization: `Bearer ${token}` } }),
     updateExpectedVisitorGroup: (token, groupId, data) => request(`/api/portal/expected-visitors/booking/${groupId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(data) }),
     cancelExpectedVisitorGroup: (token, groupId) => request(`/api/portal/expected-visitors/booking/${groupId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }),
+    listDistribution: (token) => request('/api/portal/distribution', { headers: { Authorization: `Bearer ${token}` } }),
+    addDistribution: (token, data) => request('/api/portal/distribution', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(data) }),
+    removeDistribution: (token, id) => request(`/api/portal/distribution/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }),
   },
   subcontractors: {
     list: () => request('/api/subcontractors'),
