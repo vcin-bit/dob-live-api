@@ -459,6 +459,12 @@ export const api = {
     updateContact: (contactId, data) => request(`/api/tenants/contacts/${contactId}`, { method: 'PATCH', body: JSON.stringify(data) }),
     deleteContact: (contactId) => request(`/api/tenants/contacts/${contactId}`, { method: 'DELETE' }),
   },
+  distribution: {
+    list: (params = {}) => request(`/api/distribution?${new URLSearchParams(params)}`),
+    create: (data) => request('/api/distribution', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id, data) => request(`/api/distribution/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    delete: (id) => request(`/api/distribution/${id}`, { method: 'DELETE' }),
+  },
   products: {
     list: (params = {}) => request(`/api/products?${new URLSearchParams(params)}`),
     create: (data) => request('/api/products', { method: 'POST', body: JSON.stringify(data) }),

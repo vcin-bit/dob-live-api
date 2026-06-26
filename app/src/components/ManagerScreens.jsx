@@ -4475,3 +4475,195 @@ function TenantEditModal({ tenant, sites, onClose, onSaved }) {
 }
 
 export { TenantDirectoryScreen };
+
+function DistributionListScreen({ user }) {
+  const [recipients, setRecipients] = useState([]);
+  const [sites, setSites] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [siteFilter, setSiteFilter] = useState('');
+  const [showCreate, setShowCreate] = useState(false);
+  const [editRecipient, setEditRecipient] = useState(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [copied, setCopied] = useState(null);
+
+  async function load() {
+    try {
+      const [sitesRes, distRes] = await Promise.all([api.sites.list(), api.distribution.list()]);
+      setSites(sitesRes.data || []);
+      setRecipients(distRes.data || []);
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
+
+  async function deleteRecipient(id) {
+    try { await api.distribution.delete(id); setDeleteConfirmId(null); load(); }
+    catch (e) { alert(e.message); }
+  }
+
+  let filtered = recipients;
+  if (siteFilter) filtered = filtered.filter(r => r.site_id === siteFilter);
+  if (search) {
+    const q = search.toLowerCase();
+    filtered = filtered.filter(r =>
+      (r.name || '').toLowerCase().includes(q) ||
+      (r.email || '').toLowerCase().includes(q) ||
+      (r.unit_ref || '').toLowerCase().includes(q)
+    );
+  }
+
+  const siteMap = {};
+  sites.forEach(s => { siteMap[s.id] = s.name; });
+
+  function copyEmails() {
+    const emails = filtered.filter(r => r.active !== false).map(r => r.email).filter(Boolean);
+    if (emails.length === 0) return;
+    navigator.clipboard.writeText(emails.join(', '));
+    setCopied(emails.length);
+    setTimeout(() => setCopied(null), 2000);
+  }
+
+  return (
+    <div>
+      <div className="topbar">
+        <div className="topbar-title">Distribution List</div>
+        <button className="btn btn-primary btn-sm" onClick={() => setShowCreate(true)}>
+          <PlusIcon style={{width:'0.875rem',height:'0.875rem'}} /> Add Recipient
+        </button>
+      </div>
+      <div className="page-content">
+        <div style={{display:'flex',alignItems:'center',gap:'0.5rem',marginBottom:'1rem',flexWrap:'wrap'}}>
+          <input className="input" style={{width:'220px'}} placeholder="Search name, email, unit..." value={search} onChange={e => setSearch(e.target.value)} />
+          <select className="input" style={{width:'180px'}} value={siteFilter} onChange={e => setSiteFilter(e.target.value)}>
+            <option value="">All Sites</option>
+            {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+          <button className="btn btn-secondary btn-sm" onClick={copyEmails} disabled={filtered.filter(r => r.active !== false).length === 0} title="Paste into the BCC field so recipients can't see each other's addresses">
+            {copied ? `Copied ${copied} emails — paste into BCC` : 'Copy for BCC'}
+          </button>
+          <span style={{fontSize:'0.8125rem',color:'var(--text-3)'}}>{filtered.length} recipient{filtered.length!==1?'s':''}</span>
+        </div>
+        {loading ? (
+          <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>
+        ) : filtered.length === 0 ? (
+          <div className="empty-state"><p>No distribution recipients found</p></div>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr><th>Name</th><th>Email</th><th>Unit</th><th>Site</th><th>Active</th><th></th></tr>
+            </thead>
+            <tbody>
+              {filtered.map(r => (
+                <tr key={r.id} style={{opacity: r.active === false ? 0.45 : 1}}>
+                  <td style={{fontWeight:500}}>{r.name || '—'}</td>
+                  <td style={{fontSize:'0.8125rem'}}><a href={`mailto:${r.email}`} style={{color:'var(--blue)',textDecoration:'none'}}>{r.email}</a></td>
+                  <td style={{color:'var(--text-2)',fontSize:'0.8125rem'}}>{r.unit_ref || '—'}</td>
+                  <td style={{color:'var(--text-2)',fontSize:'0.8125rem'}}>{siteMap[r.site_id] || '—'}</td>
+                  <td><span className={`badge ${r.active !== false ? 'badge-success' : 'badge-neutral'}`}>{r.active !== false ? 'Yes' : 'No'}</span></td>
+                  <td style={{textAlign:'right',display:'flex',gap:'0.375rem',justifyContent:'flex-end'}}>
+                    <button className="btn btn-ghost btn-sm" onClick={() => setEditRecipient(r)}>Edit</button>
+                    {deleteConfirmId === r.id ? (
+                      <>
+                        <button className="btn btn-sm" style={{background:'var(--danger)',color:'#fff',border:'none'}} onClick={() => deleteRecipient(r.id)}>Yes</button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => setDeleteConfirmId(null)}>No</button>
+                      </>
+                    ) : (
+                      <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={() => setDeleteConfirmId(r.id)}>Delete</button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+      {showCreate && <DistributionFormModal sites={sites} onClose={() => setShowCreate(false)} onSaved={() => { setShowCreate(false); load(); }} />}
+      {editRecipient && <DistributionFormModal sites={sites} recipient={editRecipient} onClose={() => setEditRecipient(null)} onSaved={() => { setEditRecipient(null); load(); }} />}
+    </div>
+  );
+}
+
+function DistributionFormModal({ sites, recipient, onClose, onSaved }) {
+  const isEdit = !!recipient;
+  const [form, setForm] = useState({
+    site_id: recipient?.site_id || '', name: recipient?.name || '',
+    email: recipient?.email || '', unit_ref: recipient?.unit_ref || '',
+    active: recipient ? recipient.active !== false : true,
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function save() {
+    if (!isEdit && !form.site_id) { setError('Please select a site'); return; }
+    if (!form.email.trim()) { setError('Email is required'); return; }
+    setSaving(true);
+    try {
+      if (isEdit) {
+        await api.distribution.update(recipient.id, {
+          name: form.name.trim() || null,
+          email: form.email.trim(),
+          unit_ref: form.unit_ref.trim() || null,
+          active: form.active,
+        });
+      } else {
+        await api.distribution.create({
+          site_id: form.site_id,
+          name: form.name.trim() || null,
+          email: form.email.trim(),
+          unit_ref: form.unit_ref.trim() || null,
+          active: form.active,
+        });
+      }
+      onSaved();
+    } catch (err) { setError(err.message); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-title">{isEdit ? 'Edit Recipient' : 'Add Recipient'}</div>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+        {error && <div className="alert alert-danger" style={{marginBottom:'1rem'}}>{error}</div>}
+        {!isEdit && (
+          <div className="field">
+            <label className="label">Site</label>
+            <select className="input" value={form.site_id} onChange={e => setForm(f=>({...f,site_id:e.target.value}))}>
+              <option value="">Select site...</option>
+              {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+        )}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
+          <div className="field">
+            <label className="label">Name</label>
+            <input className="input" value={form.name} onChange={e => setForm(f=>({...f,name:e.target.value}))} placeholder="Recipient name" />
+          </div>
+          <div className="field">
+            <label className="label">Unit Ref</label>
+            <input className="input" value={form.unit_ref} onChange={e => setForm(f=>({...f,unit_ref:e.target.value}))} placeholder="e.g. Unit 12" />
+          </div>
+        </div>
+        <div className="field">
+          <label className="label">Email</label>
+          <input type="email" className="input" value={form.email} onChange={e => setForm(f=>({...f,email:e.target.value}))} placeholder="email@example.com" />
+        </div>
+        <div className="field">
+          <label className="label" style={{display:'flex',alignItems:'center',gap:'0.5rem',cursor:'pointer'}}>
+            <input type="checkbox" checked={form.active} onChange={e => setForm(f=>({...f,active:e.target.checked}))} />
+            Active (included in distributions)
+          </label>
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? 'Saving...' : isEdit ? 'Save Changes' : 'Add Recipient'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export { DistributionListScreen };
