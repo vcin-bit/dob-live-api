@@ -2,6 +2,7 @@ const router = require('express').Router();
 const multer = require('multer');
 const supabase = require('../lib/supabase');
 const { authenticate, requireRole } = require('../middleware/auth');
+const { sendEmail } = require('../services/notifications');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
@@ -306,53 +307,40 @@ router.post('/invoice', authenticate, async (req, res, next) => {
     });
 
     // Email via SendGrid
-    let emailSent = false;
-    if (process.env.SENDGRID_API_KEY) {
-      const sg = require('@sendgrid/mail');
-      sg.setApiKey(process.env.SENDGRID_API_KEY);
-      const fromEmail = process.env.RS_INSPECTION_FROM_EMAIL || 'reports@risksecured.co.uk';
-      const toEmail = 'accounts@risksecured.co.uk';
-      // CC the officer if they have a personal email on file
-      const { data: hrRec } = await supabase.from('officer_hr').select('personal_email').eq('user_id', officer.id).maybeSingle();
-      const ccEmail = hrRec?.personal_email || officer.email || null;
-      try {
-        await sg.send({
-          to: toEmail,
-          ...(ccEmail ? { cc: ccEmail } : {}),
-          from: { email: fromEmail, name: 'DOB Live' },
-          subject: `Invoice ${invoiceRef} — ${contractor.name || `${officer.first_name} ${officer.last_name}`} — ${month}`,
-          html: `
-            <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
-              <div style="background:#0b1a3e;padding:20px 24px;border-radius:8px 8px 0 0;border-top:4px solid #1a52a8;">
-                <h1 style="color:#fff;margin:0;font-size:18px;">DOB Live — Invoice Submission</h1>
-              </div>
-              <div style="padding:24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;background:#fff;">
-                <table style="width:100%;font-size:14px;color:#374151;border-collapse:collapse;">
-                  <tr><td style="padding:6px 0;font-weight:600;width:120px;">Invoice Ref:</td><td>${invoiceRef}</td></tr>
-                  <tr><td style="padding:6px 0;font-weight:600;">Contractor:</td><td>${contractor.name || `${officer.first_name} ${officer.last_name}`}</td></tr>
-                  <tr><td style="padding:6px 0;font-weight:600;">Period:</td><td>${month}</td></tr>
-                  <tr><td style="padding:6px 0;font-weight:600;">Total Hours:</td><td>${totals.hours}</td></tr>
-                  <tr><td style="padding:6px 0;font-weight:600;">Amount:</td><td><strong>£${totals.vat ? totals.total : totals.subtotal}</strong></td></tr>
-                </table>
-                <p style="margin:20px 0 0;font-size:12px;color:#9ca3af;">Full invoice attached as PDF.</p>
-              </div>
-            </div>
-          `,
-          attachments: [{
-            content: pdfBuffer.toString('base64'),
-            filename: `Invoice-${invoiceRef}.pdf`,
-            type: 'application/pdf', disposition: 'attachment',
-          }],
-        });
-        emailSent = true;
-        console.log('[Invoice] Email sent to', toEmail, ccEmail ? `cc: ${ccEmail}` : '');
-      } catch (emailErr) {
-        console.error('[Invoice] Email failed:', emailErr.message);
-        if (emailErr.response) console.error('[Invoice] SendGrid response:', JSON.stringify(emailErr.response.body));
-      }
-    } else {
-      console.error('[Invoice] SENDGRID_API_KEY not set — email skipped');
-    }
+    const fromEmail = process.env.RS_INSPECTION_FROM_EMAIL || 'reports@risksecured.co.uk';
+    const toEmail = 'accounts@risksecured.co.uk';
+    // CC the officer if they have a personal email on file
+    const { data: hrRec } = await supabase.from('officer_hr').select('personal_email').eq('user_id', officer.id).maybeSingle();
+    const ccEmail = hrRec?.personal_email || officer.email || null;
+    const emailSent = await sendEmail({
+      to: toEmail,
+      ...(ccEmail ? { cc: ccEmail } : {}),
+      from: { email: fromEmail, name: 'DOB Live' },
+      subject: `Invoice ${invoiceRef} — ${contractor.name || `${officer.first_name} ${officer.last_name}`} — ${month}`,
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+          <div style="background:#0b1a3e;padding:20px 24px;border-radius:8px 8px 0 0;border-top:4px solid #1a52a8;">
+            <h1 style="color:#fff;margin:0;font-size:18px;">DOB Live — Invoice Submission</h1>
+          </div>
+          <div style="padding:24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;background:#fff;">
+            <table style="width:100%;font-size:14px;color:#374151;border-collapse:collapse;">
+              <tr><td style="padding:6px 0;font-weight:600;width:120px;">Invoice Ref:</td><td>${invoiceRef}</td></tr>
+              <tr><td style="padding:6px 0;font-weight:600;">Contractor:</td><td>${contractor.name || `${officer.first_name} ${officer.last_name}`}</td></tr>
+              <tr><td style="padding:6px 0;font-weight:600;">Period:</td><td>${month}</td></tr>
+              <tr><td style="padding:6px 0;font-weight:600;">Total Hours:</td><td>${totals.hours}</td></tr>
+              <tr><td style="padding:6px 0;font-weight:600;">Amount:</td><td><strong>£${totals.vat ? totals.total : totals.subtotal}</strong></td></tr>
+            </table>
+            <p style="margin:20px 0 0;font-size:12px;color:#9ca3af;">Full invoice attached as PDF.</p>
+          </div>
+        </div>
+      `,
+      attachments: [{
+        content: pdfBuffer.toString('base64'),
+        filename: `Invoice-${invoiceRef}.pdf`,
+        type: 'application/pdf', disposition: 'attachment',
+      }],
+    });
+    if (emailSent) console.log('[Invoice] Email sent to', toEmail, ccEmail ? `cc: ${ccEmail}` : '');
 
     res.json({ success: true, emailSent });
   } catch (err) { next(err); }

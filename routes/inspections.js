@@ -5,15 +5,9 @@ const https = require('https');
 const http = require('http');
 const supabase = require('../lib/supabase');
 const { authenticate } = require('../middleware/auth');
+const { sendEmail } = require('../services/notifications');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
-
-function getSg() {
-  if (!process.env.SENDGRID_API_KEY) return null;
-  const sg = require('@sendgrid/mail');
-  sg.setApiKey(process.env.SENDGRID_API_KEY);
-  return sg;
-}
 
 const ALDI_EMAIL = process.env.ALDI_INSPECTION_EMAIL || 'property.ath@aldi.co.uk';
 const RS_CC_EMAIL = process.env.RS_INSPECTION_CC_EMAIL || 'accounts@risksecured.co.uk';
@@ -455,52 +449,46 @@ router.post('/', authenticate, async (req, res, next) => {
     });
 
     // Email
-    const sg = getSg();
-    console.log('[Inspection] SendGrid available:', !!sg, '| From:', RS_EMAIL, '| To:', ALDI_EMAIL);
-    if (sg) {
+    console.log('[Inspection] Sending email | From:', RS_EMAIL, '| To:', ALDI_EMAIL);
+    {
       const pdfBase64 = pdfBuffer.toString('base64');
-      try {
-        await sg.send({
-          to: ALDI_EMAIL,
-          cc: RS_CC_EMAIL,
-          from: { email: RS_EMAIL, name: 'Risk Secured' },
-          subject: `Property Inspection — ${site?.name} — ${new Date().toLocaleDateString('en-GB')}`,
-          html: `
-            <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
-              <div style="background:#0b1a3e;padding:20px 24px;border-radius:8px 8px 0 0;border-top:4px solid #1a52a8;">
-                <h1 style="color:#fff;margin:0;font-size:18px;">Risk Secured</h1>
-                <p style="color:#8899bb;margin:4px 0 0;font-size:12px;">Property Inspection Report — Aldi Stores Ltd</p>
-              </div>
-              <div style="padding:24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;background:#fff;">
-                <table style="width:100%;font-size:14px;color:#374151;border-collapse:collapse;">
-                  <tr><td style="padding:6px 0;font-weight:600;width:100px;">Site:</td><td>${site?.name}</td></tr>
-                  <tr><td style="padding:6px 0;font-weight:600;">Address:</td><td>${[site?.address, site?.city, site?.postcode].filter(Boolean).join(', ')}</td></tr>
-                  <tr><td style="padding:6px 0;font-weight:600;">Inspector:</td><td>${inspector_name}</td></tr>
-                  <tr><td style="padding:6px 0;font-weight:600;">Date:</td><td>${new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'long',year:'numeric'})}</td></tr>
-                  <tr><td style="padding:6px 0;font-weight:600;">Status:</td><td>${new_to_report ? '<span style="color:#dc2626;font-weight:700;">Issues Reported</span>' : '<span style="color:#16a34a;font-weight:600;">All Clear</span>'}</td></tr>
-                </table>
-                ${summary ? `<div style="margin-top:16px;padding:12px;background:#f8fafc;border-radius:6px;border:1px solid #e2e8f0;"><div style="font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;margin-bottom:4px;">Summary</div><div style="font-size:14px;color:#1e293b;line-height:1.6;">${summary}</div></div>` : ''}
-                ${action_points ? `<div style="margin-top:12px;padding:12px;background:#f8fafc;border-radius:6px;border:1px solid #e2e8f0;"><div style="font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;margin-bottom:4px;">Suggested Actions</div><div style="font-size:14px;color:#1e293b;line-height:1.6;">${action_points}</div></div>` : ''}
-                ${immediate_action ? '<div style="margin-top:16px;padding:14px;background:#fef2f2;border:2px solid #fca5a5;border-radius:6px;color:#dc2626;font-weight:700;font-size:14px;text-align:center;">IMMEDIATE INTERVENTION REQUIRED</div>' : ''}
-                <p style="margin:20px 0 0;font-size:12px;color:#9ca3af;">Full report with photographs attached as PDF.</p>
-              </div>
-              <div style="text-align:center;padding:16px;font-size:11px;color:#9ca3af;">
-                Risk Secured Ltd | 24/7 National Control Room: 01384 218829<br/>
-                Tel: 0843 122 1247 | Mobile: 07587 865219 | david@risksecured.co.uk | www.risksecured.co.uk
-              </div>
+      const emailOk = await sendEmail({
+        to: ALDI_EMAIL,
+        cc: RS_CC_EMAIL,
+        from: { email: RS_EMAIL, name: 'Risk Secured' },
+        subject: `Property Inspection — ${site?.name} — ${new Date().toLocaleDateString('en-GB')}`,
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+            <div style="background:#0b1a3e;padding:20px 24px;border-radius:8px 8px 0 0;border-top:4px solid #1a52a8;">
+              <h1 style="color:#fff;margin:0;font-size:18px;">Risk Secured</h1>
+              <p style="color:#8899bb;margin:4px 0 0;font-size:12px;">Property Inspection Report — Aldi Stores Ltd</p>
             </div>
-          `,
-          attachments: [{
-            content: pdfBase64,
-            filename: `Risk-Secured-Inspection-${site?.name?.replace(/\s+/g,'-')}-${new Date().toISOString().slice(0,10)}.pdf`,
-            type: 'application/pdf', disposition: 'attachment',
-          }],
-        });
-        console.log('[Inspection] Email sent successfully to', ALDI_EMAIL);
-      } catch (emailErr) {
-        console.error('[Inspection] Email FAILED:', emailErr.message);
-        if (emailErr.response) console.error('[Inspection] SendGrid response:', JSON.stringify(emailErr.response.body));
-      }
+            <div style="padding:24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;background:#fff;">
+              <table style="width:100%;font-size:14px;color:#374151;border-collapse:collapse;">
+                <tr><td style="padding:6px 0;font-weight:600;width:100px;">Site:</td><td>${site?.name}</td></tr>
+                <tr><td style="padding:6px 0;font-weight:600;">Address:</td><td>${[site?.address, site?.city, site?.postcode].filter(Boolean).join(', ')}</td></tr>
+                <tr><td style="padding:6px 0;font-weight:600;">Inspector:</td><td>${inspector_name}</td></tr>
+                <tr><td style="padding:6px 0;font-weight:600;">Date:</td><td>${new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'long',year:'numeric'})}</td></tr>
+                <tr><td style="padding:6px 0;font-weight:600;">Status:</td><td>${new_to_report ? '<span style="color:#dc2626;font-weight:700;">Issues Reported</span>' : '<span style="color:#16a34a;font-weight:600;">All Clear</span>'}</td></tr>
+              </table>
+              ${summary ? `<div style="margin-top:16px;padding:12px;background:#f8fafc;border-radius:6px;border:1px solid #e2e8f0;"><div style="font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;margin-bottom:4px;">Summary</div><div style="font-size:14px;color:#1e293b;line-height:1.6;">${summary}</div></div>` : ''}
+              ${action_points ? `<div style="margin-top:12px;padding:12px;background:#f8fafc;border-radius:6px;border:1px solid #e2e8f0;"><div style="font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;margin-bottom:4px;">Suggested Actions</div><div style="font-size:14px;color:#1e293b;line-height:1.6;">${action_points}</div></div>` : ''}
+              ${immediate_action ? '<div style="margin-top:16px;padding:14px;background:#fef2f2;border:2px solid #fca5a5;border-radius:6px;color:#dc2626;font-weight:700;font-size:14px;text-align:center;">IMMEDIATE INTERVENTION REQUIRED</div>' : ''}
+              <p style="margin:20px 0 0;font-size:12px;color:#9ca3af;">Full report with photographs attached as PDF.</p>
+            </div>
+            <div style="text-align:center;padding:16px;font-size:11px;color:#9ca3af;">
+              Risk Secured Ltd | 24/7 National Control Room: 01384 218829<br/>
+              Tel: 0843 122 1247 | Mobile: 07587 865219 | david@risksecured.co.uk | www.risksecured.co.uk
+            </div>
+          </div>
+        `,
+        attachments: [{
+          content: pdfBase64,
+          filename: `Risk-Secured-Inspection-${site?.name?.replace(/\s+/g,'-')}-${new Date().toISOString().slice(0,10)}.pdf`,
+          type: 'application/pdf', disposition: 'attachment',
+        }],
+      });
+      if (emailOk) console.log('[Inspection] Email sent successfully to', ALDI_EMAIL);
     }
 
     res.status(201).json({ data, pdf_url: publicUrl });

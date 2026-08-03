@@ -1,6 +1,78 @@
 const router = require('express').Router();
 const supabase = require('../lib/supabase');
 const { authenticate, requireRole } = require('../middleware/auth');
+const { sendSms, sendEmail } = require('../services/notifications');
+
+// Guard against double-firing on retries (process-lifetime, resets on deploy)
+const notifiedIds = new Set();
+
+// ── Incident notification ────────────────────────────────────────────────────
+async function fireIncidentNotification(log, officerId, siteId) {
+  try {
+    // Fetch officer name and site name (minimal lookups)
+    const [officerRes, siteRes] = await Promise.all([
+      supabase.from('users').select('first_name, last_name').eq('id', officerId).single(),
+      siteId ? supabase.from('sites').select('name').eq('id', siteId).single() : Promise.resolve({ data: null }),
+    ]);
+
+    const firstName = officerRes.data?.first_name || '';
+    const lastName  = officerRes.data?.last_name  || '';
+    const siteName  = siteRes.data?.name          || 'Unknown site';
+
+    const occurredAt = new Date(log.occurred_at || new Date());
+    const hhmm = occurredAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+    const fullDateTime = occurredAt.toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+
+    const logUrl = `https://app.doblive.co.uk/logs/${log.id}`;
+    const titleTrunc = (log.title || '').slice(0, 40);
+
+    // SMS (must be under 160 chars)
+    const smsTo = process.env.INCIDENT_ALERT_PHONE || process.env.ESCALATION_PHONE_1 || '+447587865219';
+    const smsBody = `INCIDENT - ${siteName} - ${firstName} ${lastName} - ${hhmm} - ${titleTrunc} ${logUrl}`;
+    await sendSms({ to: smsTo, body: smsBody });
+
+    // Email
+    const emailTo = process.env.INCIDENT_ALERT_EMAIL || 'david@risksecured.co.uk';
+    const locationLines = [
+      log.what3words ? `<tr><td style="padding:4px 0;font-weight:600;width:130px;">What3Words:</td><td>///&#8203;${log.what3words}</td></tr>` : '',
+      (log.latitude != null && log.longitude != null)
+        ? `<tr><td style="padding:4px 0;font-weight:600;">GPS:</td><td>${Number(log.latitude).toFixed(6)}, ${Number(log.longitude).toFixed(6)}</td></tr>`
+        : '',
+    ].join('');
+
+    await sendEmail({
+      to: emailTo,
+      subject: `Incident Report - ${siteName} - ${hhmm}`,
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+          <div style="background:#0b1a3e;padding:20px 24px;border-radius:8px 8px 0 0;border-top:4px solid #dc2626;">
+            <h1 style="color:#fff;margin:0;font-size:18px;">Incident Report</h1>
+            <p style="color:#8899bb;margin:4px 0 0;font-size:12px;">DOB Live — Ops Notification</p>
+          </div>
+          <div style="padding:24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;background:#fff;">
+            <table style="width:100%;font-size:14px;color:#374151;border-collapse:collapse;">
+              <tr><td style="padding:4px 0;font-weight:600;width:130px;">Site:</td><td>${siteName}</td></tr>
+              <tr><td style="padding:4px 0;font-weight:600;">Officer:</td><td>${firstName} ${lastName}</td></tr>
+              <tr><td style="padding:4px 0;font-weight:600;">Date &amp; Time:</td><td>${fullDateTime}</td></tr>
+              <tr><td style="padding:4px 0;font-weight:600;">Title:</td><td>${log.title || '—'}</td></tr>
+              ${locationLines}
+            </table>
+            ${log.description ? `
+            <div style="margin-top:16px;padding:12px;background:#f8fafc;border-radius:6px;border:1px solid #e2e8f0;">
+              <div style="font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;margin-bottom:4px;">Description</div>
+              <div style="font-size:14px;color:#1e293b;line-height:1.6;">${log.description}</div>
+            </div>` : ''}
+            <div style="margin-top:20px;">
+              <a href="${logUrl}" style="display:inline-block;background:#1a52a8;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px;">View Incident Log</a>
+            </div>
+          </div>
+        </div>
+      `,
+    });
+  } catch (e) {
+    console.error('[incident-notification] Unexpected error:', e.message);
+  }
+}
 
 // GET /api/logs — all logs for company (with filters)
 router.get('/', authenticate, async (req, res, next) => {
@@ -96,6 +168,15 @@ router.post('/', authenticate, async (req, res, next) => {
       .single();
 
     if (error) throw error;
+
+    // Fire incident notification (fire-and-forget — must never block or fail the officer's response)
+    if (data.log_type === 'INCIDENT' && !notifiedIds.has(data.id)) {
+      notifiedIds.add(data.id);
+      fireIncidentNotification(data, req.user.id, site_id).catch(e =>
+        console.error('[incident-notification] fire-and-forget error:', e.message)
+      );
+    }
+
     res.status(201).json({ data });
   } catch (err) { next(err); }
 });

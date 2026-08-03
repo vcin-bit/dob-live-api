@@ -1,9 +1,12 @@
 const router = require('express').Router();
 const supabase = require('../lib/supabase');
 const { authenticate, requireRole } = require('../middleware/auth');
+const { sendSms, sendEmail } = require('../services/notifications');
 
 const ESCALATION_PHONE = process.env.ESCALATION_PHONE_1 || '+447587865219';
 
+// getTwilio kept locally: escalation also makes voice calls (twilio.calls.create)
+// which require the raw Twilio client beyond what the shared sendSms helper covers.
 function getTwilio() {
   if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) return null;
   return require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
