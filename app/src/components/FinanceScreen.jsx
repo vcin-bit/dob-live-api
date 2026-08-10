@@ -68,6 +68,20 @@ function PanelError({ message }) {
   );
 }
 
+function TruncationWarning({ context }) {
+  return (
+    <div style={{ background: '#fef3c7', borderBottom: '2px solid #f59e0b', padding: '0.75rem 1rem', display: 'flex', gap: '0.625rem', alignItems: 'flex-start' }}>
+      <span style={{ fontSize: '1rem', lineHeight: 1, flexShrink: 0 }}>⚠</span>
+      <div>
+        <div style={{ fontWeight: 700, color: '#78350f', fontSize: '0.8125rem' }}>Figures incomplete — period exceeds 500 pay lines</div>
+        <div style={{ color: '#92400e', fontSize: '0.8125rem', marginTop: '0.125rem' }}>
+          {context} Narrow the month range or filter by site to see complete data. Do not act on these totals.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Th({ children, align = 'left' }) {
   return (
     <th style={{ padding: '0.5rem 0.875rem', fontSize: '0.6875rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: align, background: '#f8fafc', borderBottom: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>
@@ -173,8 +187,9 @@ function OfficerHoursPanel({ data, loading, error }) {
       {loading && <PanelLoading />}
       {error   && <PanelError message={error} />}
       {!loading && !error && data && (() => {
+        const { items, truncated } = data;
         const byOfficer = {};
-        for (const line of data) {
+        for (const line of items) {
           const key  = line.officer_id || 'unknown';
           const name = line.officer ? `${line.officer.first_name} ${line.officer.last_name}` : 'Unknown';
           if (!byOfficer[key]) byOfficer[key] = { name, shifts: 0, hours: 0, pay: 0 };
@@ -187,6 +202,8 @@ function OfficerHoursPanel({ data, loading, error }) {
           <div style={{ padding: '1.5rem', color: '#6b7280', fontSize: '0.875rem' }}>No pay line data for this period.</div>
         );
         return (
+          <>
+            {truncated && <TruncationWarning context="Officer hours and pay shown here cover only the first 500 pay lines." />}
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
@@ -214,6 +231,7 @@ function OfficerHoursPanel({ data, loading, error }) {
               </tbody>
             </table>
           </div>
+          </>
         );
       })()}
     </Panel>
@@ -223,7 +241,7 @@ function OfficerHoursPanel({ data, loading, error }) {
 // ── Panel 4: Needs attention (variances) ──────────────────────────────────────
 
 function VariancesPanel({ data, loading, error }) {
-  const count = data?.length ?? 0;
+  const count = data?.items?.length ?? 0;
   return (
     <div style={{ borderRadius: '10px', overflow: 'hidden', border: count > 0 ? `2px solid ${RED}` : '1px solid #e5e7eb' }}>
       <div style={{ background: NAVY, color: '#fff', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -237,20 +255,29 @@ function VariancesPanel({ data, loading, error }) {
         {loading && <PanelLoading />}
         {error   && <PanelError message={error} />}
         {!loading && !error && data && (() => {
+          const { items, truncated } = data;
           if (!count) {
             return (
-              <div style={{ padding: '1.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M4 9l4 4 6-6" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <>
+                {truncated && <TruncationWarning context="The scan was truncated at 500 rows — exceptions beyond that point are not shown." />}
+                <div style={{ padding: '1.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: truncated ? '#fef3c7' : '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {truncated
+                      ? <span style={{ fontSize: '1rem' }}>⚠</span>
+                      : <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M4 9l4 4 6-6" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    }
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 600, color: truncated ? '#92400e' : '#15803d', fontSize: '0.9375rem' }}>{truncated ? 'Scan incomplete' : 'No exceptions'}</div>
+                    <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.125rem' }}>{truncated ? 'Cannot confirm all shifts are within tolerance.' : 'All shifts are within tolerance for this period.'}</div>
+                  </div>
                 </div>
-                <div>
-                  <div style={{ fontWeight: 600, color: '#15803d', fontSize: '0.9375rem' }}>No exceptions</div>
-                  <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.125rem' }}>All shifts are within tolerance for this period.</div>
-                </div>
-              </div>
+              </>
             );
           }
           return (
+            <>
+              {truncated && <TruncationWarning context="The scan was truncated at 500 rows — additional exceptions beyond that point may not be shown." />}
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
@@ -265,7 +292,7 @@ function VariancesPanel({ data, loading, error }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.map(r => {
+                  {items.map(r => {
                     const isMissing = r.checked_in_at === null || r.checked_out_at === null;
                     const varH = r.variance_hours != null ? Number(r.variance_hours) : null;
                     const negVar = varH !== null && varH < 0;
@@ -293,6 +320,7 @@ function VariancesPanel({ data, loading, error }) {
                 </tbody>
               </table>
             </div>
+            </>
           );
         })()}
       </div>
@@ -344,13 +372,13 @@ export function FinanceScreen({ user }) {
 
     setPayLines(null);  setPayLinesLoading(true);  setPayLinesError(null);
     api.finance.payLines({ from, to })
-      .then(r => setPayLines(r.data))
+      .then(r => setPayLines({ items: r.data, truncated: r.truncated || false }))
       .catch(e => setPayLinesError(e.message))
       .finally(() => setPayLinesLoading(false));
 
     setVariances(null); setVariancesLoading(true); setVariancesError(null);
     api.finance.variances({ from, to })
-      .then(r => setVariances(r.data))
+      .then(r => setVariances({ items: r.data, truncated: r.truncated || false }))
       .catch(e => setVariancesError(e.message))
       .finally(() => setVariancesLoading(false));
   }, [from, to]);

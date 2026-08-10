@@ -48,7 +48,7 @@ router.get('/pay-lines', authenticate, fdOnly, async (req, res, next) => {
       .gte('start_time', from)
       .lte('start_time', to)
       .order('start_time', { ascending: false })
-      .limit(500);
+      .limit(501);
 
     if (site_id)         query = query.eq('site_id', site_id);
     if (officer_id)      query = query.eq('officer_id', officer_id);
@@ -57,7 +57,9 @@ router.get('/pay-lines', authenticate, fdOnly, async (req, res, next) => {
     const { data, error } = await query;
     if (error) throw error;
 
-    res.json({ data: data.map(roundPayLine) });
+    const truncated = data.length > 500;
+    const rows = truncated ? data.slice(0, 500) : data;
+    res.json({ data: rows.map(roundPayLine), ...(truncated && { truncated: true, returned: 500 }) });
   } catch (err) { next(err); }
 });
 
@@ -150,7 +152,7 @@ router.get('/variances', authenticate, fdOnly, async (req, res, next) => {
       .gte('start_time', from)
       .lte('start_time', to)
       .order('start_time', { ascending: false })
-      .limit(500);
+      .limit(501);
 
     if (site_id)    query = query.eq('site_id', site_id);
     if (officer_id) query = query.eq('officer_id', officer_id);
@@ -158,10 +160,14 @@ router.get('/variances', authenticate, fdOnly, async (req, res, next) => {
     const { data, error } = await query;
     if (error) throw error;
 
+    // Truncation detected on source scan — variances in rows 501+ would be missed.
+    const truncated = data.length > 500;
+    const rows = truncated ? data.slice(0, 500) : data;
+
     const now = new Date();
     const FIFTEEN_MINS_IN_HOURS = 0.25;
 
-    const flagged = data.filter(r => {
+    const flagged = rows.filter(r => {
       const bigVariance = r.variance_hours !== null
         && Math.abs(Number(r.variance_hours)) >= FIFTEEN_MINS_IN_HOURS;
       const missingClockings = (r.checked_in_at === null || r.checked_out_at === null)
@@ -169,7 +175,7 @@ router.get('/variances', authenticate, fdOnly, async (req, res, next) => {
       return bigVariance || missingClockings;
     });
 
-    res.json({ data: flagged.map(roundPayLine) });
+    res.json({ data: flagged.map(roundPayLine), ...(truncated && { truncated: true, source_rows: 500 }) });
   } catch (err) { next(err); }
 });
 
