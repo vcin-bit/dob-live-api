@@ -86,6 +86,7 @@ app.use('/api/subcontractors', require('./routes/subcontractors'));
 app.use('/api/compliance',   require('./routes/compliance'));
 app.use('/api/tenants',      require('./routes/tenants'));
 app.use('/api/distribution', require('./routes/distribution'));
+app.use('/api/finance',      require('./routes/finance'));
 
 // ── 404 handler ──────────────────────────────────────────────
 app.use((req, res) => {
