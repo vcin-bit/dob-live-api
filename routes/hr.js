@@ -227,8 +227,42 @@ router.post('/invoice', authenticate, async (req, res, next) => {
     const { data: invoiceRef, error: numErr } = await supabase.rpc('next_invoice_number', { p_company_id: officer.company_id });
     if (numErr) throw numErr;
 
+    // 1b. Resolve site names server-side from shift_ids.
+    //     shifts and shift_ids are parallel arrays built by the client from the same data.
+    let resolvedShifts = shifts;
+    if (shift_ids?.length) {
+      const { data: dbShifts, error: shiftsErr } = await supabase
+        .from('shifts')
+        .select('id, officer_id, site:sites(name)')
+        .in('id', shift_ids)
+        .eq('company_id', officer.company_id);
+      if (shiftsErr) throw shiftsErr;
+
+      const foundIds = new Set(dbShifts.map(s => s.id));
+      const missing = shift_ids.filter(id => !foundIds.has(id));
+      if (missing.length) {
+        console.error('[Invoice] shift_ids not found or not in company:', missing);
+        return res.status(400).json({ error: `Shift(s) not found or not accessible: ${missing.join(', ')}` });
+      }
+
+      const wrongOfficer = dbShifts.filter(s => s.officer_id !== officer.id);
+      if (wrongOfficer.length) {
+        console.error('[Invoice] shift_ids belong to another officer:', wrongOfficer.map(s => s.id));
+        return res.status(400).json({ error: `Shift(s) do not belong to this officer: ${wrongOfficer.map(s => s.id).join(', ')}` });
+      }
+
+      if (shift_ids.length !== shifts.length) {
+        console.warn(`[Invoice] ${invoiceRef}: shift_ids.length (${shift_ids.length}) !== shifts.length (${shifts.length}) — using client site names`);
+      } else {
+        const siteByShiftId = Object.fromEntries(dbShifts.map(s => [s.id, s.site?.name ?? s.site]));
+        resolvedShifts = shifts.map((s, i) => ({ ...s, site: siteByShiftId[shift_ids[i]] ?? s.site }));
+      }
+    } else {
+      console.warn(`[Invoice] ${invoiceRef}: shift_ids not provided — using client-supplied site names`);
+    }
+
     // 2. Generate PDF
-    const pdfBuffer = await buildPdf(PDFDocument, invoiceRef, month, shifts, contractor, totals, officer, today);
+    const pdfBuffer = await buildPdf(PDFDocument, invoiceRef, month, resolvedShifts, contractor, totals, officer, today);
 
     // 3. Upload PDF to hr-documents storage (log and continue on failure — do not block invoicing)
     let pdfPath = null;
