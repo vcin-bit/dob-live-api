@@ -552,6 +552,13 @@ export const api = {
     deleteRisk: (id, riskId) => request(`/api/risk-assessments/${id}/risks/${riskId}`, { method: 'DELETE' }),
     pdfUrl: (id) => `${API_BASE}/api/risk-assessments/${id}/pdf`,
   },
+
+  // Finance (FD / SUPER_ADMIN only)
+  finance: {
+    summary:  (params = {}) => request(`/api/finance/summary?${new URLSearchParams(params)}`),
+    payLines: (params = {}) => request(`/api/finance/pay-lines?${new URLSearchParams(params)}`),
+    variances:(params = {}) => request(`/api/finance/variances?${new URLSearchParams(params)}`),
+  },
 };
 
 export { ApiError };

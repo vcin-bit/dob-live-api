@@ -8,6 +8,7 @@ import { ProfitLoss, ShiftRoster } from './RosterPnL';
 import { DocumentsScreen, PatrolRoutesScreen, ShiftPatternsScreen, RatesScreen, AlertsScreen, PoliciesScreen, MessagesScreen } from './ManagerFeatures';
 import { PortalSettingsModal } from './Portal';
 import { ContractsScreen } from './ContractsScreen';
+import { FinanceScreen } from './FinanceScreen';
 import DocumentControl from './DocumentControl';
 import { ManagerUpdatesPanel } from './CompanyUpdates';
 import { PersonnelFilesScreen } from './PersonnelFiles';
@@ -49,6 +50,7 @@ function ManagerApp({ user }) {
           <Route path="/distribution" element={<DistributionListScreen user={user} />} />
           <Route path="/roster"    element={<ShiftRoster user={user} />} />
           <Route path="/pnl"       element={<ProfitLoss user={user} />} />
+          <Route path="/finance"   element={<FinanceScreen user={user} />} />
           <Route path="/docs"       element={<DocumentsScreen user={user} />} />
           <Route path="/patrols"    element={<PatrolRoutesScreen user={user} />} />
           <Route path="/patrol-history" element={<PatrolHistoryScreen user={user} />} />
@@ -218,6 +220,7 @@ function ManagerSidebar({ user, open, onClose }) {
       items: [
         { to: '/pnl', icon: ChartBarIcon, label: 'P&L Dashboard' },
         { to: '/contracts', icon: DocumentTextIcon, label: 'Contracts' },
+        ...(['SUPER_ADMIN','FD'].includes(user.role) ? [{ to: '/finance', icon: ChartBarIcon, label: 'Finance' }] : []),
       ]
     },
     {
