@@ -233,7 +233,7 @@ router.get('/export', authenticate, async (req, res, next) => {
 
     let query = supabase
       .from('occurrence_logs')
-      .select('*, officer:users(first_name,last_name), site:sites(name)')
+      .select('*, officer:users!occurrence_logs_officer_id_fkey(first_name,last_name), site:sites(name)')
       .eq('company_id', req.user.company_id)
       .order('occurred_at', { ascending: false })
       .limit(5000);

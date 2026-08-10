@@ -181,7 +181,7 @@ router.get('/self-bill-invoices', authenticate, fdOnly, async (req, res, next) =
 
     let query = supabase
       .from('self_bill_invoices')
-      .select('*, officer:users(first_name, last_name)')
+      .select('*, officer:users!self_bill_invoices_officer_id_fkey(first_name, last_name)')
       .eq('company_id', req.user.company_id)
       .order('sent_at', { ascending: false });
 
