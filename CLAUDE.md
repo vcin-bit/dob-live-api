@@ -5,7 +5,7 @@ Security ops SaaS. Node/Express API on Render, React/Vite frontend in `app/`, Su
 ## Rules
 
 - Always read the full file before editing
-- Run `npm run build` inside `app/` after every frontend change before committing
+- Any change under `app/src/` requires two things in the same commit: run `npm run build` inside `app/`, then stage `app/dist/` in full alongside the source files. Cloudflare Pages serves the committed bundle directly from the repo and does not run a build step — changes to source files alone will never appear in production.
 - Never reformat or tidy code you are not directly fixing
 - Never touch files not related to the current task
 - Commit messages must describe what was fixed, not what was done
