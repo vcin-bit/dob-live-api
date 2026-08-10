@@ -1333,13 +1333,17 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
   const [invoiceSending, setInvoiceSending] = useState(false);
   const [invoiceSent, setInvoiceSent] = useState(false);
 
-  async function sendInvoice(ref) {
+  async function sendInvoice() {
     setInvoiceSending(true);
     console.log('[Invoice] Sending with', selectedShifts.length, 'shifts, selectedIds:', [...selectedIds]);
     try {
+      const [y, m] = selectedMonth.split('-').map(Number);
+      const lastDay = new Date(y, m, 0).getDate();
       const invoiceData = {
-        invoiceRef: ref,
         month: formatMonth(selectedMonth),
+        shift_ids: selectedShifts.map(s => s.id),
+        period_start: `${selectedMonth}-01`,
+        period_end: `${selectedMonth}-${String(lastDay).padStart(2, '0')}`,
         shifts: selectedShifts.map(s => {
           const h = getHours(s);
           const rate = parseFloat(s.pay_rate) || 0;
@@ -1380,6 +1384,7 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
         },
       };
       const res = await api.hr.sendInvoice(invoiceData);
+      if (res.invoiceRef) setInvoiceRef(res.invoiceRef);
       if (res.emailSent) setInvoiceSent(true);
       else alert('Invoice generated but email could not be sent. Please use Print to save as PDF.');
     } catch (err) { alert('Failed to send invoice: ' + err.message); }
@@ -1388,8 +1393,7 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
 
   if (showInvoice) {
     const today = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'long', year:'numeric' });
-    const ref = invoiceRef || `INV-${Date.now().toString(36).toUpperCase().slice(-6)}`;
-    if (!invoiceRef) setInvoiceRef(ref);
+    const ref = invoiceRef || 'Pending...';
 
     return (
       <>
@@ -1410,7 +1414,7 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
                 Sent to Accounts
               </div>
             ) : (
-              <button onClick={() => sendInvoice(ref)} disabled={invoiceSending}
+              <button onClick={() => sendInvoice()} disabled={invoiceSending}
                 style={{padding:'0.5rem 0.75rem',background:'#1a52a8',border:'none',borderRadius:'6px',fontSize:'0.8125rem',fontWeight:600,color:'#fff',cursor:'pointer',opacity:invoiceSending?0.5:1}}>
                 {invoiceSending ? 'Sending...' : 'Send to Accounts'}
               </button>
@@ -1731,7 +1735,7 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
                           };
                         });
                         await api.hr.sendInvoice({
-                          invoiceRef: `WQ-${Date.now().toString(36).toUpperCase().slice(-6)}`,
+                          is_wage_query: true,
                           month: `WAGE QUERY — ${formatMonth(selectedMonth)}`,
                           shifts: allShiftsData,
                           contractor: { name: `${dbUser?.first_name} ${dbUser?.last_name}` },

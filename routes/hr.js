@@ -182,14 +182,110 @@ router.delete('/documents/:docType', authenticate, async (req, res, next) => {
 router.post('/invoice', authenticate, async (req, res, next) => {
   try {
     const PDFDocument = require('pdfkit');
-    const { invoiceRef, month, shifts, contractor, totals } = req.body;
+    // invoiceRef is ignored from the client — allocated server-side for real invoices.
+    // is_wage_query: true takes the legacy path (email only, no DB record, WQ- prefix).
+    const { is_wage_query, month, shifts, contractor, totals, shift_ids, period_start, period_end } = req.body;
     if (!shifts?.length) return res.status(400).json({ error: 'No shifts provided' });
 
     const officer = req.user;
     const today = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'long', year:'numeric' });
 
-    // Generate PDF
-    const pdfBuffer = await new Promise((resolve, reject) => {
+    // Fetch officer_hr once: used for cc email, contractor snapshot, and employment status
+    const { data: hrRec } = await supabase.from('officer_hr')
+      .select('personal_email, employment_status, company_name, company_vat_number, utr_number')
+      .eq('user_id', officer.id).maybeSingle();
+    const ccEmail = hrRec?.personal_email || officer.email || null;
+
+    // Wage query: email-only path, no invoice number, no DB record
+    if (is_wage_query) {
+      const wqRef = `WQ-${Date.now().toString(36).toUpperCase().slice(-6)}`;
+      const pdfBuffer = await buildPdf(PDFDocument, wqRef, month, shifts, contractor, totals, officer, today);
+      const fromEmail = process.env.RS_INSPECTION_FROM_EMAIL || 'reports@risksecured.co.uk';
+      const toEmail = 'accounts@risksecured.co.uk';
+      const emailSent = await sendEmail({
+        to: toEmail,
+        ...(ccEmail ? { cc: ccEmail } : {}),
+        from: { email: fromEmail, name: 'DOB Live' },
+        subject: `Wage Query ${wqRef} — ${contractor.name || `${officer.first_name} ${officer.last_name}`} — ${month}`,
+        html: buildEmailHtml(wqRef, contractor, officer, month, totals),
+        attachments: [{ content: pdfBuffer.toString('base64'), filename: `WageQuery-${wqRef}.pdf`, type: 'application/pdf', disposition: 'attachment' }],
+      });
+      return res.json({ success: true, emailSent });
+    }
+
+    // --- Self-bill invoice path ---
+
+    // 1. Allocate invoice number server-side (atomic, no client input accepted)
+    const { data: invoiceRef, error: numErr } = await supabase.rpc('next_invoice_number', { p_company_id: officer.company_id });
+    if (numErr) throw numErr;
+
+    // 2. Generate PDF
+    const pdfBuffer = await buildPdf(PDFDocument, invoiceRef, month, shifts, contractor, totals, officer, today);
+
+    // 3. Upload PDF to hr-documents storage (log and continue on failure — do not block invoicing)
+    let pdfPath = null;
+    try {
+      const storagePath = `${officer.company_id}/${officer.id}/invoices/${invoiceRef}.pdf`;
+      const { error: uploadErr } = await supabase.storage
+        .from('hr-documents')
+        .upload(storagePath, pdfBuffer, { contentType: 'application/pdf' });
+      if (uploadErr) {
+        console.error('[Invoice] PDF storage upload failed:', uploadErr.message);
+      } else {
+        pdfPath = storagePath;
+      }
+    } catch (uploadEx) {
+      console.error('[Invoice] PDF storage upload exception:', uploadEx.message);
+    }
+
+    // 4. Snapshot contractor details from officer_hr and insert DB record BEFORE emailing.
+    //    If this insert fails we abort — an unrecorded invoice must not be sent.
+    const contractorName = hrRec?.employment_status === 'ltd_company'
+      ? (hrRec.company_name || `${officer.first_name} ${officer.last_name}`)
+      : `${officer.first_name} ${officer.last_name}`;
+    const fromEmail = process.env.RS_INSPECTION_FROM_EMAIL || 'reports@risksecured.co.uk';
+    const toEmail = 'accounts@risksecured.co.uk';
+
+    const { error: insertErr } = await supabase.from('self_bill_invoices').insert({
+      company_id:              officer.company_id,
+      officer_id:              officer.id,
+      invoice_number:          invoiceRef,
+      period_start:            period_start || null,
+      period_end:              period_end   || null,
+      total_hours:             parseFloat(totals.hours) || 0,
+      total_amount:            parseFloat(totals.vat ? totals.total : totals.subtotal) || 0,
+      vat_amount:              totals.vat ? parseFloat(totals.vat) : null,
+      contractor_name:         contractorName,
+      contractor_company_name: hrRec?.company_name        || null,
+      contractor_vat_number:   hrRec?.company_vat_number  || null,
+      contractor_utr:          hrRec?.utr_number           || null,
+      shift_ids:               shift_ids || [],
+      pdf_path:                pdfPath,
+      sent_to:                 toEmail,
+      sent_cc:                 ccEmail || null,
+      created_by:              officer.id,
+    });
+    if (insertErr) throw insertErr;
+
+    // 5. Send email (record already exists — safe to proceed)
+    const emailSent = await sendEmail({
+      to: toEmail,
+      ...(ccEmail ? { cc: ccEmail } : {}),
+      from: { email: fromEmail, name: 'DOB Live' },
+      subject: `Invoice ${invoiceRef} — ${contractor.name || `${officer.first_name} ${officer.last_name}`} — ${month}`,
+      html: buildEmailHtml(invoiceRef, contractor, officer, month, totals),
+      attachments: [{ content: pdfBuffer.toString('base64'), filename: `Invoice-${invoiceRef}.pdf`, type: 'application/pdf', disposition: 'attachment' }],
+    });
+    if (emailSent) console.log('[Invoice] Email sent to', toEmail, ccEmail ? `cc: ${ccEmail}` : '');
+
+    res.json({ success: true, emailSent, invoiceRef });
+  } catch (err) { next(err); }
+});
+
+// ── Invoice helpers ───────────────────────────────────────────────────────────
+
+function buildPdf(PDFDocument, invoiceRef, month, shifts, contractor, totals, officer, today) {
+  return new Promise((resolve, reject) => {
       const doc = new PDFDocument({ size: 'A4', margin: 40 });
       const chunks = [];
       doc.on('data', c => chunks.push(c));
@@ -304,46 +400,28 @@ router.post('/invoice', authenticate, async (req, res, next) => {
         .text(`Payment due within 30 days of invoice date. Please reference invoice number ${invoiceRef} with payment.`, M, y, { width: CW });
 
       doc.end();
-    });
+  });
+}
 
-    // Email via SendGrid
-    const fromEmail = process.env.RS_INSPECTION_FROM_EMAIL || 'reports@risksecured.co.uk';
-    const toEmail = 'accounts@risksecured.co.uk';
-    // CC the officer if they have a personal email on file
-    const { data: hrRec } = await supabase.from('officer_hr').select('personal_email').eq('user_id', officer.id).maybeSingle();
-    const ccEmail = hrRec?.personal_email || officer.email || null;
-    const emailSent = await sendEmail({
-      to: toEmail,
-      ...(ccEmail ? { cc: ccEmail } : {}),
-      from: { email: fromEmail, name: 'DOB Live' },
-      subject: `Invoice ${invoiceRef} — ${contractor.name || `${officer.first_name} ${officer.last_name}`} — ${month}`,
-      html: `
-        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
-          <div style="background:#0b1a3e;padding:20px 24px;border-radius:8px 8px 0 0;border-top:4px solid #1a52a8;">
-            <h1 style="color:#fff;margin:0;font-size:18px;">DOB Live — Invoice Submission</h1>
-          </div>
-          <div style="padding:24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;background:#fff;">
-            <table style="width:100%;font-size:14px;color:#374151;border-collapse:collapse;">
-              <tr><td style="padding:6px 0;font-weight:600;width:120px;">Invoice Ref:</td><td>${invoiceRef}</td></tr>
-              <tr><td style="padding:6px 0;font-weight:600;">Contractor:</td><td>${contractor.name || `${officer.first_name} ${officer.last_name}`}</td></tr>
-              <tr><td style="padding:6px 0;font-weight:600;">Period:</td><td>${month}</td></tr>
-              <tr><td style="padding:6px 0;font-weight:600;">Total Hours:</td><td>${totals.hours}</td></tr>
-              <tr><td style="padding:6px 0;font-weight:600;">Amount:</td><td><strong>£${totals.vat ? totals.total : totals.subtotal}</strong></td></tr>
-            </table>
-            <p style="margin:20px 0 0;font-size:12px;color:#9ca3af;">Full invoice attached as PDF.</p>
-          </div>
-        </div>
-      `,
-      attachments: [{
-        content: pdfBuffer.toString('base64'),
-        filename: `Invoice-${invoiceRef}.pdf`,
-        type: 'application/pdf', disposition: 'attachment',
-      }],
-    });
-    if (emailSent) console.log('[Invoice] Email sent to', toEmail, ccEmail ? `cc: ${ccEmail}` : '');
-
-    res.json({ success: true, emailSent });
-  } catch (err) { next(err); }
-});
+function buildEmailHtml(invoiceRef, contractor, officer, month, totals) {
+  const name = contractor.name || `${officer.first_name} ${officer.last_name}`;
+  return `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+      <div style="background:#0b1a3e;padding:20px 24px;border-radius:8px 8px 0 0;border-top:4px solid #1a52a8;">
+        <h1 style="color:#fff;margin:0;font-size:18px;">DOB Live — Invoice Submission</h1>
+      </div>
+      <div style="padding:24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;background:#fff;">
+        <table style="width:100%;font-size:14px;color:#374151;border-collapse:collapse;">
+          <tr><td style="padding:6px 0;font-weight:600;width:120px;">Invoice Ref:</td><td>${invoiceRef}</td></tr>
+          <tr><td style="padding:6px 0;font-weight:600;">Contractor:</td><td>${name}</td></tr>
+          <tr><td style="padding:6px 0;font-weight:600;">Period:</td><td>${month}</td></tr>
+          <tr><td style="padding:6px 0;font-weight:600;">Total Hours:</td><td>${totals.hours}</td></tr>
+          <tr><td style="padding:6px 0;font-weight:600;">Amount:</td><td><strong>£${totals.vat ? totals.total : totals.subtotal}</strong></td></tr>
+        </table>
+        <p style="margin:20px 0 0;font-size:12px;color:#9ca3af;">Full invoice attached as PDF.</p>
+      </div>
+    </div>
+  `;
+}
 
 module.exports = router;

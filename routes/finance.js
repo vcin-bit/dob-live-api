@@ -173,4 +173,27 @@ router.get('/variances', authenticate, fdOnly, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// GET /api/finance/self-bill-invoices
+// Query params: from, to (ISO dates, filter on sent_at), officer_id — all optional
+router.get('/self-bill-invoices', authenticate, fdOnly, async (req, res, next) => {
+  try {
+    const { from, to, officer_id } = req.query;
+
+    let query = supabase
+      .from('self_bill_invoices')
+      .select('*, officer:users(first_name, last_name)')
+      .eq('company_id', req.user.company_id)
+      .order('sent_at', { ascending: false });
+
+    if (from)       query = query.gte('sent_at', from);
+    if (to)         query = query.lte('sent_at', to);
+    if (officer_id) query = query.eq('officer_id', officer_id);
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    res.json({ data });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;
