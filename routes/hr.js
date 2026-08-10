@@ -187,6 +187,14 @@ router.post('/invoice', authenticate, async (req, res, next) => {
     const { is_wage_query, month, shifts, contractor, totals, shift_ids, period_start, period_end } = req.body;
     if (!shifts?.length) return res.status(400).json({ error: 'No shifts provided' });
 
+    // Reconciliation guard: server-computed sum of shift amounts must match client-supplied subtotal
+    const serverSubtotal = shifts.reduce((sum, s) => sum + (parseFloat(s.amount) || 0) + (parseFloat(s.bh_amount) || 0), 0);
+    const clientSubtotal = parseFloat(totals?.subtotal) || 0;
+    if (Math.abs(serverSubtotal - clientSubtotal) > 0.01) {
+      console.error(`[Invoice] Reconciliation mismatch: server=£${serverSubtotal.toFixed(2)} client=£${clientSubtotal.toFixed(2)}`);
+      return res.status(400).json({ error: `Invoice total mismatch: server computed £${serverSubtotal.toFixed(2)} but client submitted £${clientSubtotal.toFixed(2)}. Invoice not generated.` });
+    }
+
     const officer = req.user;
     const today = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'long', year:'numeric' });
 
@@ -365,6 +373,50 @@ function buildPdf(PDFDocument, invoiceRef, month, shifts, contractor, totals, of
         }
         doc.rect(M, y - 2, CW, 0.25).fill('#f1f5f9');
       }
+
+      // Site summary
+      const siteMap = {};
+      for (const s of shifts) {
+        if (!siteMap[s.site]) siteMap[s.site] = { hours: 0, pay: 0 };
+        siteMap[s.site].hours += parseFloat(s.hours)     || 0;
+        siteMap[s.site].pay   += parseFloat(s.amount)    || 0;
+        if (s.bh_hours) {
+          siteMap[s.site].hours += parseFloat(s.bh_hours)  || 0;
+          siteMap[s.site].pay   += parseFloat(s.bh_amount) || 0;
+        }
+      }
+      const siteRows = Object.entries(siteMap)
+        .map(([name, v]) => ({ name, hours: v.hours, pay: v.pay }))
+        .sort((a, b) => b.hours - a.hours);
+
+      y += 12;
+      doc.rect(M, y, CW, 0.5).fill('#e2e8f0'); y += 8;
+      doc.fontSize(7).font('Helvetica-Bold').fillColor('#6b7280').text('SUMMARY BY SITE', M, y); y += 12;
+
+      const scols = [M, M + CW - 120, M + CW - 50];
+      doc.fontSize(7).font('Helvetica-Bold').fillColor('#6b7280');
+      doc.text('SITE',  scols[0], y);
+      doc.text('HOURS', scols[1], y, { width: 60, align: 'right' });
+      doc.text('PAY',   scols[2], y, { width: 65, align: 'right' });
+      y += 12; doc.rect(M, y - 2, CW, 0.5).fill('#e5e7eb');
+
+      let siteTotalHours = 0, siteTotalPay = 0;
+      for (const row of siteRows) {
+        if (y > 700) { doc.addPage(); y = 40; }
+        doc.fontSize(8).font('Helvetica').fillColor('#111827');
+        doc.text(row.name, scols[0], y, { width: CW - 130, lineBreak: false });
+        doc.text(row.hours.toFixed(2), scols[1], y, { width: 60, align: 'right', lineBreak: false });
+        doc.text(`£${row.pay.toFixed(2)}`, scols[2], y, { width: 65, align: 'right', lineBreak: false });
+        y += 14;
+        siteTotalHours += row.hours;
+        siteTotalPay   += row.pay;
+      }
+      doc.rect(M, y, CW, 0.75).fill('#0b1a3e'); y += 8;
+      doc.fontSize(8).font('Helvetica-Bold').fillColor('#0b1a3e');
+      doc.text('Total', scols[0], y);
+      doc.text(siteTotalHours.toFixed(2), scols[1], y, { width: 60, align: 'right' });
+      doc.text(`£${siteTotalPay.toFixed(2)}`, scols[2], y, { width: 65, align: 'right' });
+      y += 20;
 
       // Totals
       y += 8; doc.rect(M, y, CW, 1.5).fill('#0b1a3e'); y += 10;
