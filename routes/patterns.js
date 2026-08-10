@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const supabase = require('../lib/supabase');
 const { authenticate, requireRole } = require('../middleware/auth');
+const { stripFinancialFields } = require('../lib/redact');
 
 router.get('/', authenticate, async (req, res, next) => {
   try {
@@ -9,7 +10,7 @@ router.get('/', authenticate, async (req, res, next) => {
     if (site_id) q = q.eq('site_id', site_id);
     const { data, error } = await q;
     if (error) throw error;
-    res.json({ data });
+    res.json({ data: stripFinancialFields(data, req.user.role) });
   } catch (err) { next(err); }
 });
 

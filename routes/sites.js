@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const supabase = require('../lib/supabase');
 const { authenticate, requireRole } = require('../middleware/auth');
+const { stripFinancialFields } = require('../lib/redact');
 
 const ALL_FIELDS = ['name','address','city','postcode','active','client_id',
   'contact_name','contact_phone','contact_email',
@@ -20,7 +21,7 @@ router.get('/', authenticate, async (req, res, next) => {
       .eq('company_id', req.user.company_id)
       .order('name');
     if (error) throw error;
-    res.json({ data });
+    res.json({ data: stripFinancialFields(data, req.user.role) });
   } catch (err) { next(err); }
 });
 
@@ -29,7 +30,7 @@ router.get('/:id', authenticate, async (req, res, next) => {
     const { data, error } = await supabase
       .from('sites').select('*').eq('id', req.params.id).eq('company_id', req.user.company_id).single();
     if (error || !data) return res.status(404).json({ error: 'Site not found' });
-    res.json({ data });
+    res.json({ data: stripFinancialFields(data, req.user.role) });
   } catch (err) { next(err); }
 });
 
