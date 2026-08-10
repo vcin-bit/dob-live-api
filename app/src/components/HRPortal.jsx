@@ -1350,6 +1350,7 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
           const bhH = parseFloat(s.bh_hours) || (s.shift_type === 'bank_holiday' ? h : 0);
           const bhRate = parseFloat(s.bh_pay_rate) || rate;
           return {
+            id: s.id,
             date: new Date(s.start_time).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}),
             site: s.site?.name || '—',
             times: `${new Date(s.checked_in_at||s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}–${new Date(s.checked_out_at||s.end_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}`,

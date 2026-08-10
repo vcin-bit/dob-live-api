@@ -251,18 +251,13 @@ router.post('/invoice', authenticate, async (req, res, next) => {
         return res.status(400).json({ error: `Shift(s) do not belong to this officer: ${wrongOfficer.map(s => s.id).join(', ')}` });
       }
 
-      if (shift_ids.length !== shifts.length) {
-        console.warn(`[Invoice] ${invoiceRef}: shift_ids.length (${shift_ids.length}) !== shifts.length (${shifts.length}) — using client site names`);
-      } else {
-        // shift_ids and shifts are parallel arrays built from the same selectedShifts.map() on
-        // the client — shift_ids[i] is the id for shifts[i]. The Map below is keyed by shift id
-        // so DB row ordering from the .in() query does not affect correctness.
-        // Note: client shift line items do not carry an id field, so lookup by s.id is not
-        // possible; this parallel-array correlation is the only viable approach without a
-        // client-side change.
-        const siteMap = new Map(dbShifts.map(s => [s.id, s.site?.name ?? null]));
-        resolvedShifts = shifts.map((s, i) => ({ ...s, site: siteMap.get(shift_ids[i]) ?? s.site }));
-      }
+      const siteMap = new Map(dbShifts.map(s => [s.id, s.site?.name ?? null]));
+      resolvedShifts = shifts.map((s, i) => {
+        if (s.id) return { ...s, site: siteMap.get(s.id) ?? s.site };
+        // Line item has no id — client not yet rebuilt. Fall back to parallel-array lookup.
+        console.warn(`[Invoice] ${invoiceRef}: shift line item at index ${i} has no id — using shift_ids[i] correlation`);
+        return { ...s, site: siteMap.get(shift_ids[i]) ?? s.site };
+      });
     } else {
       console.warn(`[Invoice] ${invoiceRef}: shift_ids not provided — using client-supplied site names`);
     }
