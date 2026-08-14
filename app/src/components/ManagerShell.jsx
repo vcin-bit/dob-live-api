@@ -13,6 +13,7 @@ import DocumentControl from './DocumentControl';
 import { ManagerUpdatesPanel } from './CompanyUpdates';
 import { PersonnelFilesScreen } from './PersonnelFiles';
 import ComplianceDashboard from './ComplianceDashboard';
+import { OnboardingScreen } from './OnboardingScreen';
 import ComplianceCriterionDetail from './ComplianceCriterionDetail';
 import SubcontractorRegister from './SubcontractorRegister';
 import {
@@ -68,6 +69,11 @@ function ManagerApp({ user }) {
           <Route path="/compliance/criteria/:criterionId" element={<ComplianceCriterionDetail user={user} />} />
           <Route path="/site-checks" element={<SiteChecksScreen />} />
           <Route path="/subcontractors" element={<SubcontractorRegister user={user} />} />
+          <Route path="/onboarding" element={
+            ['SUPER_ADMIN','FD'].includes(user.role)
+              ? <OnboardingScreen user={user} />
+              : <Navigate to="/dashboard" replace />
+          } />
           <Route path="/portal-settings" element={<PortalManagement user={user} />} />
           <Route path="*"          element={<Navigate to="/dashboard" replace />} />
         </Routes>
@@ -203,6 +209,7 @@ function ManagerSidebar({ user, open, onClose }) {
         { to: '/personnel', icon: DocumentTextIcon,          label: 'Personnel Files' },
         { to: '/rates',     icon: ChartBarIcon,              label: 'Pay Rates' },
         { to: '/updates',   icon: DocumentTextIcon,          label: 'Company Updates', badge: commentCount || null },
+        ...(['SUPER_ADMIN','FD'].includes(user.role) ? [{ to: '/onboarding', icon: ClipboardDocumentListIcon, label: 'Onboarding' }] : []),
       ]
     },
     {

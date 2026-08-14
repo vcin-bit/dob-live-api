@@ -553,6 +553,14 @@ export const api = {
     pdfUrl: (id) => `${API_BASE}/api/risk-assessments/${id}/pdf`,
   },
 
+  // Onboarding links (SUPER_ADMIN / FD only)
+  onboarding: {
+    links:      ()       => request('/api/onboarding/links'),
+    createLink: (userId) => request('/api/onboarding/links', { method: 'POST', body: JSON.stringify({ user_id: userId }) }),
+    revokeLink: (id)     => request(`/api/onboarding/links/${id}/revoke`, { method: 'POST' }),
+    getToken:   (id)     => request(`/api/onboarding/links/${id}/token`),
+  },
+
   // Finance (FD / SUPER_ADMIN only)
   finance: {
     summary:  (params = {}) => request(`/api/finance/summary?${new URLSearchParams(params)}`),

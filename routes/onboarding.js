@@ -192,13 +192,13 @@ router.post('/links', authenticate, fdOnly, async (req, res, next) => {
 
 // GET /api/onboarding/links
 // Chase list — all links for the company with derived status.
-// Token is never returned.
+// Token is never returned in the bulk response.
 router.get('/links', authenticate, fdOnly, async (req, res, next) => {
   try {
     const { data, error } = await supabase
       .from('onboarding_links')
       .select(`
-        id, created_at, expires_at, opened_at, last_seen_at,
+        id, user_id, created_at, expires_at, opened_at, last_seen_at,
         completed_at, revoked_at, send_count,
         officer:users!onboarding_links_user_id_fkey(first_name, last_name)
       `)
@@ -208,6 +208,7 @@ router.get('/links', authenticate, fdOnly, async (req, res, next) => {
 
     const rows = (data || []).map(link => ({
       id:           link.id,
+      user_id:      link.user_id,
       officer:      link.officer,
       created_at:   link.created_at,
       expires_at:   link.expires_at,
@@ -241,6 +242,34 @@ router.post('/links/:id/revoke', authenticate, fdOnly, async (req, res, next) =>
     if (error) throw error;
 
     res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
+// GET /api/onboarding/links/:id/token
+// Returns the token and full URL for a single live link, on demand.
+// Only accessible to authenticated SUPER_ADMIN / FD users in the same company.
+// Token is intentionally absent from the bulk list response; this endpoint
+// exists so the UI can copy a link without regenerating it (which would revoke it).
+router.get('/links/:id/token', authenticate, fdOnly, async (req, res, next) => {
+  try {
+    const { data: link, error } = await supabase
+      .from('onboarding_links')
+      .select('id, token, expires_at, revoked_at, completed_at')
+      .eq('id', req.params.id)
+      .eq('company_id', req.user.company_id)
+      .maybeSingle();
+    if (error) throw error;
+    if (!link) return res.status(404).json({ error: 'Link not found' });
+    if (link.revoked_at)   return res.status(410).json({ error: 'Link has been revoked' });
+    if (link.completed_at) return res.status(410).json({ error: 'Link has been completed' });
+    if (new Date(link.expires_at) < new Date()) return res.status(410).json({ error: 'Link has expired' });
+
+    res.json({
+      data: {
+        id:  link.id,
+        url: `${BASE_URL}/${link.token}`,
+      },
+    });
   } catch (err) { next(err); }
 });
 
