@@ -116,11 +116,15 @@ const SENSITIVE = new Set(['ni_number', 'bank_sort_code', 'bank_account_number',
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function getApplicableSteps(isCompany) {
-  return STEPS.filter(s => !s.companyOnly || isCompany === true);
+  return STEPS.filter(s => {
+    if (s.id === 'payment_type') return isCompany === null; // only present until answered
+    if (s.companyOnly) return isCompany === true;
+    return true;
+  });
 }
 
 function isStepDone(step, filledFields, answers, isCompany) {
-  if (step.id === 'payment_type') return isCompany !== null;
+  if (step.id === 'payment_type') return false; // in array only when unanswered
   if (step.companyOnly && isCompany !== true) return true;
   return step.requiredFields.every(
     f => filledFields[f] === true || Boolean(answers[f])
@@ -553,8 +557,16 @@ export function JoinForm() {
     setIsCompany(company);
     // Persist server-side so the question is never re-asked on resume
     await doSave({ invoices_via_company: company, onboarding_step: stepIndex + 1 });
-    advance();
-  }, [doSave, stepIndex, advance]);
+    // Recompute position from scratch — payment_type is removed from the step array
+    // once answered, so indices shift and advance() would land on the wrong step.
+    const newSteps = getApplicableSteps(company);
+    const nextIdx = findResumeIndex(newSteps, filledFields, answers, company);
+    if (nextIdx >= newSteps.length) {
+      setOnReview(true);
+    } else {
+      setStepIndex(nextIdx);
+    }
+  }, [doSave, stepIndex, filledFields, answers]);
 
   const handleEditStep = useCallback((stepId) => {
     const idx = steps.findIndex(s => s.id === stepId);
