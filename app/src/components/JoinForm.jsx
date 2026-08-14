@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
 const API = import.meta.env.VITE_API_URL || 'https://dob-live-api.onrender.com';
-const OFFICE_PHONE = import.meta.env.VITE_OFFICE_PHONE || '0333 000 0000';
+const OFFICE_PHONE = import.meta.env.VITE_OFFICE_PHONE || '0121 751 9038';
 
 // Brand
 const NAVY  = '#14233F';
@@ -400,7 +400,7 @@ export function JoinForm() {
   // Fallback: ?t= query param, kept for manually-created test links.
   const token = (() => {
     const fromPath = window.location.pathname.split('/').filter(Boolean).pop() || null;
-    if (fromPath && fromPath !== 'join.html') return fromPath;
+    if (fromPath && !['join.html', 'join'].includes(fromPath)) return fromPath;
     return new URLSearchParams(window.location.search).get('t');
   })();
 
