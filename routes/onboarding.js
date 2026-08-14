@@ -54,6 +54,7 @@ const OFFICER_HR_WHITELIST = new Set([
   'gdpr_consent',
   'nationality',
   'onboarding_step',
+  'invoices_via_company',
 ]);
 
 // Fields that must be non-null/non-false before the link can be marked complete.
@@ -270,11 +271,17 @@ router.get('/:token', tokenLimiter, async (req, res, next) => {
 
     const fields = {};
     for (const field of OFFICER_HR_WHITELIST) {
+      if (field === 'invoices_via_company') continue; // returned as a value, not a flag
       fields[field] = hr ? (hr[field] !== null && hr[field] !== '' && hr[field] !== false) : false;
     }
 
+    // invoices_via_company is not sensitive — return the actual value so the client
+    // can skip the routing question without re-asking on resume.
+    const invoicesViaCompany = hr?.invoices_via_company ?? null;
+
     res.json({
       first_name: user?.first_name || null,
+      invoices_via_company: invoicesViaCompany,
       fields,
     });
   } catch (err) { next(err); }

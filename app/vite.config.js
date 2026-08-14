@@ -24,6 +24,7 @@ export default defineConfig({
         main: resolve(__dirname, 'index.html'),
         hr: resolve(__dirname, 'hr.html'),
         inspect: resolve(__dirname, 'inspect.html'),
+        join: resolve(__dirname, 'join.html'),
       },
     },
   }
