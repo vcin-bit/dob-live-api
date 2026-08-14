@@ -396,7 +396,13 @@ function ReviewSection({ title, rows, onEdit }) {
 // ── Main component ─────────────────────────────────────────────────────────
 
 export function JoinForm() {
-  const token = new URLSearchParams(window.location.search).get('t');
+  // Primary: token is the last non-empty path segment of /onboarding/<token>
+  // Fallback: ?t= query param, kept for manually-created test links.
+  const token = (() => {
+    const fromPath = window.location.pathname.split('/').filter(Boolean).pop() || null;
+    if (fromPath && fromPath !== 'join.html') return fromPath;
+    return new URLSearchParams(window.location.search).get('t');
+  })();
 
   // App-level state
   const [appState, setAppState] = useState('loading'); // loading | error | form | done
@@ -684,7 +690,7 @@ function ErrorScreen() {
           This link is not working
         </h1>
         <p style={{ fontSize: 16, color: MUTED, lineHeight: 1.6, marginBottom: 40, maxWidth: 340, margin: '0 auto 40px' }}>
-          It may have expired or already been used. This is not your fault — please ring us and we will sort it.
+          We cannot open this link right now. Please ring the office and we will get it sorted.
         </p>
         <a
           href={`tel:${OFFICE_PHONE.replace(/\s/g, '')}`}
