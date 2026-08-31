@@ -14,6 +14,7 @@ function officerColour(id) {
 }
 
 function isoDate(d) { return d.toLocaleDateString('en-CA', { timeZone: 'Europe/London' }); }
+function fmtH(h) { return h % 1 === 0 ? `${h}h` : `${h.toFixed(1)}h`; }
 function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
 function localISOString(dateStr, timeStr) {
   // Always use UK timezone (GMT/BST)
@@ -285,7 +286,7 @@ export default function RosterCalendar({ siteId, user }) {
                       cursor: bulkMode || isManager ? 'pointer' : 'default', borderLeft:`4px solid ${hasBh ? '#dc2626' : officerColour(s.officer_id)}`}}>
                     {bulkMode && <input type="checkbox" checked={sel} readOnly style={{width:'1rem',height:'1rem',accentColor:'var(--blue)',flexShrink:0}} />}
                     <div style={{flex:1}}>
-                      {hasBh && <div style={{fontSize:'0.6875rem',color:'#dc2626',fontWeight:700,marginBottom:'2px'}}>{bhH >= shiftHours(s) ? 'BANK HOLIDAY' : `BANK HOLIDAY (${bhH.toFixed(0)}h of ${shiftHours(s).toFixed(0)}h)`}</div>}
+                      {hasBh && <div style={{fontSize:'0.6875rem',color:'#dc2626',fontWeight:700,marginBottom:'2px'}}>{bhH >= shiftHours(s) ? 'BANK HOLIDAY' : `BANK HOLIDAY (${fmtH(bhH)} of ${fmtH(shiftHours(s))})`}</div>}
                       <div style={{fontWeight:600,fontSize:'0.9375rem'}}>{s.officer ? `${s.officer.first_name} ${s.officer.last_name}` : 'Unassigned'}</div>
                       {!siteId && <div style={{fontSize:'0.8125rem',color:'var(--text-2)'}}>{s.site?.name || '—'}</div>}
                       <div style={{fontSize:'0.8125rem',color:'var(--text-3)',marginTop:'2px'}}>{shiftTimeLabel(s)}</div>
@@ -521,7 +522,7 @@ function RotaGrid({ days, view, shiftsForDay, isToday, isManager, onShiftClick, 
                             <input type="checkbox" checked={sel} readOnly
                               style={{position:'absolute',top:2,left:2,width:'0.75rem',height:'0.75rem',accentColor:'var(--blue)'}} />
                           )}
-                          {hasBh && <div style={{fontSize: isCompact ? '0.5rem' : '0.5625rem',color:'#dc2626',fontWeight:700,marginLeft:bulkMode?'1rem':'0'}}>{bhH >= shiftHours(s) ? 'BANK HOLIDAY' : `BH ${bhH.toFixed(0)}h`}</div>}
+                          {hasBh && <div style={{fontSize: isCompact ? '0.5rem' : '0.5625rem',color:'#dc2626',fontWeight:700,marginLeft:bulkMode?'1rem':'0'}}>{bhH >= shiftHours(s) ? 'BANK HOLIDAY' : `BH ${fmtH(bhH)}`}</div>}
                           <div style={{display:'flex',alignItems:'center',gap:'3px',marginLeft:bulkMode?'1rem':'0'}}>
                             {s.status === 'ACTIVE' && <span style={{width:5,height:5,borderRadius:'50%',background:'#4ade80',flexShrink:0,animation:'pulse 2s infinite'}} />}
                             <span style={{fontWeight:700,fontSize: isCompact ? '0.625rem' : '0.75rem', color:'var(--text)', overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis'}}>
@@ -610,14 +611,14 @@ function PaySummary({ shifts, title }) {
             <tr key={name}>
               <td style={{...td,fontWeight:600,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',maxWidth:0}}>{name}</td>
               <td style={{...td,textAlign:'right',color:'var(--text-3)'}}>{o.shifts}</td>
-              <td style={{...td,textAlign:'right'}}>{o.hours.toFixed(0)}h{o.bhHours > 0 && <span style={{color:'#dc2626'}}> + {o.bhHours.toFixed(0)}h BH</span>}</td>
+              <td style={{...td,textAlign:'right'}}>{fmtH(o.hours)}{o.bhHours > 0 && <span style={{color:'#dc2626'}}> + {fmtH(o.bhHours)} BH</span>}</td>
               <td style={{...td,textAlign:'right',fontWeight:700,color:'#f59e0b'}}>{f(o.pay)}</td>
             </tr>
           ))}
           <tr style={{borderTop:'1.5px solid var(--border)'}}>
             <td style={{...td,fontWeight:700,color:'var(--text)',paddingTop:'6px'}}>Total</td>
             <td style={{...td,textAlign:'right',color:'var(--text-3)',paddingTop:'6px'}}>{shifts.length}</td>
-            <td style={{...td,textAlign:'right',fontWeight:700,paddingTop:'6px'}}>{totH.toFixed(0)}h{totBhH > 0 && <span style={{color:'#dc2626'}}> + {totBhH.toFixed(0)}h BH</span>}</td>
+            <td style={{...td,textAlign:'right',fontWeight:700,paddingTop:'6px'}}>{fmtH(totH)}{totBhH > 0 && <span style={{color:'#dc2626'}}> + {fmtH(totBhH)} BH</span>}</td>
             <td style={{...td,textAlign:'right',fontWeight:700,color:'#10b981',paddingTop:'6px'}}>{f(totPay)}</td>
           </tr>
         </tbody>
