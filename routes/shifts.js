@@ -2,6 +2,7 @@ const router = require('express').Router();
 const supabase = require('../lib/supabase');
 const { authenticate, requireRole } = require('../middleware/auth');
 const { stripFinancialFields } = require('../lib/redact');
+const { resolvePayRate } = require('../lib/resolvePayRate');
 
 // GET /api/shifts
 router.get('/', authenticate, async (req, res, next) => {
@@ -91,14 +92,44 @@ router.get('/:id', authenticate, async (req, res, next) => {
 // POST /api/shifts
 router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
   try {
-    const { site_id, officer_id, start_time, end_time, pay_rate, charge_rate, notes, shift_type, bh_hours, bh_pay_rate, bh_charge_rate } = req.body;
+    // pay_rate from the client is ignored — always resolved server-side from officer_rates.
+    // pattern_id is optional: if provided, its pay_rate is used as a fallback.
+    const { site_id, officer_id, start_time, end_time, charge_rate, notes, shift_type, bh_hours, bh_pay_rate, bh_charge_rate, pattern_id } = req.body;
+
+    // Resolve pay_rate from officer_rates. Fetch pattern rate as fallback if pattern_id given.
+    let patternPayRate = null;
+    if (pattern_id) {
+      const { data: pat } = await supabase.from('shift_patterns').select('pay_rate').eq('id', pattern_id).eq('company_id', req.user.company_id).single();
+      patternPayRate = pat?.pay_rate ?? null;
+    }
+    const { rate: resolvedPayRate, warning } = await resolvePayRate({
+      companyId: req.user.company_id,
+      officerId: officer_id,
+      siteId: site_id,
+      shiftStart: start_time,
+      patternPayRate,
+    });
+
     const { data, error } = await supabase
       .from('shifts')
-      .insert({ company_id: req.user.company_id, site_id, officer_id, start_time, end_time, pay_rate, charge_rate, notes, shift_type: shift_type || 'regular', bh_hours: bh_hours || 0, bh_pay_rate: bh_pay_rate || null, bh_charge_rate: bh_charge_rate || null })
+      .insert({
+        company_id: req.user.company_id,
+        site_id, officer_id, start_time, end_time,
+        pay_rate: resolvedPayRate,
+        charge_rate: charge_rate || null,
+        notes,
+        shift_type: shift_type || 'regular',
+        bh_hours: bh_hours || 0,
+        bh_pay_rate: bh_pay_rate || null,
+        bh_charge_rate: bh_charge_rate || null,
+      })
       .select()
       .single();
     if (error) throw error;
-    res.status(201).json({ data });
+
+    const response = { data };
+    if (warning) response.warning = warning;
+    res.status(201).json(response);
   } catch (err) { next(err); }
 });
 
@@ -171,15 +202,24 @@ router.post('/start', authenticate, async (req, res, next) => {
       .single();
     if (existing) return res.status(400).json({ error: 'You already have an active shift' });
 
+    const startTime = new Date().toISOString();
+    const { rate: resolvedPayRate } = await resolvePayRate({
+      companyId: req.user.company_id,
+      officerId: req.user.id,
+      siteId: site_id,
+      shiftStart: startTime,
+    });
+
     const { data, error } = await supabase
       .from('shifts')
       .insert({
         company_id: req.user.company_id,
         site_id,
         officer_id: req.user.id,
-        start_time: new Date().toISOString(),
+        start_time: startTime,
+        pay_rate: resolvedPayRate,
         status: 'ACTIVE',
-        checked_in_at: new Date().toISOString(),
+        checked_in_at: startTime,
         check_in_lat: lat || null,
         check_in_lng: lng || null,
         end_time: end_time || null,
