@@ -1332,10 +1332,11 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
 
   const [invoiceSending, setInvoiceSending] = useState(false);
   const [invoiceSent, setInvoiceSent] = useState(false);
+  const [serverTotals, setServerTotals] = useState(null);
+  const [serverShifts, setServerShifts] = useState(null);
 
   async function sendInvoice() {
     setInvoiceSending(true);
-    console.log('[Invoice] Sending with', selectedShifts.length, 'shifts, selectedIds:', [...selectedIds]);
     try {
       const [y, m] = selectedMonth.split('-').map(Number);
       const lastDay = new Date(y, m, 0).getDate();
@@ -1344,23 +1345,6 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
         shift_ids: selectedShifts.map(s => s.id),
         period_start: `${selectedMonth}-01`,
         period_end: `${selectedMonth}-${String(lastDay).padStart(2, '0')}`,
-        shifts: selectedShifts.map(s => {
-          const h = getHours(s);
-          const rate = parseFloat(s.pay_rate) || 0;
-          const bhH = parseFloat(s.bh_hours) || (s.shift_type === 'bank_holiday' ? h : 0);
-          const bhRate = parseFloat(s.bh_pay_rate) || rate;
-          return {
-            id: s.id,
-            date: new Date(s.start_time).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}),
-            site: s.site?.name || '—',
-            times: `${new Date(s.checked_in_at||s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}–${new Date(s.checked_out_at||s.end_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}`,
-            hours: h.toFixed(2),
-            rate: rate.toFixed(2),
-            amount: ((h * rate) + (bhH * bhRate)).toFixed(2),
-            bh_hours: bhH > 0 ? bhH.toFixed(2) : null,
-            bh_amount: bhH > 0 ? (bhH * bhRate).toFixed(2) : null,
-          };
-        }),
         contractor: {
           name: hr?.employment_status === 'ltd_company' ? (form.company_name || `${dbUser?.first_name} ${dbUser?.last_name}`) : `${dbUser?.first_name} ${dbUser?.last_name}`,
           address: hr?.employment_status === 'ltd_company' ? form.company_address : [hr?.address_line_1, hr?.city, hr?.postcode].filter(Boolean).join(', '),
@@ -1376,16 +1360,12 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
           bank_account_number: form.bank_account_number || hr?.bank_account_number || null,
           bank_account_holder: form.bank_account_holder || hr?.bank_account_holder || null,
         },
-        totals: {
-          hours: totalHours.toFixed(2),
-          bh_hours: totalBhHours > 0 ? totalBhHours.toFixed(2) : null,
-          subtotal: totalAmount.toFixed(2),
-          vat: (hr?.employment_status === 'ltd_company' && form.company_vat_number) ? (totalAmount * 0.2).toFixed(2) : null,
-          total: (hr?.employment_status === 'ltd_company' && form.company_vat_number) ? (totalAmount * 1.2).toFixed(2) : totalAmount.toFixed(2),
-        },
+        totals: { subtotal: totalAmount.toFixed(2) }, // hint for server reconciliation log only
       };
       const res = await api.hr.sendInvoice(invoiceData);
       if (res.invoiceRef) setInvoiceRef(res.invoiceRef);
+      if (res.totals) setServerTotals(res.totals);
+      if (res.shifts) setServerShifts(res.shifts);
       if (res.emailSent) setInvoiceSent(true);
       else alert('Invoice generated but email could not be sent. Please use Print to save as PDF.');
     } catch (err) { alert('Failed to send invoice: ' + err.message); }
@@ -1395,6 +1375,33 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
   if (showInvoice) {
     const today = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'long', year:'numeric' });
     const ref = invoiceRef || 'Pending...';
+
+    // After the invoice is sent the server returns authoritative figures derived from
+    // shift_pay_lines. Use those; fall back to client-computed preview before send.
+    const displayShifts = serverShifts || selectedShifts.map(s => {
+      const h = getHours(s);
+      const rate = parseFloat(s.pay_rate) || 0;
+      const bhH = parseFloat(s.bh_hours) || (s.shift_type === 'bank_holiday' ? h : 0);
+      const bhRate = parseFloat(s.bh_pay_rate) || rate;
+      return {
+        id: s.id,
+        date: new Date(s.start_time).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}),
+        site: s.site?.name || '—',
+        times: `${new Date(s.checked_in_at||s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}–${new Date(s.checked_out_at||s.end_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}`,
+        hours: h.toFixed(2),
+        rate: rate.toFixed(2),
+        amount: (h * rate).toFixed(2),
+        bh_hours: bhH > 0 ? bhH.toFixed(2) : null,
+        bh_amount: bhH > 0 ? (bhH * bhRate).toFixed(2) : null,
+      };
+    });
+    const displayTotals = serverTotals || {
+      hours: totalHours.toFixed(2),
+      bh_hours: totalBhHours > 0 ? totalBhHours.toFixed(2) : null,
+      subtotal: totalAmount.toFixed(2),
+      vat: (hr?.employment_status === 'ltd_company' && form.company_vat_number) ? (totalAmount * 0.2).toFixed(2) : null,
+      total: (hr?.employment_status === 'ltd_company' && form.company_vat_number) ? (totalAmount * 1.2).toFixed(2) : totalAmount.toFixed(2),
+    };
 
     return (
       <>
@@ -1406,7 +1413,7 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
         )}
 
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'0.5rem',marginBottom:'1rem',flexWrap:'wrap'}}>
-          <button onClick={() => { setShowInvoice(false); setInvoiceSent(false); }} style={{padding:'0.5rem 0.75rem',background:'#fff',border:'1px solid #d1d5db',borderRadius:'6px',fontSize:'0.8125rem',fontWeight:600,color:'#374151',cursor:'pointer'}}>← Back to Hours</button>
+          <button onClick={() => { setShowInvoice(false); setInvoiceSent(false); setServerTotals(null); setServerShifts(null); }} style={{padding:'0.5rem 0.75rem',background:'#fff',border:'1px solid #d1d5db',borderRadius:'6px',fontSize:'0.8125rem',fontWeight:600,color:'#374151',cursor:'pointer'}}>← Back to Hours</button>
           <div style={{display:'flex',gap:'0.5rem'}}>
             <button onClick={() => window.print()} style={{padding:'0.5rem 0.75rem',background:'#fff',border:'1px solid #d1d5db',borderRadius:'6px',fontSize:'0.8125rem',fontWeight:600,color:'#374151',cursor:'pointer'}}>Print / PDF</button>
             {invoiceSent ? (
@@ -1480,48 +1487,42 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
               </tr>
             </thead>
             <tbody>
-              {selectedShifts.map(s => {
-                const hrs = getHours(s);
-                const rate = parseFloat(s.pay_rate) || 0;
-                const bhH = parseFloat(s.bh_hours) || (s.shift_type === 'bank_holiday' ? hrs : 0);
-                const bhRate = parseFloat(s.bh_pay_rate) || rate;
-                return (
-                  <React.Fragment key={s.id}>
-                    <tr style={{borderBottom: bhH > 0 ? 'none' : '1px solid #f1f5f9'}}>
-                      <td style={{padding:'0.5rem 0'}}>{new Date(s.start_time).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}</td>
-                      <td style={{padding:'0.5rem 0'}}>{s.site?.name || '—'}</td>
-                      <td style={{padding:'0.5rem 0',textAlign:'center',fontSize:'0.8125rem'}}>{new Date(s.checked_in_at||s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}–{new Date(s.checked_out_at||s.end_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}</td>
-                      <td style={{padding:'0.5rem 0',textAlign:'right'}}>{hrs.toFixed(2)}</td>
-                      <td style={{padding:'0.5rem 0',textAlign:'right'}}>£{rate.toFixed(2)}</td>
-                      <td style={{padding:'0.5rem 0',textAlign:'right',fontWeight:600}}>£{(hrs * rate).toFixed(2)}</td>
+              {displayShifts.map(s => (
+                <React.Fragment key={s.id}>
+                  <tr style={{borderBottom: s.bh_hours ? 'none' : '1px solid #f1f5f9'}}>
+                    <td style={{padding:'0.5rem 0'}}>{s.date}</td>
+                    <td style={{padding:'0.5rem 0'}}>{s.site}</td>
+                    <td style={{padding:'0.5rem 0',textAlign:'center',fontSize:'0.8125rem'}}>{s.times}</td>
+                    <td style={{padding:'0.5rem 0',textAlign:'right'}}>{s.hours}</td>
+                    <td style={{padding:'0.5rem 0',textAlign:'right'}}>£{s.rate}</td>
+                    <td style={{padding:'0.5rem 0',textAlign:'right',fontWeight:600}}>£{s.amount}</td>
+                  </tr>
+                  {s.bh_hours && (
+                    <tr style={{borderBottom:'1px solid #f1f5f9',color:'#dc2626'}}>
+                      <td style={{padding:'0.25rem 0',fontSize:'0.75rem'}}></td>
+                      <td colSpan={2} style={{padding:'0.25rem 0',fontSize:'0.75rem',fontWeight:600}}>Bank Holiday Premium</td>
+                      <td style={{padding:'0.25rem 0',textAlign:'right',fontSize:'0.75rem'}}>{s.bh_hours}</td>
+                      <td style={{padding:'0.25rem 0',textAlign:'right',fontSize:'0.75rem'}}>£{s.rate}</td>
+                      <td style={{padding:'0.25rem 0',textAlign:'right',fontWeight:600,fontSize:'0.75rem'}}>£{s.bh_amount}</td>
                     </tr>
-                    {bhH > 0 && (
-                      <tr style={{borderBottom:'1px solid #f1f5f9',color:'#dc2626'}}>
-                        <td style={{padding:'0.25rem 0',fontSize:'0.75rem'}}></td>
-                        <td colSpan={2} style={{padding:'0.25rem 0',fontSize:'0.75rem',fontWeight:600}}>Bank Holiday Premium</td>
-                        <td style={{padding:'0.25rem 0',textAlign:'right',fontSize:'0.75rem'}}>{bhH.toFixed(2)}</td>
-                        <td style={{padding:'0.25rem 0',textAlign:'right',fontSize:'0.75rem'}}>£{bhRate.toFixed(2)}</td>
-                        <td style={{padding:'0.25rem 0',textAlign:'right',fontWeight:600,fontSize:'0.75rem'}}>£{(bhH * bhRate).toFixed(2)}</td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                );
-              })}
+                  )}
+                </React.Fragment>
+              ))}
             </tbody>
           </table>
 
           {/* Totals */}
           <div style={{borderTop:'2px solid #0b1a3e',paddingTop:'0.75rem',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <div>
-              <div style={{fontSize:'0.8125rem',color:'#6b7280'}}>Total Hours: {totalHours.toFixed(2)}{totalBhHours > 0 && ` + ${totalBhHours.toFixed(2)} BH`}</div>
+              <div style={{fontSize:'0.8125rem',color:'#6b7280'}}>Total Hours: {displayTotals.hours}{displayTotals.bh_hours && ` + ${displayTotals.bh_hours} BH`}</div>
             </div>
             <div style={{textAlign:'right'}}>
               <div style={{fontSize:'0.75rem',color:'#6b7280'}}>Subtotal</div>
-              <div style={{fontSize:'1.5rem',fontWeight:800,color:'#0b1a3e'}}>£{totalAmount.toFixed(2)}</div>
-              {hr?.employment_status === 'ltd_company' && form.company_vat_number && (
+              <div style={{fontSize:'1.5rem',fontWeight:800,color:'#0b1a3e'}}>£{displayTotals.subtotal}</div>
+              {displayTotals.vat && (
                 <>
-                  <div style={{fontSize:'0.75rem',color:'#6b7280',marginTop:'0.25rem'}}>VAT (20%): £{(totalAmount * 0.2).toFixed(2)}</div>
-                  <div style={{fontSize:'1.125rem',fontWeight:700,color:'#0b1a3e'}}>Total Inc. VAT: £{(totalAmount * 1.2).toFixed(2)}</div>
+                  <div style={{fontSize:'0.75rem',color:'#6b7280',marginTop:'0.25rem'}}>VAT (20%): £{displayTotals.vat}</div>
+                  <div style={{fontSize:'1.125rem',fontWeight:700,color:'#0b1a3e'}}>Total Inc. VAT: £{displayTotals.total}</div>
                 </>
               )}
             </div>

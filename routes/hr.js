@@ -182,32 +182,23 @@ router.delete('/documents/:docType', authenticate, async (req, res, next) => {
 router.post('/invoice', authenticate, async (req, res, next) => {
   try {
     const PDFDocument = require('pdfkit');
-    // invoiceRef is ignored from the client — allocated server-side for real invoices.
-    // is_wage_query: true takes the legacy path (email only, no DB record, WQ- prefix).
-    const { is_wage_query, month, shifts, contractor, totals, shift_ids, period_start, period_end } = req.body;
-    if (!shifts?.length) return res.status(400).json({ error: 'No shifts provided' });
-
-    // Reconciliation guard: server-computed sum of shift amounts must match client-supplied subtotal
-    const serverSubtotal = shifts.reduce((sum, s) => sum + (parseFloat(s.amount) || 0) + (parseFloat(s.bh_amount) || 0), 0);
-    const clientSubtotal = parseFloat(totals?.subtotal) || 0;
-    if (Math.abs(serverSubtotal - clientSubtotal) > 0.01) {
-      console.error(`[Invoice] Reconciliation mismatch: server=£${serverSubtotal.toFixed(2)} client=£${clientSubtotal.toFixed(2)}`);
-      return res.status(400).json({ error: `Invoice total mismatch: server computed £${serverSubtotal.toFixed(2)} but client submitted £${clientSubtotal.toFixed(2)}. Invoice not generated.` });
-    }
+    const { is_wage_query, month, shifts, contractor, totals: clientTotals, shift_ids, period_start, period_end } = req.body;
 
     const officer = req.user;
     const today = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'long', year:'numeric' });
 
-    // Fetch officer_hr once: used for cc email, contractor snapshot, and employment status
+    // Fetch officer_hr once: used for cc email, contractor snapshot, VAT status, and employment status
     const { data: hrRec } = await supabase.from('officer_hr')
       .select('personal_email, employment_status, company_name, company_vat_number, utr_number')
       .eq('user_id', officer.id).maybeSingle();
     const ccEmail = hrRec?.personal_email || officer.email || null;
 
-    // Wage query: email-only path, no invoice number, no DB record
+    // ── Wage query: email-only path, no invoice number, no DB record ─────────
+    // Uses client-supplied display data (officer is reporting a dispute, not submitting billing).
     if (is_wage_query) {
+      if (!shifts?.length) return res.status(400).json({ error: 'No shifts provided' });
       const wqRef = `WQ-${Date.now().toString(36).toUpperCase().slice(-6)}`;
-      const pdfBuffer = await buildPdf(PDFDocument, wqRef, month, shifts, contractor, totals, officer, today);
+      const pdfBuffer = await buildPdf(PDFDocument, wqRef, month, shifts, contractor, clientTotals, officer, today);
       const fromEmail = process.env.RS_INSPECTION_FROM_EMAIL || 'reports@risksecured.co.uk';
       const toEmail = 'accounts@risksecured.co.uk';
       const emailSent = await sendEmail({
@@ -215,57 +206,110 @@ router.post('/invoice', authenticate, async (req, res, next) => {
         ...(ccEmail ? { cc: ccEmail } : {}),
         from: { email: fromEmail, name: 'DOB Live' },
         subject: `Wage Query ${wqRef} — ${contractor.name || `${officer.first_name} ${officer.last_name}`} — ${month}`,
-        html: buildEmailHtml(wqRef, contractor, officer, month, totals),
+        html: buildEmailHtml(wqRef, contractor, officer, month, clientTotals),
         attachments: [{ content: pdfBuffer.toString('base64'), filename: `WageQuery-${wqRef}.pdf`, type: 'application/pdf', disposition: 'attachment' }],
       });
       return res.json({ success: true, emailSent });
     }
 
-    // --- Self-bill invoice path ---
+    // ── Self-bill invoice path ────────────────────────────────────────────────
+    // The client supplies shift_ids and the period only. All hours and amounts
+    // are derived server-side from public.shift_pay_lines.
 
-    // 1. Allocate invoice number server-side (atomic, no client input accepted)
+    if (!shift_ids?.length) return res.status(400).json({ error: 'shift_ids required' });
+
+    // 1. Ownership validation — reuse the same checks that existed before.
+    //    Reject the whole request if any id is absent, wrong company, or wrong officer.
+    const { data: dbShifts, error: shiftsErr } = await supabase
+      .from('shifts')
+      .select('id, officer_id, site:sites(name)')
+      .in('id', shift_ids)
+      .eq('company_id', officer.company_id);
+    if (shiftsErr) throw shiftsErr;
+
+    const foundIds = new Set(dbShifts.map(s => s.id));
+    const missing = shift_ids.filter(id => !foundIds.has(id));
+    if (missing.length) {
+      console.error('[Invoice] shift_ids not found or not in company:', missing);
+      return res.status(400).json({ error: `Shift(s) not found or not accessible: ${missing.join(', ')}` });
+    }
+    const wrongOfficer = dbShifts.filter(s => s.officer_id !== officer.id);
+    if (wrongOfficer.length) {
+      console.error('[Invoice] shift_ids belong to another officer:', wrongOfficer.map(s => s.id));
+      return res.status(400).json({ error: `Shift(s) do not belong to this officer: ${wrongOfficer.map(s => s.id).join(', ')}` });
+    }
+    const siteMap = new Map(dbShifts.map(s => [s.id, s.site?.name ?? '—']));
+
+    // 2. Fetch authoritative pay figures from shift_pay_lines.
+    //    payable_hours = COALESCE(adjusted_hours, rostered_hours) — pay follows the roster.
+    const { data: payLines, error: payErr } = await supabase
+      .from('shift_pay_lines')
+      .select('id, start_time, end_time, payable_hours, pay_rate, bh_hours, bh_pay_rate, pay_amount')
+      .in('id', shift_ids)
+      .eq('officer_id', officer.id)
+      .eq('company_id', officer.company_id)
+      .order('start_time', { ascending: true });
+    if (payErr) throw payErr;
+
+    // 3. Build server-side line items for the PDF.
+    const serverLineItems = payLines.map(p => {
+      const payH   = parseFloat(p.payable_hours) || 0;
+      const rate   = parseFloat(p.pay_rate)      || 0;
+      const bhH    = parseFloat(p.bh_hours)      || 0;
+      const bhRate = parseFloat(p.bh_pay_rate)   || rate;
+      const amount = parseFloat(p.pay_amount)    || 0;
+      return {
+        id:        p.id,
+        date:      new Date(p.start_time).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }),
+        site:      siteMap.get(p.id) ?? '—',
+        times:     `${new Date(p.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}–${new Date(p.end_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}`,
+        hours:     payH.toFixed(2),
+        rate:      rate.toFixed(2),
+        amount:    amount.toFixed(2),
+        bh_hours:  bhH > 0 ? bhH.toFixed(2) : null,
+        bh_amount: bhH > 0 ? (bhH * bhRate).toFixed(2) : null,
+      };
+    });
+
+    // 4. Compute server totals.
+    let serverSubtotal = 0, serverTotalHours = 0, serverTotalBhHours = 0;
+    for (const p of payLines) {
+      serverSubtotal     += parseFloat(p.pay_amount)    || 0;
+      serverTotalHours   += parseFloat(p.payable_hours) || 0;
+      serverTotalBhHours += parseFloat(p.bh_hours)      || 0;
+    }
+
+    // 5. Refuse to generate a zero or negative invoice.
+    if (serverSubtotal <= 0) {
+      return res.status(400).json({ error: 'No payable hours found for the selected shifts. Check that the shifts have rostered times and a pay rate set.' });
+    }
+
+    // 6. Reconciliation log. If the client sent a subtotal, log any discrepancy over a
+    //    penny. Do not reject — the client legitimately differs until the frontend is
+    //    updated to display server figures.
+    const clientSubtotal = parseFloat(clientTotals?.subtotal) || 0;
+    if (clientSubtotal > 0 && Math.abs(serverSubtotal - clientSubtotal) > 0.01) {
+      console.warn(`[Invoice] Reconciliation discrepancy: server=£${serverSubtotal.toFixed(2)} client=£${clientSubtotal.toFixed(2)} officer=${officer.id}`);
+    }
+
+    const isVat     = hrRec?.employment_status === 'ltd_company' && !!hrRec?.company_vat_number;
+    const vatAmount = isVat ? serverSubtotal * 0.2 : null;
+    const serverTotals = {
+      hours:    serverTotalHours.toFixed(2),
+      bh_hours: serverTotalBhHours > 0 ? serverTotalBhHours.toFixed(2) : null,
+      subtotal: serverSubtotal.toFixed(2),
+      vat:      vatAmount != null ? vatAmount.toFixed(2) : null,
+      total:    (isVat ? serverSubtotal * 1.2 : serverSubtotal).toFixed(2),
+    };
+
+    // 7. Allocate invoice number server-side (atomic, no client input accepted).
     const { data: invoiceRef, error: numErr } = await supabase.rpc('next_invoice_number', { p_company_id: officer.company_id });
     if (numErr) throw numErr;
 
-    // 1b. Resolve site names server-side from shift_ids.
-    //     shifts and shift_ids are parallel arrays built by the client from the same data.
-    let resolvedShifts = shifts;
-    if (shift_ids?.length) {
-      const { data: dbShifts, error: shiftsErr } = await supabase
-        .from('shifts')
-        .select('id, officer_id, site:sites(name)')
-        .in('id', shift_ids)
-        .eq('company_id', officer.company_id);
-      if (shiftsErr) throw shiftsErr;
+    // 8. Generate PDF using server-computed figures.
+    const pdfBuffer = await buildPdf(PDFDocument, invoiceRef, month, serverLineItems, contractor, serverTotals, officer, today);
 
-      const foundIds = new Set(dbShifts.map(s => s.id));
-      const missing = shift_ids.filter(id => !foundIds.has(id));
-      if (missing.length) {
-        console.error('[Invoice] shift_ids not found or not in company:', missing);
-        return res.status(400).json({ error: `Shift(s) not found or not accessible: ${missing.join(', ')}` });
-      }
-
-      const wrongOfficer = dbShifts.filter(s => s.officer_id !== officer.id);
-      if (wrongOfficer.length) {
-        console.error('[Invoice] shift_ids belong to another officer:', wrongOfficer.map(s => s.id));
-        return res.status(400).json({ error: `Shift(s) do not belong to this officer: ${wrongOfficer.map(s => s.id).join(', ')}` });
-      }
-
-      const siteMap = new Map(dbShifts.map(s => [s.id, s.site?.name ?? null]));
-      resolvedShifts = shifts.map((s, i) => {
-        if (s.id) return { ...s, site: siteMap.get(s.id) ?? s.site };
-        // Line item has no id — client not yet rebuilt. Fall back to parallel-array lookup.
-        console.warn(`[Invoice] ${invoiceRef}: shift line item at index ${i} has no id — using shift_ids[i] correlation`);
-        return { ...s, site: siteMap.get(shift_ids[i]) ?? s.site };
-      });
-    } else {
-      console.warn(`[Invoice] ${invoiceRef}: shift_ids not provided — using client-supplied site names`);
-    }
-
-    // 2. Generate PDF
-    const pdfBuffer = await buildPdf(PDFDocument, invoiceRef, month, resolvedShifts, contractor, totals, officer, today);
-
-    // 3. Upload PDF to hr-documents storage (log and continue on failure — do not block invoicing)
+    // 9. Upload PDF to hr-documents storage (log and continue on failure — do not block invoicing).
     let pdfPath = null;
     try {
       const storagePath = `${officer.company_id}/${officer.id}/invoices/${invoiceRef}.pdf`;
@@ -281,8 +325,7 @@ router.post('/invoice', authenticate, async (req, res, next) => {
       console.error('[Invoice] PDF storage upload exception:', uploadEx.message);
     }
 
-    // 4. Snapshot contractor details from officer_hr and insert DB record BEFORE emailing.
-    //    If this insert fails we abort — an unrecorded invoice must not be sent.
+    // 10. Insert DB record BEFORE emailing — an unrecorded invoice must not be sent.
     const contractorName = hrRec?.employment_status === 'ltd_company'
       ? (hrRec.company_name || `${officer.first_name} ${officer.last_name}`)
       : `${officer.first_name} ${officer.last_name}`;
@@ -295,14 +338,14 @@ router.post('/invoice', authenticate, async (req, res, next) => {
       invoice_number:          invoiceRef,
       period_start:            period_start || null,
       period_end:              period_end   || null,
-      total_hours:             parseFloat(totals.hours) || 0,
-      total_amount:            parseFloat(totals.vat ? totals.total : totals.subtotal) || 0,
-      vat_amount:              totals.vat ? parseFloat(totals.vat) : null,
+      total_hours:             serverTotalHours,
+      total_amount:            isVat ? serverSubtotal * 1.2 : serverSubtotal,
+      vat_amount:              vatAmount,
       contractor_name:         contractorName,
-      contractor_company_name: hrRec?.company_name        || null,
-      contractor_vat_number:   hrRec?.company_vat_number  || null,
-      contractor_utr:          hrRec?.utr_number           || null,
-      shift_ids:               shift_ids || [],
+      contractor_company_name: hrRec?.company_name       || null,
+      contractor_vat_number:   hrRec?.company_vat_number || null,
+      contractor_utr:          hrRec?.utr_number         || null,
+      shift_ids:               shift_ids,
       pdf_path:                pdfPath,
       sent_to:                 toEmail,
       sent_cc:                 ccEmail || null,
@@ -310,18 +353,18 @@ router.post('/invoice', authenticate, async (req, res, next) => {
     });
     if (insertErr) throw insertErr;
 
-    // 5. Send email (record already exists — safe to proceed)
+    // 11. Send email (record already exists — safe to proceed).
     const emailSent = await sendEmail({
       to: toEmail,
       ...(ccEmail ? { cc: ccEmail } : {}),
       from: { email: fromEmail, name: 'DOB Live' },
       subject: `Invoice ${invoiceRef} — ${contractor.name || `${officer.first_name} ${officer.last_name}`} — ${month}`,
-      html: buildEmailHtml(invoiceRef, contractor, officer, month, totals),
+      html: buildEmailHtml(invoiceRef, contractor, officer, month, serverTotals),
       attachments: [{ content: pdfBuffer.toString('base64'), filename: `Invoice-${invoiceRef}.pdf`, type: 'application/pdf', disposition: 'attachment' }],
     });
     if (emailSent) console.log('[Invoice] Email sent to', toEmail, ccEmail ? `cc: ${ccEmail}` : '');
 
-    res.json({ success: true, emailSent, invoiceRef });
+    res.json({ success: true, emailSent, invoiceRef, totals: serverTotals, shifts: serverLineItems });
   } catch (err) { next(err); }
 });
 
