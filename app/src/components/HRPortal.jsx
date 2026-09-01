@@ -1387,7 +1387,7 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
         id: s.id,
         date: new Date(s.start_time).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}),
         site: s.site?.name || '—',
-        times: `${new Date(s.checked_in_at||s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}–${new Date(s.checked_out_at||s.end_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}`,
+        times: `${new Date(s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}–${new Date(s.end_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}`,
         hours: h.toFixed(2),
         rate: rate.toFixed(2),
         amount: (h * rate).toFixed(2),
@@ -1627,7 +1627,7 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
                           </div>
                         </div>
                         <div style={{fontSize:'0.8125rem',color:'#374151'}}>
-                          {new Date(s.checked_in_at || s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})} – {new Date(s.checked_out_at || s.end_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}
+                          {new Date(s.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})} – {new Date(s.end_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'})}
                           <span style={{marginLeft:'0.5rem',color:'#9ca3af'}}>@ £{rate.toFixed(2)}/hr</span>
                         </div>
 
