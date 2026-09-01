@@ -10,7 +10,7 @@ router.get('/', authenticate, async (req, res, next) => {
     if (site_id) q = q.eq('site_id', site_id);
     const { data, error } = await q;
     if (error) throw error;
-    res.json({ data: stripFinancialFields(data, req.user.role) });
+    res.json({ data: stripFinancialFields(data, req.user) });
   } catch (err) { next(err); }
 });
 

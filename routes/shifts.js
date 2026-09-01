@@ -27,7 +27,7 @@ router.get('/', authenticate, async (req, res, next) => {
 
     const { data, error } = await query;
     if (error) throw error;
-    res.json({ data: stripFinancialFields(data, req.user.role) });
+    res.json({ data: stripFinancialFields(data, req.user) });
   } catch (err) { next(err); }
 });
 
@@ -84,7 +84,7 @@ router.get('/:id', authenticate, async (req, res, next) => {
       .eq('company_id', req.user.company_id)
       .single();
     if (error || !data) return res.status(404).json({ error: 'Shift not found' });
-    res.json({ data: stripFinancialFields(data, req.user.role) });
+    res.json({ data: stripFinancialFields(data, req.user) });
   } catch (err) { next(err); }
 });
 
@@ -198,7 +198,7 @@ router.post('/start', authenticate, async (req, res, next) => {
         type_data: { shift_event: 'ON_DUTY' },
       });
     } catch {}
-    res.status(201).json({ data: stripFinancialFields(data, req.user.role) });
+    res.status(201).json({ data: stripFinancialFields(data, req.user) });
   } catch (err) { next(err); }
 });
 
@@ -255,7 +255,7 @@ router.post('/:id/checkin', authenticate, async (req, res, next) => {
         type_data: { shift_event: 'ON_DUTY' },
       });
     } catch {}
-    res.json({ data: stripFinancialFields(data, req.user.role) });
+    res.json({ data: stripFinancialFields(data, req.user) });
   } catch (err) { next(err); }
 });
 
@@ -286,7 +286,7 @@ router.post('/:id/checkout', authenticate, async (req, res, next) => {
         type_data: { shift_event: 'OFF_DUTY', duration_hours: hrs },
       });
     } catch {}
-    res.json({ data: stripFinancialFields(data, req.user.role) });
+    res.json({ data: stripFinancialFields(data, req.user) });
   } catch (err) { next(err); }
 });
 
@@ -308,7 +308,7 @@ router.get('/previous', authenticate, async (req, res, next) => {
       .limit(1)
       .maybeSingle();
     if (error) throw error;
-    res.json({ data: stripFinancialFields(data, req.user.role) });
+    res.json({ data: stripFinancialFields(data, req.user) });
   } catch (err) { next(err); }
 });
 
