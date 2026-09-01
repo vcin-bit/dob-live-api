@@ -1587,9 +1587,26 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
       {!shiftsLoading && shifts.length > 0 && (
         <>
           <div style={{background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:'8px',padding:'0.875rem',fontSize:'0.8125rem',color:'#1e40af',lineHeight:1.6,marginBottom:'1rem'}}>
-            <strong>{formatMonth(selectedMonth)}</strong> — Review each shift below.<br/>
-            Tap <strong style={{color:'#16a34a'}}>Agree</strong> if the hours are correct.<br/>
-            Tap <strong style={{color:'#dc2626'}}>Dispute</strong> if you worked different hours.
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'0.75rem'}}>
+              <div>
+                <strong>{formatMonth(selectedMonth)}</strong> — Review each shift below.<br/>
+                Tap <strong style={{color:'#16a34a'}}>Agree</strong> if the hours are correct.<br/>
+                Tap <strong style={{color:'#dc2626'}}>Dispute</strong> if you worked different hours.
+              </div>
+              {(() => {
+                const unactioned = monthShifts.filter(s => !confirmedIds.has(s.id) && !disputedHours[s.id]?.hours);
+                if (unactioned.length === 0) return null;
+                return (
+                  <button onClick={() => {
+                    if (window.confirm(`Agree all ${unactioned.length} shift${unactioned.length !== 1 ? 's' : ''} for ${formatMonth(selectedMonth)}?`)) {
+                      setConfirmedIds(prev => { const n = new Set(prev); unactioned.forEach(s => n.add(s.id)); return n; });
+                    }
+                  }} style={{flexShrink:0,padding:'0.5rem 0.75rem',background:'#16a34a',border:'none',borderRadius:'6px',color:'#fff',fontSize:'0.8125rem',fontWeight:700,cursor:'pointer'}}>
+                    Agree all {unactioned.length}
+                  </button>
+                );
+              })()}
+            </div>
           </div>
 
           {monthShifts.length === 0 ? (
@@ -1797,7 +1814,11 @@ export function HoursTab({ hr, dbUser, form, shifts, setShifts, shiftsLoading, s
                     )}
 
                     {!allAgreed && !hasDisputes && (
-                      <div style={{fontSize:'0.8125rem',color:'#9ca3af',textAlign:'center',marginTop:'0.5rem'}}>Tap <strong style={{color:'#16a34a'}}>Agree</strong> or <strong style={{color:'#dc2626'}}>Dispute</strong> on each shift above.</div>
+                      isSelfEmployed
+                        ? <div style={{background:'#fef9c3',border:'1px solid #fde68a',borderRadius:'8px',padding:'0.75rem',marginTop:'0.5rem',fontSize:'0.8125rem',color:'#92400e',textAlign:'center',fontWeight:600}}>
+                            Agree your shifts to generate an invoice — {monthShifts.length - agreedCount} still to check.
+                          </div>
+                        : <div style={{fontSize:'0.8125rem',color:'#9ca3af',textAlign:'center',marginTop:'0.5rem'}}>Tap <strong style={{color:'#16a34a'}}>Agree</strong> or <strong style={{color:'#dc2626'}}>Dispute</strong> on each shift above.</div>
                     )}
                   </div>
                 );
