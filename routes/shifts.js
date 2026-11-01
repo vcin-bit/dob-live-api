@@ -136,8 +136,37 @@ router.post('/', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGE
 // PATCH /api/shifts/:id
 router.patch('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
   try {
-    const allowed = ['site_id', 'officer_id', 'start_time', 'end_time', 'status', 'pay_rate', 'charge_rate', 'notes', 'checked_in_at', 'checked_out_at', 'shift_type', 'bh_hours', 'bh_pay_rate', 'bh_charge_rate'];
+    const allowed = ['site_id', 'officer_id', 'start_time', 'end_time', 'status', 'pay_rate', 'charge_rate', 'notes', 'checked_in_at', 'checked_out_at', 'shift_type', 'bh_hours', 'bh_pay_rate', 'bh_charge_rate', 'roster_locked'];
     const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
+
+    // Auto-resolve pay_rate when officer_id is being assigned or changed
+    if ('officer_id' in updates && updates.officer_id) {
+      const { data: existing, error: fetchErr } = await supabase
+        .from('shifts')
+        .select('site_id, start_time, roster_locked')
+        .eq('id', req.params.id)
+        .eq('company_id', req.user.company_id)
+        .single();
+      if (fetchErr) throw fetchErr;
+      if (!existing) return res.status(404).json({ error: 'Shift not found' });
+
+      if (!existing.roster_locked) {
+        const { rate } = await resolvePayRate({
+          companyId: req.user.company_id,
+          officerId: updates.officer_id,
+          siteId: updates.site_id || existing.site_id,
+          shiftStart: updates.start_time || existing.start_time,
+        });
+        if (rate !== null) {
+          // Officer has a rate — overwrite whatever was sent
+          updates.pay_rate = rate;
+        } else {
+          // No officer rate found — preserve the existing DB value (e.g. pattern's pay_rate)
+          delete updates.pay_rate;
+        }
+      }
+    }
+
     const { data, error } = await supabase
       .from('shifts')
       .update(updates)

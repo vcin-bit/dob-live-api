@@ -650,9 +650,8 @@ function ShiftModal({ shift, prefillDate, officers, allOfficers, sites, rates, s
   const isManager = ['COMPANY','OPS_MANAGER','SUPER_ADMIN'].includes(user?.role);
   const visibleOfficers = siteId ? officers : (allOfficers || officers);
 
-  // Auto-populate pay rate from officer_rates when officer or site changes (only for new shifts)
+  // Auto-populate pay rate from officer_rates when officer or site changes
   useEffect(() => {
-    if (shift?.pay_rate) return; // don't overwrite existing
     if (!form.officer_id) return;
     const siteRate = rates.find(r => r.officer_id === form.officer_id && r.site_id === form.site_id);
     const defaultRate = rates.find(r => r.officer_id === form.officer_id && !r.site_id);
