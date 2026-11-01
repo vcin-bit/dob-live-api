@@ -348,6 +348,18 @@ function PatrolRouteFormModal({ route, siteId, onClose, onSaved }) {
   );
 }
 
+// UK timezone ISO string — returns +01:00 in BST (last Sun Mar – last Sun Oct), +00:00 otherwise
+function localISOString(dateStr, timeStr) {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const marchLast = new Date(Date.UTC(year, 2, 31, 1, 0));
+  while (marchLast.getUTCDay() !== 0) marchLast.setUTCDate(marchLast.getUTCDate() - 1);
+  const octLast = new Date(Date.UTC(year, 9, 31, 1, 0));
+  while (octLast.getUTCDay() !== 0) octLast.setUTCDate(octLast.getUTCDate() - 1);
+  const checkDate = new Date(Date.UTC(year, month - 1, day, 12, 0));
+  const isBST = checkDate >= marchLast && checkDate < octLast;
+  return `${dateStr}T${timeStr}:00${isBST ? '+01:00' : '+00:00'}`;
+}
+
 // ── SHIFT PATTERNS ────────────────────────────────────────────────────────────
 function ShiftPatternsScreen({ user }) {
   const [patterns, setPatterns] = useState([]);
@@ -448,11 +460,11 @@ function ShiftPatternsScreen({ user }) {
                     const date = new Date(year, month - 1, day);
                     if (!patternDays.includes(date.getDay())) continue;
                     const dateStr = date.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
-                    const startDt = `${dateStr}T${applyPattern.start_time}:00+01:00`;
-                    let endDt = `${dateStr}T${applyPattern.end_time}:00+01:00`;
+                    const startDt = localISOString(dateStr, applyPattern.start_time);
+                    let endDt = localISOString(dateStr, applyPattern.end_time);
                     if (new Date(endDt) <= new Date(startDt)) {
                       const nextDay = new Date(date); nextDay.setDate(nextDay.getDate() + 1);
-                      endDt = `${nextDay.toLocaleDateString('en-CA', { timeZone: 'Europe/London' })}T${applyPattern.end_time}:00+01:00`;
+                      endDt = localISOString(nextDay.toLocaleDateString('en-CA', { timeZone: 'Europe/London' }), applyPattern.end_time);
                     }
                     await api.shifts.create({
                       site_id: applyPattern.site_id,

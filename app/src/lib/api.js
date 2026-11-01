@@ -449,6 +449,7 @@ export const api = {
     list: (params = {}) => request(`/api/visitors?${new URLSearchParams(params)}`),
     create: (data) => request('/api/visitors', { method: 'POST', body: JSON.stringify(data) }),
     update: (id, data) => request(`/api/visitors/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    signOut: (id) => request(`/api/visitors/${id}/signout`, { method: 'POST' }),
   },
   expectedVisitors: {
     list: (params = {}) => request(`/api/visitors/expected?${new URLSearchParams(params)}`),

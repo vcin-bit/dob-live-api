@@ -74,6 +74,31 @@ router.patch('/:id', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// POST /api/visitors/:id/signout — manager/office sign-out with server-side timestamp
+router.post('/:id/signout', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
+  try {
+    const { data: existing, error: fetchErr } = await supabase
+      .from('visitors')
+      .select('id, status')
+      .eq('id', req.params.id)
+      .eq('company_id', req.user.company_id)
+      .maybeSingle();
+    if (fetchErr) throw fetchErr;
+    if (!existing) return res.status(404).json({ error: 'Visitor not found' });
+    if (existing.status !== 'on_site') return res.status(409).json({ error: 'Visitor is not currently on site' });
+    const now = new Date();
+    const { data, error } = await supabase
+      .from('visitors')
+      .update({ status: 'signed_out_by_office', time_out: now.toISOString() })
+      .eq('id', req.params.id)
+      .eq('company_id', req.user.company_id)
+      .select()
+      .single();
+    if (error) throw error;
+    res.json({ data });
+  } catch (err) { next(err); }
+});
+
 // DELETE /api/visitors/:id
 router.delete('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MANAGER', 'FD'), async (req, res, next) => {
   try {

@@ -2689,6 +2689,19 @@ function Reporting({ user }) {
   );
 }
 
+function visitorStatusBadge(status) {
+  if (status === 'on_site') return <span className="badge badge-success">ON SITE</span>;
+  if (status === 'signed_out_by_office') return <span className="badge badge-neutral">OFFICE SIGN-OUT</span>;
+  return <span className="badge badge-neutral">OFF SITE</span>;
+}
+
+function visitorDuration(time_in) {
+  const mins = Math.floor((Date.now() - new Date(time_in)) / 60000);
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
 function VisitorReportTab() {
   const [visitors, setVisitors] = useState([]);
   const [sites, setSites] = useState([]);
@@ -2696,6 +2709,7 @@ function VisitorReportTab() {
   const [search, setSearch] = useState('');
   const [siteFilter, setSiteFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [signingOut, setSigningOut] = useState(null);
 
   async function load() {
     setLoading(true);
@@ -2731,6 +2745,16 @@ function VisitorReportTab() {
   const fmtTime = t => t ? new Date(t).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'}) : '—';
   const fmtDate = t => t ? new Date(t).toLocaleDateString('en-GB',{day:'2-digit',month:'short',timeZone:'Europe/London'}) : '';
 
+  async function handleSignOut(v) {
+    if (!window.confirm(`Sign out ${v.visitor_name}? They have been on site for ${visitorDuration(v.time_in)}.`)) return;
+    setSigningOut(v.id);
+    try {
+      await api.visitors.signOut(v.id);
+      await load();
+    } catch (err) { alert('Sign-out failed: ' + err.message); }
+    finally { setSigningOut(null); }
+  }
+
   if (loading) return <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div className="spinner" /></div>;
 
   return (
@@ -2758,7 +2782,7 @@ function VisitorReportTab() {
         <div className="empty-state"><p>No visitors found</p></div>
       ) : (
         <table className="table">
-          <thead><tr><th>Name</th><th>Company</th><th>Site</th><th>Pass</th><th>Vehicle</th><th>Time In</th><th>Time Out</th><th>Status</th><th>Officer</th></tr></thead>
+          <thead><tr><th>Name</th><th>Company</th><th>Site</th><th>Pass</th><th>Vehicle</th><th>Time In</th><th>Time Out</th><th>Status</th><th>Officer</th><th></th></tr></thead>
           <tbody>
             {filtered.map(v => (
               <tr key={v.id}>
@@ -2769,8 +2793,15 @@ function VisitorReportTab() {
                 <td style={{fontFamily:'monospace',fontSize:'0.8125rem',color:'var(--text-2)'}}>{v.vehicle_reg||'—'}</td>
                 <td style={{fontSize:'0.8125rem',color:'var(--text-2)',whiteSpace:'nowrap'}}>{fmtDate(v.time_in)} {fmtTime(v.time_in)}</td>
                 <td style={{fontSize:'0.8125rem',color:'var(--text-2)',whiteSpace:'nowrap'}}>{v.time_out ? `${fmtDate(v.time_out)} ${fmtTime(v.time_out)}` : '—'}</td>
-                <td><span className={`badge ${v.status==='on_site'?'badge-success':'badge-neutral'}`}>{v.status==='on_site'?'ON SITE':'OFF SITE'}</span></td>
+                <td>{visitorStatusBadge(v.status)}</td>
                 <td style={{color:'var(--text-2)',fontSize:'0.8125rem'}}>{v.officer?`${v.officer.first_name} ${v.officer.last_name}`:'—'}</td>
+                <td>{v.status === 'on_site' && (
+                  <button
+                    onClick={() => handleSignOut(v)}
+                    disabled={signingOut === v.id}
+                    style={{padding:'0.25rem 0.625rem',background:'rgba(220,38,38,0.08)',border:'1px solid rgba(220,38,38,0.2)',borderRadius:'5px',color:'var(--danger)',fontSize:'0.75rem',fontWeight:600,cursor:'pointer',whiteSpace:'nowrap'}}
+                  >{signingOut === v.id ? '…' : 'Sign out'}</button>
+                )}</td>
               </tr>
             ))}
           </tbody>
@@ -2870,6 +2901,7 @@ function SiteVisitorsTab({ siteId }) {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('on_site');
+  const [signingOut, setSigningOut] = useState(null);
 
   async function load() {
     setLoading(true);
@@ -2911,6 +2943,16 @@ function SiteVisitorsTab({ siteId }) {
   const fmtTime = t => t ? new Date(t).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'}) : '—';
   const fmtDate = t => t ? new Date(t).toLocaleDateString('en-GB',{day:'2-digit',month:'short',timeZone:'Europe/London'}) : '';
 
+  async function handleSignOut(v) {
+    if (!window.confirm(`Sign out ${v.visitor_name}? They have been on site for ${visitorDuration(v.time_in)}.`)) return;
+    setSigningOut(v.id);
+    try {
+      await api.visitors.signOut(v.id);
+      await load();
+    } catch (err) { alert('Sign-out failed: ' + err.message); }
+    finally { setSigningOut(null); }
+  }
+
   if (loading) return <div style={{display:'flex',justifyContent:'center',padding:'2rem'}}><div className="spinner" /></div>;
 
   return (
@@ -2934,7 +2976,7 @@ function SiteVisitorsTab({ siteId }) {
         <div className="empty-state"><p>No visitors found</p></div>
       ) : (
         <table className="table">
-          <thead><tr><th>Name</th><th>Company</th><th>Pass</th><th>Vehicle</th><th>In</th><th>Out</th><th>Status</th><th>Officer</th></tr></thead>
+          <thead><tr><th>Name</th><th>Company</th><th>Pass</th><th>Vehicle</th><th>In</th><th>Out</th><th>Status</th><th>Officer</th><th></th></tr></thead>
           <tbody>
             {filtered.map(v => (
               <tr key={v.id}>
@@ -2944,8 +2986,15 @@ function SiteVisitorsTab({ siteId }) {
                 <td style={{fontFamily:'monospace',fontSize:'0.8125rem',color:'var(--text-2)'}}>{v.vehicle_reg||'—'}</td>
                 <td style={{fontSize:'0.8125rem',color:'var(--text-2)',whiteSpace:'nowrap'}}>{fmtDate(v.time_in)} {fmtTime(v.time_in)}</td>
                 <td style={{fontSize:'0.8125rem',color:'var(--text-2)',whiteSpace:'nowrap'}}>{v.time_out ? `${fmtDate(v.time_out)} ${fmtTime(v.time_out)}` : '—'}</td>
-                <td><span className={`badge ${v.status==='on_site'?'badge-success':'badge-neutral'}`}>{v.status==='on_site'?'ON SITE':'OFF SITE'}</span></td>
+                <td>{visitorStatusBadge(v.status)}</td>
                 <td style={{color:'var(--text-2)',fontSize:'0.8125rem'}}>{v.officer?`${v.officer.first_name} ${v.officer.last_name}`:'—'}</td>
+                <td>{v.status === 'on_site' && (
+                  <button
+                    onClick={() => handleSignOut(v)}
+                    disabled={signingOut === v.id}
+                    style={{padding:'0.25rem 0.625rem',background:'rgba(220,38,38,0.08)',border:'1px solid rgba(220,38,38,0.2)',borderRadius:'5px',color:'var(--danger)',fontSize:'0.75rem',fontWeight:600,cursor:'pointer',whiteSpace:'nowrap'}}
+                  >{signingOut === v.id ? '…' : 'Sign out'}</button>
+                )}</td>
               </tr>
             ))}
           </tbody>
