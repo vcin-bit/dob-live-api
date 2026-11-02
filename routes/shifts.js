@@ -158,12 +158,13 @@ router.patch('/:id', authenticate, requireRole('SUPER_ADMIN', 'COMPANY', 'OPS_MA
           shiftStart: updates.start_time || existing.start_time,
         });
         if (rate !== null) {
-          // Officer has a rate — overwrite whatever was sent
+          // Officer has a known rate — use it regardless of what the client sent
           updates.pay_rate = rate;
-        } else {
-          // No officer rate found — preserve the existing DB value (e.g. pattern's pay_rate)
+        } else if (!('pay_rate' in req.body)) {
+          // No officer rate and manager didn't type one — preserve the existing DB value
           delete updates.pay_rate;
         }
+        // else: no officer rate but manager typed one manually — keep their value
       }
     }
 
